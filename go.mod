@@ -4,6 +4,8 @@ go 1.16
 
 replace github.com/charmbracelet/charm => ../charm
 
+replace github.com/charmbracelet/bubbletea => ../bubbletea
+
 require (
 	github.com/charmbracelet/bubbletea v0.14.0
 	github.com/charmbracelet/charm v0.8.6

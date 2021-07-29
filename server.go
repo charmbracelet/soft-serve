@@ -55,7 +55,7 @@ func (srv *Server) sessionHandler(s ssh.Session) {
 		return
 	}
 	if m != nil {
-		p := tea.NewProgram(m, tea.WithInput(s), tea.WithOutput(s))
+		p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithInput(s), tea.WithOutput(s))
 		err = p.Start()
 		if err != nil {
 			log.Printf("%s error %v %s\n", s.RemoteAddr().String(), hpk, err)
