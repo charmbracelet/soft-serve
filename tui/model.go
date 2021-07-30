@@ -24,12 +24,12 @@ func (e errMsg) Error() string {
 	return e.err.Error()
 }
 
-func SessionHandler(s ssh.Session) (tea.Model, error) {
+func SessionHandler(s ssh.Session) tea.Model {
 	pty, changes, active := s.Pty()
 	if !active {
-		return nil, fmt.Errorf("you need to do this from a terminal with PTY support")
+		return nil
 	}
-	return NewModel(pty.Window.Width, pty.Window.Height, changes), nil
+	return NewModel(pty.Window.Width, pty.Window.Height, changes)
 }
 
 type Model struct {

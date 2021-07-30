@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	s, err := NewServer(cfg.Port, cfg.KeyPath, tui.SessionHandler)
+	s, err := NewServer(cfg.Port, cfg.KeyPath, LoggingMiddleware(), BubbleTeaMiddleware(tui.SessionHandler))
 	if err != nil {
 		panic(err)
 	}
