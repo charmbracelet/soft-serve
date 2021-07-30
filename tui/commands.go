@@ -12,3 +12,9 @@ func (m *Model) windowChangesCmd() tea.Msg {
 	m.height = w.Height
 	return windowMsg{}
 }
+
+func (m *Model) getCommitsCmd() tea.Msg {
+	m.commits = m.repos.getCommits(20)
+	m.state = commitsLoadedState
+	return nil
+}

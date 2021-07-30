@@ -27,7 +27,7 @@ func main() {
 	s, err := server.NewServer(
 		cfg.Port,
 		cfg.KeyPath,
-		bm.Middleware(tui.SessionHandler),
+		bm.Middleware(tui.SessionHandler(cfg.RepoPath)),
 		gm.Middleware(cfg.RepoPath, cfg.RepoAuthPath),
 		lm.Middleware(),
 	)
