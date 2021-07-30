@@ -58,6 +58,7 @@ func (rs *repoSource) loadRepos() {
 		return
 	}
 	rs.repos = make([]*git.Repository, 0)
+	rs.commits = make([]*object.Commit, 0)
 	for _, rd := range rd {
 		r, err := git.PlainOpen(rs.path + string(os.PathSeparator) + rd.Name())
 		if err != nil {
