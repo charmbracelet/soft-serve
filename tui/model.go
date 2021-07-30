@@ -25,11 +25,14 @@ func (e errMsg) Error() string {
 }
 
 func SessionHandler(s ssh.Session) tea.Model {
-	pty, changes, active := s.Pty()
-	if !active {
-		return nil
+	if len(s.Command()) == 0 {
+		pty, changes, active := s.Pty()
+		if !active {
+			return nil
+		}
+		return NewModel(pty.Window.Width, pty.Window.Height, changes)
 	}
-	return NewModel(pty.Window.Width, pty.Window.Height, changes)
+	return nil
 }
 
 type Model struct {
