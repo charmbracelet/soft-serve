@@ -12,10 +12,6 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
-func logError(s ssh.Session, err error) {
-	log.Printf("%s error %v: %s\n", s.RemoteAddr().String(), s.Command(), err)
-}
-
 type Server struct {
 	server *ssh.Server
 	key    gossh.PublicKey
