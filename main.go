@@ -2,6 +2,10 @@ package main
 
 import (
 	"log"
+	"smoothie/server"
+	bm "smoothie/server/middleware/bubbletea"
+	gm "smoothie/server/middleware/git"
+	lm "smoothie/server/middleware/logging"
 	"smoothie/tui"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,9 +24,13 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	btm := BubbleTeaMiddleware(tui.SessionHandler, tea.WithAltScreen())
-	gm := GitMiddleware(cfg.RepoPath)
-	s, err := NewServer(cfg.Port, cfg.KeyPath, btm, gm, LoggingMiddleware())
+	s, err := server.NewServer(
+		cfg.Port,
+		cfg.KeyPath,
+		bm.Middleware(tui.SessionHandler, tea.WithAltScreen()),
+		gm.Middleware(cfg.RepoPath),
+		lm.Middleware(),
+	)
 	if err != nil {
 		log.Fatalln(err)
 	}

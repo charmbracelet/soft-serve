@@ -1,15 +1,16 @@
-package main
+package git
 
 import (
 	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"smoothie/server/middleware"
 
 	"github.com/gliderlabs/ssh"
 )
 
-func GitMiddleware(repoDir string) Middleware {
+func Middleware(repoDir string) middleware.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			cmd := s.Command()
@@ -53,13 +54,9 @@ func fileExists(path string) (bool, error) {
 
 func fatalGit(s ssh.Session, err error) {
 	// hex length includes 4 byte length prefix and ending newline
-	logError(s, err)
 	msg := err.Error()
 	pktLine := fmt.Sprintf("%04x%s\n", len(msg)+5, msg)
-	_, err = s.Write([]byte(pktLine))
-	if err != nil {
-		logError(s, err)
-	}
+	_, _ = s.Write([]byte(pktLine))
 	s.Exit(1)
 }
 

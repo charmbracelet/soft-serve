@@ -1,49 +1,19 @@
-package main
+package server
 
 import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"smoothie/server/middleware"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/charm/keygen"
 	"github.com/gliderlabs/ssh"
 	gossh "golang.org/x/crypto/ssh"
 )
 
-type Middleware func(ssh.Handler) ssh.Handler
-
-func LoggingMiddleware() Middleware {
-	return func(sh ssh.Handler) ssh.Handler {
-		return func(s ssh.Session) {
-			hpk := s.PublicKey() != nil
-			log.Printf("%s connect %v %v\n", s.RemoteAddr().String(), hpk, s.Command())
-			sh(s)
-			log.Printf("%s disconnect %v %v\n", s.RemoteAddr().String(), hpk, s.Command())
-		}
-	}
-}
-
 func logError(s ssh.Session, err error) {
 	log.Printf("%s error %v: %s\n", s.RemoteAddr().String(), s.Command(), err)
-}
-
-func BubbleTeaMiddleware(bth func(ssh.Session) tea.Model, opts ...tea.ProgramOption) Middleware {
-	return func(sh ssh.Handler) ssh.Handler {
-		return func(s ssh.Session) {
-			m := bth(s)
-			if m != nil {
-				opts = append(opts, tea.WithInput(s), tea.WithOutput(s))
-				p := tea.NewProgram(m, opts...)
-				err := p.Start()
-				if err != nil {
-					logError(s, err)
-				}
-			}
-			sh(s)
-		}
-	}
 }
 
 type Server struct {
@@ -51,7 +21,7 @@ type Server struct {
 	key    gossh.PublicKey
 }
 
-func NewServer(port int, keyPath string, mw ...Middleware) (*Server, error) {
+func NewServer(port int, keyPath string, mw ...middleware.Middleware) (*Server, error) {
 	s := &Server{server: &ssh.Server{}}
 	s.server.Version = "OpenSSH_7.6p1"
 	s.server.Addr = fmt.Sprintf(":%d", port)
