@@ -3,6 +3,7 @@ package main
 import (
 	"smoothie/tui"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/meowgorithm/babyenv"
 )
 
@@ -17,7 +18,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	s, err := NewServer(cfg.Port, cfg.KeyPath, LoggingMiddleware(), BubbleTeaMiddleware(tui.SessionHandler))
+	btm := BubbleTeaMiddleware(tui.SessionHandler, tea.WithAltScreen())
+	s, err := NewServer(cfg.Port, cfg.KeyPath, LoggingMiddleware(), btm)
 	if err != nil {
 		panic(err)
 	}
