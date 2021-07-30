@@ -9,8 +9,9 @@ import (
 )
 
 type Config struct {
-	KeyPath string `env:"SMOOTHIE_KEY_PATH" default:".ssh/smoothie_server_ed25519"`
-	Port    int    `env:"SMOOTHIE_PORT" default:"23231"`
+	Port     int    `env:"SMOOTHIE_PORT" default:"23231"`
+	KeyPath  string `env:"SMOOTHIE_KEY_PATH" default:".ssh/smoothie_server_ed25519"`
+	RepoPath string `env:"SMOOTHIE_REPO_PATH" default:".repos"`
 }
 
 func main() {
@@ -20,7 +21,8 @@ func main() {
 		log.Fatalln(err)
 	}
 	btm := BubbleTeaMiddleware(tui.SessionHandler, tea.WithAltScreen())
-	s, err := NewServer(cfg.Port, cfg.KeyPath, LoggingMiddleware(), btm)
+	gm := GitMiddleware(cfg.RepoPath)
+	s, err := NewServer(cfg.Port, cfg.KeyPath, btm, gm, LoggingMiddleware())
 	if err != nil {
 		log.Fatalln(err)
 	}

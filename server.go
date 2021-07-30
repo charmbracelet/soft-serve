@@ -25,6 +25,10 @@ func LoggingMiddleware() Middleware {
 	}
 }
 
+func logError(s ssh.Session, err error) {
+	log.Printf("%s error %v: %s\n", s.RemoteAddr().String(), s.Command(), err)
+}
+
 func BubbleTeaMiddleware(bth func(ssh.Session) tea.Model, opts ...tea.ProgramOption) Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
@@ -34,7 +38,7 @@ func BubbleTeaMiddleware(bth func(ssh.Session) tea.Model, opts ...tea.ProgramOpt
 				p := tea.NewProgram(m, opts...)
 				err := p.Start()
 				if err != nil {
-					log.Printf("%s error %v: %s\n", s.RemoteAddr().String(), s.Command(), err)
+					logError(s, err)
 				}
 			}
 			sh(s)
