@@ -43,9 +43,6 @@ func NewServer(port int, keyPath string, mw ...middleware.Middleware) (*Server, 
 	return s, nil
 }
 
-func (srv *Server) sessionHandler(s ssh.Session) {
-}
-
 func (srv *Server) authHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 	return true
 }
