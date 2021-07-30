@@ -85,5 +85,6 @@ func (srv *Server) passHandler(ctx ssh.Context, pass string) bool {
 }
 
 func (srv *Server) Start() error {
+	log.Printf("Starting SSH server on %s\n", srv.server.Addr)
 	return srv.server.ListenAndServe()
 }

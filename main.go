@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"smoothie/tui"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,15 +17,15 @@ func main() {
 	var cfg Config
 	err := babyenv.Parse(&cfg)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	btm := BubbleTeaMiddleware(tui.SessionHandler, tea.WithAltScreen())
 	s, err := NewServer(cfg.Port, cfg.KeyPath, LoggingMiddleware(), btm)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	err = s.Start()
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 }
