@@ -8,7 +8,6 @@ import (
 	lm "smoothie/server/middleware/logging"
 	"smoothie/tui"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/meowgorithm/babyenv"
 )
 
@@ -28,7 +27,7 @@ func main() {
 	s, err := server.NewServer(
 		cfg.Port,
 		cfg.KeyPath,
-		bm.Middleware(tui.SessionHandler, tea.WithAltScreen()),
+		bm.Middleware(tui.SessionHandler),
 		gm.Middleware(cfg.RepoPath, cfg.RepoAuthPath),
 		lm.Middleware(),
 	)

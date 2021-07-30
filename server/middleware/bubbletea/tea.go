@@ -7,10 +7,12 @@ import (
 	"github.com/gliderlabs/ssh"
 )
 
-func Middleware(bth func(ssh.Session) tea.Model, opts ...tea.ProgramOption) middleware.Middleware {
+type BubbleTeaHandler func(ssh.Session) (tea.Model, []tea.ProgramOption)
+
+func Middleware(bth BubbleTeaHandler) middleware.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
-			m := bth(s)
+			m, opts := bth(s)
 			if m != nil {
 				opts = append(opts, tea.WithInput(s), tea.WithOutput(s))
 				p := tea.NewProgram(m, opts...)

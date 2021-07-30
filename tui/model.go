@@ -24,15 +24,15 @@ func (e errMsg) Error() string {
 	return e.err.Error()
 }
 
-func SessionHandler(s ssh.Session) tea.Model {
+func SessionHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	if len(s.Command()) == 0 {
 		pty, changes, active := s.Pty()
 		if !active {
-			return nil
+			return nil, nil
 		}
-		return NewModel(pty.Window.Width, pty.Window.Height, changes)
+		return NewModel(pty.Window.Width, pty.Window.Height, changes), []tea.ProgramOption{tea.WithAltScreen()}
 	}
-	return nil
+	return nil, nil
 }
 
 type Model struct {
