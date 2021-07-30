@@ -1,8 +1,10 @@
 package git
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"smoothie/server/middleware"
@@ -10,13 +12,50 @@ import (
 	"github.com/gliderlabs/ssh"
 )
 
-func Middleware(repoDir string) middleware.Middleware {
+func Middleware(repoDir string, authorizedKeysPath string) middleware.Middleware {
+	authedKeys := make([]ssh.PublicKey, 0)
+	hasAuth, err := fileExists(authorizedKeysPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if hasAuth {
+		f, err := os.Open(authorizedKeysPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			pt := scanner.Text()
+			log.Printf("Adding authorized key: %s", pt)
+			pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pt))
+			if err != nil {
+				log.Fatal(err)
+			}
+			authedKeys = append(authedKeys, pk)
+		}
+		if err := scanner.Err(); err != nil {
+			log.Fatal(err)
+		}
+	}
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			cmd := s.Command()
 			if len(cmd) == 2 {
 				switch cmd[0] {
-				case "git-upload-pack", "git-receive-pack", "git-upload-archive":
+				case "git-upload-pack", "git-upload-archive", "git-receive-pack":
+					if hasAuth && cmd[0] == "git-receive-pack" {
+						authed := false
+						for _, pk := range authedKeys {
+							if ssh.KeysEqual(pk, s.PublicKey()) {
+								authed = true
+							}
+						}
+						if !authed {
+							fatalGit(s, fmt.Errorf("you are not authorized to do this"))
+							break
+						}
+					}
 					r := cmd[1]
 					rp := fmt.Sprintf("%s%s", repoDir, r)
 					ctx := s.Context()
