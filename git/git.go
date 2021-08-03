@@ -1,4 +1,4 @@
-package tui
+package git
 
 import (
 	"log"
@@ -11,21 +11,29 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
-type commitLog []*object.Commit
+type RepoCommit struct {
+	Name   string
+	Repo   *git.Repository
+	Commit *object.Commit
+}
 
-func (cl commitLog) Len() int           { return len(cl) }
-func (cl commitLog) Swap(i, j int)      { cl[i], cl[j] = cl[j], cl[i] }
-func (cl commitLog) Less(i, j int) bool { return cl[i].Author.When.After(cl[j].Author.When) }
+type CommitLog []RepoCommit
 
-type repoSource struct {
+func (cl CommitLog) Len() int      { return len(cl) }
+func (cl CommitLog) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
+func (cl CommitLog) Less(i, j int) bool {
+	return cl[i].Commit.Author.When.After(cl[j].Commit.Author.When)
+}
+
+type RepoSource struct {
 	mtx     sync.Mutex
 	path    string
 	repos   []*git.Repository
-	commits commitLog
+	commits CommitLog
 }
 
-func newRepoSource(repoPath string) *repoSource {
-	rs := &repoSource{path: repoPath}
+func NewRepoSource(repoPath string) *RepoSource {
+	rs := &RepoSource{path: repoPath}
 	go func() {
 		for {
 			rs.loadRepos()
@@ -35,13 +43,13 @@ func newRepoSource(repoPath string) *repoSource {
 	return rs
 }
 
-func (rs *repoSource) allRepos() []*git.Repository {
+func (rs *RepoSource) AllRepos() []*git.Repository {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	return rs.repos
 }
 
-func (rs *repoSource) getCommits(limit int) []*object.Commit {
+func (rs *RepoSource) GetCommits(limit int) []RepoCommit {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	if limit > len(rs.commits) {
@@ -50,7 +58,7 @@ func (rs *repoSource) getCommits(limit int) []*object.Commit {
 	return rs.commits[:limit]
 }
 
-func (rs *repoSource) loadRepos() {
+func (rs *RepoSource) loadRepos() {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	rd, err := os.ReadDir(rs.path)
@@ -58,7 +66,7 @@ func (rs *repoSource) loadRepos() {
 		return
 	}
 	rs.repos = make([]*git.Repository, 0)
-	rs.commits = make([]*object.Commit, 0)
+	rs.commits = make([]RepoCommit, 0)
 	for _, rd := range rd {
 		r, err := git.PlainOpen(rs.path + string(os.PathSeparator) + rd.Name())
 		if err != nil {
@@ -69,7 +77,7 @@ func (rs *repoSource) loadRepos() {
 			log.Fatal(err)
 		}
 		l.ForEach(func(c *object.Commit) error {
-			rs.commits = append(rs.commits, c)
+			rs.commits = append(rs.commits, RepoCommit{Name: rd.Name(), Repo: r, Commit: c})
 			return nil
 		})
 		sort.Sort(rs.commits)

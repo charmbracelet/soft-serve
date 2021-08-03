@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"smoothie/tui/bubbles/commits"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -14,7 +16,7 @@ func (m *Model) windowChangesCmd() tea.Msg {
 }
 
 func (m *Model) getCommitsCmd() tea.Msg {
-	m.commits = m.repos.getCommits(20)
-	m.state = commitsLoadedState
+	m.commitTimeline = commits.NewBubble(m.height, 2, 80, m.repoSource.GetCommits(200))
+	m.state = loadedState
 	return nil
 }
