@@ -6,7 +6,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+type stateMsg struct{ state sessionState }
+type infoMsg struct{ text string }
 type windowMsg struct{}
+type errMsg struct{ err error }
+
+func (e errMsg) Error() string {
+	return e.err.Error()
+}
 
 func (m *Model) windowChangesCmd() tea.Msg {
 	w := <-m.windowChanges
@@ -15,7 +22,7 @@ func (m *Model) windowChangesCmd() tea.Msg {
 	return windowMsg{}
 }
 
-func (m *Model) getCommitsCmd() tea.Msg {
+func (m *Model) loadGitCmd() tea.Msg {
 	m.commitTimeline = commits.NewBubble(m.height, 2, 80, m.repoSource.GetCommits(200))
 	m.state = loadedState
 	return nil

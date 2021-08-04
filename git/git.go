@@ -11,9 +11,15 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
+type Repo struct {
+	Name        string
+	Repository  *git.Repository
+	Readme      string
+	LastUpdated *time.Time
+}
+
 type RepoCommit struct {
 	Name   string
-	Repo   *git.Repository
 	Commit *object.Commit
 }
 
@@ -28,22 +34,22 @@ func (cl CommitLog) Less(i, j int) bool {
 type RepoSource struct {
 	mtx     sync.Mutex
 	path    string
-	repos   []*git.Repository
+	repos   []*Repo
 	commits CommitLog
 }
 
-func NewRepoSource(repoPath string) *RepoSource {
+func NewRepoSource(repoPath string, poll time.Duration) *RepoSource {
 	rs := &RepoSource{path: repoPath}
 	go func() {
 		for {
 			rs.loadRepos()
-			time.Sleep(time.Second * 10)
+			time.Sleep(poll)
 		}
 	}()
 	return rs
 }
 
-func (rs *RepoSource) AllRepos() []*git.Repository {
+func (rs *RepoSource) AllRepos() []*Repo {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	return rs.repos
@@ -65,19 +71,25 @@ func (rs *RepoSource) loadRepos() {
 	if err != nil {
 		return
 	}
-	rs.repos = make([]*git.Repository, 0)
+	rs.repos = make([]*Repo, 0)
 	rs.commits = make([]RepoCommit, 0)
-	for _, rd := range rd {
-		r, err := git.PlainOpen(rs.path + string(os.PathSeparator) + rd.Name())
+	for _, de := range rd {
+		rn := de.Name()
+		r := &Repo{Name: rn}
+		rg, err := git.PlainOpen(rs.path + string(os.PathSeparator) + rn)
 		if err != nil {
 			log.Fatal(err)
 		}
-		l, err := r.Log(&git.LogOptions{All: true})
+		r.Repository = rg
+		l, err := rg.Log(&git.LogOptions{All: true})
 		if err != nil {
 			log.Fatal(err)
 		}
 		l.ForEach(func(c *object.Commit) error {
-			rs.commits = append(rs.commits, RepoCommit{Name: rd.Name(), Repo: r, Commit: c})
+			if r.LastUpdated == nil {
+				r.LastUpdated = &c.Author.When
+			}
+			rs.commits = append(rs.commits, RepoCommit{Name: rn, Commit: c})
 			return nil
 		})
 		sort.Sort(rs.commits)

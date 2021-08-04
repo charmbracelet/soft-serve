@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"smoothie/git"
 	"smoothie/tui/bubbles/commits"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gliderlabs/ssh"
@@ -18,28 +19,6 @@ const (
 	quittingState
 	quitState
 )
-
-type stateMsg struct{ state sessionState }
-type infoMsg struct{ text string }
-type errMsg struct{ err error }
-
-func (e errMsg) Error() string {
-	return e.err.Error()
-}
-
-func SessionHandler(reposPath string) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
-	rs := git.NewRepoSource(reposPath)
-	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-		if len(s.Command()) == 0 {
-			pty, changes, active := s.Pty()
-			if !active {
-				return nil, nil
-			}
-			return NewModel(pty.Window.Width, pty.Window.Height, changes, rs), []tea.ProgramOption{tea.WithAltScreen()}
-		}
-		return nil, nil
-	}
-}
 
 type Model struct {
 	state          sessionState
@@ -64,7 +43,7 @@ func NewModel(width int, height int, windowChanges <-chan ssh.Window, repoSource
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.windowChangesCmd, m.getCommitsCmd)
+	return tea.Batch(m.windowChangesCmd, m.loadGitCmd)
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -113,4 +92,18 @@ func (m *Model) View() string {
 	}
 	content = h + "\n" + s + "\n" + f
 	return appBoxStyle.Render(content)
+}
+
+func SessionHandler(reposPath string) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
+	rs := git.NewRepoSource(reposPath, time.Second*10)
+	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
+		if len(s.Command()) == 0 {
+			pty, changes, active := s.Pty()
+			if !active {
+				return nil, nil
+			}
+			return NewModel(pty.Window.Width, pty.Window.Height, changes, rs), []tea.ProgramOption{tea.WithAltScreen()}
+		}
+		return nil, nil
+	}
 }
