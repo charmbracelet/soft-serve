@@ -3,10 +3,10 @@ package tui
 import (
 	"fmt"
 	"smoothie/git"
-	"smoothie/tui/bubbles/commits"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/gliderlabs/ssh"
 )
 
@@ -21,14 +21,16 @@ const (
 )
 
 type Model struct {
-	state          sessionState
-	error          string
-	info           string
-	width          int
-	height         int
-	windowChanges  <-chan ssh.Window
-	repoSource     *git.RepoSource
-	commitTimeline *commits.Bubble
+	state         sessionState
+	error         string
+	info          string
+	width         int
+	height        int
+	windowChanges <-chan ssh.Window
+	repoSource    *git.RepoSource
+	repos         []*git.Repo
+	activeBubble  int
+	bubbles       []tea.Model
 }
 
 func NewModel(width int, height int, windowChanges <-chan ssh.Window, repoSource *git.RepoSource) *Model {
@@ -37,6 +39,7 @@ func NewModel(width int, height int, windowChanges <-chan ssh.Window, repoSource
 		height:        height,
 		windowChanges: windowChanges,
 		repoSource:    repoSource,
+		bubbles:       make([]tea.Model, 2),
 	}
 	m.state = startState
 	return m
@@ -56,9 +59,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "j", "k", "up", "down":
-			_, cmd := m.commitTimeline.Update(msg)
-			cmds = append(cmds, cmd)
+		case "tab":
+			m.activeBubble = (m.activeBubble + 1) % 2
 		}
 	case errMsg:
 		m.error = msg.Error()
@@ -71,9 +73,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.commitTimeline.Height = msg.Height
+	}
+	if m.state == loadedState {
+		b, cmd := m.bubbles[m.activeBubble].Update(msg)
+		m.bubbles[m.activeBubble] = b
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	}
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) viewForBubble(i int, width int) string {
+	var ls lipgloss.Style
+	if i == m.activeBubble {
+		ls = activeBoxStyle.Width(width)
+	} else {
+		ls = inactiveBoxStyle.Width(width)
+	}
+	return ls.Render(m.bubbles[i].View())
 }
 
 func (m *Model) View() string {
@@ -84,7 +102,9 @@ func (m *Model) View() string {
 	content := ""
 	switch m.state {
 	case loadedState:
-		s += m.commitTimeline.View()
+		lb := m.viewForBubble(0, 25)
+		rb := m.viewForBubble(1, 84)
+		s += lipgloss.JoinHorizontal(lipgloss.Top, lb, rb)
 	case errorState:
 		s += errorStyle.Render(fmt.Sprintf("Bummer: %s", m.error))
 	default:

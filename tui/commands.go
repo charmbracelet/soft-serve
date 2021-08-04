@@ -2,6 +2,7 @@ package tui
 
 import (
 	"smoothie/tui/bubbles/commits"
+	"smoothie/tui/bubbles/selection"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,7 +24,13 @@ func (m *Model) windowChangesCmd() tea.Msg {
 }
 
 func (m *Model) loadGitCmd() tea.Msg {
-	m.commitTimeline = commits.NewBubble(m.height, 2, 80, m.repoSource.GetCommits(200))
+	rs := make([]string, 0)
+	for _, r := range m.repoSource.AllRepos() {
+		rs = append(rs, r.Name)
+	}
+	m.bubbles[0] = selection.NewBubble(rs)
+	m.bubbles[1] = commits.NewBubble(m.height, 7, 80, m.repoSource.GetCommits(200))
+	m.activeBubble = 0
 	m.state = loadedState
 	return nil
 }

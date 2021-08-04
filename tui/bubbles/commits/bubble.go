@@ -62,7 +62,7 @@ func (b *Bubble) renderCommit(rc git.RepoCommit) string {
 	s += " "
 	s += commitAuthorEmailStyle.Render(rc.Commit.Author.Email)
 	s += " "
-	return commitBoxStyle.Width(b.viewport.Height).Render(s)
+	return commitBoxStyle.Width(b.viewport.Width).Render(s)
 }
 
 func (b *Bubble) View() string {
