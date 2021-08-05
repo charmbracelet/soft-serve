@@ -11,16 +11,15 @@ import (
 
 type Bubble struct {
 	Commits  []git.RepoCommit
-	Margin   int
-	Width    int
 	Height   int
+	Width    int
 	viewport viewport.Model
 }
 
-func NewBubble(height int, margin int, width int, rcs []git.RepoCommit) *Bubble {
+func NewBubble(height int, width int, rcs []git.RepoCommit) *Bubble {
 	b := &Bubble{
 		Commits:  rcs,
-		viewport: viewport.Model{Height: height - margin, Width: width},
+		viewport: viewport.Model{Height: height, Width: width},
 	}
 	s := ""
 	for _, rc := range rcs {
@@ -37,8 +36,6 @@ func (b *Bubble) Init() tea.Cmd {
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		b.viewport.Height = msg.Height - b.Margin
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "up", "k":

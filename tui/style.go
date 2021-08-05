@@ -4,22 +4,31 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+const boxLeftWidth = 25
+const boxRightWidth = 80
+const headerHeight = 1
+const footerHeight = 2
+const appPadding = 1
+const boxPadding = 1
+const viewportHeightConstant = 7 // TODO figure out why this needs to be 7
+const horizontalPadding = appPadding * 2
+const verticalPadding = headerHeight + footerHeight + (appPadding * 2)
+
 var appBoxStyle = lipgloss.NewStyle().
-	PaddingLeft(2).
-	PaddingRight(2).
-	MarginBottom(1)
+	PaddingLeft(appPadding).
+	PaddingRight(appPadding)
 
 var inactiveBoxStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#606060")).
 	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("#303030")).
-	Padding(1)
+	Padding(boxPadding)
 
 var activeBoxStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#FFFFFF")).
 	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("#714C7B")).
-	Padding(1)
+	Padding(boxPadding)
 
 var headerStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#670083")).

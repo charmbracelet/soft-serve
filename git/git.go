@@ -88,6 +88,13 @@ func (rs *RepoSource) loadRepos() {
 		l.ForEach(func(c *object.Commit) error {
 			if r.LastUpdated == nil {
 				r.LastUpdated = &c.Author.When
+				rf, err := c.File("README.md")
+				if err == nil {
+					rmd, err := rf.Contents()
+					if err == nil {
+						r.Readme = rmd
+					}
+				}
 			}
 			rs.commits = append(rs.commits, RepoCommit{Name: rn, Commit: c})
 			return nil

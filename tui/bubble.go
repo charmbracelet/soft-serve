@@ -3,8 +3,11 @@ package tui
 import (
 	"fmt"
 	"smoothie/git"
+	"smoothie/tui/bubbles/commits"
+	"smoothie/tui/bubbles/selection"
 	"time"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gliderlabs/ssh"
@@ -23,14 +26,17 @@ const (
 type Model struct {
 	state         sessionState
 	error         string
-	info          string
 	width         int
 	height        int
 	windowChanges <-chan ssh.Window
 	repoSource    *git.RepoSource
 	repos         []*git.Repo
-	activeBubble  int
-	bubbles       []tea.Model
+	boxes         []tea.Model
+	activeBox     int
+
+	repoSelect     *selection.Bubble
+	commitsLog     *commits.Bubble
+	readmeViewport *ViewportBubble
 }
 
 func NewModel(width int, height int, windowChanges <-chan ssh.Window, repoSource *git.RepoSource) *Model {
@@ -39,7 +45,13 @@ func NewModel(width int, height int, windowChanges <-chan ssh.Window, repoSource
 		height:        height,
 		windowChanges: windowChanges,
 		repoSource:    repoSource,
-		bubbles:       make([]tea.Model, 2),
+		boxes:         make([]tea.Model, 2),
+		readmeViewport: &ViewportBubble{
+			Viewport: &viewport.Model{
+				Width:  boxRightWidth - horizontalPadding - 2,
+				Height: height - verticalPadding - viewportHeightConstant,
+			},
+		},
 	}
 	m.state = startState
 	return m
@@ -53,30 +65,33 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	// Always allow state, error, info, window resize and quit messages
 	switch msg := msg.(type) {
-	case stateMsg:
-		m.state = msg.state
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "tab":
-			m.activeBubble = (m.activeBubble + 1) % 2
+			m.activeBox = (m.activeBox + 1) % 2
 		}
 	case errMsg:
 		m.error = msg.Error()
 		m.state = errorState
 		return m, nil
-	case infoMsg:
-		m.info = msg.text
 	case windowMsg:
 		cmds = append(cmds, m.windowChangesCmd)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case selection.SelectedMsg:
+		rmd := m.repos[msg.Index].Readme
+		m.readmeViewport.Viewport.GotoTop()
+		m.readmeViewport.Viewport.Height = m.height - verticalPadding - viewportHeightConstant
+		m.readmeViewport.Viewport.Width = boxLeftWidth - 2
+		m.readmeViewport.Viewport.SetContent(rmd)
+		m.boxes[1] = m.readmeViewport
 	}
 	if m.state == loadedState {
-		b, cmd := m.bubbles[m.activeBubble].Update(msg)
-		m.bubbles[m.activeBubble] = b
+		b, cmd := m.boxes[m.activeBox].Update(msg)
+		m.boxes[m.activeBox] = b
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
@@ -84,33 +99,32 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *Model) viewForBubble(i int, width int) string {
+func (m *Model) viewForBox(i int, width int) string {
 	var ls lipgloss.Style
-	if i == m.activeBubble {
+	if i == m.activeBox {
 		ls = activeBoxStyle.Width(width)
 	} else {
 		ls = inactiveBoxStyle.Width(width)
 	}
-	return ls.Render(m.bubbles[i].View())
+	return ls.Render(m.boxes[i].View())
 }
 
 func (m *Model) View() string {
-	pad := 6
-	h := headerStyle.Width(m.width - pad).Render("Charm Beta")
-	f := footerStyle.Render(m.info)
+	h := headerStyle.Width(m.width - horizontalPadding).Render("Charm Beta")
+	f := footerStyle.Render("")
 	s := ""
 	content := ""
 	switch m.state {
 	case loadedState:
-		lb := m.viewForBubble(0, 25)
-		rb := m.viewForBubble(1, 84)
+		lb := m.viewForBox(0, boxLeftWidth)
+		rb := m.viewForBox(1, boxRightWidth)
 		s += lipgloss.JoinHorizontal(lipgloss.Top, lb, rb)
 	case errorState:
 		s += errorStyle.Render(fmt.Sprintf("Bummer: %s", m.error))
 	default:
 		s = normalStyle.Render(fmt.Sprintf("Doing something weird %d", m.state))
 	}
-	content = h + "\n" + s + "\n" + f
+	content = h + "\n\n" + s + "\n" + f
 	return appBoxStyle.Render(content)
 }
 
