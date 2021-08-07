@@ -25,6 +25,8 @@ type RepoCommit struct {
 
 type CommitLog []RepoCommit
 
+type ReadmeTransform func(string) string
+
 func (cl CommitLog) Len() int      { return len(cl) }
 func (cl CommitLog) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
 func (cl CommitLog) Less(i, j int) bool {
@@ -32,14 +34,15 @@ func (cl CommitLog) Less(i, j int) bool {
 }
 
 type RepoSource struct {
-	mtx     sync.Mutex
-	path    string
-	repos   []*Repo
-	commits CommitLog
+	mtx             sync.Mutex
+	path            string
+	repos           []*Repo
+	commits         CommitLog
+	readmeTransform ReadmeTransform
 }
 
-func NewRepoSource(repoPath string, poll time.Duration) *RepoSource {
-	rs := &RepoSource{path: repoPath}
+func NewRepoSource(repoPath string, poll time.Duration, rf ReadmeTransform) *RepoSource {
+	rs := &RepoSource{path: repoPath, readmeTransform: rf}
 	go func() {
 		for {
 			rs.loadRepos()
@@ -92,7 +95,7 @@ func (rs *RepoSource) loadRepos() {
 				if err == nil {
 					rmd, err := rf.Contents()
 					if err == nil {
-						r.Readme = rmd
+						r.Readme = rs.readmeTransform(rmd)
 					}
 				}
 			}

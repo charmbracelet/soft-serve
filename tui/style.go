@@ -5,7 +5,7 @@ import (
 )
 
 const boxLeftWidth = 25
-const boxRightWidth = 80
+const boxRightWidth = 85
 const headerHeight = 1
 const footerHeight = 2
 const appPadding = 1

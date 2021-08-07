@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"log"
 	"smoothie/git"
 	"smoothie/tui/bubbles/commits"
 	"smoothie/tui/bubbles/selection"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gliderlabs/ssh"
 )
@@ -24,16 +26,15 @@ const (
 )
 
 type Model struct {
-	state         sessionState
-	error         string
-	width         int
-	height        int
-	windowChanges <-chan ssh.Window
-	repoSource    *git.RepoSource
-	repos         []*git.Repo
-	boxes         []tea.Model
-	activeBox     int
-
+	state          sessionState
+	error          string
+	width          int
+	height         int
+	windowChanges  <-chan ssh.Window
+	repoSource     *git.RepoSource
+	repos          []*git.Repo
+	boxes          []tea.Model
+	activeBox      int
 	repoSelect     *selection.Bubble
 	commitsLog     *commits.Bubble
 	readmeViewport *ViewportBubble
@@ -128,8 +129,23 @@ func (m *Model) View() string {
 	return appBoxStyle.Render(content)
 }
 
+func glamourReadme(md string) string {
+	tr, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(boxRightWidth-2),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	mdt, err := tr.Render(md)
+	if err != nil {
+		return md
+	}
+	return mdt
+}
+
 func SessionHandler(reposPath string) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
-	rs := git.NewRepoSource(reposPath, time.Second*10)
+	rs := git.NewRepoSource(reposPath, time.Second*10, glamourReadme)
 	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 		if len(s.Command()) == 0 {
 			pty, changes, active := s.Pty()
