@@ -63,8 +63,11 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (b *Bubble) sendMessage() tea.Msg {
-	return SelectedMsg{
-		Name:  b.Items[b.selectedItem],
-		Index: b.selectedItem,
+	if b.selectedItem >= 0 && b.selectedItem < len(b.Items) {
+		return SelectedMsg{
+			Name:  b.Items[b.selectedItem],
+			Index: b.selectedItem,
+		}
 	}
+	return nil
 }

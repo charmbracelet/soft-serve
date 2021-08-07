@@ -6,7 +6,6 @@ import (
 	"smoothie/git"
 	"smoothie/tui/bubbles/commits"
 	"smoothie/tui/bubbles/selection"
-	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -30,6 +29,7 @@ type Bubble struct {
 	error          string
 	width          int
 	height         int
+	session        ssh.Session
 	windowChanges  <-chan ssh.Window
 	repoSource     *git.RepoSource
 	repos          []*git.Repo
@@ -40,17 +40,25 @@ type Bubble struct {
 	readmeViewport *ViewportBubble
 }
 
-func NewBubble(width int, height int, windowChanges <-chan ssh.Window, repoSource *git.RepoSource) *Bubble {
+type Config struct {
+	Width         int
+	Height        int
+	Session       ssh.Session
+	WindowChanges <-chan ssh.Window
+	RepoSource    *git.RepoSource
+}
+
+func NewBubble(cfg Config) *Bubble {
 	b := &Bubble{
-		width:         width,
-		height:        height,
-		windowChanges: windowChanges,
-		repoSource:    repoSource,
+		width:         cfg.Width,
+		height:        cfg.Height,
+		windowChanges: cfg.WindowChanges,
+		repoSource:    cfg.RepoSource,
 		boxes:         make([]tea.Model, 2),
 		readmeViewport: &ViewportBubble{
 			Viewport: &viewport.Model{
 				Width:  boxRightWidth - horizontalPadding - 2,
-				Height: height - verticalPadding - viewportHeightConstant,
+				Height: cfg.Height - verticalPadding - viewportHeightConstant,
 			},
 		},
 	}
@@ -140,19 +148,21 @@ func glamourReadme(md string) string {
 }
 
 func SessionHandler(reposPath string) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
-	rs := git.NewRepoSource(reposPath, time.Second*10, glamourReadme)
+	rs := git.NewRepoSource(reposPath, glamourReadme)
 	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 		if len(s.Command()) == 0 {
 			pty, changes, active := s.Pty()
 			if !active {
 				return nil, nil
 			}
-			return NewBubble(
-					pty.Window.Width,
-					pty.Window.Height,
-					changes,
-					rs),
-				[]tea.ProgramOption{tea.WithAltScreen()}
+			cfg := Config{
+				Width:         pty.Window.Width,
+				Height:        pty.Window.Height,
+				WindowChanges: changes,
+				RepoSource:    rs,
+				Session:       s,
+			}
+			return NewBubble(cfg), []tea.ProgramOption{tea.WithAltScreen()}
 		}
 		return nil, nil
 	}

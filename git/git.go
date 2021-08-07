@@ -37,21 +37,19 @@ func (cl CommitLog) Less(i, j int) bool {
 }
 
 type RepoSource struct {
+	Path            string
 	mtx             sync.Mutex
-	path            string
 	repos           []*Repo
 	commits         CommitLog
 	readmeTransform ReadmeTransform
 }
 
-func NewRepoSource(repoPath string, poll time.Duration, rf ReadmeTransform) *RepoSource {
-	rs := &RepoSource{path: repoPath, readmeTransform: rf}
-	go func() {
-		for {
-			rs.loadRepos()
-			time.Sleep(poll)
-		}
-	}()
+func NewRepoSource(repoPath string, rf ReadmeTransform) *RepoSource {
+	err := os.MkdirAll(repoPath, os.ModeDir|os.FileMode(0700))
+	if err != nil {
+		log.Fatal(err)
+	}
+	rs := &RepoSource{Path: repoPath, readmeTransform: rf}
 	return rs
 }
 
@@ -72,6 +70,21 @@ func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
 	return nil, ErrMissingRepo
 }
 
+func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
+	rs.mtx.Lock()
+	defer rs.mtx.Unlock()
+	rg, err := git.PlainInit(rs.Path+string(os.PathSeparator)+name, bare)
+	if err != nil {
+		return nil, err
+	}
+	r := &Repo{
+		Name:       name,
+		Repository: rg,
+	}
+	rs.repos = append(rs.repos, r)
+	return r, nil
+}
+
 func (rs *RepoSource) GetCommits(limit int) []RepoCommit {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
@@ -81,42 +94,51 @@ func (rs *RepoSource) GetCommits(limit int) []RepoCommit {
 	return rs.commits[:limit]
 }
 
-func (rs *RepoSource) loadRepos() {
+func (rs *RepoSource) LoadRepos() error {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
-	rd, err := os.ReadDir(rs.path)
+	rd, err := os.ReadDir(rs.Path)
 	if err != nil {
-		return
+		return err
 	}
 	rs.repos = make([]*Repo, 0)
 	rs.commits = make([]RepoCommit, 0)
 	for _, de := range rd {
 		rn := de.Name()
-		r := &Repo{Name: rn}
-		rg, err := git.PlainOpen(rs.path + string(os.PathSeparator) + rn)
+		rg, err := git.PlainOpen(rs.Path + string(os.PathSeparator) + rn)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
-		r.Repository = rg
-		l, err := rg.Log(&git.LogOptions{All: true})
-		if err != nil {
-			log.Fatal(err)
-		}
-		l.ForEach(func(c *object.Commit) error {
-			if r.LastUpdated == nil {
-				r.LastUpdated = &c.Author.When
-				rf, err := c.File("README.md")
-				if err == nil {
-					rmd, err := rf.Contents()
-					if err == nil {
-						r.Readme = rs.readmeTransform(rmd)
-					}
-				}
-			}
-			rs.commits = append(rs.commits, RepoCommit{Name: rn, Commit: c})
-			return nil
-		})
-		sort.Sort(rs.commits)
+		r, err := rs.loadRepo(rn, rg)
 		rs.repos = append(rs.repos, r)
 	}
+	return nil
+}
+
+func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
+	r := &Repo{Name: name}
+	r.Repository = rg
+	l, err := rg.Log(&git.LogOptions{All: true})
+	if err != nil {
+		return nil, err
+	}
+	err = l.ForEach(func(c *object.Commit) error {
+		if r.LastUpdated == nil {
+			r.LastUpdated = &c.Author.When
+			rf, err := c.File("README.md")
+			if err == nil {
+				rmd, err := rf.Contents()
+				if err == nil {
+					r.Readme = rs.readmeTransform(rmd)
+				}
+			}
+		}
+		rs.commits = append(rs.commits, RepoCommit{Name: name, Commit: c})
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Sort(rs.commits)
+	return r, nil
 }
