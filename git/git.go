@@ -1,6 +1,7 @@
 package git
 
 import (
+	"errors"
 	"log"
 	"os"
 	"sort"
@@ -10,6 +11,8 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
+
+var ErrMissingRepo = errors.New("missing repo")
 
 type Repo struct {
 	Name        string
@@ -56,6 +59,17 @@ func (rs *RepoSource) AllRepos() []*Repo {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	return rs.repos
+}
+
+func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
+	rs.mtx.Lock()
+	defer rs.mtx.Unlock()
+	for _, r := range rs.repos {
+		if r.Name == name {
+			return r, nil
+		}
+	}
+	return nil, ErrMissingRepo
 }
 
 func (rs *RepoSource) GetCommits(limit int) []RepoCommit {

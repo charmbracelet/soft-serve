@@ -21,6 +21,22 @@ func (b *Bubble) windowChangesCmd() tea.Msg {
 	return windowMsg{}
 }
 
+func (b *Bubble) getRepoCmd(name string) tea.Cmd {
+	return func() tea.Msg {
+		r, err := b.repoSource.GetRepo(name)
+		if err != nil {
+			return errMsg{err}
+		}
+		b.readmeViewport.Viewport.GotoTop()
+		b.readmeViewport.Viewport.Height = b.height - verticalPadding - viewportHeightConstant
+		b.readmeViewport.Viewport.Width = boxLeftWidth - 2
+		b.readmeViewport.Viewport.SetContent(r.Readme)
+		b.boxes[1] = b.readmeViewport
+		b.activeBox = 1
+		return nil
+	}
+}
+
 func (b *Bubble) loadGitCmd() tea.Msg {
 	b.repos = b.repoSource.AllRepos()
 	rs := make([]string, 0)

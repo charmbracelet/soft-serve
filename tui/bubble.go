@@ -83,12 +83,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.width = msg.Width
 		b.height = msg.Height
 	case selection.SelectedMsg:
-		rmd := b.repos[msg.Index].Readme
-		b.readmeViewport.Viewport.GotoTop()
-		b.readmeViewport.Viewport.Height = b.height - verticalPadding - viewportHeightConstant
-		b.readmeViewport.Viewport.Width = boxLeftWidth - 2
-		b.readmeViewport.Viewport.SetContent(rmd)
-		b.boxes[1] = b.readmeViewport
+		cmds = append(cmds, b.getRepoCmd(b.repos[msg.Index].Name))
 	}
 	if b.state == loadedState {
 		ab, cmd := b.boxes[b.activeBox].Update(msg)
