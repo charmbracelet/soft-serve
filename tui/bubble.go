@@ -25,7 +25,7 @@ const (
 	quitState
 )
 
-type Model struct {
+type Bubble struct {
 	state          sessionState
 	error          string
 	width          int
@@ -40,8 +40,8 @@ type Model struct {
 	readmeViewport *ViewportBubble
 }
 
-func NewModel(width int, height int, windowChanges <-chan ssh.Window, repoSource *git.RepoSource) *Model {
-	m := &Model{
+func NewBubble(width int, height int, windowChanges <-chan ssh.Window, repoSource *git.RepoSource) *Bubble {
+	b := &Bubble{
 		width:         width,
 		height:        height,
 		windowChanges: windowChanges,
@@ -54,76 +54,76 @@ func NewModel(width int, height int, windowChanges <-chan ssh.Window, repoSource
 			},
 		},
 	}
-	m.state = startState
-	return m
+	b.state = startState
+	return b
 }
 
-func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.windowChangesCmd, m.loadGitCmd)
+func (b *Bubble) Init() tea.Cmd {
+	return tea.Batch(b.windowChangesCmd, b.loadGitCmd)
 }
 
-func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	// Always allow state, error, info, window resize and quit messages
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
-			return m, tea.Quit
+			return b, tea.Quit
 		case "tab":
-			m.activeBox = (m.activeBox + 1) % 2
+			b.activeBox = (b.activeBox + 1) % 2
 		}
 	case errMsg:
-		m.error = msg.Error()
-		m.state = errorState
-		return m, nil
+		b.error = msg.Error()
+		b.state = errorState
+		return b, nil
 	case windowMsg:
-		cmds = append(cmds, m.windowChangesCmd)
+		cmds = append(cmds, b.windowChangesCmd)
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		b.width = msg.Width
+		b.height = msg.Height
 	case selection.SelectedMsg:
-		rmd := m.repos[msg.Index].Readme
-		m.readmeViewport.Viewport.GotoTop()
-		m.readmeViewport.Viewport.Height = m.height - verticalPadding - viewportHeightConstant
-		m.readmeViewport.Viewport.Width = boxLeftWidth - 2
-		m.readmeViewport.Viewport.SetContent(rmd)
-		m.boxes[1] = m.readmeViewport
+		rmd := b.repos[msg.Index].Readme
+		b.readmeViewport.Viewport.GotoTop()
+		b.readmeViewport.Viewport.Height = b.height - verticalPadding - viewportHeightConstant
+		b.readmeViewport.Viewport.Width = boxLeftWidth - 2
+		b.readmeViewport.Viewport.SetContent(rmd)
+		b.boxes[1] = b.readmeViewport
 	}
-	if m.state == loadedState {
-		b, cmd := m.boxes[m.activeBox].Update(msg)
-		m.boxes[m.activeBox] = b
+	if b.state == loadedState {
+		ab, cmd := b.boxes[b.activeBox].Update(msg)
+		b.boxes[b.activeBox] = ab
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 	}
-	return m, tea.Batch(cmds...)
+	return b, tea.Batch(cmds...)
 }
 
-func (m *Model) viewForBox(i int, width int) string {
+func (b *Bubble) viewForBox(i int, width int) string {
 	var ls lipgloss.Style
-	if i == m.activeBox {
+	if i == b.activeBox {
 		ls = activeBoxStyle.Width(width)
 	} else {
 		ls = inactiveBoxStyle.Width(width)
 	}
-	return ls.Render(m.boxes[i].View())
+	return ls.Render(b.boxes[i].View())
 }
 
-func (m *Model) View() string {
-	h := headerStyle.Width(m.width - horizontalPadding).Render("Charm Beta")
+func (b *Bubble) View() string {
+	h := headerStyle.Width(b.width - horizontalPadding).Render("Charm Beta")
 	f := footerStyle.Render("")
 	s := ""
 	content := ""
-	switch m.state {
+	switch b.state {
 	case loadedState:
-		lb := m.viewForBox(0, boxLeftWidth)
-		rb := m.viewForBox(1, boxRightWidth)
+		lb := b.viewForBox(0, boxLeftWidth)
+		rb := b.viewForBox(1, boxRightWidth)
 		s += lipgloss.JoinHorizontal(lipgloss.Top, lb, rb)
 	case errorState:
-		s += errorStyle.Render(fmt.Sprintf("Bummer: %s", m.error))
+		s += errorStyle.Render(fmt.Sprintf("Bummer: %s", b.error))
 	default:
-		s = normalStyle.Render(fmt.Sprintf("Doing something weird %d", m.state))
+		s = normalStyle.Render(fmt.Sprintf("Doing something weird %d", b.state))
 	}
 	content = h + "\n\n" + s + "\n" + f
 	return appBoxStyle.Render(content)
@@ -152,7 +152,12 @@ func SessionHandler(reposPath string) func(ssh.Session) (tea.Model, []tea.Progra
 			if !active {
 				return nil, nil
 			}
-			return NewModel(pty.Window.Width, pty.Window.Height, changes, rs), []tea.ProgramOption{tea.WithAltScreen()}
+			return NewBubble(
+					pty.Window.Width,
+					pty.Window.Height,
+					changes,
+					rs),
+				[]tea.ProgramOption{tea.WithAltScreen()}
 		}
 		return nil, nil
 	}

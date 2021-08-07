@@ -14,28 +14,28 @@ func (e errMsg) Error() string {
 	return e.err.Error()
 }
 
-func (m *Model) windowChangesCmd() tea.Msg {
-	w := <-m.windowChanges
-	m.width = w.Width
-	m.height = w.Height
+func (b *Bubble) windowChangesCmd() tea.Msg {
+	w := <-b.windowChanges
+	b.width = w.Width
+	b.height = w.Height
 	return windowMsg{}
 }
 
-func (m *Model) loadGitCmd() tea.Msg {
-	m.repos = m.repoSource.AllRepos()
+func (b *Bubble) loadGitCmd() tea.Msg {
+	b.repos = b.repoSource.AllRepos()
 	rs := make([]string, 0)
-	for _, r := range m.repos {
+	for _, r := range b.repos {
 		rs = append(rs, r.Name)
 	}
-	m.repoSelect = selection.NewBubble(rs)
-	m.boxes[0] = m.repoSelect
-	m.commitsLog = commits.NewBubble(
-		m.height-verticalPadding-2,
+	b.repoSelect = selection.NewBubble(rs)
+	b.boxes[0] = b.repoSelect
+	b.commitsLog = commits.NewBubble(
+		b.height-verticalPadding-2,
 		boxRightWidth-horizontalPadding-2,
-		m.repoSource.GetCommits(200),
+		b.repoSource.GetCommits(200),
 	)
-	m.boxes[1] = m.commitsLog
-	m.activeBox = 0
-	m.state = loadedState
+	b.boxes[1] = b.commitsLog
+	b.activeBox = 0
+	b.state = loadedState
 	return nil
 }
