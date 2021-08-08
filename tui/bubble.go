@@ -105,6 +105,9 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.width = msg.Width
 		b.height = msg.Height
 	case selection.SelectedMsg:
+		b.activeBox = 1
+		cmds = append(cmds, b.getRepoCmd(b.repoMenu[msg.Index].Repo))
+	case selection.ActiveMsg:
 		cmds = append(cmds, b.getRepoCmd(b.repoMenu[msg.Index].Repo))
 	}
 	if b.state == loadedState {

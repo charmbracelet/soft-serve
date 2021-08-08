@@ -50,8 +50,10 @@ func (b *Bubble) loadGitCmd() tea.Msg {
 		boxRightWidth-horizontalPadding-2,
 		b.repoSource.GetCommits(200),
 	)
+	msg := b.getRepoCmd("config")()
+	b.activeBox = 0
 	b.state = loadedState
-	return b.getRepoCmd("config")()
+	return msg
 }
 
 func (b *Bubble) getRepoCmd(name string) tea.Cmd {
@@ -65,7 +67,6 @@ func (b *Bubble) getRepoCmd(name string) tea.Cmd {
 		b.readmeViewport.Viewport.Width = boxLeftWidth - 2
 		b.readmeViewport.Viewport.SetContent(r.Readme)
 		b.boxes[1] = b.readmeViewport
-		b.activeBox = 1
 		return nil
 	}
 }

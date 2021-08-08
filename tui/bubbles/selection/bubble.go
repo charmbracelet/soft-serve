@@ -10,6 +10,11 @@ type SelectedMsg struct {
 	Index int
 }
 
+type ActiveMsg struct {
+	Name  string
+	Index int
+}
+
 type Bubble struct {
 	NormalStyle   lipgloss.Style
 	SelectedStyle lipgloss.Style
@@ -49,19 +54,31 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "k", "up":
 			if b.selectedItem > 0 {
 				b.selectedItem--
+				cmds = append(cmds, b.sendActiveMessage)
 			}
 		case "j", "down":
 			if b.selectedItem < len(b.Items)-1 {
 				b.selectedItem++
+				cmds = append(cmds, b.sendActiveMessage)
 			}
 		case "enter":
-			cmds = append(cmds, b.sendMessage)
+			cmds = append(cmds, b.sendSelectedMessage)
 		}
 	}
 	return b, tea.Batch(cmds...)
 }
 
-func (b *Bubble) sendMessage() tea.Msg {
+func (b *Bubble) sendActiveMessage() tea.Msg {
+	if b.selectedItem >= 0 && b.selectedItem < len(b.Items) {
+		return ActiveMsg{
+			Name:  b.Items[b.selectedItem],
+			Index: b.selectedItem,
+		}
+	}
+	return nil
+}
+
+func (b *Bubble) sendSelectedMessage() tea.Msg {
 	if b.selectedItem >= 0 && b.selectedItem < len(b.Items) {
 		return SelectedMsg{
 			Name:  b.Items[b.selectedItem],

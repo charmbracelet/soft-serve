@@ -5,7 +5,7 @@ import (
 )
 
 var normalStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#FFFFFF"))
+	Foreground(lipgloss.Color("#707070"))
 
 var selectedStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#714C7B"))
+	Foreground(lipgloss.Color("#FFFFFF"))
