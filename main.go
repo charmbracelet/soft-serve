@@ -7,6 +7,7 @@ import (
 	gm "smoothie/server/middleware/git"
 	lm "smoothie/server/middleware/logging"
 	"smoothie/tui"
+	"time"
 
 	"github.com/meowgorithm/babyenv"
 )
@@ -27,7 +28,7 @@ func main() {
 	s, err := server.NewServer(
 		cfg.Port,
 		cfg.KeyPath,
-		bm.Middleware(tui.SessionHandler(cfg.RepoPath)),
+		bm.Middleware(tui.SessionHandler(cfg.RepoPath, time.Second*5)),
 		gm.Middleware(cfg.RepoPath, cfg.RepoAuthPath),
 		lm.Middleware(),
 	)

@@ -142,3 +142,23 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 	sort.Sort(rs.commits)
 	return r, nil
 }
+
+func (r *Repo) LatestFile(path string) (string, error) {
+	lg, err := r.Repository.Log(&git.LogOptions{})
+	if err != nil {
+		return "", err
+	}
+	c, err := lg.Next()
+	if err != nil {
+		return "", err
+	}
+	f, err := c.File(path)
+	if err != nil {
+		return "", nil
+	}
+	content, err := f.Contents()
+	if err != nil {
+		return "", nil
+	}
+	return content, nil
+}

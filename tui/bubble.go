@@ -1,11 +1,13 @@
 package tui
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"smoothie/git"
 	"smoothie/tui/bubbles/commits"
 	"smoothie/tui/bubbles/selection"
+	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -24,14 +26,33 @@ const (
 	quitState
 )
 
+type MenuEntry struct {
+	Name string `json:"name"`
+	Repo string `json:"repo"`
+}
+
+type Config struct {
+	Name         string      `json:"name"`
+	ShowAllRepos bool        `json:"show_all_repos"`
+	Menu         []MenuEntry `json:"menu"`
+	RepoSource   *git.RepoSource
+}
+
+type SessionConfig struct {
+	Width         int
+	Height        int
+	WindowChanges <-chan ssh.Window
+}
+
 type Bubble struct {
+	config         *Config
 	state          sessionState
 	error          string
 	width          int
 	height         int
-	session        ssh.Session
 	windowChanges  <-chan ssh.Window
 	repoSource     *git.RepoSource
+	repoMenu       []MenuEntry
 	repos          []*git.Repo
 	boxes          []tea.Model
 	activeBox      int
@@ -40,25 +61,18 @@ type Bubble struct {
 	readmeViewport *ViewportBubble
 }
 
-type Config struct {
-	Width         int
-	Height        int
-	Session       ssh.Session
-	WindowChanges <-chan ssh.Window
-	RepoSource    *git.RepoSource
-}
-
-func NewBubble(cfg Config) *Bubble {
+func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {
 	b := &Bubble{
-		width:         cfg.Width,
-		height:        cfg.Height,
-		windowChanges: cfg.WindowChanges,
+		config:        cfg,
+		width:         sCfg.Width,
+		height:        sCfg.Height,
+		windowChanges: sCfg.WindowChanges,
 		repoSource:    cfg.RepoSource,
 		boxes:         make([]tea.Model, 2),
 		readmeViewport: &ViewportBubble{
 			Viewport: &viewport.Model{
 				Width:  boxRightWidth - horizontalPadding - 2,
-				Height: cfg.Height - verticalPadding - viewportHeightConstant,
+				Height: sCfg.Height - verticalPadding - viewportHeightConstant,
 			},
 		},
 	}
@@ -91,7 +105,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.width = msg.Width
 		b.height = msg.Height
 	case selection.SelectedMsg:
-		cmds = append(cmds, b.getRepoCmd(b.repos[msg.Index].Name))
+		cmds = append(cmds, b.getRepoCmd(b.repoMenu[msg.Index].Repo))
 	}
 	if b.state == loadedState {
 		ab, cmd := b.boxes[b.activeBox].Update(msg)
@@ -114,7 +128,7 @@ func (b *Bubble) viewForBox(i int, width int) string {
 }
 
 func (b *Bubble) View() string {
-	h := headerStyle.Width(b.width - horizontalPadding).Render("Charm Beta")
+	h := headerStyle.Width(b.width - horizontalPadding).Render(b.config.Name)
 	f := footerStyle.Render("")
 	s := ""
 	content := ""
@@ -147,22 +161,41 @@ func glamourReadme(md string) string {
 	return mdt
 }
 
-func SessionHandler(reposPath string) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
+func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
+	appCfg := &Config{}
 	rs := git.NewRepoSource(reposPath, glamourReadme)
+	appCfg.RepoSource = rs
+	go func() {
+		for {
+			_ = rs.LoadRepos()
+			cr, err := rs.GetRepo("config")
+			if err != nil {
+				log.Fatalf("cannot load config repo: %s", err)
+			}
+			cs, err := cr.LatestFile("config.json")
+			err = json.Unmarshal([]byte(cs), appCfg)
+			time.Sleep(repoPoll)
+		}
+	}()
+	err := createDefaultConfigRepo(rs)
+	if err != nil {
+		if err != nil {
+			log.Fatalf("cannot create config repo: %s", err)
+		}
+	}
+
 	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 		if len(s.Command()) == 0 {
 			pty, changes, active := s.Pty()
 			if !active {
 				return nil, nil
 			}
-			cfg := Config{
+			cfg := &SessionConfig{
 				Width:         pty.Window.Width,
 				Height:        pty.Window.Height,
 				WindowChanges: changes,
-				RepoSource:    rs,
-				Session:       s,
 			}
-			return NewBubble(cfg), []tea.ProgramOption{tea.WithAltScreen()}
+			return NewBubble(appCfg, cfg), []tea.ProgramOption{tea.WithAltScreen()}
 		}
 		return nil, nil
 	}

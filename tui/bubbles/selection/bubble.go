@@ -22,7 +22,6 @@ func NewBubble(items []string) *Bubble {
 		NormalStyle:   normalStyle,
 		SelectedStyle: selectedStyle,
 		Items:         items,
-		selectedItem:  -1,
 	}
 }
 
