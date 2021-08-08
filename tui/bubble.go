@@ -164,28 +164,56 @@ func glamourReadme(md string) string {
 	return mdt
 }
 
+func loadConfig(rs *git.RepoSource) (*Config, error) {
+	cfg := &Config{}
+	cfg.RepoSource = rs
+	cr, err := rs.GetRepo("config")
+	if err != nil {
+		return nil, fmt.Errorf("cannot load config repo: %s", err)
+	}
+	cs, err := cr.LatestFile("config.json")
+	if err != nil {
+		return nil, fmt.Errorf("cannot load config.json: %s", err)
+	}
+	err = json.Unmarshal([]byte(cs), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("bad json in config.json: %s", err)
+	}
+	return cfg, nil
+}
+
 func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
-	appCfg := &Config{}
 	rs := git.NewRepoSource(reposPath, glamourReadme)
-	appCfg.RepoSource = rs
-	go func() {
-		for {
-			_ = rs.LoadRepos()
-			cr, err := rs.GetRepo("config")
-			if err != nil {
-				log.Fatalf("cannot load config repo: %s", err)
-			}
-			cs, err := cr.LatestFile("config.json")
-			err = json.Unmarshal([]byte(cs), appCfg)
-			time.Sleep(repoPoll)
-		}
-	}()
 	err := createDefaultConfigRepo(rs)
 	if err != nil {
 		if err != nil {
 			log.Fatalf("cannot create config repo: %s", err)
 		}
 	}
+	appCfg, err := loadConfig(rs)
+	if err != nil {
+		if err != nil {
+			log.Printf("cannot load config: %s", err)
+		}
+	}
+	go func() {
+		for {
+			time.Sleep(repoPoll)
+			err := rs.LoadRepos()
+			if err != nil {
+				log.Printf("cannot load repos: %s", err)
+				continue
+			}
+			cfg, err := loadConfig(rs)
+			if err != nil {
+				if err != nil {
+					log.Printf("cannot load config: %s", err)
+					continue
+				}
+			}
+			appCfg = cfg
+		}
+	}()
 
 	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 		if len(s.Command()) == 0 {
