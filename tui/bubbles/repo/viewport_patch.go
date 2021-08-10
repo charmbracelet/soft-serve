@@ -1,4 +1,4 @@
-package tui
+package repo
 
 import (
 	"github.com/charmbracelet/bubbles/viewport"

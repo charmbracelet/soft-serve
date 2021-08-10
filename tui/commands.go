@@ -2,6 +2,7 @@ package tui
 
 import (
 	"smoothie/tui/bubbles/commits"
+	"smoothie/tui/bubbles/repo"
 	"smoothie/tui/bubbles/selection"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -57,16 +58,13 @@ func (b *Bubble) loadGitCmd() tea.Msg {
 }
 
 func (b *Bubble) getRepoCmd(name string) tea.Cmd {
-	return func() tea.Msg {
-		r, err := b.repoSource.GetRepo(name)
-		if err != nil {
-			return errMsg{err}
-		}
-		b.readmeViewport.Viewport.GotoTop()
-		b.readmeViewport.Viewport.Height = b.height - verticalPadding - viewportHeightConstant
-		b.readmeViewport.Viewport.Width = boxLeftWidth - 2
-		b.readmeViewport.Viewport.SetContent(r.Readme)
-		b.boxes[1] = b.readmeViewport
-		return nil
+	var tmplConfig *Config
+	if name == "config" {
+		tmplConfig = b.config
 	}
+	h := b.height - verticalPadding - viewportHeightConstant
+	w := boxRightWidth - 2
+	rb := repo.NewBubble(b.repoSource, name, w, h, tmplConfig)
+	b.boxes[1] = rb
+	return rb.Init()
 }

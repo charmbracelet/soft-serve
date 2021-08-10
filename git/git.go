@@ -28,8 +28,6 @@ type RepoCommit struct {
 
 type CommitLog []RepoCommit
 
-type ReadmeTransform func(string) string
-
 func (cl CommitLog) Len() int      { return len(cl) }
 func (cl CommitLog) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
 func (cl CommitLog) Less(i, j int) bool {
@@ -37,19 +35,18 @@ func (cl CommitLog) Less(i, j int) bool {
 }
 
 type RepoSource struct {
-	Path            string
-	mtx             sync.Mutex
-	repos           []*Repo
-	commits         CommitLog
-	readmeTransform ReadmeTransform
+	Path    string
+	mtx     sync.Mutex
+	repos   []*Repo
+	commits CommitLog
 }
 
-func NewRepoSource(repoPath string, rf ReadmeTransform) *RepoSource {
+func NewRepoSource(repoPath string) *RepoSource {
 	err := os.MkdirAll(repoPath, os.ModeDir|os.FileMode(0700))
 	if err != nil {
 		log.Fatal(err)
 	}
-	rs := &RepoSource{Path: repoPath, readmeTransform: rf}
+	rs := &RepoSource{Path: repoPath}
 	return rs
 }
 
@@ -129,7 +126,7 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 			if err == nil {
 				rmd, err := rf.Contents()
 				if err == nil {
-					r.Readme = rs.readmeTransform(rmd)
+					r.Readme = rmd
 				}
 			}
 		}

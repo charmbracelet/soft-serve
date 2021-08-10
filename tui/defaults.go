@@ -17,7 +17,8 @@ const defaultConfig = `{
 	"menu": [
 	  {
 			"name": "Home",
-			"repo": "config"
+			"repo": "config",
+			"note": "Configuration and content repo"
 		}
 	]
 }`

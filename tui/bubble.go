@@ -9,9 +9,7 @@ import (
 	"smoothie/tui/bubbles/selection"
 	"time"
 
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gliderlabs/ssh"
 )
@@ -28,6 +26,7 @@ const (
 
 type MenuEntry struct {
 	Name string `json:"name"`
+	Note string `json:"note"`
 	Repo string `json:"repo"`
 }
 
@@ -45,20 +44,19 @@ type SessionConfig struct {
 }
 
 type Bubble struct {
-	config         *Config
-	state          sessionState
-	error          string
-	width          int
-	height         int
-	windowChanges  <-chan ssh.Window
-	repoSource     *git.RepoSource
-	repoMenu       []MenuEntry
-	repos          []*git.Repo
-	boxes          []tea.Model
-	activeBox      int
-	repoSelect     *selection.Bubble
-	commitsLog     *commits.Bubble
-	readmeViewport *ViewportBubble
+	config        *Config
+	state         sessionState
+	error         string
+	width         int
+	height        int
+	windowChanges <-chan ssh.Window
+	repoSource    *git.RepoSource
+	repoMenu      []MenuEntry
+	repos         []*git.Repo
+	boxes         []tea.Model
+	activeBox     int
+	repoSelect    *selection.Bubble
+	commitsLog    *commits.Bubble
 }
 
 func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {
@@ -69,12 +67,6 @@ func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {
 		windowChanges: sCfg.WindowChanges,
 		repoSource:    cfg.RepoSource,
 		boxes:         make([]tea.Model, 2),
-		readmeViewport: &ViewportBubble{
-			Viewport: &viewport.Model{
-				Width:  boxRightWidth - horizontalPadding - 2,
-				Height: sCfg.Height - verticalPadding - viewportHeightConstant,
-			},
-		},
 	}
 	b.state = startState
 	return b
@@ -149,21 +141,6 @@ func (b *Bubble) View() string {
 	return appBoxStyle.Render(content)
 }
 
-func glamourReadme(md string) string {
-	tr, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(boxRightWidth-2),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	mdt, err := tr.Render(md)
-	if err != nil {
-		return md
-	}
-	return mdt
-}
-
 func loadConfig(rs *git.RepoSource) (*Config, error) {
 	cfg := &Config{}
 	cfg.RepoSource = rs
@@ -183,7 +160,7 @@ func loadConfig(rs *git.RepoSource) (*Config, error) {
 }
 
 func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
-	rs := git.NewRepoSource(reposPath, glamourReadme)
+	rs := git.NewRepoSource(reposPath)
 	err := createDefaultConfigRepo(rs)
 	if err != nil {
 		if err != nil {
