@@ -55,16 +55,10 @@ func (b *Bubble) setupCmd() tea.Msg {
 	}
 	md := r.Readme
 	if b.templateObject != nil {
-		t, err := template.New("readme").Parse(md)
+		md, err = b.templatize(md)
 		if err != nil {
 			return ErrMsg{err}
 		}
-		buf := &bytes.Buffer{}
-		err = t.Execute(buf, b.templateObject)
-		if err != nil {
-			return ErrMsg{err}
-		}
-		md = buf.String()
 	}
 	md, err = b.glamourize(md)
 	if err != nil {
@@ -75,8 +69,17 @@ func (b *Bubble) setupCmd() tea.Msg {
 	return nil
 }
 
-func (b *Bubble) templatize(t string) (string, error) {
-	return "", nil
+func (b *Bubble) templatize(mdt string) (string, error) {
+	t, err := template.New("readme").Parse(mdt)
+	if err != nil {
+		return "", err
+	}
+	buf := &bytes.Buffer{}
+	err = t.Execute(buf, b.templateObject)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 func (b *Bubble) glamourize(md string) (string, error) {
