@@ -9,16 +9,18 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
-const defaultReadme = "# Smoothie\nWelcome to Smoothie. To setup your own configuration, please clone this repo."
+const defaultReadme = "# Smoothie\n\n Welcome! You can configure your Smoothie server by cloning this repo and pushing changes.\n\n## Repos\n\n{{ range .Menu }}* {{ .Name }}{{ if .Note }} - {{ .Note }} {{ end }}\n  - `git clone ssh://{{$.Host}}:{{$.Port}}/{{.Repo}}`\n{{ end }}"
 
 const defaultConfig = `{
 	"name": "Smoothie",
 	"show_all_repos": true,
+	"host": "localhost",
+	"port": 23231,
 	"menu": [
 	  {
 			"name": "Home",
 			"repo": "config",
-			"note": "Configuration and content repo"
+			"note": "Configuration and content repo for this server"
 		}
 	]
 }`

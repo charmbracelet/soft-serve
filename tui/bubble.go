@@ -24,17 +24,19 @@ const (
 	quitState
 )
 
+type Config struct {
+	Name         string      `json:"name"`
+	Host         string      `json:"host"`
+	Port         int64       `json:"port"`
+	ShowAllRepos bool        `json:"show_all_repos"`
+	Menu         []MenuEntry `json:"menu"`
+	RepoSource   *git.RepoSource
+}
+
 type MenuEntry struct {
 	Name string `json:"name"`
 	Note string `json:"note"`
 	Repo string `json:"repo"`
-}
-
-type Config struct {
-	Name         string      `json:"name"`
-	ShowAllRepos bool        `json:"show_all_repos"`
-	Menu         []MenuEntry `json:"menu"`
-	RepoSource   *git.RepoSource
 }
 
 type SessionConfig struct {

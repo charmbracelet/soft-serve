@@ -41,7 +41,13 @@ func (b *Bubble) Init() tea.Cmd {
 }
 
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return b.readmeViewport.Update(msg)
+	var cmds []tea.Cmd
+	rv, cmd := b.readmeViewport.Update(msg)
+	b.readmeViewport = rv.(*ViewportBubble)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+	return b, tea.Batch(cmds...)
 }
 
 func (b *Bubble) View() string {
