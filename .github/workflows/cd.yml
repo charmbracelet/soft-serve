@@ -1,0 +1,156 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    
+
+jobs:
+  cd:
+    strategy:
+      matrix:
+        go-version: [~1.16]
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: "on"
+      CONTAINER_REPO: "ghcr.io/${{ github.repository }}"
+      ENVIRONMENT: development
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    # Remove this later
+    - name: Clone internal repositories
+      run: |
+        git clone -b release https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/charm-internal ../charm
+        git clone -b master https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/bubbletea-internal ../bubbletea
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      if: github.event_name == 'push'
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Docker images using GoReleaser
+      uses: goreleaser/goreleaser-action@master
+      if: github.event_name == 'push'
+      with:
+        version: latest
+        # https://github.com/goreleaser/goreleaser/discussions/1534
+        args: -f .goreleaser.yml --snapshot
+
+    - name: Push Docker images
+      if: github.event_name == 'push'
+      run: |
+        docker push $CONTAINER_REPO:snapshot
+        docker push $CONTAINER_REPO:$GITHUB_SHA-snapshot
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        # terraform_version: 0.13.0
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+    - name: Terraform Variables
+      id: tfvars
+      run: |
+        TF_VARS=$(cat <<EOF
+          -var "environment=$ENVIRONMENT" \
+          -var "aws_region=$AWS_DEFAULT_REGION" \
+          -var "app_image=$CONTAINER_REPO:$GITHUB_SHA-snapshot"
+        EOF
+        )
+        echo "::set-output name=vars::$TF_VARS"
+
+    - name: Terraform Format
+      id: fmt
+      run: terraform fmt -check
+
+    - name: Terraform Init
+      id: init
+      run: terraform init
+
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate -no-color
+
+    - name: Terraform Plan
+      id: plan
+      if: github.event_name == 'pull_request'
+      run: terraform plan -no-color ${{ steps.tfvars.outputs.vars }}
+      continue-on-error: true
+
+    - name: Find Comment
+      if: github.event_name == 'pull_request'
+      uses: peter-evans/find-comment@v1.2.0
+      id: fc
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: github-actions[bot]
+        body-includes: Terraform Summary
+
+    - name: Update Pull Request
+      uses: actions/github-script@0.9.0
+      if: github.event_name == 'pull_request'
+      env:
+        PLAN: "${{ steps.plan.outputs.stdout }}"
+        COMMENT_ID: "${{ steps.fc.outputs.comment-id }}"
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const output = `## Terraform Summary
+          - Terraform Format and Style 🖌 \`${{ steps.fmt.outcome }}\`
+          - Terraform Initialization ⚙️ \`${{ steps.init.outcome }}\`
+          - Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
+          - Terraform Validation 🤖 \`${{ steps.validate.outcome }}\`
+
+          <details><summary>Show Plan</summary>
+
+          \`\`\`\n
+          ${process.env.PLAN}
+          \`\`\`
+
+          </details>
+
+          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+          if (process.env.COMMENT_ID) {
+            github.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: process.env.COMMENT_ID,
+              body: output
+            })
+          } else {
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+          }
+
+    - name: Terraform Plan Status
+      if: steps.plan.outcome == 'failure'
+      run: exit 1
+
+
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: terraform apply -auto-approve ${{ steps.tfvars.outputs.vars }}
+
