@@ -54,6 +54,8 @@ jobs:
         # https://github.com/goreleaser/goreleaser/discussions/1534
         args: -f .goreleaser.yml --snapshot
 
+    # Must add GH Actions write access
+    # https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions
     - name: Push Docker images
       if: github.event_name == 'push'
       run: |
