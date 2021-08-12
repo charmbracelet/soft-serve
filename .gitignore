@@ -1,3 +1,7 @@
 smoothie
 .ssh
 .repos
+dist
+.terraform*
+*.tfstate*
+*auto.tfvars
