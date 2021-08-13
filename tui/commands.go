@@ -25,7 +25,7 @@ func (b *Bubble) windowChangesCmd() tea.Msg {
 }
 
 func (b *Bubble) setupCmd() tea.Msg {
-	lipgloss.SetColorProfile(termenv.TrueColor)
+	lipgloss.SetColorProfile(termenv.ANSI256)
 	b.repos = b.repoSource.AllRepos()
 	mes := make([]MenuEntry, 0)
 	rs := make([]string, 0)
