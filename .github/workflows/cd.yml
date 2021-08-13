@@ -20,6 +20,7 @@ jobs:
       AWS_DEFAULT_REGION: us-east-1
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      SMOOTHIE_REPO_KEYS: "${{ secrets.SMOOTHIE_REPO_KEYS }}"
 
     steps:
     - name: Install Go
@@ -72,9 +73,10 @@ jobs:
       id: tfvars
       run: |
         TF_VARS=$(cat <<EOF
-          -var "environment=$ENVIRONMENT" \
-          -var "aws_region=$AWS_DEFAULT_REGION" \
-          -var "app_image=$CONTAINER_REPO:$GITHUB_SHA-snapshot"
+        -var environment="$ENVIRONMENT" \
+        -var aws_region="$AWS_DEFAULT_REGION" \
+        -var app_image="$CONTAINER_REPO:$GITHUB_SHA-snapshot" \
+        -var authorization_keys="$(echo -n $SMOOTHIE_REPO_KEYS)"
         EOF
         )
         echo "::set-output name=vars::$TF_VARS"
