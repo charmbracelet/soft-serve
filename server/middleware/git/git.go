@@ -13,46 +13,14 @@ import (
 	"github.com/gliderlabs/ssh"
 )
 
-func Middleware(repoDir, authorizedKeys, authorizedKeysFile string) middleware.Middleware {
-	authedKeys := make([]ssh.PublicKey, 0)
-	hasAuth, err := fileExists(authorizedKeysFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if hasAuth || authorizedKeys != "" {
-		var scanner *bufio.Scanner
-		if authorizedKeys == "" {
-			log.Printf("Importing authorized keys from file: %s", authorizedKeysFile)
-			f, err := os.Open(authorizedKeysFile)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer f.Close()
-			scanner = bufio.NewScanner(f)
-		} else {
-			log.Printf("Importing authorized keys from environment")
-			scanner = bufio.NewScanner(strings.NewReader(authorizedKeys))
-		}
-		for scanner.Scan() {
-			pt := scanner.Text()
-			log.Printf("Adding authorized key: %s", pt)
-			pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pt))
-			if err != nil {
-				log.Fatal(err)
-			}
-			authedKeys = append(authedKeys, pk)
-		}
-		if err := scanner.Err(); err != nil {
-			log.Fatal(err)
-		}
-	}
+func gitMiddleware(repoDir string, authedKeys []ssh.PublicKey) middleware.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			cmd := s.Command()
 			if len(cmd) == 2 {
 				switch cmd[0] {
 				case "git-upload-pack", "git-upload-archive", "git-receive-pack":
-					if hasAuth && cmd[0] == "git-receive-pack" {
+					if len(authedKeys) > 0 && cmd[0] == "git-receive-pack" {
 						authed := false
 						for _, pk := range authedKeys {
 							if ssh.KeysEqual(pk, s.PublicKey()) {
@@ -86,6 +54,74 @@ func Middleware(repoDir, authorizedKeys, authorizedKeysFile string) middleware.M
 			sh(s)
 		}
 	}
+}
+
+func Middleware(repoDir, authorizedKeys, authorizedKeysFile string) middleware.Middleware {
+	ak1, err := parseKeysFromString(authorizedKeys)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ak2, err := parseKeysFromFile(authorizedKeysFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	authedKeys := append(ak1, ak2...)
+	return gitMiddleware(repoDir, authedKeys)
+}
+
+func MiddlewareWithKeys(repoDir, authorizedKeys string) middleware.Middleware {
+	return Middleware(repoDir, authorizedKeys, "")
+}
+
+func MiddlewareWithKeyPath(repoDir, authorizedKeysFile string) middleware.Middleware {
+	return Middleware(repoDir, "", authorizedKeysFile)
+}
+
+func parseKeysFromFile(path string) ([]ssh.PublicKey, error) {
+	authedKeys := make([]ssh.PublicKey, 0)
+	hasAuth, err := fileExists(path)
+	if err != nil {
+		return nil, err
+	}
+	if hasAuth {
+		f, err := os.Open(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		err = addKeys(scanner, &authedKeys)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return authedKeys, nil
+}
+
+func parseKeysFromString(keys string) ([]ssh.PublicKey, error) {
+	authedKeys := make([]ssh.PublicKey, 0)
+	scanner := bufio.NewScanner(strings.NewReader(keys))
+	err := addKeys(scanner, &authedKeys)
+	if err != nil {
+		return nil, err
+	}
+	return authedKeys, nil
+}
+
+func addKeys(s *bufio.Scanner, keys *[]ssh.PublicKey) error {
+	for s.Scan() {
+		pt := s.Text()
+		log.Printf("Adding authorized key: %s", pt)
+		pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pt))
+		if err != nil {
+			return err
+		}
+		*keys = append(*keys, pk)
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func fileExists(path string) (bool, error) {
