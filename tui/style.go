@@ -31,7 +31,7 @@ var activeBoxStyle = lipgloss.NewStyle().
 	Padding(boxPadding)
 
 var headerStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#670083")).
+	Foreground(lipgloss.Color("#714C7B")).
 	Align(lipgloss.Right).
 	Bold(true)
 

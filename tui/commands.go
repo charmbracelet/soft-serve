@@ -6,6 +6,8 @@ import (
 	"smoothie/tui/bubbles/selection"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 )
 
 type windowMsg struct{}
@@ -22,7 +24,8 @@ func (b *Bubble) windowChangesCmd() tea.Msg {
 	return windowMsg{}
 }
 
-func (b *Bubble) loadGitCmd() tea.Msg {
+func (b *Bubble) setupCmd() tea.Msg {
+	lipgloss.SetColorProfile(termenv.TrueColor)
 	b.repos = b.repoSource.AllRepos()
 	mes := make([]MenuEntry, 0)
 	rs := make([]string, 0)

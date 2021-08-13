@@ -75,7 +75,7 @@ func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {
 }
 
 func (b *Bubble) Init() tea.Cmd {
-	return tea.Batch(b.windowChangesCmd, b.loadGitCmd)
+	return tea.Batch(b.windowChangesCmd, b.setupCmd)
 }
 
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
