@@ -19,16 +19,16 @@ builds:
 
 dockers:
   - image_templates:
-      - "ghcr.io/charmbracelet/smoothie:snapshot"
-      - "ghcr.io/charmbracelet/smoothie:{{ .Commit }}-snapshot"
+      - "ghcr.io/charmbracelet/smoothie-internal:snapshot"
+      - "ghcr.io/charmbracelet/smoothie-internal:{{ .Commit }}-snapshot"
     ids: [smoothie]
     goarch: amd64
     build_flag_templates:
       - --platform=linux/amd64
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/smoothie
-      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/smoothie
+      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/smoothie-internal
+      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/smoothie-internal
       - --label=org.opencontainers.image.version={{ .Commit }}-snapshot
       - --label=org.opencontainers.image.created={{ .Date }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}

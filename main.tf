@@ -15,7 +15,7 @@ variable "aws_region" {
 }
 
 variable "app_image" {
-  default = "ghcr.io/charmbracelet/smoothie:snapshot"
+  default = "ghcr.io/charmbracelet/smoothie-internal:snapshot"
 }
 
 variable "force_new_deployment" {
