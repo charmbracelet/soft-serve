@@ -11,6 +11,7 @@ VOLUME /smoothie
 
 # Environment variables
 ENV SMOOTHIE_KEY_PATH "/smoothie/ssh/smoothie_server_ed25519"
+ENV SMOOTHIE_REPO_KEYS ""
 ENV SMOOTHIE_REPO_KEYS_PATH "/smoothie/ssh/smoothie_git_authorized_keys"
 ENV SMOOTHIE_REPO_PATH "/smoothie/repos"
 

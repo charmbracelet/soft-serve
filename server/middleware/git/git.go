@@ -8,23 +8,31 @@ import (
 	"os"
 	"os/exec"
 	"smoothie/server/middleware"
+	"strings"
 
 	"github.com/gliderlabs/ssh"
 )
 
-func Middleware(repoDir string, authorizedKeysPath string) middleware.Middleware {
+func Middleware(repoDir, authorizedKeys, authorizedKeysFile string) middleware.Middleware {
 	authedKeys := make([]ssh.PublicKey, 0)
-	hasAuth, err := fileExists(authorizedKeysPath)
+	hasAuth, err := fileExists(authorizedKeysFile)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if hasAuth {
-		f, err := os.Open(authorizedKeysPath)
-		if err != nil {
-			log.Fatal(err)
+	if hasAuth || authorizedKeys != "" {
+		var scanner *bufio.Scanner
+		if authorizedKeys == "" {
+			log.Printf("Importing authorized keys from file: %s", authorizedKeysFile)
+			f, err := os.Open(authorizedKeysFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer f.Close()
+			scanner = bufio.NewScanner(f)
+		} else {
+			log.Printf("Importing authorized keys from environment")
+			scanner = bufio.NewScanner(strings.NewReader(authorizedKeys))
 		}
-		defer f.Close()
-		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
 			pt := scanner.Text()
 			log.Printf("Adding authorized key: %s", pt)
