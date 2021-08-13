@@ -69,8 +69,22 @@ func (b *Bubble) setupCmd() tea.Msg {
 		boxRightWidth-horizontalPadding-2,
 		b.repoSource.GetCommits(200),
 	)
-	b.boxes[1] = b.repoMenu[0].bubble
-	b.activeBox = 0
+	ir := -1
+	if b.initialRepo != "" {
+		for i, me := range b.repoMenu {
+			if me.Repo == b.initialRepo {
+				ir = i
+			}
+		}
+	}
+	if ir == -1 {
+		b.boxes[1] = b.repoMenu[0].bubble
+		b.activeBox = 0
+	} else {
+		b.boxes[1] = b.repoMenu[ir].bubble
+		b.repoSelect.SelectedItem = ir
+		b.activeBox = 1
+	}
 	b.state = loadedState
 	return nil
 }

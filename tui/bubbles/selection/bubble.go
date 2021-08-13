@@ -19,7 +19,7 @@ type Bubble struct {
 	NormalStyle   lipgloss.Style
 	SelectedStyle lipgloss.Style
 	Items         []string
-	selectedItem  int
+	SelectedItem  int
 }
 
 func NewBubble(items []string) *Bubble {
@@ -37,7 +37,7 @@ func (b *Bubble) Init() tea.Cmd {
 func (b *Bubble) View() string {
 	s := ""
 	for i, item := range b.Items {
-		if i == b.selectedItem {
+		if i == b.SelectedItem {
 			s += b.SelectedStyle.Render(item) + "\n"
 		} else {
 			s += b.NormalStyle.Render(item) + "\n"
@@ -52,13 +52,13 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "k", "up":
-			if b.selectedItem > 0 {
-				b.selectedItem--
+			if b.SelectedItem > 0 {
+				b.SelectedItem--
 				cmds = append(cmds, b.sendActiveMessage)
 			}
 		case "j", "down":
-			if b.selectedItem < len(b.Items)-1 {
-				b.selectedItem++
+			if b.SelectedItem < len(b.Items)-1 {
+				b.SelectedItem++
 				cmds = append(cmds, b.sendActiveMessage)
 			}
 		case "enter":
@@ -69,20 +69,20 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (b *Bubble) sendActiveMessage() tea.Msg {
-	if b.selectedItem >= 0 && b.selectedItem < len(b.Items) {
+	if b.SelectedItem >= 0 && b.SelectedItem < len(b.Items) {
 		return ActiveMsg{
-			Name:  b.Items[b.selectedItem],
-			Index: b.selectedItem,
+			Name:  b.Items[b.SelectedItem],
+			Index: b.SelectedItem,
 		}
 	}
 	return nil
 }
 
 func (b *Bubble) sendSelectedMessage() tea.Msg {
-	if b.selectedItem >= 0 && b.selectedItem < len(b.Items) {
+	if b.SelectedItem >= 0 && b.SelectedItem < len(b.Items) {
 		return SelectedMsg{
-			Name:  b.Items[b.selectedItem],
-			Index: b.selectedItem,
+			Name:  b.Items[b.SelectedItem],
+			Index: b.SelectedItem,
 		}
 	}
 	return nil

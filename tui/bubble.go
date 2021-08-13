@@ -42,6 +42,7 @@ type SessionConfig struct {
 	Width         int
 	Height        int
 	WindowChanges <-chan ssh.Window
+	InitialRepo   string
 }
 
 type Bubble struct {
@@ -52,6 +53,7 @@ type Bubble struct {
 	height        int
 	windowChanges <-chan ssh.Window
 	repoSource    *git.RepoSource
+	initialRepo   string
 	repoMenu      []MenuEntry
 	repos         []*git.Repo
 	boxes         []tea.Model
@@ -69,6 +71,7 @@ func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {
 		repoSource:    cfg.RepoSource,
 		repoMenu:      make([]MenuEntry, 0),
 		boxes:         make([]tea.Model, 2),
+		initialRepo:   sCfg.InitialRepo,
 	}
 	b.state = startState
 	return b

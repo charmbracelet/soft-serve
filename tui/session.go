@@ -45,19 +45,25 @@ func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) 
 	}()
 
 	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-		if len(s.Command()) == 0 {
-			pty, changes, active := s.Pty()
-			if !active {
-				return nil, nil
-			}
-			cfg := &SessionConfig{
-				Width:         pty.Window.Width,
-				Height:        pty.Window.Height,
-				WindowChanges: changes,
-			}
-			return NewBubble(appCfg, cfg), []tea.ProgramOption{tea.WithAltScreen()}
+		cmd := s.Command()
+		cfg := &SessionConfig{}
+		switch len(cmd) {
+		case 0:
+			cfg.InitialRepo = ""
+		case 1:
+			cfg.InitialRepo = cmd[0]
+		default:
+			return nil, nil
 		}
-		return nil, nil
+		pty, changes, active := s.Pty()
+		if !active {
+			fmt.Println("not active")
+			return nil, nil
+		}
+		cfg.Width = pty.Window.Width
+		cfg.Height = pty.Window.Height
+		cfg.WindowChanges = changes
+		return NewBubble(appCfg, cfg), []tea.ProgramOption{tea.WithAltScreen()}
 	}
 }
 
