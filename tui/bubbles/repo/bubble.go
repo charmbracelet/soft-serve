@@ -50,12 +50,19 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, tea.Batch(cmds...)
 }
 
+func (b *Bubble) GotoTop() {
+	b.readmeViewport.Viewport.GotoTop()
+}
+
 func (b *Bubble) View() string {
 	return b.readmeViewport.View()
 }
 
 func (b *Bubble) setupCmd() tea.Msg {
 	r, err := b.repoSource.GetRepo(b.name)
+	if err == git.ErrMissingRepo {
+		return nil
+	}
 	if err != nil {
 		return ErrMsg{err}
 	}
@@ -70,7 +77,7 @@ func (b *Bubble) setupCmd() tea.Msg {
 	if err != nil {
 		return ErrMsg{err}
 	}
-	b.readmeViewport.Viewport.GotoTop()
+	b.GotoTop()
 	b.readmeViewport.Viewport.SetContent(md)
 	return nil
 }

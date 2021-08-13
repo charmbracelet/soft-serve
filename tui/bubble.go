@@ -1,13 +1,11 @@
 package tui
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
 	"smoothie/git"
 	"smoothie/tui/bubbles/commits"
+	"smoothie/tui/bubbles/repo"
 	"smoothie/tui/bubbles/selection"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -34,9 +32,10 @@ type Config struct {
 }
 
 type MenuEntry struct {
-	Name string `json:"name"`
-	Note string `json:"note"`
-	Repo string `json:"repo"`
+	Name   string `json:"name"`
+	Note   string `json:"note"`
+	Repo   string `json:"repo"`
+	bubble *repo.Bubble
 }
 
 type SessionConfig struct {
@@ -68,6 +67,7 @@ func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {
 		height:        sCfg.Height,
 		windowChanges: sCfg.WindowChanges,
 		repoSource:    cfg.RepoSource,
+		repoMenu:      make([]MenuEntry, 0),
 		boxes:         make([]tea.Model, 2),
 	}
 	b.state = startState
@@ -100,9 +100,13 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.height = msg.Height
 	case selection.SelectedMsg:
 		b.activeBox = 1
-		cmds = append(cmds, b.getRepoCmd(b.repoMenu[msg.Index].Repo))
+		rb := b.repoMenu[msg.Index].bubble
+		rb.GotoTop()
+		b.boxes[1] = rb
 	case selection.ActiveMsg:
-		cmds = append(cmds, b.getRepoCmd(b.repoMenu[msg.Index].Repo))
+		rb := b.repoMenu[msg.Index].bubble
+		rb.GotoTop()
+		b.boxes[1] = b.repoMenu[msg.Index].bubble
 	}
 	if b.state == loadedState {
 		ab, cmd := b.boxes[b.activeBox].Update(msg)
@@ -136,77 +140,7 @@ func (b *Bubble) View() string {
 		s += lipgloss.JoinHorizontal(lipgloss.Top, lb, rb)
 	case errorState:
 		s += errorStyle.Render(fmt.Sprintf("Bummer: %s", b.error))
-	default:
-		s = normalStyle.Render(fmt.Sprintf("Doing something weird %d", b.state))
 	}
 	content = h + "\n\n" + s + "\n" + f
 	return appBoxStyle.Render(content)
-}
-
-func loadConfig(rs *git.RepoSource) (*Config, error) {
-	cfg := &Config{}
-	cfg.RepoSource = rs
-	cr, err := rs.GetRepo("config")
-	if err != nil {
-		return nil, fmt.Errorf("cannot load config repo: %s", err)
-	}
-	cs, err := cr.LatestFile("config.json")
-	if err != nil {
-		return nil, fmt.Errorf("cannot load config.json: %s", err)
-	}
-	err = json.Unmarshal([]byte(cs), cfg)
-	if err != nil {
-		return nil, fmt.Errorf("bad json in config.json: %s", err)
-	}
-	return cfg, nil
-}
-
-func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
-	rs := git.NewRepoSource(reposPath)
-	err := createDefaultConfigRepo(rs)
-	if err != nil {
-		if err != nil {
-			log.Fatalf("cannot create config repo: %s", err)
-		}
-	}
-	appCfg, err := loadConfig(rs)
-	if err != nil {
-		if err != nil {
-			log.Printf("cannot load config: %s", err)
-		}
-	}
-	go func() {
-		for {
-			time.Sleep(repoPoll)
-			err := rs.LoadRepos()
-			if err != nil {
-				log.Printf("cannot load repos: %s", err)
-				continue
-			}
-			cfg, err := loadConfig(rs)
-			if err != nil {
-				if err != nil {
-					log.Printf("cannot load config: %s", err)
-					continue
-				}
-			}
-			appCfg = cfg
-		}
-	}()
-
-	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-		if len(s.Command()) == 0 {
-			pty, changes, active := s.Pty()
-			if !active {
-				return nil, nil
-			}
-			cfg := &SessionConfig{
-				Width:         pty.Window.Width,
-				Height:        pty.Window.Height,
-				WindowChanges: changes,
-			}
-			return NewBubble(appCfg, cfg), []tea.ProgramOption{tea.WithAltScreen()}
-		}
-		return nil, nil
-	}
 }

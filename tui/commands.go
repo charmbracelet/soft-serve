@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"smoothie/tui/bubbles/commits"
 	"smoothie/tui/bubbles/repo"
 	"smoothie/tui/bubbles/selection"
@@ -43,8 +44,22 @@ func (b *Bubble) setupCmd() tea.Msg {
 			mes = append(mes, MenuEntry{Name: r.Name, Repo: r.Name})
 		}
 	}
-	b.repoMenu = mes
+	var tmplConfig *Config
+	h := b.height - verticalPadding - viewportHeightConstant
+	w := boxRightWidth - 2
 	for _, me := range mes {
+		if me.Repo == "config" {
+			tmplConfig = b.config
+		}
+		rb := repo.NewBubble(b.repoSource, me.Repo, w, h, tmplConfig)
+		initCmd := rb.Init()
+		msg := initCmd()
+		switch msg := msg.(type) {
+		case repo.ErrMsg:
+			return errMsg{fmt.Errorf("missing %s: %s", me.Repo, msg.Error)}
+		}
+		me.bubble = rb
+		b.repoMenu = append(b.repoMenu, me)
 		rs = append(rs, me.Name)
 	}
 	b.repoSelect = selection.NewBubble(rs)
@@ -54,20 +69,8 @@ func (b *Bubble) setupCmd() tea.Msg {
 		boxRightWidth-horizontalPadding-2,
 		b.repoSource.GetCommits(200),
 	)
-	msg := b.getRepoCmd("config")()
+	b.boxes[1] = b.repoMenu[0].bubble
 	b.activeBox = 0
 	b.state = loadedState
-	return msg
-}
-
-func (b *Bubble) getRepoCmd(name string) tea.Cmd {
-	var tmplConfig *Config
-	if name == "config" {
-		tmplConfig = b.config
-	}
-	h := b.height - verticalPadding - viewportHeightConstant
-	w := boxRightWidth - 2
-	rb := repo.NewBubble(b.repoSource, name, w, h, tmplConfig)
-	b.boxes[1] = rb
-	return rb.Init()
+	return nil
 }
