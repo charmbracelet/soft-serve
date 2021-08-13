@@ -23,9 +23,9 @@ variable "force_new_deployment" {
 }
 
 module "smoothie" {
-  # source = "../terraform-aws-smoothie"
+  /* source = "../terraform-aws-smoothie" */
   source  = "app.terraform.io/charm/smoothie/aws"
-  version = "0.1.2"
+  version = "0.1.4"
 
   environment                  = var.environment
   aws_region                   = var.aws_region
@@ -36,4 +36,5 @@ module "smoothie" {
   fargate_cpu                  = "1024"
   fargate_memory               = "2048"
   force_new_deployment         = var.force_new_deployment
+  app_use_default_ssh_port     = true
 }
