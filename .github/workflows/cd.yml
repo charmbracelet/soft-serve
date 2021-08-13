@@ -156,3 +156,22 @@ jobs:
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: terraform apply -auto-approve ${{ steps.tfvars.outputs.vars }}
 
+
+  slack-workflow-status:
+    if: always()
+    name: Post Workflow Status To Slack
+    needs:
+      - cd
+    runs-on: ubuntu-latest
+    steps:
+      - name: Slack Workflow Notification
+        uses: Gamesight/slack-workflow-status@master
+        with:
+          # Required Input
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # Optional Input
+          channel: '#devops'
+          name: "${{ github.repository }} 🥤 workflow"
+          icon_emoji: ':cup_with_straw:'
+          icon_url: 'https://avatars.githubusercontent.com/u/57376114?s=200&v=4'
