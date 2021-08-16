@@ -29,7 +29,7 @@ variable "authorization_keys" {
 module "smoothie" {
   /* source = "../terraform-aws-smoothie" */
   source  = "app.terraform.io/charm/smoothie/aws"
-  version = "0.2.0"
+  version = "0.2.1"
 
   environment                  = var.environment
   aws_region                   = var.aws_region
