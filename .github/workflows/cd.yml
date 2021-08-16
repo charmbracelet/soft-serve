@@ -5,7 +5,7 @@ on:
     branches:
       - main
   pull_request:
-    
+
 
 jobs:
   cd:
@@ -38,6 +38,7 @@ jobs:
       run: |
         git clone -b release https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/charm-internal ../charm
         git clone -b master https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/bubbletea-internal ../bubbletea
+        git clone -b master https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/wish ../wish
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v1

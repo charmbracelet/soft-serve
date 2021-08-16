@@ -20,6 +20,7 @@ jobs:
       run: |
         git clone -b release https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/charm-internal ../charm
         git clone -b master https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/bubbletea-internal ../bubbletea
+        git clone -b master https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/wish ../wish
 
     - name: Set up Go
       uses: actions/setup-go@v2
