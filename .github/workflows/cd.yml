@@ -73,13 +73,15 @@ jobs:
     - name: Terraform Variables
       id: tfvars
       run: |
-        TF_VARS=$(cat <<EOF
-        -var environment="$ENVIRONMENT" \
-        -var aws_region="$AWS_DEFAULT_REGION" \
-        -var app_image="$CONTAINER_REPO:$GITHUB_SHA-snapshot" \
-        -var authorization_keys="$(echo -n $SMOOTHIE_REPO_KEYS)"
+        cat <<EOF >live.auto.tfvars
+        environment        = "$ENVIRONMENT"
+        aws_region         = "$AWS_DEFAULT_REGION"
+        app_image          = "$CONTAINER_REPO:$GITHUB_SHA-snapshot"
+        authorization_keys = <<EOT
+        $SMOOTHIE_REPO_KEYS
+        EOT
         EOF
-        )
+        TF_VARS="-var-file=live.auto.tfvars"
         echo "::set-output name=vars::$TF_VARS"
 
     - name: Terraform Format
