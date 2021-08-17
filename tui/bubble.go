@@ -137,7 +137,7 @@ func (b *Bubble) viewForBox(i int, width int, height int) string {
 	}
 	ls.Width(width)
 	if height > 0 {
-		ls.Height(height).MarginBottom(2)
+		ls.Height(height).MarginBottom(3)
 	}
 	return ls.Render(b.boxes[i].View())
 }
@@ -163,5 +163,5 @@ func (b *Bubble) View() string {
 		s += errorStyle.Render(fmt.Sprintf("Bummer: %s", b.error))
 	}
 	content = h + "\n" + s + "\n" + f
-	return appBoxStyle.Width(w).Height(b.height - 2).BorderStyle(lipgloss.RoundedBorder()).Render(content)
+	return appBoxStyle.Width(w).Height(b.height).Render(content)
 }
