@@ -45,13 +45,11 @@ func (b *Bubble) setupCmd() tea.Msg {
 		}
 	}
 	var tmplConfig *Config
-	h := b.height - verticalPadding - viewportHeightConstant
-	w := boxRightWidth - 2
 	for _, me := range mes {
 		if me.Repo == "config" {
 			tmplConfig = b.config
 		}
-		rb := repo.NewBubble(b.repoSource, me.Repo, w, h, tmplConfig)
+		rb := repo.NewBubble(b.repoSource, me.Repo, b.width, boxLeftWidth+12, b.height, 12, tmplConfig)
 		initCmd := rb.Init()
 		msg := initCmd()
 		switch msg := msg.(type) {

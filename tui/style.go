@@ -39,10 +39,10 @@ var normalStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#FFFFFF"))
 
 var footerStyle = lipgloss.NewStyle().
-	BorderForeground(lipgloss.Color("#6D6D6D")).
-	BorderLeft(true).
-	Foreground(lipgloss.Color("#373737")).
-	Bold(true)
+	Foreground(lipgloss.Color("#373737"))
+
+var footerHighlightStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("#DCDCDC"))
 
 var errorStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#FF00000"))

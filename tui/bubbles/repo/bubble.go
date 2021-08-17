@@ -20,17 +20,26 @@ type Bubble struct {
 	name           string
 	repo           *git.Repo
 	readmeViewport *ViewportBubble
+	readme         string
+	height         int
+	heightMargin   int
+	width          int
+	widthMargin    int
 }
 
-func NewBubble(rs *git.RepoSource, name string, width int, height int, tmp interface{}) *Bubble {
+func NewBubble(rs *git.RepoSource, name string, width, wm, height, hm int, tmp interface{}) *Bubble {
 	return &Bubble{
 		templateObject: tmp,
 		repoSource:     rs,
 		name:           name,
+		height:         height,
+		width:          width,
+		heightMargin:   hm,
+		widthMargin:    wm,
 		readmeViewport: &ViewportBubble{
 			Viewport: &viewport.Model{
-				Width:  width,
-				Height: height,
+				Width:  width - wm,
+				Height: height - hm,
 			},
 		},
 	}
@@ -42,6 +51,16 @@ func (b *Bubble) Init() tea.Cmd {
 
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		b.readmeViewport.Viewport.Width = msg.Width - b.widthMargin
+		b.readmeViewport.Viewport.Height = msg.Height - b.heightMargin
+		md, err := b.glamourize(b.readme)
+		if err != nil {
+			return b, nil
+		}
+		b.readmeViewport.Viewport.SetContent(md)
+	}
 	rv, cmd := b.readmeViewport.Update(msg)
 	b.readmeViewport = rv.(*ViewportBubble)
 	if cmd != nil {
@@ -73,12 +92,13 @@ func (b *Bubble) setupCmd() tea.Msg {
 			return ErrMsg{err}
 		}
 	}
+	b.readme = md
 	md, err = b.glamourize(md)
 	if err != nil {
 		return ErrMsg{err}
 	}
-	b.GotoTop()
 	b.readmeViewport.Viewport.SetContent(md)
+	b.GotoTop()
 	return nil
 }
 
@@ -97,9 +117,10 @@ func (b *Bubble) templatize(mdt string) (string, error) {
 
 func (b *Bubble) glamourize(md string) (string, error) {
 	tr, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(b.readmeViewport.Viewport.Width),
+		glamour.WithStandardStyle("dark"),
+		glamour.WithWordWrap(b.width-b.widthMargin),
 	)
+
 	if err != nil {
 		return "", err
 	}

@@ -101,6 +101,13 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		b.width = msg.Width
 		b.height = msg.Height
+		if b.state == loadedState {
+			ab, cmd := b.boxes[b.activeBox].Update(msg)
+			b.boxes[b.activeBox] = ab
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
 	case selection.SelectedMsg:
 		b.activeBox = 1
 		rb := b.repoMenu[msg.Index].bubble
@@ -121,29 +128,40 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, tea.Batch(cmds...)
 }
 
-func (b *Bubble) viewForBox(i int, width int) string {
+func (b *Bubble) viewForBox(i int, width int, height int) string {
 	var ls lipgloss.Style
 	if i == b.activeBox {
-		ls = activeBoxStyle.Width(width)
+		ls = activeBoxStyle.Copy()
 	} else {
-		ls = inactiveBoxStyle.Width(width)
+		ls = inactiveBoxStyle.Copy()
+	}
+	ls.Width(width)
+	if height > 0 {
+		ls.Height(height).MarginBottom(2)
 	}
 	return ls.Render(b.boxes[i].View())
 }
 
 func (b *Bubble) View() string {
-	h := headerStyle.Width(b.width - horizontalPadding).Render(b.config.Name)
-	f := footerStyle.Render("")
+	w := b.width - 3
+	f := ""
 	s := ""
 	content := ""
+	h := headerStyle.Width(w - 2).Render(b.config.Name)
+	f += footerHighlightStyle.Bold(true).Render("tab ")
+	f += footerStyle.Render("section • ")
+	f += footerHighlightStyle.Bold(true).Render("j/k ")
+	f += footerStyle.Render("down/up • ")
+	f += footerHighlightStyle.Bold(true).Render("q ")
+	f += footerStyle.Render("quit")
 	switch b.state {
 	case loadedState:
-		lb := b.viewForBox(0, boxLeftWidth)
-		rb := b.viewForBox(1, boxRightWidth)
+		lb := b.viewForBox(0, boxLeftWidth, 0)
+		rb := b.viewForBox(1, b.width-boxLeftWidth-10, b.height-8)
 		s += lipgloss.JoinHorizontal(lipgloss.Top, lb, rb)
 	case errorState:
 		s += errorStyle.Render(fmt.Sprintf("Bummer: %s", b.error))
 	}
-	content = h + "\n\n" + s + "\n" + f
-	return appBoxStyle.Render(content)
+	content = h + "\n" + s + "\n" + f
+	return appBoxStyle.Width(w).Height(b.height - 2).BorderStyle(lipgloss.RoundedBorder()).Render(content)
 }
