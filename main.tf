@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket = "charm-terraform-state"
+    bucket = "charm-terraform-backend"
     key    = "smoothie-development"
     region = "us-east-1"
   }
