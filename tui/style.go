@@ -38,11 +38,15 @@ var headerStyle = lipgloss.NewStyle().
 var normalStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#FFFFFF"))
 
-var footerStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#373737"))
-
-var footerHighlightStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#DCDCDC"))
-
 var errorStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#FF00000"))
+
+var helpKeyStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("241"))
+
+var helpValueStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("239"))
+
+var helpDivider = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("237")).
+	SetString(" • ")

@@ -2,10 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"io"
 	"smoothie/git"
 	"smoothie/tui/bubbles/commits"
 	"smoothie/tui/bubbles/repo"
 	"smoothie/tui/bubbles/selection"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -142,26 +144,34 @@ func (b *Bubble) viewForBox(i int, width int, height int) string {
 	return ls.Render(b.boxes[i].View())
 }
 
+func (b Bubble) footerView(w io.Writer) {
+	h := []helpEntry{
+		{"tab", "section"},
+		{"↑/↓", "navigate"},
+		{"q", "quit"},
+	}
+	for i, v := range h {
+		fmt.Fprint(w, v)
+		if i != len(h)-1 {
+			fmt.Fprint(w, helpDivider)
+		}
+	}
+}
+
 func (b *Bubble) View() string {
+	s := strings.Builder{}
 	w := b.width - 3
-	f := ""
-	s := ""
-	content := ""
-	h := headerStyle.Width(w - 2).Render(b.config.Name)
-	f += footerHighlightStyle.Bold(true).Render("tab ")
-	f += footerStyle.Render("section • ")
-	f += footerHighlightStyle.Bold(true).Render("j/k ")
-	f += footerStyle.Render("down/up • ")
-	f += footerHighlightStyle.Bold(true).Render("q ")
-	f += footerStyle.Render("quit")
+	s.WriteString(headerStyle.Width(w - 2).Render(b.config.Name))
+	s.WriteRune('\n')
 	switch b.state {
 	case loadedState:
 		lb := b.viewForBox(0, boxLeftWidth, 0)
 		rb := b.viewForBox(1, b.width-boxLeftWidth-10, b.height-8)
-		s += lipgloss.JoinHorizontal(lipgloss.Top, lb, rb)
+		s.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, lb, rb))
 	case errorState:
-		s += errorStyle.Render(fmt.Sprintf("Bummer: %s", b.error))
+		s.WriteString(errorStyle.Render(fmt.Sprintf("Bummer: %s", b.error)))
 	}
-	content = h + "\n" + s + "\n" + f
-	return appBoxStyle.Width(w).Height(b.height).Render(content)
+	s.WriteRune('\n')
+	b.footerView(&s)
+	return appBoxStyle.Width(w).Height(b.height).Render(s.String())
 }
