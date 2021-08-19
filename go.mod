@@ -12,7 +12,7 @@ require (
 	github.com/charmbracelet/bubbles v0.8.0
 	github.com/charmbracelet/bubbletea v0.14.1
 	github.com/charmbracelet/glamour v0.3.0
-	github.com/charmbracelet/lipgloss v0.3.1-0.20210819192630-a9b894aa07a2
+	github.com/charmbracelet/lipgloss v0.3.1-0.20210819193614-7f051d0e92a3
 	github.com/charmbracelet/wish v0.0.0-20210816211645-088e4d8b1b04
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gliderlabs/ssh v0.3.3

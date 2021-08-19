@@ -49,6 +49,8 @@ github.com/charmbracelet/lipgloss v0.3.0 h1:5MysOD6sHr4RP4jkZNWGVIul5GKoOsP12Ngb
 github.com/charmbracelet/lipgloss v0.3.0/go.mod h1:VkhdBS2eNAmRkTwRKLJCFhCOVkjntMusBDxv7TXahuk=
 github.com/charmbracelet/lipgloss v0.3.1-0.20210819192630-a9b894aa07a2 h1:xlLL8siC374C3R3wN/Egzpkhnohsl53wBuHrIykcx34=
 github.com/charmbracelet/lipgloss v0.3.1-0.20210819192630-a9b894aa07a2/go.mod h1:vmdkHvce7UzX6xkyf4cca8WlwdQ5RQr8fzta+xl7BOM=
+github.com/charmbracelet/lipgloss v0.3.1-0.20210819193614-7f051d0e92a3 h1:bXxb8fYD8Wmlc6IW+IO4VRJioWXS5okHlVQWNAKwqys=
+github.com/charmbracelet/lipgloss v0.3.1-0.20210819193614-7f051d0e92a3/go.mod h1:vmdkHvce7UzX6xkyf4cca8WlwdQ5RQr8fzta+xl7BOM=
 github.com/charmbracelet/wish v0.0.0-20210816211645-088e4d8b1b04 h1:0jw7kvrrhf3a+GSD1AQwQCPxU4GIQL3jsK5nDrcXsXI=
 github.com/charmbracelet/wish v0.0.0-20210816211645-088e4d8b1b04/go.mod h1:vhGzR3x3nG4Rb9Msb5rZJ8zu81nhEOKdXqHveyAPr+U=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
