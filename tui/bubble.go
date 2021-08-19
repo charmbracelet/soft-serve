@@ -93,6 +93,14 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return b, tea.Quit
 		case "tab":
 			b.activeBox = (b.activeBox + 1) % 2
+		case "h", "left":
+			if b.activeBox > 0 {
+				b.activeBox--
+			}
+		case "l", "right":
+			if b.activeBox < len(b.boxes)-1 {
+				b.activeBox++
+			}
 		}
 	case errMsg:
 		b.error = msg.Error()
