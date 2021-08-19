@@ -139,11 +139,10 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (b *Bubble) viewForBox(i int) string {
-	box := b.boxes[i]
 	isActive := i == b.activeBox
-	var s lipgloss.Style
-	switch box.(type) {
+	switch box := b.boxes[i].(type) {
 	case *selection.Bubble:
+		var s lipgloss.Style
 		if isActive {
 			s = menuActiveStyle
 		} else {
@@ -155,23 +154,13 @@ func (b *Bubble) viewForBox(i int) string {
 			s.GetVerticalFrameSize() -
 			appBoxStyle.GetVerticalFrameSize() +
 			1 // TODO: figure out why we need this
-		s = s.Copy().Height(h)
+		return s.Copy().Height(h).Render(box.View())
 	case *repo.Bubble:
-		if isActive {
-			s = contentBoxActiveStyle
-		} else {
-			s = contentBoxStyle
-		}
-		w := b.width -
-			lipgloss.Width(b.viewForBox(0)) -
-			appBoxStyle.GetHorizontalFrameSize() -
-			s.GetHorizontalFrameSize() +
-			1 // TODO: figure out why we need this
-		s = s.Copy().Width(w)
+		box.Active = isActive
+		return box.View()
 	default:
 		panic(fmt.Sprintf("unknown box type %T", box))
 	}
-	return s.Render(box.View())
 }
 
 func (b Bubble) headerView() string {

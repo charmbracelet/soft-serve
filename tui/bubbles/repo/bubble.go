@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/muesli/reflow/wrap"
 )
@@ -19,16 +20,21 @@ type ErrMsg struct {
 }
 
 type Bubble struct {
-	templateObject interface{}
-	repoSource     *git.RepoSource
-	name           string
-	repo           *git.Repo
-	readmeViewport *ViewportBubble
-	readme         string
-	height         int
-	heightMargin   int
-	width          int
-	widthMargin    int
+	templateObject    interface{}
+	repoSource        *git.RepoSource
+	name              string
+	repo              *git.Repo
+	readmeViewport    *ViewportBubble
+	readme            string
+	height            int
+	heightMargin      int
+	width             int
+	widthMargin       int
+	Active            bool
+	TitleStyle        lipgloss.Style
+	NoteStyle         lipgloss.Style
+	BodyStyle         lipgloss.Style
+	ActiveBorderColor lipgloss.Color
 }
 
 func NewBubble(rs *git.RepoSource, name string, width, wm, height, hm int, tmp interface{}) *Bubble {
@@ -81,8 +87,31 @@ func (b *Bubble) GotoTop() {
 	b.readmeViewport.Viewport.GotoTop()
 }
 
+func (b Bubble) headerView() string {
+	ts := b.TitleStyle
+	ns := b.NoteStyle
+	if b.Active {
+		ts = ts.Copy().BorderForeground(b.ActiveBorderColor)
+		ns = ns.Copy().BorderForeground(b.ActiveBorderColor)
+	}
+	title := ts.Render(b.name)
+	note := ns.
+		Width(b.width - b.widthMargin - lipgloss.Width(title)).
+		Render("git clone ssh://...")
+	return lipgloss.JoinHorizontal(lipgloss.Top, title, note)
+}
+
 func (b *Bubble) View() string {
-	return b.readmeViewport.View()
+	header := b.headerView()
+	bs := b.BodyStyle.Copy()
+	if b.Active {
+		bs = bs.BorderForeground(b.ActiveBorderColor)
+	}
+	body := bs.
+		Width(b.width - b.widthMargin - b.BodyStyle.GetVerticalFrameSize()).
+		Height(b.height - b.heightMargin - lipgloss.Height(header)).
+		Render(b.readmeViewport.View())
+	return header + body
 }
 
 func (b *Bubble) setupCmd() tea.Msg {

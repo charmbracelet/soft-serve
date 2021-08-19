@@ -7,6 +7,39 @@ import (
 var activeBorderColor = lipgloss.Color("62")
 var inactiveBorderColor = lipgloss.Color("236")
 
+var viewportTitleBorder = lipgloss.Border{
+	Top:         "─",
+	Bottom:      "─",
+	Left:        "│",
+	Right:       "│",
+	TopLeft:     "╭",
+	TopRight:    "┬",
+	BottomLeft:  "├",
+	BottomRight: "┴",
+}
+
+var viewportNoteBorder = lipgloss.Border{
+	Top:         "─",
+	Bottom:      "─",
+	Left:        "",
+	Right:       "│",
+	TopLeft:     "",
+	TopRight:    "╮",
+	BottomLeft:  "",
+	BottomRight: "┤",
+}
+
+var viewportBodyBorder = lipgloss.Border{
+	Top:         "",
+	Bottom:      "─",
+	Left:        "│",
+	Right:       "│",
+	TopLeft:     "",
+	TopRight:    "",
+	BottomLeft:  "╰",
+	BottomRight: "╯",
+}
+
 var appBoxStyle = lipgloss.NewStyle().
 	Margin(1, 2)
 
@@ -31,15 +64,20 @@ var menuCursor = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("213")).
 	SetString(">")
 
-var contentBoxStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.RoundedBorder()).
+var contentBoxTitleStyle = lipgloss.NewStyle().
+	Border(viewportTitleBorder).
 	BorderForeground(inactiveBorderColor).
-	PaddingRight(1).
-	MarginBottom(1)
+	Padding(0, 2)
 
-var contentBoxActiveStyle = contentBoxStyle.Copy().
-	BorderStyle(lipgloss.RoundedBorder()).
-	BorderForeground(activeBorderColor)
+var contentBoxNoteStyle = lipgloss.NewStyle().
+	Border(viewportNoteBorder, true, true, true, false).
+	BorderForeground(inactiveBorderColor).
+	Padding(0, 2)
+
+var contentBoxStyle = lipgloss.NewStyle().
+	BorderStyle(viewportBodyBorder).
+	BorderForeground(inactiveBorderColor).
+	PaddingRight(1)
 
 var menuItemStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("252")).
@@ -49,7 +87,8 @@ var selectedMenuItemStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("207")).
 	PaddingLeft(1)
 
-var footerStyle = lipgloss.NewStyle()
+var footerStyle = lipgloss.NewStyle().
+	MarginTop(1)
 
 var helpKeyStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("241"))
