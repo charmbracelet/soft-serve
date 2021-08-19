@@ -8,7 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/wordwrap"
+	"github.com/muesli/reflow/wrap"
 )
 
 const glamourMaxWidth = 120
@@ -124,7 +125,7 @@ func (b *Bubble) templatize(mdt string) (string, error) {
 
 func (b *Bubble) glamourize(md string) (string, error) {
 	// TODO: read gaps in appropriate style to remove the magic number below.
-	w := b.width - b.widthMargin - 2
+	w := b.width - b.widthMargin - 4
 	if w > glamourMaxWidth {
 		w = glamourMaxWidth
 	}
@@ -142,11 +143,7 @@ func (b *Bubble) glamourize(md string) (string, error) {
 	}
 	// Enforce a maximum width for cases when glamour lines run long.
 	//
-	// TODO: use Reflow's unconditional wrapping to force-wrap long lines. This
-	// should utlimately happen as a Glamour option.
-	//
-	// See:
-	// https://github.com/muesli/reflow#unconditional-wrapping
-	mdt = lipgloss.NewStyle().MaxWidth(w).Render(mdt)
+	// TODO: This should utlimately be implemented as a Glamour option.
+	mdt = wrap.String(wordwrap.String((mdt), w), w)
 	return mdt, nil
 }
