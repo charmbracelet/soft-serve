@@ -148,13 +148,7 @@ func (b *Bubble) viewForBox(i int) string {
 		} else {
 			s = menuStyle
 		}
-		h := b.height -
-			lipgloss.Height(b.headerView()) -
-			lipgloss.Height(b.footerView()) -
-			s.GetVerticalFrameSize() -
-			appBoxStyle.GetVerticalFrameSize() +
-			1 // TODO: figure out why we need this
-		return s.Copy().Height(h).Render(box.View())
+		return s.Render(box.View())
 	case *repo.Bubble:
 		box.Active = isActive
 		return box.View()
