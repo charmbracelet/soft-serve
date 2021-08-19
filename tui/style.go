@@ -7,15 +7,6 @@ import (
 var activeBorderColor = lipgloss.Color("243")
 var inactiveBorderColor = lipgloss.Color("236")
 
-var hiddenBorder = lipgloss.Border{
-	TopLeft:     " ",
-	Top:         " ",
-	TopRight:    " ",
-	BottomLeft:  " ",
-	Bottom:      " ",
-	BottomRight: " ",
-}
-
 var appBoxStyle = lipgloss.NewStyle()
 
 var menuStyle = lipgloss.NewStyle().
@@ -66,7 +57,18 @@ var menuCursor = lipgloss.NewStyle().
 	SetString(">")
 
 var errorStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#FF00000"))
+	Padding(1)
+
+var errorHeaderStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("230")).
+	Background(lipgloss.Color("204")).
+	Bold(true).
+	Padding(0, 1)
+
+var errorBodyStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("252")).
+	MarginLeft(2).
+	Width(52) // for now
 
 var helpDivider = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("237")).

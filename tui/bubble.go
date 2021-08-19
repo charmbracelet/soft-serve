@@ -182,13 +182,19 @@ func (b Bubble) headerView() string {
 
 func (b Bubble) footerView() string {
 	w := &strings.Builder{}
-	h := []helpEntry{
-		{"tab", "section"},
-		{"↑/↓", "navigate"},
-		{"q", "quit"},
-	}
-	if _, ok := b.boxes[b.activeBox].(*repo.Bubble); ok {
-		h = append(h[:2], helpEntry{"f/b", "pgup/pgdown"}, h[2])
+	var h []helpEntry
+	switch b.state {
+	case errorState:
+		h = []helpEntry{{"q", "quit"}}
+	default:
+		h = []helpEntry{
+			{"tab", "section"},
+			{"↑/↓", "navigate"},
+			{"q", "quit"},
+		}
+		if _, ok := b.boxes[b.activeBox].(*repo.Bubble); ok {
+			h = append(h[:2], helpEntry{"f/b", "pgup/pgdown"}, h[2])
+		}
 	}
 	for i, v := range h {
 		fmt.Fprint(w, v)
@@ -197,6 +203,21 @@ func (b Bubble) footerView() string {
 		}
 	}
 	return footerStyle.Render(w.String())
+}
+
+func (b Bubble) errorView() string {
+	s := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		errorHeaderStyle.Render("Bummer"),
+		errorBodyStyle.Render(b.error),
+	)
+	h := b.height -
+		appBoxStyle.GetVerticalFrameSize() -
+		lipgloss.Height(b.headerView()) -
+		lipgloss.Height(b.footerView()) -
+		contentBoxStyle.GetVerticalFrameSize() +
+		3 // TODO: figure out why we need this
+	return errorStyle.Copy().Height(h).Render(s)
 }
 
 func (b Bubble) View() string {
@@ -209,7 +230,7 @@ func (b Bubble) View() string {
 		rb := b.viewForBox(1)
 		s.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, lb, rb))
 	case errorState:
-		s.WriteString(errorStyle.Render(fmt.Sprintf("Bummer: %s", b.error)))
+		s.WriteString(b.errorView())
 	}
 	s.WriteString(b.footerView())
 	return appBoxStyle.Render(s.String())
