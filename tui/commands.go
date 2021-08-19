@@ -50,7 +50,10 @@ func (b *Bubble) setupCmd() tea.Msg {
 		}
 		width := b.width
 		boxLeftWidth := menuStyle.GetWidth() + menuStyle.GetHorizontalFrameSize()
-		const heightMargin = 12 // TODO: figure out why this needs to be 12
+		// TODO: also send this along with a tea.WindowSizeMsg
+		var heightMargin = lipgloss.Height(b.headerView()) +
+			lipgloss.Height(b.footerView()) +
+			contentBoxStyle.GetVerticalFrameSize()
 		rb := repo.NewBubble(b.repoSource, me.Repo, width, boxLeftWidth, b.height, heightMargin, tmplConfig)
 		initCmd := rb.Init()
 		msg := initCmd()
