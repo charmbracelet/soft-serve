@@ -142,37 +142,36 @@ func (b *Bubble) viewForBox(i int) string {
 	box := b.boxes[i]
 	isActive := i == b.activeBox
 	var s lipgloss.Style
-	var menuHeightFix int // TODO: figure out why we need this
 	switch box.(type) {
 	case *selection.Bubble:
-		menuHeightFix = 1
 		if isActive {
 			s = menuActiveStyle
-			break
+		} else {
+			s = menuStyle
 		}
-		s = menuStyle
+		h := b.height -
+			lipgloss.Height(b.headerView()) -
+			lipgloss.Height(b.footerView()) -
+			s.GetVerticalFrameSize() -
+			appBoxStyle.GetVerticalFrameSize() +
+			1 // TODO: figure out why we need this
+		s = s.Copy().Height(h)
 	case *repo.Bubble:
 		if isActive {
 			s = contentBoxActiveStyle
 		} else {
 			s = contentBoxStyle
 		}
-		const repoWidthFix = 1 // TODO: figure out why we need this
 		w := b.width -
 			lipgloss.Width(b.viewForBox(0)) -
 			appBoxStyle.GetHorizontalFrameSize() -
-			s.GetHorizontalFrameSize() + repoWidthFix
+			s.GetHorizontalFrameSize() +
+			1 // TODO: figure out why we need this
 		s = s.Copy().Width(w)
 	default:
 		panic(fmt.Sprintf("unknown box type %T", box))
 	}
-	h := b.height -
-		lipgloss.Height(b.headerView()) -
-		lipgloss.Height(b.footerView()) -
-		s.GetVerticalFrameSize() -
-		appBoxStyle.GetVerticalFrameSize() +
-		menuHeightFix
-	return s.Copy().Height(h).Render(box.View())
+	return s.Render(box.View())
 }
 
 func (b Bubble) headerView() string {
@@ -202,7 +201,7 @@ func (b Bubble) footerView() string {
 			fmt.Fprint(w, helpDivider)
 		}
 	}
-	return footerStyle.Render(w.String())
+	return footerStyle.Copy().Width(b.width).Render(w.String())
 }
 
 func (b Bubble) errorView() string {
@@ -232,6 +231,7 @@ func (b Bubble) View() string {
 	case errorState:
 		s.WriteString(b.errorView())
 	}
+	s.WriteRune('\n')
 	s.WriteString(b.footerView())
 	return appBoxStyle.Render(s.String())
 }

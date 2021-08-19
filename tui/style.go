@@ -7,11 +7,13 @@ import (
 var activeBorderColor = lipgloss.Color("62")
 var inactiveBorderColor = lipgloss.Color("236")
 
-var appBoxStyle = lipgloss.NewStyle()
+var appBoxStyle = lipgloss.NewStyle().
+	Margin(1, 2)
 
 var headerStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("62")).
 	Align(lipgloss.Right).
+	PaddingRight(1).
 	Bold(true)
 
 var menuStyle = lipgloss.NewStyle().
