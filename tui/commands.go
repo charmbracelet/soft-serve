@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"smoothie/tui/bubbles/commits"
 	"smoothie/tui/bubbles/repo"
 	"smoothie/tui/bubbles/selection"
 
@@ -49,7 +48,10 @@ func (b *Bubble) setupCmd() tea.Msg {
 		if me.Repo == "config" {
 			tmplConfig = b.config
 		}
-		rb := repo.NewBubble(b.repoSource, me.Repo, b.width, boxLeftWidth+12, b.height, 12, tmplConfig)
+		width := b.width
+		boxLeftWidth := menuStyle.GetWidth() + menuStyle.GetHorizontalFrameSize()
+		const heightMargin = 12 // TODO: figure out why this needs to be 12
+		rb := repo.NewBubble(b.repoSource, me.Repo, width, boxLeftWidth, b.height, heightMargin, tmplConfig)
 		initCmd := rb.Init()
 		msg := initCmd()
 		switch msg := msg.(type) {
@@ -60,13 +62,15 @@ func (b *Bubble) setupCmd() tea.Msg {
 		b.repoMenu = append(b.repoMenu, me)
 		rs = append(rs, me.Name)
 	}
-	b.repoSelect = selection.NewBubble(rs)
+	b.repoSelect = selection.NewBubble(rs, menuItemStyle, selectedMenuItemStyle, menuCursor.String())
 	b.boxes[0] = b.repoSelect
-	b.commitsLog = commits.NewBubble(
-		b.height-verticalPadding-2,
-		boxRightWidth-horizontalPadding-2,
-		b.repoSource.GetCommits(200),
-	)
+	/*
+		b.commitsLog = commits.NewBubble(
+			b.height-verticalPadding-2,
+			boxRightWidth-horizontalPadding-2,
+			b.repoSource.GetCommits(200),
+		)
+	*/
 	ir := -1
 	if b.initialRepo != "" {
 		for i, me := range b.repoMenu {

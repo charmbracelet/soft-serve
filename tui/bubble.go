@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"io"
 	"smoothie/git"
 	"smoothie/tui/bubbles/commits"
 	"smoothie/tui/bubbles/repo"
@@ -91,7 +90,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return b, tea.Quit
-		case "tab":
+		case "tab", "shift+tab":
 			b.activeBox = (b.activeBox + 1) % 2
 		case "h", "left":
 			if b.activeBox > 0 {
@@ -118,6 +117,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 		}
+		// XXX: maybe propagate size changes to child bubbles (particularly height)
 	case selection.SelectedMsg:
 		b.activeBox = 1
 		rb := b.repoMenu[msg.Index].bubble
@@ -138,25 +138,57 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, tea.Batch(cmds...)
 }
 
-func (b *Bubble) viewForBox(i int, width int, height int) string {
-	var ls lipgloss.Style
-	if i == b.activeBox {
-		ls = activeBoxStyle.Copy()
-	} else {
-		ls = inactiveBoxStyle.Copy()
+func (b *Bubble) viewForBox(i int) string {
+	box := b.boxes[i]
+	isActive := i == b.activeBox
+	var s lipgloss.Style
+	var menuHeightFix int // TODO: figure out why we need this
+	switch box.(type) {
+	case *selection.Bubble:
+		menuHeightFix = 1
+		if isActive {
+			s = menuActiveStyle
+			break
+		}
+		s = menuStyle
+	case *repo.Bubble:
+		if isActive {
+			s = contentBoxActiveStyle
+		} else {
+			s = contentBoxStyle
+		}
+		const repoWidthFix = 1 // TODO: figure out why we need this
+		w := b.width -
+			lipgloss.Width(b.viewForBox(0)) -
+			appBoxStyle.GetHorizontalFrameSize() -
+			s.GetHorizontalFrameSize() + repoWidthFix
+		s = s.Copy().Width(w)
+	default:
+		panic(fmt.Sprintf("unknown box type %T", box))
 	}
-	ls.Width(width)
-	if height > 0 {
-		ls.Height(height).MarginBottom(3)
-	}
-	return ls.Render(b.boxes[i].View())
+	h := b.height -
+		lipgloss.Height(b.headerView()) -
+		lipgloss.Height(b.footerView()) -
+		s.GetVerticalFrameSize() -
+		appBoxStyle.GetVerticalFrameSize() +
+		menuHeightFix
+	return s.Copy().Height(h).Render(box.View())
 }
 
-func (b Bubble) footerView(w io.Writer) {
+func (b Bubble) headerView() string {
+	w := b.width - appBoxStyle.GetHorizontalFrameSize()
+	return headerStyle.Copy().Width(w).Render(b.config.Name)
+}
+
+func (b Bubble) footerView() string {
+	w := &strings.Builder{}
 	h := []helpEntry{
 		{"tab", "section"},
 		{"↑/↓", "navigate"},
 		{"q", "quit"},
+	}
+	if _, ok := b.boxes[b.activeBox].(*repo.Bubble); ok {
+		h = append(h[:2], helpEntry{"f/b", "pgup/pgdown"}, h[2])
 	}
 	for i, v := range h {
 		fmt.Fprint(w, v)
@@ -164,22 +196,30 @@ func (b Bubble) footerView(w io.Writer) {
 			fmt.Fprint(w, helpDivider)
 		}
 	}
+	return footerStyle.Render(w.String())
 }
 
-func (b *Bubble) View() string {
+func (b Bubble) View() string {
 	s := strings.Builder{}
-	w := b.width - 3
-	s.WriteString(headerStyle.Width(w - 2).Render(b.config.Name))
+	s.WriteString(b.headerView())
 	s.WriteRune('\n')
 	switch b.state {
 	case loadedState:
-		lb := b.viewForBox(0, boxLeftWidth, 0)
-		rb := b.viewForBox(1, b.width-boxLeftWidth-10, b.height-8)
+		lb := b.viewForBox(0)
+		rb := b.viewForBox(1)
 		s.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, lb, rb))
 	case errorState:
 		s.WriteString(errorStyle.Render(fmt.Sprintf("Bummer: %s", b.error)))
 	}
-	s.WriteRune('\n')
-	b.footerView(&s)
-	return appBoxStyle.Width(w).Height(b.height).Render(s.String())
+	s.WriteString(b.footerView())
+	return appBoxStyle.Render(s.String())
+}
+
+type helpEntry struct {
+	key string
+	val string
+}
+
+func (h helpEntry) String() string {
+	return fmt.Sprintf("%s %s", helpKeyStyle.Render(h.key), helpValueStyle.Render(h.val))
 }

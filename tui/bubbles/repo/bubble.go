@@ -8,7 +8,10 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/lipgloss"
 )
+
+const glamourMaxWidth = 120
 
 type ErrMsg struct {
 	Error error
@@ -28,21 +31,18 @@ type Bubble struct {
 }
 
 func NewBubble(rs *git.RepoSource, name string, width, wm, height, hm int, tmp interface{}) *Bubble {
-	return &Bubble{
+	b := &Bubble{
 		templateObject: tmp,
 		repoSource:     rs,
 		name:           name,
-		height:         height,
-		width:          width,
 		heightMargin:   hm,
 		widthMargin:    wm,
 		readmeViewport: &ViewportBubble{
-			Viewport: &viewport.Model{
-				Width:  width - wm,
-				Height: height - hm,
-			},
+			Viewport: &viewport.Model{},
 		},
 	}
+	b.SetSize(width, height)
+	return b
 }
 
 func (b *Bubble) Init() tea.Cmd {
@@ -53,8 +53,10 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		b.readmeViewport.Viewport.Width = msg.Width - b.widthMargin
-		b.readmeViewport.Viewport.Height = msg.Height - b.heightMargin
+		b.SetSize(msg.Width, msg.Height)
+		// XXX: if we find that longer readmes take more than a few
+		// milliseconds to render we may need to move Glamour rendering into a
+		// command.
 		md, err := b.glamourize(b.readme)
 		if err != nil {
 			return b, nil
@@ -63,10 +65,15 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	rv, cmd := b.readmeViewport.Update(msg)
 	b.readmeViewport = rv.(*ViewportBubble)
-	if cmd != nil {
-		cmds = append(cmds, cmd)
-	}
+	cmds = append(cmds, cmd)
 	return b, tea.Batch(cmds...)
+}
+
+func (b *Bubble) SetSize(w, h int) {
+	b.width = w
+	b.height = h
+	b.readmeViewport.Viewport.Width = w - b.widthMargin
+	b.readmeViewport.Viewport.Height = h - b.heightMargin
 }
 
 func (b *Bubble) GotoTop() {
@@ -116,9 +123,14 @@ func (b *Bubble) templatize(mdt string) (string, error) {
 }
 
 func (b *Bubble) glamourize(md string) (string, error) {
+	// TODO: read gaps in appropriate style to remove the magic number below.
+	w := b.width - b.widthMargin - 2
+	if w > glamourMaxWidth {
+		w = glamourMaxWidth
+	}
 	tr, err := glamour.NewTermRenderer(
 		glamour.WithStandardStyle("dark"),
-		glamour.WithWordWrap(b.width-b.widthMargin),
+		glamour.WithWordWrap(w),
 	)
 
 	if err != nil {
@@ -128,5 +140,13 @@ func (b *Bubble) glamourize(md string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// Enforce a maximum width for cases when glamour lines run long.
+	//
+	// TODO: use Reflow's unconditional wrapping to force-wrap long lines. This
+	// should utlimately happen as a Glamour option.
+	//
+	// See:
+	// https://github.com/muesli/reflow#unconditional-wrapping
+	mdt = lipgloss.NewStyle().MaxWidth(w).Render(mdt)
 	return mdt, nil
 }

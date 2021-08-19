@@ -18,14 +18,16 @@ type ActiveMsg struct {
 type Bubble struct {
 	NormalStyle   lipgloss.Style
 	SelectedStyle lipgloss.Style
+	Cursor        string
 	Items         []string
 	SelectedItem  int
 }
 
-func NewBubble(items []string) *Bubble {
+func NewBubble(items []string, normalStyle, selectedStyle lipgloss.Style, cursor string) *Bubble {
 	return &Bubble{
 		NormalStyle:   normalStyle,
 		SelectedStyle: selectedStyle,
+		Cursor:        cursor,
 		Items:         items,
 	}
 }
@@ -34,13 +36,17 @@ func (b *Bubble) Init() tea.Cmd {
 	return nil
 }
 
-func (b *Bubble) View() string {
+func (b Bubble) View() string {
 	s := ""
 	for i, item := range b.Items {
 		if i == b.SelectedItem {
-			s += b.SelectedStyle.Render(item) + "\n"
+			s += b.Cursor
+			s += b.SelectedStyle.Render(item)
 		} else {
-			s += b.NormalStyle.Render(item) + "\n"
+			s += b.NormalStyle.Render(item)
+		}
+		if i < len(b.Items)-1 {
+			s += "\n"
 		}
 	}
 	return s
