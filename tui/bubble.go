@@ -148,7 +148,7 @@ func (b *Bubble) viewForBox(i int) string {
 		var s lipgloss.Style
 		s = b.styles.Menu
 		if isActive {
-			s.Copy().BorderForeground(b.styles.ActiveBorderColor)
+			s = s.Copy().BorderForeground(b.styles.ActiveBorderColor)
 		}
 		return s.Render(box.View())
 	case *repo.Bubble:
