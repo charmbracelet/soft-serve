@@ -163,7 +163,7 @@ jobs:
 
 
   slack-workflow-status:
-    if: always()
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     name: Post Workflow Status To Slack
     needs:
       - cd
