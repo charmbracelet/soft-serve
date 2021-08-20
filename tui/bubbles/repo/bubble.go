@@ -102,12 +102,15 @@ func (b Bubble) headerView() string {
 		ts = ts.Copy().BorderForeground(b.styles.ActiveBorderColor)
 		ns = ns.Copy().BorderForeground(b.styles.ActiveBorderColor)
 	}
+	var gc string
 	n := b.name
 	if n == "config" {
 		n = "Home"
+	} else {
+		gc = fmt.Sprintf("git clone %s", b.sshAddress())
 	}
 	title := ts.Render(n)
-	note := ns.Width(b.width - b.widthMargin - lipgloss.Width(title)).Render(b.sshAddress())
+	note := ns.Width(b.width - b.widthMargin - lipgloss.Width(title)).Render(gc)
 	return lipgloss.JoinHorizontal(lipgloss.Top, title, note)
 }
 
