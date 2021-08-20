@@ -17,13 +17,6 @@ func (e errMsg) Error() string {
 	return e.err.Error()
 }
 
-func (b *Bubble) windowChangesCmd() tea.Msg {
-	w := <-b.windowChanges
-	b.width = w.Width
-	b.height = w.Height
-	return windowMsg{}
-}
-
 func (b *Bubble) setupCmd() tea.Msg {
 	lipgloss.SetColorProfile(termenv.ANSI256)
 	b.repos = b.repoSource.AllRepos()

@@ -55,14 +55,13 @@ func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) 
 		default:
 			return nil, nil
 		}
-		pty, changes, active := s.Pty()
+		pty, _, active := s.Pty()
 		if !active {
 			fmt.Println("not active")
 			return nil, nil
 		}
 		cfg.Width = pty.Window.Width
 		cfg.Height = pty.Window.Height
-		cfg.WindowChanges = changes
 		return NewBubble(appCfg, cfg), []tea.ProgramOption{tea.WithAltScreen()}
 	}
 }

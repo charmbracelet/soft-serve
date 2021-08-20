@@ -41,10 +41,9 @@ type MenuEntry struct {
 }
 
 type SessionConfig struct {
-	Width         int
-	Height        int
-	WindowChanges <-chan ssh.Window
-	InitialRepo   string
+	Width       int
+	Height      int
+	InitialRepo string
 }
 
 type Bubble struct {
@@ -67,22 +66,21 @@ type Bubble struct {
 
 func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {
 	b := &Bubble{
-		config:        cfg,
-		styles:        style.DefaultStyles(),
-		width:         sCfg.Width,
-		height:        sCfg.Height,
-		windowChanges: sCfg.WindowChanges,
-		repoSource:    cfg.RepoSource,
-		repoMenu:      make([]MenuEntry, 0),
-		boxes:         make([]tea.Model, 2),
-		initialRepo:   sCfg.InitialRepo,
+		config:      cfg,
+		styles:      style.DefaultStyles(),
+		width:       sCfg.Width,
+		height:      sCfg.Height,
+		repoSource:  cfg.RepoSource,
+		repoMenu:    make([]MenuEntry, 0),
+		boxes:       make([]tea.Model, 2),
+		initialRepo: sCfg.InitialRepo,
 	}
 	b.state = startState
 	return b
 }
 
 func (b *Bubble) Init() tea.Cmd {
-	return tea.Batch(b.windowChangesCmd, b.setupCmd)
+	return b.setupCmd
 }
 
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -108,19 +106,18 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.error = msg.Error()
 		b.state = errorState
 		return b, nil
-	case windowMsg:
-		cmds = append(cmds, b.windowChangesCmd)
 	case tea.WindowSizeMsg:
 		b.width = msg.Width
 		b.height = msg.Height
 		if b.state == loadedState {
-			ab, cmd := b.boxes[b.activeBox].Update(msg)
-			b.boxes[b.activeBox] = ab
-			if cmd != nil {
-				cmds = append(cmds, cmd)
+			for i, bx := range b.boxes {
+				m, cmd := bx.Update(msg)
+				b.boxes[i] = m
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
 			}
 		}
-		// XXX: maybe propagate size changes to child bubbles (particularly height)
 	case selection.SelectedMsg:
 		b.activeBox = 1
 		rb := b.repoMenu[msg.Index].bubble
