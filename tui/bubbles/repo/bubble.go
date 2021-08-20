@@ -107,20 +107,18 @@ func (b Bubble) headerView() string {
 		n = "Home"
 	}
 	title := ts.Render(n)
-	note := ns.Width(b.width - b.widthMargin - lipgloss.Width(title)).
-		Render(b.sshAddress())
+	note := ns.Width(b.width - b.widthMargin - lipgloss.Width(title)).Render(b.sshAddress())
 	return lipgloss.JoinHorizontal(lipgloss.Top, title, note)
 }
 
 func (b *Bubble) View() string {
-	s := b.styles
 	header := b.headerView()
-	bs := s.RepoBody.Copy()
+	bs := b.styles.RepoBody.Copy()
 	if b.Active {
-		bs = bs.BorderForeground(s.ActiveBorderColor)
+		bs = bs.BorderForeground(b.styles.ActiveBorderColor)
 	}
 	body := bs.
-		Width(b.width - b.widthMargin - s.RepoBody.GetVerticalFrameSize()).
+		Width(b.width - b.widthMargin - b.styles.RepoBody.GetVerticalFrameSize()).
 		Height(b.height - b.heightMargin - lipgloss.Height(header)).
 		Render(b.readmeViewport.View())
 	return header + body

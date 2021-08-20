@@ -35,8 +35,6 @@ type Styles struct {
 	Error      lipgloss.Style
 	ErrorTitle lipgloss.Style
 	ErrorBody  lipgloss.Style
-
-	Command lipgloss.Style
 }
 
 func DefaultStyles() *Styles {
@@ -108,11 +106,13 @@ func DefaultStyles() *Styles {
 	s.RepoTitle = lipgloss.NewStyle().
 		Border(s.RepoTitleBorder).
 		BorderForeground(s.InactiveBorderColor).
-		Padding(0, 2)
+		Padding(0, 2).
+		Foreground(lipgloss.Color("252"))
 
 	s.RepoNote = lipgloss.NewStyle().
 		Border(s.RepoNoteBorder, true, true, true, false).
 		BorderForeground(s.InactiveBorderColor).
+		Foreground(lipgloss.Color("168")).
 		Padding(0, 2)
 
 	s.RepoBody = lipgloss.NewStyle().
@@ -146,10 +146,6 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("252")).
 		MarginLeft(2).
 		Width(52) // for now
-
-	s.Command = lipgloss.NewStyle().
-		Background(lipgloss.Color("237")).
-		Foreground(lipgloss.Color("204"))
 
 	return s
 }
