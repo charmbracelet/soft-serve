@@ -2,7 +2,9 @@ package repo
 
 import (
 	"bytes"
+	"fmt"
 	"smoothie/git"
+	"strconv"
 	"text/template"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -35,6 +37,13 @@ type Bubble struct {
 	NoteStyle         lipgloss.Style
 	BodyStyle         lipgloss.Style
 	ActiveBorderColor lipgloss.Color
+
+	// XXX: ideally, we get these from the parent as a pointer. Currently, we
+	// can't add a *tui.Config because it's an illegal import cycle. One
+	// solution would be to (rename and) move this Bubble into the parent
+	// package.
+	Host string
+	Port int64
 }
 
 func NewBubble(rs *git.RepoSource, name string, width, wm, height, hm int, tmp interface{}) *Bubble {
@@ -94,10 +103,13 @@ func (b Bubble) headerView() string {
 		ts = ts.Copy().BorderForeground(b.ActiveBorderColor)
 		ns = ns.Copy().BorderForeground(b.ActiveBorderColor)
 	}
-	title := ts.Render(b.name)
-	note := ns.
-		Width(b.width - b.widthMargin - lipgloss.Width(title)).
-		Render("git clone ssh://...")
+	n := b.name
+	if n == "config" {
+		n = "Home"
+	}
+	title := ts.Render(n)
+	note := ns.Width(b.width - b.widthMargin - lipgloss.Width(title)).
+		Render(b.sshAddress())
 	return lipgloss.JoinHorizontal(lipgloss.Top, title, note)
 }
 
@@ -112,6 +124,14 @@ func (b *Bubble) View() string {
 		Height(b.height - b.heightMargin - lipgloss.Height(header)).
 		Render(b.readmeViewport.View())
 	return header + body
+}
+
+func (b Bubble) sshAddress() string {
+	p := ":" + strconv.Itoa(int(b.Port))
+	if p == ":22" {
+		p = ""
+	}
+	return fmt.Sprintf("ssh://%s%s/%s", b.Host, p, b.name)
 }
 
 func (b *Bubble) setupCmd() tea.Msg {

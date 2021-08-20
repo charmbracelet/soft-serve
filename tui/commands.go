@@ -61,6 +61,8 @@ func (b *Bubble) setupCmd() tea.Msg {
 		rb.NoteStyle = contentBoxNoteStyle
 		rb.BodyStyle = contentBoxStyle
 		rb.ActiveBorderColor = activeBorderColor
+		rb.Host = b.config.Host
+		rb.Port = b.config.Port
 		initCmd := rb.Init()
 		msg := initCmd()
 		switch msg := msg.(type) {
