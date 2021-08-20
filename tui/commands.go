@@ -49,18 +49,14 @@ func (b *Bubble) setupCmd() tea.Msg {
 			tmplConfig = b.config
 		}
 		width := b.width
-		boxLeftWidth := menuStyle.GetWidth() + menuStyle.GetHorizontalFrameSize()
+		boxLeftWidth := b.styles.Menu.GetWidth() + b.styles.Menu.GetHorizontalFrameSize()
 		// TODO: also send this along with a tea.WindowSizeMsg
 		var heightMargin = lipgloss.Height(b.headerView()) +
 			lipgloss.Height(b.footerView()) +
-			contentBoxStyle.GetVerticalFrameSize() +
-			appBoxStyle.GetVerticalMargins() +
+			b.styles.RepoBody.GetVerticalFrameSize() +
+			b.styles.App.GetVerticalMargins() +
 			3 // TODO: make this dynamic (this is the height of the repo info)
-		rb := repo.NewBubble(b.repoSource, me.Repo, width, boxLeftWidth, b.height, heightMargin, tmplConfig)
-		rb.TitleStyle = contentBoxTitleStyle
-		rb.NoteStyle = contentBoxNoteStyle
-		rb.BodyStyle = contentBoxStyle
-		rb.ActiveBorderColor = activeBorderColor
+		rb := repo.NewBubble(b.repoSource, me.Repo, b.styles, width, boxLeftWidth, b.height, heightMargin, tmplConfig)
 		rb.Host = b.config.Host
 		rb.Port = b.config.Port
 		initCmd := rb.Init()
@@ -73,7 +69,7 @@ func (b *Bubble) setupCmd() tea.Msg {
 		b.repoMenu = append(b.repoMenu, me)
 		rs = append(rs, me.Name)
 	}
-	b.repoSelect = selection.NewBubble(rs, menuItemStyle, selectedMenuItemStyle, menuCursor.String())
+	b.repoSelect = selection.NewBubble(rs, b.styles)
 	b.boxes[0] = b.repoSelect
 	/*
 		b.commitsLog = commits.NewBubble(

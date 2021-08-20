@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"smoothie/git"
+	"smoothie/tui/style"
 	"strconv"
 	"text/template"
 
@@ -22,21 +23,18 @@ type ErrMsg struct {
 }
 
 type Bubble struct {
-	templateObject    interface{}
-	repoSource        *git.RepoSource
-	name              string
-	repo              *git.Repo
-	readmeViewport    *ViewportBubble
-	readme            string
-	height            int
-	heightMargin      int
-	width             int
-	widthMargin       int
-	Active            bool
-	TitleStyle        lipgloss.Style
-	NoteStyle         lipgloss.Style
-	BodyStyle         lipgloss.Style
-	ActiveBorderColor lipgloss.Color
+	templateObject interface{}
+	repoSource     *git.RepoSource
+	name           string
+	repo           *git.Repo
+	styles         *style.Styles
+	readmeViewport *ViewportBubble
+	readme         string
+	height         int
+	heightMargin   int
+	width          int
+	widthMargin    int
+	Active         bool
 
 	// XXX: ideally, we get these from the parent as a pointer. Currently, we
 	// can't add a *tui.Config because it's an illegal import cycle. One
@@ -46,11 +44,12 @@ type Bubble struct {
 	Port int64
 }
 
-func NewBubble(rs *git.RepoSource, name string, width, wm, height, hm int, tmp interface{}) *Bubble {
+func NewBubble(rs *git.RepoSource, name string, styles *style.Styles, width, wm, height, hm int, tmp interface{}) *Bubble {
 	b := &Bubble{
 		templateObject: tmp,
 		repoSource:     rs,
 		name:           name,
+		styles:         styles,
 		heightMargin:   hm,
 		widthMargin:    wm,
 		readmeViewport: &ViewportBubble{
@@ -97,11 +96,11 @@ func (b *Bubble) GotoTop() {
 }
 
 func (b Bubble) headerView() string {
-	ts := b.TitleStyle
-	ns := b.NoteStyle
+	ts := b.styles.RepoTitle
+	ns := b.styles.RepoNote
 	if b.Active {
-		ts = ts.Copy().BorderForeground(b.ActiveBorderColor)
-		ns = ns.Copy().BorderForeground(b.ActiveBorderColor)
+		ts = ts.Copy().BorderForeground(b.styles.ActiveBorderColor)
+		ns = ns.Copy().BorderForeground(b.styles.ActiveBorderColor)
 	}
 	n := b.name
 	if n == "config" {
@@ -114,13 +113,14 @@ func (b Bubble) headerView() string {
 }
 
 func (b *Bubble) View() string {
+	s := b.styles
 	header := b.headerView()
-	bs := b.BodyStyle.Copy()
+	bs := s.RepoBody.Copy()
 	if b.Active {
-		bs = bs.BorderForeground(b.ActiveBorderColor)
+		bs = bs.BorderForeground(s.ActiveBorderColor)
 	}
 	body := bs.
-		Width(b.width - b.widthMargin - b.BodyStyle.GetVerticalFrameSize()).
+		Width(b.width - b.widthMargin - s.RepoBody.GetVerticalFrameSize()).
 		Height(b.height - b.heightMargin - lipgloss.Height(header)).
 		Render(b.readmeViewport.View())
 	return header + body

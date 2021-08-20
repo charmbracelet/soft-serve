@@ -6,6 +6,7 @@ import (
 	"smoothie/tui/bubbles/commits"
 	"smoothie/tui/bubbles/repo"
 	"smoothie/tui/bubbles/selection"
+	"smoothie/tui/style"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -48,6 +49,7 @@ type SessionConfig struct {
 
 type Bubble struct {
 	config        *Config
+	styles        *style.Styles
 	state         sessionState
 	error         string
 	width         int
@@ -66,6 +68,7 @@ type Bubble struct {
 func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {
 	b := &Bubble{
 		config:        cfg,
+		styles:        style.DefaultStyles(),
 		width:         sCfg.Width,
 		height:        sCfg.Height,
 		windowChanges: sCfg.WindowChanges,
@@ -143,10 +146,9 @@ func (b *Bubble) viewForBox(i int) string {
 	switch box := b.boxes[i].(type) {
 	case *selection.Bubble:
 		var s lipgloss.Style
+		s = b.styles.Menu
 		if isActive {
-			s = menuActiveStyle
-		} else {
-			s = menuStyle
+			s.Copy().BorderForeground(b.styles.ActiveBorderColor)
 		}
 		return s.Render(box.View())
 	case *repo.Bubble:
@@ -158,8 +160,8 @@ func (b *Bubble) viewForBox(i int) string {
 }
 
 func (b Bubble) headerView() string {
-	w := b.width - appBoxStyle.GetHorizontalFrameSize()
-	return headerStyle.Copy().Width(w).Render(b.config.Name)
+	w := b.width - b.styles.App.GetHorizontalFrameSize()
+	return b.styles.Header.Copy().Width(w).Render(b.config.Name)
 }
 
 func (b Bubble) footerView() string {
@@ -179,27 +181,28 @@ func (b Bubble) footerView() string {
 		}
 	}
 	for i, v := range h {
-		fmt.Fprint(w, v)
+		fmt.Fprint(w, v.Render(b.styles))
 		if i != len(h)-1 {
-			fmt.Fprint(w, helpDivider)
+			fmt.Fprint(w, b.styles.HelpDivider)
 		}
 	}
-	return footerStyle.Copy().Width(b.width).Render(w.String())
+	return b.styles.Footer.Copy().Width(b.width).Render(w.String())
 }
 
 func (b Bubble) errorView() string {
-	s := lipgloss.JoinHorizontal(
+	s := b.styles
+	str := lipgloss.JoinHorizontal(
 		lipgloss.Top,
-		errorHeaderStyle.Render("Bummer"),
-		errorBodyStyle.Render(b.error),
+		s.ErrorTitle.Render("Bummer"),
+		s.ErrorBody.Render(b.error),
 	)
 	h := b.height -
-		appBoxStyle.GetVerticalFrameSize() -
+		s.App.GetVerticalFrameSize() -
 		lipgloss.Height(b.headerView()) -
 		lipgloss.Height(b.footerView()) -
-		contentBoxStyle.GetVerticalFrameSize() +
-		3 // TODO: figure out why we need this
-	return errorStyle.Copy().Height(h).Render(s)
+		s.RepoBody.GetVerticalFrameSize() +
+		3 // TODO: this is repo header height -- get it dynamically
+	return s.Error.Copy().Height(h).Render(str)
 }
 
 func (b Bubble) View() string {
@@ -216,7 +219,7 @@ func (b Bubble) View() string {
 	}
 	s.WriteRune('\n')
 	s.WriteString(b.footerView())
-	return appBoxStyle.Render(s.String())
+	return b.styles.App.Render(s.String())
 }
 
 type helpEntry struct {
@@ -224,6 +227,6 @@ type helpEntry struct {
 	val string
 }
 
-func (h helpEntry) String() string {
-	return fmt.Sprintf("%s %s", helpKeyStyle.Render(h.key), helpValueStyle.Render(h.val))
+func (h helpEntry) Render(s *style.Styles) string {
+	return fmt.Sprintf("%s %s", s.HelpKey.Render(h.key), s.HelpValue.Render(h.val))
 }

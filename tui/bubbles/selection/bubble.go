@@ -1,8 +1,9 @@
 package selection
 
 import (
+	"smoothie/tui/style"
+
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type SelectedMsg struct {
@@ -16,19 +17,15 @@ type ActiveMsg struct {
 }
 
 type Bubble struct {
-	NormalStyle   lipgloss.Style
-	SelectedStyle lipgloss.Style
-	Cursor        string
-	Items         []string
-	SelectedItem  int
+	Items        []string
+	SelectedItem int
+	styles       *style.Styles
 }
 
-func NewBubble(items []string, normalStyle, selectedStyle lipgloss.Style, cursor string) *Bubble {
+func NewBubble(items []string, styles *style.Styles) *Bubble {
 	return &Bubble{
-		NormalStyle:   normalStyle,
-		SelectedStyle: selectedStyle,
-		Cursor:        cursor,
-		Items:         items,
+		Items:  items,
+		styles: styles,
 	}
 }
 
@@ -40,10 +37,10 @@ func (b Bubble) View() string {
 	s := ""
 	for i, item := range b.Items {
 		if i == b.SelectedItem {
-			s += b.Cursor
-			s += b.SelectedStyle.Render(item)
+			s += b.styles.MenuCursor.String()
+			s += b.styles.SelectedMenuItem.Render(item)
 		} else {
-			s += b.NormalStyle.Render(item)
+			s += b.styles.MenuItem.Render(item)
 		}
 		if i < len(b.Items)-1 {
 			s += "\n"
