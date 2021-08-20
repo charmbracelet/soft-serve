@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"smoothie/git"
-	"smoothie/tui/bubbles/commits"
 	"smoothie/tui/bubbles/repo"
 	"smoothie/tui/bubbles/selection"
 	"smoothie/tui/style"
@@ -61,7 +60,6 @@ type Bubble struct {
 	boxes         []tea.Model
 	activeBox     int
 	repoSelect    *selection.Bubble
-	commitsLog    *commits.Bubble
 }
 
 func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {

@@ -64,13 +64,6 @@ func (b *Bubble) setupCmd() tea.Msg {
 	}
 	b.repoSelect = selection.NewBubble(rs, b.styles)
 	b.boxes[0] = b.repoSelect
-	/*
-		b.commitsLog = commits.NewBubble(
-			b.height-verticalPadding-2,
-			boxRightWidth-horizontalPadding-2,
-			b.repoSource.GetCommits(200),
-		)
-	*/
 	ir := -1
 	if b.initialRepo != "" {
 		for i, me := range b.repoMenu {
