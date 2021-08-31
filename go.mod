@@ -1,4 +1,4 @@
-module smoothie
+module soft-serve
 
 go 1.16
 

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"smoothie/tui"
+	"soft-serve/tui"
 	"time"
 
 	"github.com/charmbracelet/wish"
@@ -15,12 +15,12 @@ import (
 )
 
 type Config struct {
-	Port         int    `env:"SMOOTHIE_PORT" default:"23231"`
-	Host         string `env:"SMOOTHIE_HOST" default:""`
-	KeyPath      string `env:"SMOOTHIE_KEY_PATH" default:".ssh/smoothie_server_ed25519"`
-	RepoAuth     string `env:"SMOOTHIE_REPO_KEYS" default:""`
-	RepoAuthFile string `env:"SMOOTHIE_REPO_KEYS_PATH" default:".ssh/smoothie_git_authorized_keys"`
-	RepoPath     string `env:"SMOOTHIE_REPO_PATH" default:".repos"`
+	Port         int    `env:"SOFT_SERVE_PORT" default:"23231"`
+	Host         string `env:"SOFT_SERVE_HOST" default:""`
+	KeyPath      string `env:"SOFT_SERVE_KEY_PATH" default:".ssh/soft_serve_server_ed25519"`
+	RepoAuth     string `env:"SOFT_SERVE_REPO_KEYS" default:""`
+	RepoAuthFile string `env:"SOFT_SERVE_REPO_KEYS_PATH" default:".ssh/soft_serve_git_authorized_keys"`
+	RepoPath     string `env:"SOFT_SERVE_REPO_PATH" default:".repos"`
 }
 
 func main() {

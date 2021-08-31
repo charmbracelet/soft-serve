@@ -2,22 +2,22 @@ FROM alpine:latest
 
 RUN apk update && apk add --update nfs-utils git && rm -rf /var/cache/apk/*
 
-COPY smoothie /usr/local/bin/smoothie
+COPY soft-serve /usr/local/bin/soft-serve
 
 # Create directories
-WORKDIR /smoothie
+WORKDIR /soft-serve
 # Expose data volume
-VOLUME /smoothie
+VOLUME /soft-serve
 
 # Environment variables
-ENV SMOOTHIE_KEY_PATH "/smoothie/ssh/smoothie_server_ed25519"
-ENV SMOOTHIE_REPO_KEYS ""
-ENV SMOOTHIE_REPO_KEYS_PATH "/smoothie/ssh/smoothie_git_authorized_keys"
-ENV SMOOTHIE_REPO_PATH "/smoothie/repos"
+ENV SOFT_SERVE_KEY_PATH "/soft-serve/ssh/soft_serve_server_ed25519"
+ENV SOFT_SERVE_REPO_KEYS ""
+ENV SOFT_SERVE_REPO_KEYS_PATH "/soft-serve/ssh/soft_serve_git_authorized_keys"
+ENV SOFT_SERVE_REPO_PATH "/soft-serve/repos"
 
 # Expose ports
 # SSH
 EXPOSE 23231/tcp
 
 # Set the default command
-ENTRYPOINT [ "/usr/local/bin/smoothie" ]
+ENTRYPOINT [ "/usr/local/bin/soft-serve" ]

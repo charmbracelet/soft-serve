@@ -2,10 +2,10 @@ package tui
 
 import (
 	"fmt"
-	"smoothie/git"
-	"smoothie/tui/bubbles/repo"
-	"smoothie/tui/bubbles/selection"
-	"smoothie/tui/style"
+	"soft-serve/git"
+	"soft-serve/tui/bubbles/repo"
+	"soft-serve/tui/bubbles/selection"
+	"soft-serve/tui/style"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"

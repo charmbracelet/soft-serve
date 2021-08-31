@@ -2,8 +2,8 @@ package tui
 
 import (
 	"fmt"
-	"smoothie/tui/bubbles/repo"
-	"smoothie/tui/bubbles/selection"
+	"soft-serve/tui/bubbles/repo"
+	"soft-serve/tui/bubbles/selection"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

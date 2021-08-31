@@ -3,8 +3,8 @@ package repo
 import (
 	"bytes"
 	"fmt"
-	"smoothie/git"
-	"smoothie/tui/style"
+	"soft-serve/git"
+	"soft-serve/tui/style"
 	"strconv"
 	"text/template"
 

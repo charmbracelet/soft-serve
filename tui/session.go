@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"smoothie/git"
+	"soft-serve/git"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"

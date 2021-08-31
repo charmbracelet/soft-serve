@@ -1,7 +1,7 @@
 package commits
 
 import (
-	"smoothie/git"
+	"soft-serve/git"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"

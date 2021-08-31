@@ -3,16 +3,16 @@ package tui
 import (
 	"os"
 	"path/filepath"
-	"smoothie/git"
+	"soft-serve/git"
 
 	gg "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
-const defaultReadme = "# Smoothie\n\n Welcome! You can configure your Smoothie server by cloning this repo and pushing changes.\n\n## Repos\n\n{{ range .Menu }}* {{ .Name }}{{ if .Note }} - {{ .Note }} {{ end }}\n  - `git clone ssh://{{$.Host}}:{{$.Port}}/{{.Repo}}`\n{{ end }}"
+const defaultReadme = "# Soft-Serve\n\n Welcome! You can configure your Soft-Serve server by cloning this repo and pushing changes.\n\n## Repos\n\n{{ range .Menu }}* {{ .Name }}{{ if .Note }} - {{ .Note }} {{ end }}\n  - `git clone ssh://{{$.Host}}:{{$.Port}}/{{.Repo}}`\n{{ end }}"
 
 const defaultConfig = `{
-	"name": "Smoothie",
+	"name": "Soft-Serve",
 	"show_all_repos": true,
 	"host": "localhost",
 	"port": 23231,
@@ -73,7 +73,7 @@ func createDefaultConfigRepo(rs *git.RepoSource) error {
 		_, err = wt.Commit("Default init", &gg.CommitOptions{
 			All: true,
 			Author: &object.Signature{
-				Name:  "Smoothie Server",
+				Name:  "Soft-Serve Server",
 				Email: "vt100@charm.sh",
 			},
 		})

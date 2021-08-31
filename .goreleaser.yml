@@ -1,4 +1,4 @@
-project_name: smoothie
+project_name: soft-serve
 
 env:
   - GO111MODULE=on
@@ -9,8 +9,8 @@ before:
     - go mod download
 
 builds:
-  - id: "smoothie"
-    binary: "smoothie"
+  - id: "soft-serve"
+    binary: "soft-serve"
     ldflags: -s -w -X main.Version={{ .Commit }}-snapshot -X main.CommitSHA={{ .Commit }}
     goos:
       - linux
@@ -19,16 +19,16 @@ builds:
 
 dockers:
   - image_templates:
-      - "ghcr.io/charmbracelet/smoothie-internal:snapshot"
-      - "ghcr.io/charmbracelet/smoothie-internal:{{ .Commit }}-snapshot"
-    ids: [smoothie]
+      - "ghcr.io/charmbracelet/soft-serve-internal:snapshot"
+      - "ghcr.io/charmbracelet/soft-serve-internal:{{ .Commit }}-snapshot"
+    ids: [soft-serve]
     goarch: amd64
     build_flag_templates:
       - --platform=linux/amd64
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/smoothie-internal
-      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/smoothie-internal
+      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/soft-serve-internal
+      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/soft-serve-internal
       - --label=org.opencontainers.image.version={{ .Commit }}-snapshot
       - --label=org.opencontainers.image.created={{ .Date }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}

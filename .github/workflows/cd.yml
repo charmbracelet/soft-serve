@@ -20,7 +20,7 @@ jobs:
       AWS_DEFAULT_REGION: us-east-1
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      SMOOTHIE_REPO_KEYS: "${{ secrets.SMOOTHIE_REPO_KEYS }}"
+      SOFT_SERVE_REPO_KEYS: "${{ secrets.SOFT_SERVE_REPO_KEYS }}"
 
     steps:
     - name: Install Go
@@ -78,7 +78,7 @@ jobs:
         aws_region         = "$AWS_DEFAULT_REGION"
         app_image          = "$CONTAINER_REPO:$GITHUB_SHA-snapshot"
         authorization_keys = <<EOT
-        $SMOOTHIE_REPO_KEYS
+        $SOFT_SERVE_REPO_KEYS
         EOT
         EOF
         TF_VARS="-var-file=live.auto.tfvars"

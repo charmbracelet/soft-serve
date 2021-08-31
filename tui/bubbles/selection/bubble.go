@@ -1,7 +1,7 @@
 package selection
 
 import (
-	"smoothie/tui/style"
+	"soft-serve/tui/style"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

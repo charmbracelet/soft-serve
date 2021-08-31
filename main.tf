@@ -1,7 +1,7 @@
 terraform {
   backend "s3" {
     bucket = "charm-terraform-backend"
-    key    = "smoothie-development"
+    key    = "soft-serve-development"
     region = "us-east-1"
   }
 }
@@ -15,7 +15,7 @@ variable "aws_region" {
 }
 
 variable "app_image" {
-  default = "ghcr.io/charmbracelet/smoothie-internal:snapshot"
+  default = "ghcr.io/charmbracelet/soft-serve-internal:snapshot"
 }
 
 variable "force_new_deployment" {
@@ -26,14 +26,14 @@ variable "authorization_keys" {
   default = ""
 }
 
-module "smoothie" {
-  /* source = "../terraform-aws-smoothie" */
-  source  = "app.terraform.io/charm/smoothie/aws"
-  version = "0.2.1"
+module "soft_serve" {
+  # source = "../terraform-aws-soft-serve"
+  source  = "app.terraform.io/charm/soft-serve/aws"
+  version = "0.3.0"
 
   environment                  = var.environment
   aws_region                   = var.aws_region
-  ecs_task_execution_role_name = "smoothieEcsTaskExecutionRole-${var.environment}"
+  ecs_task_execution_role_name = "softServeEcsTaskExecutionRole-${var.environment}"
   app_image                    = var.app_image
   app_count                    = 2
   app_ssh_port                 = 23231
