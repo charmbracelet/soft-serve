@@ -29,7 +29,7 @@ variable "authorization_keys" {
 module "soft_serve" {
   # source = "../terraform-aws-soft-serve"
   source  = "app.terraform.io/charm/soft-serve/aws"
-  version = "0.3.0"
+  version = "0.3.1"
 
   environment                  = var.environment
   aws_region                   = var.aws_region
