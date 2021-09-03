@@ -30,11 +30,13 @@ func main() {
 		log.Fatalln(err)
 	}
 	s, err := wish.NewServer(
-		fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
-		cfg.KeyPath,
-		bm.Middleware(tui.SessionHandler(cfg.RepoPath, time.Second*5)),
-		gm.Middleware(cfg.RepoPath, cfg.RepoAuth, cfg.RepoAuthFile),
-		lm.Middleware(),
+		wish.WithAddress(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)),
+		wish.WithHostKeyPath(cfg.KeyPath),
+		wish.WithMiddlewares(
+			bm.Middleware(tui.SessionHandler(cfg.RepoPath, time.Second*5)),
+			gm.Middleware(cfg.RepoPath, cfg.RepoAuth, cfg.RepoAuthFile),
+			lm.Middleware(),
+		),
 	)
 	if err != nil {
 		log.Fatalln(err)
