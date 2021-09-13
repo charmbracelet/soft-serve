@@ -46,8 +46,8 @@ github.com/charmbracelet/glamour v0.3.0/go.mod h1:TzF0koPZhqq0YVBNL100cPHznAAjVj
 github.com/charmbracelet/lipgloss v0.1.1/go.mod h1:5D8zradw52m7QmxRF6QgwbwJi9je84g8MkWiGN07uKg=
 github.com/charmbracelet/lipgloss v0.1.2/go.mod h1:5D8zradw52m7QmxRF6QgwbwJi9je84g8MkWiGN07uKg=
 github.com/charmbracelet/lipgloss v0.3.0/go.mod h1:VkhdBS2eNAmRkTwRKLJCFhCOVkjntMusBDxv7TXahuk=
-github.com/charmbracelet/lipgloss v0.3.1-0.20210819193614-7f051d0e92a3 h1:bXxb8fYD8Wmlc6IW+IO4VRJioWXS5okHlVQWNAKwqys=
-github.com/charmbracelet/lipgloss v0.3.1-0.20210819193614-7f051d0e92a3/go.mod h1:vmdkHvce7UzX6xkyf4cca8WlwdQ5RQr8fzta+xl7BOM=
+github.com/charmbracelet/lipgloss v0.4.0 h1:768h64EFkGUr8V5yAKV7/Ta0NiVceiPaV+PphaW1K9g=
+github.com/charmbracelet/lipgloss v0.4.0/go.mod h1:vmdkHvce7UzX6xkyf4cca8WlwdQ5RQr8fzta+xl7BOM=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0/go.mod h1:4Zcjuz89kmFXt9morQgcfYZAYZ5n8WHjt81YYWIwtTM=
 github.com/containerd/console v1.0.1/go.mod h1:XUsP6YE/mKtz6bxc+I8UiKKTP04qjQL4qcS3XoQ5xkw=
