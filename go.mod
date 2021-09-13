@@ -4,13 +4,11 @@ go 1.17
 
 replace github.com/charmbracelet/charm => ../charm
 
-replace github.com/charmbracelet/bubbletea => ../bubbletea
-
 replace github.com/charmbracelet/wish => ../wish
 
 require (
 	github.com/charmbracelet/bubbles v0.8.0
-	github.com/charmbracelet/bubbletea v0.14.1
+	github.com/charmbracelet/bubbletea v0.15.0
 	github.com/charmbracelet/glamour v0.3.0
 	github.com/charmbracelet/lipgloss v0.3.1-0.20210819193614-7f051d0e92a3
 	github.com/charmbracelet/wish v0.0.0-20210816211645-088e4d8b1b04
@@ -37,7 +35,6 @@ require (
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
-	github.com/google/go-cmp v0.5.3 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
