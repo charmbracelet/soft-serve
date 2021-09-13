@@ -23,9 +23,11 @@ type Styles struct {
 	RepoNoteBorder  lipgloss.Border
 	RepoBodyBorder  lipgloss.Border
 
-	RepoTitle lipgloss.Style
-	RepoNote  lipgloss.Style
-	RepoBody  lipgloss.Style
+	RepoTitle    lipgloss.Style
+	RepoTitleBox lipgloss.Style
+	RepoNote     lipgloss.Style
+	RepoNoteBox  lipgloss.Style
+	RepoBody     lipgloss.Style
 
 	Footer      lipgloss.Style
 	HelpKey     lipgloss.Style
@@ -84,11 +86,11 @@ func DefaultStyles() *Styles {
 	s.RepoNoteBorder = lipgloss.Border{
 		Top:         "─",
 		Bottom:      "─",
-		Left:        "",
+		Left:        "│",
 		Right:       "│",
-		TopLeft:     "",
+		TopLeft:     "┬",
 		TopRight:    "╮",
-		BottomLeft:  "",
+		BottomLeft:  "┴",
 		BottomRight: "┤",
 	}
 
@@ -104,16 +106,24 @@ func DefaultStyles() *Styles {
 	}
 
 	s.RepoTitle = lipgloss.NewStyle().
-		Border(s.RepoTitleBorder).
-		BorderForeground(s.InactiveBorderColor).
 		Padding(0, 2).
 		Foreground(lipgloss.Color("252"))
 
+	s.RepoTitleBox = lipgloss.NewStyle().
+		BorderStyle(s.RepoTitleBorder).
+		BorderForeground(s.InactiveBorderColor)
+
 	s.RepoNote = lipgloss.NewStyle().
-		Border(s.RepoNoteBorder, true, true, true, false).
+		Padding(0, 2).
+		Foreground(lipgloss.Color("168"))
+
+	s.RepoNoteBox = lipgloss.NewStyle().
+		BorderStyle(s.RepoNoteBorder).
 		BorderForeground(s.InactiveBorderColor).
-		Foreground(lipgloss.Color("168")).
-		Padding(0, 2)
+		BorderTop(true).
+		BorderRight(true).
+		BorderBottom(true).
+		BorderLeft(false)
 
 	s.RepoBody = lipgloss.NewStyle().
 		BorderStyle(s.RepoBodyBorder).

@@ -100,21 +100,39 @@ func (b *Bubble) GotoTop() {
 }
 
 func (b Bubble) headerView() string {
-	ts := b.styles.RepoTitle
-	ns := b.styles.RepoNote
-	if b.Active {
-		ts = ts.Copy().BorderForeground(b.styles.ActiveBorderColor)
-		ns = ns.Copy().BorderForeground(b.styles.ActiveBorderColor)
+	// Render repo title
+	title := b.name
+	if title == "config" {
+		title = "Home"
 	}
-	var gc string
-	n := truncate.StringWithTail(b.name, repoNameMaxWidth, "…")
-	if n == "config" {
-		n = "Home"
+	title = truncate.StringWithTail(title, repoNameMaxWidth, "…")
+	title = b.styles.RepoTitle.Render(title)
+
+	// Render clone command
+	var note string
+	if b.name == "config" {
+		note = ""
 	} else {
-		gc = fmt.Sprintf("git clone %s", b.sshAddress())
+		note = fmt.Sprintf("git clone %s", b.sshAddress())
 	}
-	title := ts.Render(n)
-	note := ns.Width(b.width - b.widthMargin - lipgloss.Width(title)).Render(gc)
+	noteStyle := b.styles.RepoNote.Copy().Width(
+		b.width - b.widthMargin - lipgloss.Width(title) -
+			b.styles.RepoTitleBox.GetHorizontalFrameSize(),
+	)
+	note = noteStyle.Render(note)
+
+	// Render borders on name and command
+	height := max(lipgloss.Height(title), lipgloss.Height(note))
+	titleBoxStyle := b.styles.RepoTitleBox.Copy().Height(height)
+	noteBoxStyle := b.styles.RepoNoteBox.Copy().Height(height)
+	if b.Active {
+		titleBoxStyle = titleBoxStyle.BorderForeground(b.styles.ActiveBorderColor)
+		noteBoxStyle = noteBoxStyle.BorderForeground(b.styles.ActiveBorderColor)
+	}
+	title = titleBoxStyle.Render(title)
+	note = noteBoxStyle.Render(note)
+
+	// Render
 	return lipgloss.JoinHorizontal(lipgloss.Top, title, note)
 }
 
@@ -200,4 +218,11 @@ func (b *Bubble) glamourize(md string) (string, error) {
 	// TODO: This should utlimately be implemented as a Glamour option.
 	mdt = wrap.String(wordwrap.String((mdt), w), w)
 	return mdt, nil
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
