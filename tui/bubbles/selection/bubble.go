@@ -2,8 +2,11 @@ package selection
 
 import (
 	"soft-serve/tui/style"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/truncate"
 )
 
 type SelectedMsg struct {
@@ -34,19 +37,24 @@ func (b *Bubble) Init() tea.Cmd {
 }
 
 func (b Bubble) View() string {
-	s := ""
+	s := strings.Builder{}
+	repoNameMaxWidth := b.styles.Menu.GetWidth() - // menu width
+		b.styles.Menu.GetHorizontalPadding() - // menu padding
+		lipgloss.Width(b.styles.MenuCursor.String()) - // cursor
+		b.styles.MenuItem.GetHorizontalFrameSize() // menu item gaps
 	for i, item := range b.Items {
+		item := truncate.StringWithTail(item, uint(repoNameMaxWidth), "…")
 		if i == b.SelectedItem {
-			s += b.styles.MenuCursor.String()
-			s += b.styles.SelectedMenuItem.Render(item)
+			s.WriteString(b.styles.MenuCursor.String())
+			s.WriteString(b.styles.SelectedMenuItem.Render(item))
 		} else {
-			s += b.styles.MenuItem.Render(item)
+			s.WriteString(b.styles.MenuItem.Render(item))
 		}
 		if i < len(b.Items)-1 {
-			s += "\n"
+			s.WriteRune('\n')
 		}
 	}
-	return s
+	return s.String()
 }
 
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
