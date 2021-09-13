@@ -88,7 +88,7 @@ func (b *Bubble) SetSize(w, h int) {
 	b.width = w
 	b.height = h
 	b.readmeViewport.Viewport.Width = w - b.widthMargin
-	b.readmeViewport.Viewport.Height = h - b.heightMargin
+	b.readmeViewport.Viewport.Height = h - lipgloss.Height(b.headerView()) - b.heightMargin
 }
 
 func (b *Bubble) GotoTop() {
