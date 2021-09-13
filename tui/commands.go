@@ -47,8 +47,7 @@ func (b *Bubble) setupCmd() tea.Msg {
 		var heightMargin = lipgloss.Height(b.headerView()) +
 			lipgloss.Height(b.footerView()) +
 			b.styles.RepoBody.GetVerticalFrameSize() +
-			b.styles.App.GetVerticalMargins() +
-			3 // TODO: make this dynamic (this is the height of the repo info)
+			b.styles.App.GetVerticalMargins()
 		rb := repo.NewBubble(b.repoSource, me.Repo, b.styles, width, boxLeftWidth, b.height, heightMargin, tmplConfig)
 		rb.Host = b.config.Host
 		rb.Port = b.config.Port
