@@ -12,11 +12,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/muesli/reflow/wrap"
 )
 
-const glamourMaxWidth = 120
+const (
+	glamourMaxWidth  = 120
+	repoNameMaxWidth = 32
+)
 
 type ErrMsg struct {
 	Error error
@@ -103,7 +107,7 @@ func (b Bubble) headerView() string {
 		ns = ns.Copy().BorderForeground(b.styles.ActiveBorderColor)
 	}
 	var gc string
-	n := b.name
+	n := truncate.StringWithTail(b.name, repoNameMaxWidth, "…")
 	if n == "config" {
 		n = "Home"
 	} else {
