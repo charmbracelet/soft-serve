@@ -140,6 +140,7 @@ func (b *Bubble) viewForBox(i int) string {
 	isActive := i == b.activeBox
 	switch box := b.boxes[i].(type) {
 	case *selection.Bubble:
+		// Menu
 		var s lipgloss.Style
 		s = b.styles.Menu
 		if isActive {
@@ -147,6 +148,7 @@ func (b *Bubble) viewForBox(i int) string {
 		}
 		return s.Render(box.View())
 	case *repo.Bubble:
+		// Repo details
 		box.Active = isActive
 		return box.View()
 	default:
