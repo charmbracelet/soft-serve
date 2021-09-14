@@ -18,7 +18,7 @@ require (
 	github.com/meowgorithm/babyenv v1.3.1
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.9.0
-	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 )
 
 require (
@@ -28,7 +28,7 @@ require (
 	github.com/alecthomas/chroma v0.8.2 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/charmbracelet/charm v0.8.6 // indirect
+	github.com/charmbracelet/keygen v0.1.2 // indirect
 	github.com/containerd/console v1.0.2 // indirect
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/dlclark/regexp2 v1.2.0 // indirect
