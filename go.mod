@@ -7,7 +7,7 @@ replace github.com/charmbracelet/charm => ../charm
 replace github.com/charmbracelet/wish => ../wish
 
 require (
-	github.com/charmbracelet/bubbles v0.8.0
+	github.com/charmbracelet/bubbles v0.9.0
 	github.com/charmbracelet/bubbletea v0.15.0
 	github.com/charmbracelet/glamour v0.3.0
 	github.com/charmbracelet/lipgloss v0.4.0
