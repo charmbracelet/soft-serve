@@ -12,7 +12,6 @@ import (
 	"github.com/muesli/termenv"
 )
 
-type windowMsg struct{}
 type errMsg struct{ err error }
 
 func (e errMsg) Error() string {
@@ -23,11 +22,8 @@ func (b *Bubble) setupCmd() tea.Msg {
 	ct := time.Now()
 	lipgloss.SetColorProfile(termenv.ANSI256)
 	b.repos = b.repoSource.AllRepos()
-	mes := make([]MenuEntry, 0)
+	mes := append([]MenuEntry{}, b.config.Menu...)
 	rs := make([]string, 0)
-	for _, me := range b.config.Menu {
-		mes = append(mes, me)
-	}
 	if b.config.ShowAllRepos {
 	OUTER:
 		for _, r := range b.repos {
