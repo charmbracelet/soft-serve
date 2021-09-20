@@ -13,6 +13,7 @@ import (
 
 func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
 	rs := git.NewRepoSource(reposPath)
+	// createDefaultConfigRepo runs rs.LoadRepos()
 	err := createDefaultConfigRepo(rs)
 	if err != nil {
 		if err != nil {
@@ -25,29 +26,25 @@ func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) 
 			log.Printf("cannot load config: %s", err)
 		}
 	}
-	go func() {
-		for {
-			time.Sleep(repoPoll)
+
+	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
+		cmd := s.Command()
+		// reload repos and config on git push
+		if len(cmd) > 0 && cmd[0] == "git-receive-pack" {
 			ct := time.Now()
 			err := rs.LoadRepos()
 			if err != nil {
 				log.Printf("cannot load repos: %s", err)
-				continue
 			}
 			cfg, err := loadConfig(rs)
 			if err != nil {
 				if err != nil {
 					log.Printf("cannot load config: %s", err)
-					continue
 				}
 			}
-			log.Printf("Repos loaded in %s", time.Since(ct))
 			appCfg = cfg
+			log.Printf("Repo bubble loaded in %s", time.Since(ct))
 		}
-	}()
-
-	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-		cmd := s.Command()
 		cfg := &SessionConfig{}
 		switch len(cmd) {
 		case 0:
