@@ -28,6 +28,7 @@ func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) 
 	go func() {
 		for {
 			time.Sleep(repoPoll)
+			ct := time.Now()
 			err := rs.LoadRepos()
 			if err != nil {
 				log.Printf("cannot load repos: %s", err)
@@ -40,6 +41,7 @@ func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) 
 					continue
 				}
 			}
+			log.Printf("Repos loaded in %s", time.Since(ct))
 			appCfg = cfg
 		}
 	}()

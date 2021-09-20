@@ -3,10 +3,12 @@ package repo
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"soft-serve/git"
 	"soft-serve/tui/style"
 	"strconv"
 	"text/template"
+	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -158,6 +160,7 @@ func (b Bubble) sshAddress() string {
 }
 
 func (b *Bubble) setupCmd() tea.Msg {
+	ct := time.Now()
 	r, err := b.repoSource.GetRepo(b.name)
 	if err == git.ErrMissingRepo {
 		return nil
@@ -179,6 +182,7 @@ func (b *Bubble) setupCmd() tea.Msg {
 	}
 	b.readmeViewport.Viewport.SetContent(md)
 	b.GotoTop()
+	log.Printf("Repo bubble loaded in %s", time.Since(ct))
 	return nil
 }
 

@@ -2,8 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"log"
 	"soft-serve/tui/bubbles/repo"
 	"soft-serve/tui/bubbles/selection"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -18,6 +20,7 @@ func (e errMsg) Error() string {
 }
 
 func (b *Bubble) setupCmd() tea.Msg {
+	ct := time.Now()
 	lipgloss.SetColorProfile(termenv.ANSI256)
 	b.repos = b.repoSource.AllRepos()
 	mes := make([]MenuEntry, 0)
@@ -80,5 +83,6 @@ func (b *Bubble) setupCmd() tea.Msg {
 		b.activeBox = 1
 	}
 	b.state = loadedState
+	log.Printf("App bubble loaded in %s", time.Since(ct))
 	return nil
 }
