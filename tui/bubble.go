@@ -10,7 +10,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/gliderlabs/ssh"
 )
 
 type sessionState int
@@ -46,20 +45,19 @@ type SessionConfig struct {
 }
 
 type Bubble struct {
-	config        *Config
-	styles        *style.Styles
-	state         sessionState
-	error         string
-	width         int
-	height        int
-	windowChanges <-chan ssh.Window
-	repoSource    *git.RepoSource
-	initialRepo   string
-	repoMenu      []MenuEntry
-	repos         []*git.Repo
-	boxes         []tea.Model
-	activeBox     int
-	repoSelect    *selection.Bubble
+	config      *Config
+	styles      *style.Styles
+	state       sessionState
+	error       string
+	width       int
+	height      int
+	repoSource  *git.RepoSource
+	initialRepo string
+	repoMenu    []MenuEntry
+	repos       []*git.Repo
+	boxes       []tea.Model
+	activeBox   int
+	repoSelect  *selection.Bubble
 }
 
 func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {

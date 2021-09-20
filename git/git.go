@@ -107,6 +107,9 @@ func (rs *RepoSource) LoadRepos() error {
 			return err
 		}
 		r, err := rs.loadRepo(rn, rg)
+		if err != nil {
+			return err
+		}
 		rs.repos = append(rs.repos, r)
 	}
 	return nil

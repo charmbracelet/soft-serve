@@ -41,9 +41,12 @@ func createFile(path string, content string) error {
 func createDefaultConfigRepo(rs *git.RepoSource) error {
 	cn := "config"
 	err := rs.LoadRepos()
-	cr, err := rs.GetRepo(cn)
+	if err != nil {
+		return err
+	}
+	_, err = rs.GetRepo(cn)
 	if err == git.ErrMissingRepo {
-		cr, err = rs.InitRepo(cn, false)
+		cr, err := rs.InitRepo(cn, false)
 		if err != nil {
 			return err
 		}
