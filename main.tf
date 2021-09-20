@@ -37,8 +37,8 @@ module "soft_serve" {
   app_image                    = var.app_image
   app_count                    = 2
   app_ssh_port                 = 23231
-  fargate_cpu                  = "1024"
-  fargate_memory               = "2048"
+  fargate_cpu                  = "2048"
+  fargate_memory               = "4096"
   force_new_deployment         = var.force_new_deployment
   app_use_default_ssh_port     = true
   authorization_keys           = var.authorization_keys
