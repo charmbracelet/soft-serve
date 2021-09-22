@@ -154,11 +154,11 @@ func (r *Repo) LatestFile(path string) (string, error) {
 	}
 	f, err := c.File(path)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	content, err := f.Contents()
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return content, nil
 }
