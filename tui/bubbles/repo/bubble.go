@@ -148,8 +148,7 @@ func (b *Bubble) View() string {
 	if b.Active {
 		bs = bs.BorderForeground(b.styles.ActiveBorderColor)
 	}
-	body := bs.
-		Width(b.width - b.widthMargin - b.styles.RepoBody.GetVerticalFrameSize()).
+	body := bs.Width(b.width - b.widthMargin - b.styles.RepoBody.GetVerticalFrameSize()).
 		Height(b.height - b.heightMargin - lipgloss.Height(header)).
 		Render(b.readmeViewport.View())
 	return header + body
@@ -204,8 +203,7 @@ func (b *Bubble) templatize(mdt string) (string, error) {
 }
 
 func (b *Bubble) glamourize(md string) (string, error) {
-	// TODO: read gaps in appropriate style to remove the magic number below.
-	w := b.width - b.widthMargin - 4
+	w := b.width - b.widthMargin - b.styles.RepoBody.GetHorizontalFrameSize()
 	if w > glamourMaxWidth {
 		w = glamourMaxWidth
 	}
