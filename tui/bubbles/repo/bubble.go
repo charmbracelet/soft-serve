@@ -15,7 +15,6 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/truncate"
-	"github.com/muesli/reflow/wordwrap"
 	"github.com/muesli/reflow/wrap"
 )
 
@@ -219,10 +218,15 @@ func (b *Bubble) glamourize(md string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// Enforce a maximum width for cases when glamour lines run long.
+	// For now, truncate long lines in Glamour that would otherwise break the
+	// layout when wrapping. This is very likely due to #43 in Reflow, which
+	// has to do with a bug in the way lines longer than the given width are
+	// wrapped.
 	//
-	// TODO: This should utlimately be implemented as a Glamour option.
-	mdt = wrap.String(wordwrap.String((mdt), w), w)
+	//     https://github.com/muesli/reflow/issues/43
+	//
+	// TODO: solve this upstream in Glamour/Reflow.
+	mdt = lipgloss.NewStyle().MaxWidth(w).Render(mdt)
 	return mdt, nil
 }
 
