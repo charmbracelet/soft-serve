@@ -117,11 +117,15 @@ func (b Bubble) headerView() string {
 	} else {
 		note = fmt.Sprintf("git clone %s", b.sshAddress())
 	}
-	noteStyle := b.styles.RepoNote.Copy().Width(
-		b.width - b.widthMargin - lipgloss.Width(title) -
-			b.styles.RepoTitleBox.GetHorizontalFrameSize(),
-	)
-	note = noteStyle.Render(note)
+	noteWidth := b.width -
+		b.widthMargin -
+		lipgloss.Width(title) -
+		b.styles.RepoTitleBox.GetHorizontalFrameSize()
+	// Hard-wrap the clone command only, without the usual word-wrapping. since
+	// a long repo name isn't going to be a series of space-separated "words",
+	// we'll always want it to be perfectly hard-wrapped.
+	note = wrap.String(note, noteWidth-b.styles.RepoNote.GetHorizontalFrameSize())
+	note = b.styles.RepoNote.Copy().Width(noteWidth).Render(note)
 
 	// Render borders on name and command
 	height := max(lipgloss.Height(title), lipgloss.Height(note))
