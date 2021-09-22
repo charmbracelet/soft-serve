@@ -35,6 +35,9 @@ func (b *Bubble) setupCmd() tea.Msg {
 			mes = append(mes, MenuEntry{Name: r.Name, Repo: r.Name})
 		}
 	}
+	if len(mes) == 0 {
+		return errMsg{fmt.Errorf("no repos found")}
+	}
 	var tmplConfig *Config
 	for _, me := range mes {
 		if me.Repo == "config" {
