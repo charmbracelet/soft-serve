@@ -22,9 +22,7 @@ func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) 
 	}
 	appCfg, err := loadConfig(rs)
 	if err != nil {
-		if err != nil {
-			log.Printf("cannot load config: %s", err)
-		}
+		log.Printf("cannot load config: %s", err)
 	}
 
 	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
@@ -38,9 +36,7 @@ func SessionHandler(reposPath string, repoPoll time.Duration) func(ssh.Session) 
 			}
 			cfg, err := loadConfig(rs)
 			if err != nil {
-				if err != nil {
-					log.Printf("cannot load config: %s", err)
-				}
+				log.Printf("cannot load config: %s", err)
 			}
 			appCfg = cfg
 			log.Printf("Repo bubble loaded in %s", time.Since(ct))
@@ -70,11 +66,11 @@ func loadConfig(rs *git.RepoSource) (*Config, error) {
 	cfg.RepoSource = rs
 	cr, err := rs.GetRepo("config")
 	if err != nil {
-		return nil, fmt.Errorf("cannot load config repo: %s", err)
+		return nil, err
 	}
 	cs, err := cr.LatestFile("config.json")
 	if err != nil {
-		return nil, fmt.Errorf("cannot load config.json: %s", err)
+		return nil, err
 	}
 	err = json.Unmarshal([]byte(cs), cfg)
 	if err != nil {
