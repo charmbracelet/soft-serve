@@ -19,6 +19,9 @@ func (e errMsg) Error() string {
 }
 
 func (b *Bubble) setupCmd() tea.Msg {
+	if b.config == nil || b.config.RepoSource == nil {
+		return errMsg{err: fmt.Errorf("config not set")}
+	}
 	ct := time.Now()
 	lipgloss.SetColorProfile(termenv.ANSI256)
 	b.repos = b.repoSource.AllRepos()
