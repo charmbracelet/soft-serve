@@ -61,12 +61,16 @@ type Bubble struct {
 }
 
 func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {
+	var repoSource *git.RepoSource = nil
+	if cfg != nil {
+		repoSource = cfg.RepoSource
+	}
 	b := &Bubble{
 		config:      cfg,
 		styles:      style.DefaultStyles(),
 		width:       sCfg.Width,
 		height:      sCfg.Height,
-		repoSource:  cfg.RepoSource,
+		repoSource:  repoSource,
 		repoMenu:    make([]MenuEntry, 0),
 		boxes:       make([]tea.Model, 2),
 		initialRepo: sCfg.InitialRepo,
@@ -156,7 +160,11 @@ func (b *Bubble) viewForBox(i int) string {
 
 func (b Bubble) headerView() string {
 	w := b.width - b.styles.App.GetHorizontalFrameSize()
-	return b.styles.Header.Copy().Width(w).Render(b.config.Name)
+	name := ""
+	if b.config != nil {
+		name = b.config.Name
+	}
+	return b.styles.Header.Copy().Width(w).Render(name)
 }
 
 func (b Bubble) footerView() string {
