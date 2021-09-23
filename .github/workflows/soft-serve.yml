@@ -8,12 +8,6 @@ on:
 jobs:
   softserve:
     runs-on: ubuntu-latest
-    env:
-      CHARM_SOFT_SERVE_KEY: "${{ secrets.CHARM_SOFT_SERVE_KEY }}"
-      SERVER: beta.charm.sh
-      SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-      PUSH_TO: "soft-serve"
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -21,16 +15,8 @@ jobs:
           fetch-depth: 0
 
       - name: Push to Soft-Serve
-        run: |
-          # Add ssh key
-          mkdir -p ~/.ssh
-          ssh-keyscan $SERVER >> ~/.ssh/known_hosts
-          echo "$CHARM_SOFT_SERVE_KEY" > ~/.ssh/charm_soft_serve_id_rsa
-          chmod 0600 ~/.ssh/charm_soft_serve_id_rsa
-          eval "$(ssh-agent -a $SSH_AUTH_SOCK)"
-          ssh-add ~/.ssh/charm_soft_serve_id_rsa
-          # Add remote
-          git remote add soft-serve ssh://$SERVER/$PUSH_TO
-          # Push to soft-serve
-          git push -f soft-serve HEAD:master
-          rm -rf ~/.ssh/charm_soft_serve_id_rsa
+        uses: charmbracelet/soft-serve-action@v1
+        with:
+          server: "beta.charm.sh"
+          ssh-key: "${{ secrets.CHARM_SOFT_SERVE_KEY }}"
+          name: "soft-serve"
