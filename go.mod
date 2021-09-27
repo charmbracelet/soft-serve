@@ -2,8 +2,6 @@ module github.com/charmbracelet/soft
 
 go 1.17
 
-replace github.com/charmbracelet/charm => ../charm
-
 replace github.com/charmbracelet/wish => ../wish
 
 require (
