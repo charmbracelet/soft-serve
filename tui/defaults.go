@@ -2,6 +2,7 @@ package tui
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"soft-serve/git"
 
@@ -46,22 +47,33 @@ func createDefaultConfigRepo(rs *git.RepoSource) error {
 	}
 	_, err = rs.GetRepo(cn)
 	if err == git.ErrMissingRepo {
-		cr, err := rs.InitRepo(cn, false)
+		tmp, err := os.MkdirTemp("", "soft-serve")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(tmp)
+		trp := filepath.Join(tmp, cn)
+		rp := filepath.Join(rs.Path, cn)
+		err = os.MkdirAll(trp, 0700)
+		if err != nil {
+			return err
+		}
+		cr, err := gg.PlainInit(trp, false)
 		if err != nil {
 			return err
 		}
 
-		rp := filepath.Join(rs.Path, cn, "README.md")
-		err = createFile(rp, defaultReadme)
+		rf := filepath.Join(trp, "README.md")
+		err = createFile(rf, defaultReadme)
 		if err != nil {
 			return err
 		}
-		cp := filepath.Join(rs.Path, cn, "config.json")
-		err = createFile(cp, defaultConfig)
+		cf := filepath.Join(trp, "config.json")
+		err = createFile(cf, defaultConfig)
 		if err != nil {
 			return err
 		}
-		wt, err := cr.Repository.Worktree()
+		wt, err := cr.Worktree()
 		if err != nil {
 			return err
 		}
@@ -80,6 +92,23 @@ func createDefaultConfigRepo(rs *git.RepoSource) error {
 				Email: "vt100@charm.sh",
 			},
 		})
+		if err != nil {
+			return err
+		}
+		gr, err := gg.PlainClone(rp, true, &gg.CloneOptions{
+			URL: trp,
+		})
+		if err != nil {
+			return err
+		}
+		err = gr.DeleteRemote("origin")
+		if err != nil {
+			return err
+		}
+		// Make sure we generate info/refs file
+		c := exec.Command("git", "update-server-info")
+		c.Dir = rp
+		err = c.Run()
 		if err != nil {
 			return err
 		}
