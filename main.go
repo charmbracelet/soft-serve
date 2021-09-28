@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"soft-serve/git"
 	"soft-serve/tui"
 	"time"
 
@@ -41,6 +42,16 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	h, err := git.NewHTTPServer(cfg.RepoPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	go func() {
+		err = h.Start()
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}()
 	log.Printf("Starting SSH server on %s:%d\n", cfg.Host, cfg.Port)
 	err = s.ListenAndServe()
 	if err != nil {
