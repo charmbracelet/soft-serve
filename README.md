@@ -1,31 +1,80 @@
-# Soft-Serve
+# Soft Serve
 
-Distribute your software on the command line with SSH and Git.
+A tasty Git server. Self-hosted with a built in SSH powered TUI.
 
-## What is it
+## What is it?
 
-Soft-Serve is a SSH server that hosts a Git server and interactive TUI built from
-the repos you push to it. Authors can easily push their projects to Soft-Serve by
-adding it as a remote and users can clone repos from Soft-Serve and stay up to
-date with the TUI as you push commits.
+Soft Serve is a Git server that runs its own SSH service, allows repo creation
+on first push, is configured by cloning a `config` repo and provides a TUI
+accessible to anyone over SSH without having to worry about setting up accounts
+on the host machine. Give it a shot!
+
+```
+ssh beta.charm.sh
+```
+
+## Installing / Building
+
+The Soft Serve command is called `soft`. You can build it with `go`.
+
+```
+cd cmd/soft
+go build
+```
+
+## Setting up a server
+
+Make sure `git` is installed, then run `soft`.
+
+## Configuring
+
+When Soft Serve is run for the first time, it creates a configuration repo that
+contains the README displayed for Home and user access control. By default the
+`config` repo is publicly writable, so be sure to setup your access as desired.
+You can also set the `SOFT_SERVE_AUTH_KEY` environment variable and it will
+restrict access to that initial public key.
+
+```
+git clone ssh://localhost:23231/config
+```
 
 ## Pushing a repo
 
-1. Run `soft-serve`
-2. Add soft-serve as a remote on any git repo: `git remote add soft-serve ssh://git@localhost:23231/soft-serve`
-3. Push stuff: `git push soft-serve main`
+You can add your Soft Serve server as a remote to any existing repo.
 
-## Cloning a repo
+```
+git remote add soft ssh://localhost:23231/REPO
+```
 
-1. You'll need to know the name (for now, it's not listed anywhere): `git clone ssh://git@localhost:23231/soft-serve`
+After you've added the remote, you can push. If it's a new repo, it will be
+automatically added to the server.
 
-## Soft-Serve TUI
+```
+git push soft main
+```
 
-If you `ssh localhost -p 23231` you'll see a list of the latest commits to the repos you've pushed.
+## Soft Serve TUI
 
-## Auth
+Soft Serve provides a TUI over SSH to browse repos, view READMEs, and grab
+clone commands.
 
-By default anyone can push or pull from the Git repositories. This is mainly
-for testing, you can also whitelist public keys that have Git write access by
-creating an authorized keys file with the public key for each author. By
-default this file is expected to be at `./.ssh/soft_serve_git_authorized_keys`.
+```
+ssh localhost -p 23231
+```
+
+It's also possible to direct link to a specific repo.
+
+```
+ssh localhost -t -p 23231 REPO
+```
+
+### Server Options
+
+You have control over the various options via the following server environment
+variables:
+
+* `SOFT_SERVE_PORT` - SSH listen port (_default 23231_)
+* `SOFT_SERVE_HOST` - SSH listen host (_default 0.0.0.0_)
+* `SOFT_SERVE_KEY_PATH` - SSH host key-pair path (_default .ssh/soft_serve_server_ed25519_)
+* `SOFT_SERVE_REPO_PATH` - Path where repos are stored (_default .repos_)
+* `SOFT_SERVE_AUTH_KEY` - Initial admin public key (_default ""_)
