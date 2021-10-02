@@ -33,16 +33,9 @@ func main() {
 		log.Fatalln(err)
 	}
 	rs := git.NewRepoSource(scfg.RepoPath)
-	if scfg.InitKey == "" {
-		cfg, err = config.NewConfig(scfg.Host, scfg.Port, true, "", rs)
-		if err != nil {
-			log.Fatalln(err)
-		}
-	} else {
-		cfg, err = config.NewConfig(scfg.Host, scfg.Port, false, scfg.InitKey, rs)
-		if err != nil {
-			log.Fatalln(err)
-		}
+	cfg, err = config.NewConfig(scfg.Host, scfg.Port, scfg.InitKey, rs)
+	if err != nil {
+		log.Fatalln(err)
 	}
 	s, err := wish.NewServer(
 		ssh.PublicKeyAuth(cfg.PublicKeyHandler),

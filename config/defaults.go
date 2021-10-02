@@ -8,7 +8,7 @@ host: %s
 port: %d
 
 # Set the access level for anonymous users. Options are: read-write, read-only and no-access
-anon-access: %v
+anon-access: %s
 
 # Allow read only even if they don't have private keys, any password will work
 allow-no-keys: false

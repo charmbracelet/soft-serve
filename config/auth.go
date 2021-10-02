@@ -11,7 +11,7 @@ func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) gm.AccessLevel {
 }
 
 func (cfg *Config) PasswordHandler(ctx ssh.Context, password string) bool {
-	return cfg.AnonReadOnly && cfg.AllowNoKeys
+	return (cfg.AnonAccess != "no-access") && cfg.AllowNoKeys
 }
 
 func (cfg *Config) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {

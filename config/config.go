@@ -16,14 +16,14 @@ import (
 )
 
 type Config struct {
-	Name         string `yaml:"name"`
-	Host         string `yaml:"host"`
-	Port         int    `yaml:"port"`
-	AnonReadOnly bool   `yaml:"anon-access"`
-	AllowNoKeys  bool   `yaml:"allow-no-keys"`
-	Users        []User `yaml:"users"`
-	Repos        []Repo `yaml:"repos"`
-	Source       *git.RepoSource
+	Name        string `yaml:"name"`
+	Host        string `yaml:"host"`
+	Port        int    `yaml:"port"`
+	AnonAccess  string `yaml:"anon-access"`
+	AllowNoKeys bool   `yaml:"allow-no-keys"`
+	Users       []User `yaml:"users"`
+	Repos       []Repo `yaml:"repos"`
+	Source      *git.RepoSource
 }
 
 type User struct {
@@ -39,21 +39,25 @@ type Repo struct {
 	Note string `yaml:"note"`
 }
 
-func NewConfig(host string, port int, anon bool, pk string, rs *git.RepoSource) (*Config, error) {
+func NewConfig(host string, port int, pk string, rs *git.RepoSource) (*Config, error) {
+	var anonAccess string
+	var yamlUsers string
+	var displayHost string
 	cfg := &Config{}
 	cfg.Host = host
 	cfg.Port = port
-	cfg.AnonReadOnly = anon
 	cfg.Source = rs
-
-	var yamlUsers string
-	var h string
-	if host == "" {
-		h = "localhost"
+	if pk == "" {
+		anonAccess = "read-write"
 	} else {
-		h = host
+		anonAccess = "no-access"
 	}
-	yamlConfig := fmt.Sprintf(defaultConfig, h, port, anon)
+	if host == "" {
+		displayHost = "localhost"
+	} else {
+		displayHost = host
+	}
+	yamlConfig := fmt.Sprintf(defaultConfig, displayHost, port, anonAccess)
 	if pk != "" {
 		yamlUsers = fmt.Sprintf(hasKeyUserConfig, pk)
 	} else {
