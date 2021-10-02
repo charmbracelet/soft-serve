@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"soft-serve/config"
 	"soft-serve/git"
 	"soft-serve/tui/bubbles/repo"
 	"soft-serve/tui/bubbles/selection"
@@ -22,13 +23,10 @@ const (
 	quitState
 )
 
-type Config struct {
-	Name         string      `json:"name"`
-	Host         string      `json:"host"`
-	Port         int64       `json:"port"`
-	ShowAllRepos bool        `json:"show_all_repos"`
-	Menu         []MenuEntry `json:"menu"`
-	RepoSource   *git.RepoSource
+type SessionConfig struct {
+	Width       int
+	Height      int
+	InitialRepo string
 }
 
 type MenuEntry struct {
@@ -38,20 +36,13 @@ type MenuEntry struct {
 	bubble *repo.Bubble
 }
 
-type SessionConfig struct {
-	Width       int
-	Height      int
-	InitialRepo string
-}
-
 type Bubble struct {
-	config      *Config
+	config      *config.Config
 	styles      *style.Styles
 	state       sessionState
 	error       string
 	width       int
 	height      int
-	repoSource  *git.RepoSource
 	initialRepo string
 	repoMenu    []MenuEntry
 	repos       []*git.Repo
@@ -60,17 +51,12 @@ type Bubble struct {
 	repoSelect  *selection.Bubble
 }
 
-func NewBubble(cfg *Config, sCfg *SessionConfig) *Bubble {
-	var repoSource *git.RepoSource = nil
-	if cfg != nil {
-		repoSource = cfg.RepoSource
-	}
+func NewBubble(cfg *config.Config, sCfg *SessionConfig) *Bubble {
 	b := &Bubble{
 		config:      cfg,
 		styles:      style.DefaultStyles(),
 		width:       sCfg.Width,
 		height:      sCfg.Height,
-		repoSource:  repoSource,
 		repoMenu:    make([]MenuEntry, 0),
 		boxes:       make([]tea.Model, 2),
 		initialRepo: sCfg.InitialRepo,

@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"log"
+	"soft-serve/config"
 	"soft-serve/tui/bubbles/repo"
 	"soft-serve/tui/bubbles/selection"
 	"time"
@@ -19,29 +20,27 @@ func (e errMsg) Error() string {
 }
 
 func (b *Bubble) setupCmd() tea.Msg {
-	if b.config == nil || b.config.RepoSource == nil {
+	if b.config == nil || b.config.Source == nil {
 		return errMsg{err: fmt.Errorf("config not set")}
 	}
 	ct := time.Now()
 	lipgloss.SetColorProfile(termenv.ANSI256)
-	b.repos = b.repoSource.AllRepos()
-	mes := append([]MenuEntry{}, b.config.Menu...)
+	b.repos = b.config.Source.AllRepos()
+	mes := append([]MenuEntry{}, b.repoMenu...)
 	rs := make([]string, 0)
-	if b.config.ShowAllRepos {
-	OUTER:
-		for _, r := range b.repos {
-			for _, me := range mes {
-				if r.Name == me.Repo {
-					continue OUTER
-				}
+OUTER:
+	for _, r := range b.repos {
+		for _, me := range mes {
+			if r.Name == me.Repo {
+				continue OUTER
 			}
-			mes = append(mes, MenuEntry{Name: r.Name, Repo: r.Name})
 		}
+		mes = append(mes, MenuEntry{Name: r.Name, Repo: r.Name})
 	}
 	if len(mes) == 0 {
 		return errMsg{fmt.Errorf("no repos found")}
 	}
-	var tmplConfig *Config
+	var tmplConfig *config.Config
 	for _, me := range mes {
 		if me.Repo == "config" {
 			tmplConfig = b.config
@@ -53,7 +52,7 @@ func (b *Bubble) setupCmd() tea.Msg {
 			lipgloss.Height(b.footerView()) +
 			b.styles.RepoBody.GetVerticalFrameSize() +
 			b.styles.App.GetVerticalMargins()
-		rb := repo.NewBubble(b.repoSource, me.Repo, b.styles, width, boxLeftWidth, b.height, heightMargin, tmplConfig)
+		rb := repo.NewBubble(b.config.Source, me.Repo, b.styles, width, boxLeftWidth, b.height, heightMargin, tmplConfig)
 		rb.Host = b.config.Host
 		rb.Port = b.config.Port
 		initCmd := rb.Init()

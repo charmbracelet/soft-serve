@@ -46,7 +46,7 @@ type Bubble struct {
 	// solution would be to (rename and) move this Bubble into the parent
 	// package.
 	Host string
-	Port int64
+	Port int
 }
 
 func NewBubble(rs *git.RepoSource, name string, styles *style.Styles, width, wm, height, hm int, tmp interface{}) *Bubble {
