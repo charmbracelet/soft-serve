@@ -1,13 +1,14 @@
 package config
 
 import (
+	"log"
+
 	gm "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
 )
 
 func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) gm.AccessLevel {
-	// TODO: check yaml for access rules
-	return gm.ReadWriteAccess
+	return cfg.accessForKey(repo, pk)
 }
 
 func (cfg *Config) PasswordHandler(ctx ssh.Context, password string) bool {
@@ -15,6 +16,39 @@ func (cfg *Config) PasswordHandler(ctx ssh.Context, password string) bool {
 }
 
 func (cfg *Config) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
-	// TODO: check yaml for access rules
+	if cfg.accessForKey("", pk) == gm.NoAccess {
+		return false
+	}
 	return true
+}
+
+func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
+	for _, u := range cfg.Users {
+		apk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(u.PublicKey))
+		if err != nil {
+			log.Printf("error: malformed authorized key: '%s'", u.PublicKey)
+			return gm.NoAccess
+		}
+		if ssh.KeysEqual(pk, apk) {
+			if u.Admin {
+				return gm.AdminAccess
+			}
+			for _, r := range u.CollabRepos {
+				if repo == r {
+					return gm.ReadWriteAccess
+				}
+			}
+			return gm.ReadOnlyAccess
+		}
+	}
+	switch cfg.AnonAccess {
+	case "no-access":
+		return gm.NoAccess
+	case "read-only":
+		return gm.ReadOnlyAccess
+	case "read-write":
+		return gm.ReadWriteAccess
+	default:
+		return gm.NoAccess
+	}
 }

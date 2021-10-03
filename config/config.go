@@ -29,7 +29,7 @@ type Config struct {
 type User struct {
 	Name        string   `yaml:"name"`
 	Admin       bool     `yaml:"admin"`
-	PublicKey   string   `yaml:"pk"`
+	PublicKey   string   `yaml:"public-key"`
 	CollabRepos []string `yaml:"collab_repos"`
 }
 
@@ -72,13 +72,13 @@ func NewConfig(host string, port int, pk string, rs *git.RepoSource) (*Config, e
 }
 
 func (cfg *Config) Pushed(repo string, pk ssh.PublicKey) {
-	err := cfg.Reload()
+	err := cfg.reload()
 	if err != nil {
 		log.Printf("error reloading after push: %s", err)
 	}
 }
 
-func (cfg *Config) Reload() error {
+func (cfg *Config) reload() error {
 	err := cfg.Source.LoadRepos()
 	if err != nil {
 		return err
@@ -157,12 +157,11 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		err = rs.LoadRepos()
 		if err != nil {
 			return err
 		}
 	} else if err != nil {
 		return err
 	}
-	return nil
+	return cfg.reload()
 }
