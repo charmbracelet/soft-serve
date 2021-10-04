@@ -1,7 +1,3 @@
-soft-serve
-.ssh
-.repos
-dist
-.terraform*
-*.tfstate*
-*auto.tfvars
+cmd/soft/soft
+cmd/soft/.ssh
+cmd/soft/.repos

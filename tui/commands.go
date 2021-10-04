@@ -3,13 +3,13 @@ package tui
 import (
 	"fmt"
 	"log"
-	"soft-serve/config"
-	"soft-serve/tui/bubbles/repo"
-	"soft-serve/tui/bubbles/selection"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft/config"
+	"github.com/charmbracelet/soft/tui/bubbles/repo"
+	"github.com/charmbracelet/soft/tui/bubbles/selection"
 	"github.com/muesli/termenv"
 )
 

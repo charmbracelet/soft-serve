@@ -1,4 +1,4 @@
-module soft-serve
+module github.com/charmbracelet/soft
 
 go 1.17
 

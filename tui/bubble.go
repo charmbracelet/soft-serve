@@ -2,15 +2,15 @@ package tui
 
 import (
 	"fmt"
-	"soft-serve/config"
-	"soft-serve/git"
-	"soft-serve/tui/bubbles/repo"
-	"soft-serve/tui/bubbles/selection"
-	"soft-serve/tui/style"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft/config"
+	"github.com/charmbracelet/soft/git"
+	"github.com/charmbracelet/soft/tui/bubbles/repo"
+	"github.com/charmbracelet/soft/tui/bubbles/selection"
+	"github.com/charmbracelet/soft/tui/style"
 )
 
 type sessionState int

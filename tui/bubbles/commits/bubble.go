@@ -1,7 +1,7 @@
 package commits
 
 import (
-	"soft-serve/git"
+	"soft-serve/server/git"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"

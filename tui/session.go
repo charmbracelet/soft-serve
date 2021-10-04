@@ -2,9 +2,9 @@ package tui
 
 import (
 	"fmt"
-	"soft-serve/config"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/soft/config"
 	"github.com/gliderlabs/ssh"
 )
 

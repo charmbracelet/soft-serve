@@ -1,11 +1,11 @@
 package selection
 
 import (
-	"soft-serve/tui/style"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft/tui/style"
 	"github.com/muesli/reflow/truncate"
 )
 
