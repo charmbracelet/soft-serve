@@ -44,7 +44,7 @@ func main() {
 		wish.WithHostKeyPath(scfg.KeyPath),
 		wish.WithMiddlewares(
 			bm.Middleware(tui.SessionHandler(cfg)),
-			gm.MiddlewareWithPushCallback(scfg.RepoPath, cfg, cfg.Pushed),
+			gm.Middleware(scfg.RepoPath, cfg),
 			lm.Middleware(),
 		),
 	)

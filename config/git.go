@@ -7,6 +7,18 @@ import (
 	"github.com/gliderlabs/ssh"
 )
 
+func (cfg *Config) Push(repo string, pk ssh.PublicKey) {
+	log.Printf("git push: %s", repo)
+	err := cfg.reload()
+	if err != nil {
+		log.Printf("error reloading after push: %s", err)
+	}
+}
+
+func (cfg *Config) Fetch(repo string, pk ssh.PublicKey) {
+	log.Printf("git fetch: %s", repo)
+}
+
 func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) gm.AccessLevel {
 	return cfg.accessForKey(repo, pk)
 }

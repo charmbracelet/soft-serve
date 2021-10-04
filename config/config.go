@@ -1,8 +1,6 @@
 package config
 
 import (
-	"log"
-
 	"gopkg.in/yaml.v2"
 
 	"fmt"
@@ -10,7 +8,6 @@ import (
 	"path/filepath"
 	"soft-serve/git"
 
-	"github.com/gliderlabs/ssh"
 	gg "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
@@ -30,7 +27,7 @@ type User struct {
 	Name        string   `yaml:"name"`
 	Admin       bool     `yaml:"admin"`
 	PublicKey   string   `yaml:"public-key"`
-	CollabRepos []string `yaml:"collab_repos"`
+	CollabRepos []string `yaml:"collab-repos"`
 }
 
 type Repo struct {
@@ -69,13 +66,6 @@ func NewConfig(host string, port int, pk string, rs *git.RepoSource) (*Config, e
 		return nil, err
 	}
 	return cfg, nil
-}
-
-func (cfg *Config) Pushed(repo string, pk ssh.PublicKey) {
-	err := cfg.reload()
-	if err != nil {
-		log.Printf("error reloading after push: %s", err)
-	}
 }
 
 func (cfg *Config) reload() error {
