@@ -38,8 +38,13 @@ func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
 					return gm.ReadWriteAccess
 				}
 			}
-			return gm.ReadOnlyAccess
+			if repo != "config" {
+				return gm.ReadOnlyAccess
+			}
 		}
+	}
+	if repo == "config" && (cfg.AnonAccess != "read-write") {
+		return gm.NoAccess
 	}
 	switch cfg.AnonAccess {
 	case "no-access":
