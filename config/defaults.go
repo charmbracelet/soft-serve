@@ -1,6 +1,6 @@
 package config
 
-const defaultReadme = "# Soft Serve\n\n Welcome! You can configure your Soft Serve server by cloning this repo and pushing changes.\n\n## Repos\n\n{{ range .Repos }}* {{ .Name }}{{ if .Note }} - {{ .Note }} {{ end }}\n  - `git clone ssh://{{$.Host}}:{{$.Port}}/{{.Repo}}`\n{{ end }}"
+const defaultReadme = "# Soft Serve\n\n Welcome! You can configure your Soft Serve server by cloning this repo and pushing changes.\n\n```\ngit clone ssh://{{.Host}}:{{.Port}}/config\n```"
 
 const defaultConfig = `name: Soft Serve
 host: %s
@@ -16,6 +16,7 @@ allow-no-keys: false
 repos:
   - name: Home
     repo: config
+    private: true
     note: "Configuration and content repo for this server"`
 
 const hasKeyUserConfig = `

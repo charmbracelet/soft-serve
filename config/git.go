@@ -35,6 +35,10 @@ func (cfg *Config) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
 }
 
 func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
+	private := cfg.isPrivate(repo)
+	if repo == "config" {
+		private = true
+	}
 	for _, u := range cfg.Users {
 		apk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(u.PublicKey))
 		if err != nil {
@@ -50,12 +54,12 @@ func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
 					return gm.ReadWriteAccess
 				}
 			}
-			if repo != "config" {
+			if !private {
 				return gm.ReadOnlyAccess
 			}
 		}
 	}
-	if repo == "config" && (cfg.AnonAccess != "read-write") {
+	if private && (cfg.AnonAccess != "read-write") {
 		return gm.NoAccess
 	}
 	switch cfg.AnonAccess {

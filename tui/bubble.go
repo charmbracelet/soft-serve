@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/soft/tui/bubbles/repo"
 	"github.com/charmbracelet/soft/tui/bubbles/selection"
 	"github.com/charmbracelet/soft/tui/style"
+	"github.com/gliderlabs/ssh"
 )
 
 type sessionState int
@@ -27,6 +28,7 @@ type SessionConfig struct {
 	Width       int
 	Height      int
 	InitialRepo string
+	Session     ssh.Session
 }
 
 type MenuEntry struct {
@@ -49,6 +51,7 @@ type Bubble struct {
 	boxes       []tea.Model
 	activeBox   int
 	repoSelect  *selection.Bubble
+	session     ssh.Session
 }
 
 func NewBubble(cfg *config.Config, sCfg *SessionConfig) *Bubble {
@@ -60,6 +63,7 @@ func NewBubble(cfg *config.Config, sCfg *SessionConfig) *Bubble {
 		repoMenu:    make([]MenuEntry, 0),
 		boxes:       make([]tea.Model, 2),
 		initialRepo: sCfg.InitialRepo,
+		session:     sCfg.Session,
 	}
 	b.state = startState
 	return b

@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/soft/config"
 	br "github.com/charmbracelet/soft/tui/bubbles/repo"
 	"github.com/charmbracelet/soft/tui/bubbles/selection"
+	gm "github.com/charmbracelet/wish/git"
 	"github.com/muesli/termenv"
 )
 
@@ -61,18 +62,20 @@ func (b *Bubble) setupCmd() tea.Msg {
 
 func (b *Bubble) menuEntriesFromSource() ([]MenuEntry, error) {
 	mes := make([]MenuEntry, 0)
-	for _, r := range b.config.Repos {
-		me, err := b.newMenuEntry(r.Name, r.Repo)
-		if err != nil {
-			return nil, err
-		}
-		mes = append(mes, me)
-	}
 	rs := b.config.Source.AllRepos()
 OUTER:
 	for _, r := range rs {
-		for _, me := range mes {
-			if r.Name == me.Repo {
+		acc := b.config.AuthRepo(r.Name, b.session.PublicKey())
+		if acc == gm.NoAccess && r.Name != "config" {
+			continue
+		}
+		for _, cr := range b.config.Repos {
+			if r.Name == cr.Repo {
+				me, err := b.newMenuEntry(cr.Name, cr.Repo)
+				if err != nil {
+					return nil, err
+				}
+				mes = append(mes, me)
 				continue OUTER
 			}
 		}
@@ -87,6 +90,9 @@ OUTER:
 
 func (b *Bubble) newMenuEntry(name string, repo string) (MenuEntry, error) {
 	var tmplConfig *config.Config
+	if repo == "config" {
+		tmplConfig = b.config
+	}
 	me := MenuEntry{Name: name, Repo: repo}
 	width := b.width
 	boxLeftWidth := b.styles.Menu.GetWidth() + b.styles.Menu.GetHorizontalFrameSize()
@@ -95,9 +101,6 @@ func (b *Bubble) newMenuEntry(name string, repo string) (MenuEntry, error) {
 		lipgloss.Height(b.footerView()) +
 		b.styles.RepoBody.GetVerticalFrameSize() +
 		b.styles.App.GetVerticalMargins()
-	if repo == "config" {
-		tmplConfig = b.config
-	}
 	rb := br.NewBubble(
 		b.config.Source,
 		me.Repo,

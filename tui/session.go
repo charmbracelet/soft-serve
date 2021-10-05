@@ -11,7 +11,7 @@ import (
 func SessionHandler(cfg *config.Config) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
 	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 		cmd := s.Command()
-		scfg := &SessionConfig{}
+		scfg := &SessionConfig{Session: s}
 		switch len(cmd) {
 		case 0:
 			scfg.InitialRepo = ""

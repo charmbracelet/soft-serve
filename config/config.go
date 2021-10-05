@@ -31,9 +31,10 @@ type User struct {
 }
 
 type Repo struct {
-	Name string `yaml:"name"`
-	Repo string `yaml:"repo"`
-	Note string `yaml:"note"`
+	Name    string `yaml:"name"`
+	Repo    string `yaml:"repo"`
+	Note    string `yaml:"note"`
+	Private bool   `yaml:"private"`
 }
 
 func NewConfig(host string, port int, pk string, rs *git.RepoSource) (*Config, error) {
@@ -154,4 +155,13 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		return err
 	}
 	return cfg.reload()
+}
+
+func (cfg *Config) isPrivate(repo string) bool {
+	for _, r := range cfg.Repos {
+		if r.Repo == repo {
+			return r.Private
+		}
+	}
+	return false
 }
