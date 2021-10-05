@@ -9,7 +9,7 @@ port: %d
 # Set the access level for anonymous users. Options are: read-write, read-only and no-access
 anon-access: %s
 
-# Allow read only even if they don't have private keys, any password will work
+# Allow users with no private keys read-only access. Any password is accepted.
 allow-no-keys: false
 
 # Customize repo display in menu
@@ -19,6 +19,7 @@ repos:
     note: "Configuration and content repo for this server"`
 
 const hasKeyUserConfig = `
+
 # Users can read all repos, and push to collab-repos, admin can push to all repos
 users:
   - name: admin
@@ -30,12 +31,12 @@ const defaultUserConfig = `
 # users:
 #   - name: admin
 #     admin: true
-#     public-key: |
+#     public-key:
 #       KEY TEXT`
 
 const exampleUserConfig = `
-#   - name: little-buddy
+#   - name: Example User
 #     collab-repos:
-#       - soft-serve
-#     public-key: |
+#       - REPO
+#     public-key:
 #       KEY TEXT`

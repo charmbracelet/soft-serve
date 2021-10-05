@@ -71,7 +71,6 @@ func (b *Bubble) Init() tea.Cmd {
 
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
-	// Always allow state, error, info, window resize and quit messages
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
