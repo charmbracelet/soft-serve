@@ -6,13 +6,13 @@ const defaultConfig = `name: Soft Serve
 host: %s
 port: %d
 
-# Set the access level for anonymous users. Options are: read-write, read-only and no-access
+# Set the access level for anonymous users. Options are: read-write, read-only and no-access.
 anon-access: %s
 
-# Allow users with no private keys read-only access. Any password is accepted.
+# Grant read-only access to users without private keys. Any password will be accepted.
 allow-keyless: false
 
-# Customize repo display in menu
+# Customize repo display in the menu.
 repos:
   - name: Home
     repo: config
@@ -21,7 +21,7 @@ repos:
 
 const hasKeyUserConfig = `
 
-# Users can read all repos, and push to collab-repos, admin can push to all repos
+# Users can read all repos and push to collab-repos. Admins have full access to all repos.
 users:
   - name: admin
     admin: true
