@@ -10,7 +10,7 @@ port: %d
 anon-access: %s
 
 # Allow users with no private keys read-only access. Any password is accepted.
-allow-no-keys: false
+allow-keyless: false
 
 # Customize repo display in menu
 repos:

@@ -13,14 +13,14 @@ import (
 )
 
 type Config struct {
-	Name        string `yaml:"name"`
-	Host        string `yaml:"host"`
-	Port        int    `yaml:"port"`
-	AnonAccess  string `yaml:"anon-access"`
-	AllowNoKeys bool   `yaml:"allow-no-keys"`
-	Users       []User `yaml:"users"`
-	Repos       []Repo `yaml:"repos"`
-	Source      *git.RepoSource
+	Name         string `yaml:"name"`
+	Host         string `yaml:"host"`
+	Port         int    `yaml:"port"`
+	AnonAccess   string `yaml:"anon-access"`
+	AllowKeyless bool   `yaml:"allow-keyless"`
+	Users        []User `yaml:"users"`
+	Repos        []Repo `yaml:"repos"`
+	Source       *git.RepoSource
 }
 
 type User struct {
