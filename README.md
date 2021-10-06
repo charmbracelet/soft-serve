@@ -1,80 +1,87 @@
-# Soft Serve
+Soft Serve
+==========
 
-A tasty Git server. Self-hosted with a built in SSH powered TUI.
+A tasty Git server that runs its own SSH service. 🍦
 
-## What is it?
+* Configure with `git`
+* Create repos on demand with `git push`
+* Browse repos with an SSH-accessible TUI
+* Easy access control
+  - Allow/disallow anonymous access
+  - Add collaborators with SSH public keys
+  - Repos can be public or private
 
-Soft Serve is a Git server that runs its own SSH service, allows repo creation
-on first push, is configured by cloning a `config` repo and provides a TUI
-accessible to anyone over SSH without having to worry about setting up accounts
-on the host machine. Give it a shot!
+## What does it look like?
 
-```
-ssh beta.charm.sh
-```
+Just run `ssh beta.charm.sh` for an example.
 
-## Installing / Building
+## Building/installing
 
-The Soft Serve command is called `soft`. You can build it with `go`.
+The Soft Serve command is called `soft`. You can build and install it with
+`go`:
 
-```
-cd cmd/soft
-go build
+```bash
+git clone ssh://beta.charm.sh/soft-serve
+cd soft-serve/cmd/soft
+go install
 ```
 
 ## Setting up a server
 
-Make sure `git` is installed, then run `soft`.
+Make sure `git` is installed, then run `soft`. That’s it.
 
-## Configuring
+## Configuration
 
-When Soft Serve is run for the first time, it creates a configuration repo that
-contains the README displayed for Home and user access control. By default the
-`config` repo is publicly writable, so be sure to setup your access as desired.
-You can also set the `SOFT_SERVE_AUTH_KEY` environment variable and it will
-restrict access to that initial public key.
+When `soft` is run for the first time, it creates a configuration repo
+containing the main README displayed in the TUI as well as a config file for
+user access control.
 
 ```
 git clone ssh://localhost:23231/config
 ```
 
-## Pushing a repo
+The `config` repo is publicly writable by default, so be sure to setup your
+access as desired. You can also set the `SOFT_SERVE_INITIAL_ADMIN_KEY`
+environment variable before first run and it will restrict access to that
+initial public key until you configure things otherwise.
 
-You can add your Soft Serve server as a remote to any existing repo.
+## Pushing (and creating!) repos
+
+You can add your Soft Serve server as a remote to any existing repo:
 
 ```
 git remote add soft ssh://localhost:23231/REPO
 ```
 
-After you've added the remote, you can push. If it's a new repo, it will be
-automatically added to the server.
+After you’ve added the remote just go ahead and push. If the repo doesn’t exist
+on the server it’ll be created.
 
 ```
 git push soft main
 ```
 
-## Soft Serve TUI
+## The Soft Serve TUI
 
-Soft Serve provides a TUI over SSH to browse repos, view READMEs, and grab
-clone commands.
+Soft Serve serves a TUI over SSH for browsing repos, viewing READMEs, and
+grabbing clone commands:
 
 ```
 ssh localhost -p 23231
 ```
 
-It's also possible to direct link to a specific repo.
+It's also possible to “link” to a specific repo:
 
 ```
 ssh localhost -t -p 23231 REPO
 ```
 
-### Server Options
+### Server Settings
 
-You have control over the various options via the following server environment
-variables:
+In addition to the Git-based configuration above, there are a few
+environment-level settings:
 
-* `SOFT_SERVE_PORT` - SSH listen port (_default 23231_)
-* `SOFT_SERVE_HOST` - SSH listen host (_default 0.0.0.0_)
-* `SOFT_SERVE_KEY_PATH` - SSH host key-pair path (_default .ssh/soft_serve_server_ed25519_)
-* `SOFT_SERVE_REPO_PATH` - Path where repos are stored (_default .repos_)
-* `SOFT_SERVE_AUTH_KEY` - Initial admin public key (_default ""_)
+* `SOFT_SERVE_PORT`: SSH listen port (_default 23231_)
+* `SOFT_SERVE_HOST`: SSH listen host (_default 0.0.0.0_)
+* `SOFT_SERVE_KEY_PATH`: SSH host key-pair path (_default .ssh/soft_serve_server_ed25519_)
+* `SOFT_SERVE_REPO_PATH`: Path where repos are stored (_default .repos_)
+* `SOFT_SERVE_INITIAL_ADMIN_KEY`: The public key that will initially have admin access to repos (_default ""_). This must be set before `soft` runs for the first time and creates the `config` repo. If set after the `config` repo has been created, this setting has no effect.
