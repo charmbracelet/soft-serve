@@ -9,11 +9,11 @@ import (
 )
 
 type serverConfig struct {
-	Host     string `env:"SOFT_SERVE_HOST" default:""`
-	Port     int    `env:"SOFT_SERVE_PORT" default:"23231"`
-	KeyPath  string `env:"SOFT_SERVE_KEY_PATH" default:".ssh/soft_serve_server_ed25519"`
-	RepoPath string `env:"SOFT_SERVE_REPO_PATH" default:".repos"`
-	AuthKey  string `env:"SOFT_SERVE_AUTH_KEY" default:""`
+	Host            string `env:"SOFT_SERVE_HOST" default:""`
+	Port            int    `env:"SOFT_SERVE_PORT" default:"23231"`
+	KeyPath         string `env:"SOFT_SERVE_KEY_PATH" default:".ssh/soft_serve_server_ed25519"`
+	RepoPath        string `env:"SOFT_SERVE_REPO_PATH" default:".repos"`
+	InitialAdminKey string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY" default:""`
 }
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 		cfg.Port,
 		cfg.KeyPath,
 		cfg.RepoPath,
-		cfg.AuthKey,
+		cfg.InitialAdminKey,
 	)
 	log.Printf("Starting SSH server on %s:%d\n", cfg.Host, cfg.Port)
 	err = s.ListenAndServe()
