@@ -31,7 +31,7 @@ func NewServer(host string, port int, serverKeyPath string, repoPath string, aut
 		ssh.PasswordAuth(cfg.PasswordHandler),
 		wish.WithAddress(fmt.Sprintf("%s:%d", host, port)),
 		wish.WithHostKeyPath(serverKeyPath),
-		wish.WithMiddlewares(
+		wish.WithMiddleware(
 			bm.Middleware(tui.SessionHandler(cfg)),
 			gm.Middleware(repoPath, cfg),
 			lm.Middleware(),
