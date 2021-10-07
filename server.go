@@ -15,6 +15,29 @@ import (
 	"github.com/gliderlabs/ssh"
 )
 
+// Stats provides an interface that can be used to collect metrics about the server.
+// This can be hooked to the server's SessionRequestCallback to collect metrics.
+//
+// Example:
+// sts := NewStats() // Returns an implementation of Stats
+// s := soft.NewServer(...)
+// s.SessionRequestCallback = func(s ssh.Session, requestType string) bool {
+// 	cmd := s.Command()
+// .switch cmd[0] {
+//  case "git-receive-pack":
+//    sts.ReceivePack()
+// .default:
+// .  sts.Tui()
+//  }
+// 	return true
+// }
+type Stats interface {
+	Tui()
+	ReceivePack()
+	UploadPack()
+	UploadArchive()
+}
+
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
 // server key-pair will be created if none exists. An initial admin SSH public
 // key can be provided with authKey. If authKey is provided, access will be
