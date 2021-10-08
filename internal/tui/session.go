@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/soft/config"
+	"github.com/charmbracelet/soft/internal/config"
 	"github.com/gliderlabs/ssh"
 )
 

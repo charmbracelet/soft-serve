@@ -10,8 +10,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft/git"
-	"github.com/charmbracelet/soft/tui/style"
+	"github.com/charmbracelet/soft/internal/git"
+	"github.com/charmbracelet/soft/internal/tui/style"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/reflow/wrap"
 )

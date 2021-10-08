@@ -5,9 +5,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft/config"
-	br "github.com/charmbracelet/soft/tui/bubbles/repo"
-	"github.com/charmbracelet/soft/tui/bubbles/selection"
+	"github.com/charmbracelet/soft/internal/config"
+	br "github.com/charmbracelet/soft/internal/tui/bubbles/repo"
+	"github.com/charmbracelet/soft/internal/tui/bubbles/selection"
 	gm "github.com/charmbracelet/wish/git"
 	"github.com/muesli/termenv"
 )
