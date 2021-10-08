@@ -24,8 +24,8 @@ type Config struct {
 	KeyPath         string `env:"SOFT_SERVE_KEY_PATH" default:".ssh/soft_serve_server_ed25519"`
 	RepoPath        string `env:"SOFT_SERVE_REPO_PATH" default:".repos"`
 	InitialAdminKey string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY" default:""`
-	Cfg             *config.Config
 	Stats           stats.Stats
+	cfg             *config.Config
 }
 
 // DefaultConfig returns a Config with the values populated with the defaults
@@ -50,14 +50,14 @@ func NewServer(scfg *Config) *ssh.Server {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	scfg.Cfg = cfg
+	if scfg.Stats != nil {
+		cfg = cfg.WithStats(scfg.Stats)
+	}
+	scfg.cfg = cfg
 	mw := []wish.Middleware{
 		bm.Middleware(tui.SessionHandler(cfg)),
 		gm.Middleware(scfg.RepoPath, cfg),
 		lm.Middleware(),
-	}
-	if scfg.Stats != nil {
-		mw = append(mw, stats.Middleware(scfg.Stats))
 	}
 	s, err := wish.NewServer(
 		ssh.PublicKeyAuth(cfg.PublicKeyHandler),
