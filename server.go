@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/charmbracelet/soft/config"
-	"github.com/charmbracelet/soft/git"
-	"github.com/charmbracelet/soft/tui"
+	"github.com/charmbracelet/soft/internal/config"
+	"github.com/charmbracelet/soft/internal/git"
+	"github.com/charmbracelet/soft/internal/tui"
+	"github.com/charmbracelet/soft/stats"
+	"github.com/meowgorithm/babyenv"
 
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -15,27 +17,54 @@ import (
 	"github.com/gliderlabs/ssh"
 )
 
+// Config is the configuration for the soft-serve.
+type Config struct {
+	Host            string `env:"SOFT_SERVE_HOST" default:""`
+	Port            int    `env:"SOFT_SERVE_PORT" default:"23231"`
+	KeyPath         string `env:"SOFT_SERVE_KEY_PATH" default:".ssh/soft_serve_server_ed25519"`
+	RepoPath        string `env:"SOFT_SERVE_REPO_PATH" default:".repos"`
+	InitialAdminKey string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY" default:""`
+	Cfg             *config.Config
+	Stats           stats.Stats
+}
+
+// DefaultConfig returns a Config with the values populated with the defaults
+// or specified environment variables.
+func DefaultConfig() *Config {
+	var scfg Config
+	err := babyenv.Parse(&scfg)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return &scfg
+}
+
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
 // server key-pair will be created if none exists. An initial admin SSH public
 // key can be provided with authKey. If authKey is provided, access will be
 // restricted to that key. If authKey is not provided, the server will be
 // publicly writable until configured otherwise by cloning the `config` repo.
-func NewServer(host string, port int, serverKeyPath string, repoPath string, authKey string) *ssh.Server {
-	rs := git.NewRepoSource(repoPath)
-	cfg, err := config.NewConfig(host, port, authKey, rs)
+func NewServer(scfg *Config) *ssh.Server {
+	rs := git.NewRepoSource(scfg.RepoPath)
+	cfg, err := config.NewConfig(scfg.Host, scfg.Port, scfg.InitialAdminKey, rs)
 	if err != nil {
 		log.Fatalln(err)
+	}
+	scfg.Cfg = cfg
+	mw := []wish.Middleware{
+		bm.Middleware(tui.SessionHandler(cfg)),
+		gm.Middleware(scfg.RepoPath, cfg),
+		lm.Middleware(),
+	}
+	if scfg.Stats != nil {
+		mw = append(mw, stats.Middleware(scfg.Stats))
 	}
 	s, err := wish.NewServer(
 		ssh.PublicKeyAuth(cfg.PublicKeyHandler),
 		ssh.PasswordAuth(cfg.PasswordHandler),
-		wish.WithAddress(fmt.Sprintf("%s:%d", host, port)),
-		wish.WithHostKeyPath(serverKeyPath),
-		wish.WithMiddleware(
-			bm.Middleware(tui.SessionHandler(cfg)),
-			gm.Middleware(repoPath, cfg),
-			lm.Middleware(),
-		),
+		wish.WithAddress(fmt.Sprintf("%s:%d", scfg.Host, scfg.Port)),
+		wish.WithHostKeyPath(scfg.KeyPath),
+		wish.WithMiddleware(mw...),
 	)
 	if err != nil {
 		log.Fatalln(err)
