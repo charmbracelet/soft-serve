@@ -13,10 +13,16 @@ func (cfg *Config) Push(repo string, pk ssh.PublicKey) {
 	if err != nil {
 		log.Printf("error reloading after push: %s", err)
 	}
+	if cfg.Stats != nil {
+		cfg.Stats.Push()
+	}
 }
 
 func (cfg *Config) Fetch(repo string, pk ssh.PublicKey) {
 	log.Printf("git fetch: %s", repo)
+	if cfg.Stats != nil {
+		cfg.Stats.Fetch()
+	}
 }
 
 func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) gm.AccessLevel {
@@ -28,10 +34,7 @@ func (cfg *Config) PasswordHandler(ctx ssh.Context, password string) bool {
 }
 
 func (cfg *Config) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
-	if cfg.accessForKey("", pk) == gm.NoAccess {
-		return false
-	}
-	return true
+	return cfg.accessForKey("", pk) == gm.NoAccess
 }
 
 func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {

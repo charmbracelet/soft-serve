@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/charmbracelet/soft/internal/git"
+	"github.com/charmbracelet/soft/stats"
 	gg "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
@@ -21,6 +22,7 @@ type Config struct {
 	Users        []User `yaml:"users"`
 	Repos        []Repo `yaml:"repos"`
 	Source       *git.RepoSource
+	Stats        stats.Stats
 }
 
 type User struct {
@@ -35,6 +37,11 @@ type Repo struct {
 	Repo    string `yaml:"repo"`
 	Note    string `yaml:"note"`
 	Private bool   `yaml:"private"`
+}
+
+func (cfg *Config) WithStats(s stats.Stats) *Config {
+	cfg.Stats = s
+	return cfg
 }
 
 func NewConfig(host string, port int, pk string, rs *git.RepoSource) (*Config, error) {
