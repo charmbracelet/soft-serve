@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strings"
+
 	"gopkg.in/yaml.v2"
 
 	"fmt"
@@ -28,7 +30,7 @@ type Config struct {
 type User struct {
 	Name        string   `yaml:"name"`
 	Admin       bool     `yaml:"admin"`
-	PublicKey   string   `yaml:"public-key"`
+	PublicKeys  []string `yaml:"public-keys"`
 	CollabRepos []string `yaml:"collab-repos"`
 }
 
@@ -64,7 +66,11 @@ func NewConfig(host string, port int, pk string, rs *git.RepoSource) (*Config, e
 	}
 	yamlConfig := fmt.Sprintf(defaultConfig, displayHost, port, anonAccess)
 	if pk != "" {
-		yamlUsers = fmt.Sprintf(hasKeyUserConfig, pk)
+		pks := ""
+		for _, key := range strings.Split(strings.TrimSpace(pk), "\n") {
+			pks += fmt.Sprintf("      - %s\n", key)
+		}
+		yamlUsers = fmt.Sprintf(hasKeyUserConfig, pks)
 	} else {
 		yamlUsers = defaultUserConfig
 	}

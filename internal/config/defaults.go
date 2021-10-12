@@ -25,19 +25,19 @@ const hasKeyUserConfig = `
 users:
   - name: admin
     admin: true
-    public-key:
-      %s`
+    public-keys:
+%s`
 
 const defaultUserConfig = `
 # users:
 #   - name: admin
 #     admin: true
-#     public-key:
-#       KEY TEXT`
+#     public-keys:
+#       - KEY TEXT`
 
 const exampleUserConfig = `
 #   - name: Example User
 #     collab-repos:
 #       - REPO
-#     public-key:
-#       KEY TEXT`
+#     public-keys:
+#       - KEY TEXT`
