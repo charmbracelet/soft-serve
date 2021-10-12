@@ -1,0 +1,22 @@
+name: Soft-Serve
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  softserve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Push to Soft-Serve
+        uses: charmbracelet/soft-serve-action@v1
+        with:
+          server: "beta.charm.sh"
+          ssh-key: "${{ secrets.CHARM_SOFT_SERVE_KEY }}"
+          name: "soft-serve"
