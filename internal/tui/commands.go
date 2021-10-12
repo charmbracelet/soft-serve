@@ -62,28 +62,35 @@ func (b *Bubble) setupCmd() tea.Msg {
 
 func (b *Bubble) menuEntriesFromSource() ([]MenuEntry, error) {
 	mes := make([]MenuEntry, 0)
-	rs := b.config.Source.AllRepos()
-OUTER:
-	for _, r := range rs {
-		acc := b.config.AuthRepo(r.Name, b.session.PublicKey())
-		if acc == gm.NoAccess && r.Name != "config" {
+	for _, cr := range b.config.Repos {
+		acc := b.config.AuthRepo(cr.Repo, b.session.PublicKey())
+		if acc == gm.NoAccess && cr.Repo != "config" {
 			continue
 		}
-		for _, cr := range b.config.Repos {
-			if r.Name == cr.Repo {
-				me, err := b.newMenuEntry(cr.Name, cr.Repo)
-				if err != nil {
-					return nil, err
-				}
-				mes = append(mes, me)
-				continue OUTER
-			}
-		}
-		me, err := b.newMenuEntry(r.Name, r.Name)
+		me, err := b.newMenuEntry(cr.Name, cr.Repo)
 		if err != nil {
 			return nil, err
 		}
 		mes = append(mes, me)
+	}
+	for _, r := range b.config.Source.AllRepos() {
+		var found bool
+		for _, me := range mes {
+			if me.Repo == r.Name {
+				found = true
+			}
+		}
+		if !found {
+			acc := b.config.AuthRepo(r.Name, b.session.PublicKey())
+			if acc == gm.NoAccess {
+				continue
+			}
+			me, err := b.newMenuEntry(r.Name, r.Name)
+			if err != nil {
+				return nil, err
+			}
+			mes = append(mes, me)
+		}
 	}
 	return mes, nil
 }
