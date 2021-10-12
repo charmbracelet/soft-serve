@@ -35,7 +35,7 @@ func (cfg *Config) PasswordHandler(ctx ssh.Context, password string) bool {
 }
 
 func (cfg *Config) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
-	return cfg.accessForKey("", pk) == gm.NoAccess
+	return cfg.accessForKey("", pk) != gm.NoAccess
 }
 
 func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
