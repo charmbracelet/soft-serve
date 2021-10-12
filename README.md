@@ -32,6 +32,53 @@ Make sure `git` is installed, then run `soft`. That’s it.
 
 ## Configuration
 
+The Soft Serve configuration is simple and straightforward:
+
+```yaml
+# The name of the server to show in the TUI.
+name: Soft Serve
+
+# The host and port to listen on. Defaults to 0.0.0.0:23231.
+host: localhost
+port: 23231
+
+# The access level for anonymous users. Options are: read-write, read-only
+# and no-access.
+anon-access: read-write
+
+# You can grant read-only access to users without private keys.
+allow-keyless: false
+
+# Which repos should appear in the menu?
+repos:
+  - name: Home
+    repo: config
+    private: true
+    note: "Configuration and content repo for this server"
+  - name: Example Public Repo
+    repo: my-public-repo
+    private: false
+    note: "A publicly-accessible repo"
+  - name: Example Public Repo
+    repo: my-private-repo
+    private: true
+    note: "A private repo"
+
+# Authorized users. Admins have full access to all repos. Regular users
+# can read all repos and push to their collab-repos.
+users:
+  - name: Beatrice
+    admin: true
+    public-key:
+        KEY TEXT
+  - name: Frankie
+    collab-repos:
+      - my-public-repo
+      - my-private-repo
+    public-key:
+        KEY TEXT
+```
+
 When `soft` is run for the first time, it creates a configuration repo
 containing the main README displayed in the TUI as well as a config file for
 user access control.
