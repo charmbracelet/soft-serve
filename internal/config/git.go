@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"strings"
 
 	gm "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
@@ -43,22 +44,24 @@ func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
 		private = true
 	}
 	for _, u := range cfg.Users {
-		apk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(u.PublicKey))
-		if err != nil {
-			log.Printf("error: malformed authorized key: '%s'", u.PublicKey)
-			return gm.NoAccess
-		}
-		if ssh.KeysEqual(pk, apk) {
-			if u.Admin {
-				return gm.AdminAccess
+		for _, k := range u.PublicKeys {
+			apk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(k)))
+			if err != nil {
+				log.Printf("error: malformed authorized key: '%s'", k)
+				return gm.NoAccess
 			}
-			for _, r := range u.CollabRepos {
-				if repo == r {
-					return gm.ReadWriteAccess
+			if ssh.KeysEqual(pk, apk) {
+				if u.Admin {
+					return gm.AdminAccess
 				}
-			}
-			if !private {
-				return gm.ReadOnlyAccess
+				for _, r := range u.CollabRepos {
+					if repo == r {
+						return gm.ReadWriteAccess
+					}
+				}
+				if !private {
+					return gm.ReadOnlyAccess
+				}
 			}
 		}
 	}
