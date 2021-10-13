@@ -22,7 +22,7 @@ The Soft Serve command is called `soft`. You can build and install it with
 
 ```bash
 git clone ssh://beta.charm.sh/soft-serve
-cd soft-serve/cmd/soft
+cd soft-serve
 go install
 ```
 
