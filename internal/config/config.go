@@ -48,7 +48,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	host := cfg.Host
 	port := cfg.Port
 	pk := cfg.InitialAdminKey
-	rs := cfg.RepoSource
+	rs := git.NewRepoSource(cfg.RepoPath)
 	c := &Config{
 		Cfg: cfg,
 	}
