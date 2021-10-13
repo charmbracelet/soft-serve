@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/charmbracelet/soft/config"
 	"github.com/charmbracelet/soft/internal/git"
-	"github.com/charmbracelet/soft/stats"
 	gg "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
@@ -24,7 +24,7 @@ type Config struct {
 	Users        []User `yaml:"users"`
 	Repos        []Repo `yaml:"repos"`
 	Source       *git.RepoSource
-	Stats        stats.Stats
+	Cfg          *config.Config
 }
 
 type User struct {
@@ -41,19 +41,20 @@ type Repo struct {
 	Private bool   `yaml:"private"`
 }
 
-func (cfg *Config) WithStats(s stats.Stats) *Config {
-	cfg.Stats = s
-	return cfg
-}
-
-func NewConfig(host string, port int, pk string, rs *git.RepoSource) (*Config, error) {
+func NewConfig(cfg *config.Config) (*Config, error) {
 	var anonAccess string
 	var yamlUsers string
 	var displayHost string
-	cfg := &Config{}
-	cfg.Host = host
-	cfg.Port = port
-	cfg.Source = rs
+	host := cfg.Host
+	port := cfg.Port
+	pk := cfg.InitialAdminKey
+	rs := cfg.RepoSource
+	c := &Config{
+		Cfg: cfg,
+	}
+	c.Host = cfg.Host
+	c.Port = port
+	c.Source = rs
 	if pk == "" {
 		anonAccess = "read-write"
 	} else {
@@ -75,11 +76,11 @@ func NewConfig(host string, port int, pk string, rs *git.RepoSource) (*Config, e
 		yamlUsers = defaultUserConfig
 	}
 	yaml := fmt.Sprintf("%s%s%s", yamlConfig, yamlUsers, exampleUserConfig)
-	err := cfg.createDefaultConfigRepo(yaml)
+	err := c.createDefaultConfigRepo(yaml)
 	if err != nil {
 		return nil, err
 	}
-	return cfg, nil
+	return c, nil
 }
 
 func (cfg *Config) reload() error {
