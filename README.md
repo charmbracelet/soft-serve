@@ -69,14 +69,14 @@ repos:
 users:
   - name: Beatrice
     admin: true
-    public-key:
-        KEY TEXT
+    public-keys:
+      - KEY TEXT
   - name: Frankie
     collab-repos:
       - my-public-repo
       - my-private-repo
-    public-key:
-        KEY TEXT
+    public-keys:
+      - KEY TEXT
 ```
 
 When `soft` is run for the first time, it creates a configuration repo
