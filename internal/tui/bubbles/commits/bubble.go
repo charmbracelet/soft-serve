@@ -1,11 +1,11 @@
 package commits
 
 import (
-	"soft-serve/server/git"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/soft/internal/git"
 	"github.com/dustin/go-humanize"
 )
 

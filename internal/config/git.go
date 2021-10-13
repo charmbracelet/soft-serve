@@ -9,21 +9,15 @@ import (
 )
 
 func (cfg *Config) Push(repo string, pk ssh.PublicKey) {
-	log.Printf("git push: %s", repo)
 	err := cfg.reload()
 	if err != nil {
 		log.Printf("error reloading after push: %s", err)
 	}
-	if cfg.Stats != nil {
-		cfg.Stats.Push()
-	}
+	cfg.Cfg.Stats.Push(repo)
 }
 
 func (cfg *Config) Fetch(repo string, pk ssh.PublicKey) {
-	log.Printf("git fetch: %s", repo)
-	if cfg.Stats != nil {
-		cfg.Stats.Fetch()
-	}
+	cfg.Cfg.Stats.Fetch(repo)
 }
 
 func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) gm.AccessLevel {
