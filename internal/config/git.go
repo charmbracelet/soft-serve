@@ -13,11 +13,15 @@ func (cfg *Config) Push(repo string, pk ssh.PublicKey) {
 	if err != nil {
 		log.Printf("error reloading after push: %s", err)
 	}
-	cfg.Cfg.Stats.Push(repo)
+	if cfg.Cfg.Callbacks != nil {
+		cfg.Cfg.Callbacks.Push(repo)
+	}
 }
 
 func (cfg *Config) Fetch(repo string, pk ssh.PublicKey) {
-	cfg.Cfg.Stats.Fetch(repo)
+	if cfg.Cfg.Callbacks != nil {
+		cfg.Cfg.Callbacks.Fetch(repo)
+	}
 }
 
 func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) gm.AccessLevel {
