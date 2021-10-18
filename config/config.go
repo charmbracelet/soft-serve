@@ -3,9 +3,15 @@ package config
 import (
 	"log"
 
-	"github.com/charmbracelet/soft/stats"
 	"github.com/meowgorithm/babyenv"
 )
+
+// Callbacks provides an interface that can be used to run callbacks on different events.
+type Callbacks interface {
+	Tui(action string)
+	Push(repo string)
+	Fetch(repo string)
+}
 
 // Config is the configuration for the soft-serve.
 type Config struct {
@@ -14,7 +20,7 @@ type Config struct {
 	KeyPath         string `env:"SOFT_SERVE_KEY_PATH" default:".ssh/soft_serve_server_ed25519"`
 	RepoPath        string `env:"SOFT_SERVE_REPO_PATH" default:".repos"`
 	InitialAdminKey string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY" default:""`
-	Stats           stats.Stats
+	Callbacks       Callbacks
 }
 
 // DefaultConfig returns a Config with the values populated with the defaults
@@ -25,10 +31,10 @@ func DefaultConfig() *Config {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	return scfg.WithStats(stats.NewStats())
+	return scfg.WithCallbacks(nil)
 }
 
-func (cfg *Config) WithStats(s stats.Stats) *Config {
-	cfg.Stats = s
+func (cfg *Config) WithCallbacks(c Callbacks) *Config {
+	cfg.Callbacks = c
 	return cfg
 }

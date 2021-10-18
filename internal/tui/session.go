@@ -27,7 +27,9 @@ func SessionHandler(cfg *config.Config) func(ssh.Session) (tea.Model, []tea.Prog
 		}
 		scfg.Width = pty.Window.Width
 		scfg.Height = pty.Window.Height
-		cfg.Cfg.Stats.Tui("view")
+		if cfg.Cfg.Callbacks != nil {
+			cfg.Cfg.Callbacks.Tui("view")
+		}
 		return NewBubble(cfg, scfg), []tea.ProgramOption{tea.WithAltScreen()}
 	}
 }
