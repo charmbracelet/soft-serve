@@ -59,7 +59,7 @@ repos:
     repo: my-public-repo
     private: false
     note: "A publicly-accessible repo"
-  - name: Example Public Repo
+  - name: Example Private Repo
     repo: my-private-repo
     private: true
     note: "A private repo"
