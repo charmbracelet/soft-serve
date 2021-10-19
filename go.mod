@@ -20,6 +20,8 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 )
 
+require github.com/fsnotify/fsnotify v1.5.1
+
 require (
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect

@@ -9,10 +9,6 @@ import (
 )
 
 func (cfg *Config) Push(repo string, pk ssh.PublicKey) {
-	err := cfg.reload()
-	if err != nil {
-		log.Printf("error reloading after push: %s", err)
-	}
 	if cfg.Cfg.Callbacks != nil {
 		cfg.Cfg.Callbacks.Push(repo)
 	}
