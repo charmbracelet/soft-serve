@@ -13,7 +13,7 @@ A tasty Git server that runs its own SSH service. 🍦
 
 ## What does it look like?
 
-Just run `ssh beta.charm.sh` for an example.
+Just run `ssh git.charm.sh` for an example.
 
 ## Building/installing
 
@@ -21,7 +21,7 @@ The Soft Serve command is called `soft`. You can build and install it with
 `go`:
 
 ```bash
-git clone ssh://beta.charm.sh/soft-serve
+git clone ssh://git.charm.sh/soft-serve
 cd soft-serve
 go install
 ```
