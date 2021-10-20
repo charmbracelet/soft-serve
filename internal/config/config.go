@@ -83,7 +83,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	return c, nil
 }
 
-func (cfg *Config) reload() error {
+func (cfg *Config) Reload() error {
 	err := cfg.Source.LoadRepos()
 	if err != nil {
 		return err
@@ -168,7 +168,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	} else if err != nil {
 		return err
 	}
-	return cfg.reload()
+	return cfg.Reload()
 }
 
 func (cfg *Config) isPrivate(repo string) bool {
