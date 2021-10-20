@@ -18,6 +18,7 @@ import (
 type Server struct {
 	SSHServer *ssh.Server
 	Config    *config.Config
+	config    *appCfg.Config
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -48,7 +49,12 @@ func NewServer(cfg *config.Config) *Server {
 	return &Server{
 		SSHServer: s,
 		Config:    cfg,
+		config:    ac,
 	}
+}
+
+func (srv *Server) Reload() error {
+	return srv.config.Reload()
 }
 
 func (srv *Server) Start() error {
