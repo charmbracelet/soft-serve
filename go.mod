@@ -6,7 +6,7 @@ replace github.com/charmbracelet/wish => ../wish
 
 require (
 	github.com/charmbracelet/bubbles v0.9.0
-	github.com/charmbracelet/bubbletea v0.15.0
+	github.com/charmbracelet/bubbletea v0.18.0
 	github.com/charmbracelet/glamour v0.3.0
 	github.com/charmbracelet/lipgloss v0.4.0
 	github.com/charmbracelet/wish v0.0.0-20210920172735-41a835204b30
@@ -44,6 +44,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.6 // indirect
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/muesli/ansi v0.0.0-20211018074035-2e021307bc4b // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
