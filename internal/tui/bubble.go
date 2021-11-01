@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft/internal/config"
-	"github.com/charmbracelet/soft/internal/git"
 	"github.com/charmbracelet/soft/internal/tui/bubbles/repo"
 	"github.com/charmbracelet/soft/internal/tui/bubbles/selection"
 	"github.com/charmbracelet/soft/internal/tui/style"
@@ -47,11 +46,13 @@ type Bubble struct {
 	height      int
 	initialRepo string
 	repoMenu    []MenuEntry
-	repos       []*git.Repo
 	boxes       []tea.Model
 	activeBox   int
 	repoSelect  *selection.Bubble
 	session     ssh.Session
+
+	// remember the last resize so we can re-send it when selecting a different repo.
+	lastResize tea.WindowSizeMsg
 }
 
 func NewBubble(cfg *config.Config, sCfg *SessionConfig) *Bubble {
@@ -96,6 +97,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.state = errorState
 		return b, nil
 	case tea.WindowSizeMsg:
+		b.lastResize = msg
 		b.width = msg.Width
 		b.height = msg.Height
 		if b.state == loadedState {
@@ -116,6 +118,9 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		rb := b.repoMenu[msg.Index].bubble
 		rb.GotoTop()
 		b.boxes[1] = b.repoMenu[msg.Index].bubble
+		cmds = append(cmds, func() tea.Msg {
+			return b.lastResize
+		})
 	}
 	if b.state == loadedState {
 		ab, cmd := b.boxes[b.activeBox].Update(msg)
