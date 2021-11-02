@@ -9,7 +9,6 @@ import (
 	br "github.com/charmbracelet/soft/internal/tui/bubbles/repo"
 	"github.com/charmbracelet/soft/internal/tui/bubbles/selection"
 	gm "github.com/charmbracelet/wish/git"
-	"github.com/muesli/termenv"
 )
 
 type errMsg struct{ err error }
@@ -22,7 +21,6 @@ func (b *Bubble) setupCmd() tea.Msg {
 	if b.config == nil || b.config.Source == nil {
 		return errMsg{err: fmt.Errorf("config not set")}
 	}
-	lipgloss.SetColorProfile(termenv.ANSI256)
 	mes, err := b.menuEntriesFromSource()
 	if err != nil {
 		return errMsg{err}

@@ -9,13 +9,13 @@ require (
 	github.com/charmbracelet/bubbletea v0.19.0
 	github.com/charmbracelet/glamour v0.3.0
 	github.com/charmbracelet/lipgloss v0.4.0
-	github.com/charmbracelet/wish v0.0.0-20210920172735-41a835204b30
+	github.com/charmbracelet/wish v0.0.0-00010101000000-000000000000
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gliderlabs/ssh v0.3.3
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/meowgorithm/babyenv v1.3.1
 	github.com/muesli/reflow v0.3.0
-	github.com/muesli/termenv v0.9.0
+	github.com/muesli/termenv v0.9.0 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 )
