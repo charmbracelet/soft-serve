@@ -11,27 +11,169 @@ before:
 builds:
   - id: "soft-serve"
     binary: "soft-serve"
-    ldflags: -s -w -X main.Version={{ .Commit }}-snapshot -X main.CommitSHA={{ .Commit }}
+    ldflags: -s -w -X main.Version=v{{ .Version }} -X main.CommitSHA={{ .Commit }}
     goos:
       - linux
+      # - darwin
+      # - windows
     goarch:
       - amd64
+      - arm64
+      - "386"
+      - arm
+    goarm:
+      - "6"
+      - "7"
 
 dockers:
   - image_templates:
-      - "ghcr.io/charmbracelet/soft-serve-internal:snapshot"
-      - "ghcr.io/charmbracelet/soft-serve-internal:{{ .Commit }}-snapshot"
+      - "charmcli/soft-serve:latest-amd64"
+      - "charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-amd64"
+      - "charmcli/soft-serve:v{{ .Version }}-amd64"
+      - "ghcr.io/charmbracelet/soft-serve:latest-amd64"
+      - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-amd64"
+      - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-amd64"
     ids: [soft-serve]
     goarch: amd64
     build_flag_templates:
       - --platform=linux/amd64
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/soft-serve-internal
-      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/soft-serve-internal
-      - --label=org.opencontainers.image.version={{ .Commit }}-snapshot
+      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/soft-serve
+      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/soft-serve
+      - --label=org.opencontainers.image.version=v{{ .Version }}
       - --label=org.opencontainers.image.created={{ .Date }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses=MIT
     dockerfile: Dockerfile
     use: buildx
+  - image_templates:
+      - "charmcli/soft-serve:latest-i386"
+      - "charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-i386"
+      - "charmcli/soft-serve:v{{ .Version }}-i386"
+      - "ghcr.io/charmbracelet/soft-serve:latest-i386"
+      - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-i386"
+      - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-i386"
+    ids: [soft-serve]
+    goarch: "386"
+    build_flag_templates:
+      - --platform=linux/i386
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/soft-serve
+      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/soft-serve
+      - --label=org.opencontainers.image.version=v{{ .Version }}
+      - --label=org.opencontainers.image.created={{ .Date }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+    dockerfile: Dockerfile
+    use: buildx
+  - image_templates:
+      - "charmcli/soft-serve:latest-arm64"
+      - "charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-arm64"
+      - "charmcli/soft-serve:v{{ .Version }}-arm64"
+      - "ghcr.io/charmbracelet/soft-serve:latest-arm64"
+      - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-arm64"
+      - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-arm64"
+    ids: [soft-serve]
+    goarch: arm64
+    build_flag_templates:
+      - --platform=linux/arm64
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/soft-serve
+      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/soft-serve
+      - --label=org.opencontainers.image.version=v{{ .Version }}
+      - --label=org.opencontainers.image.created={{ .Date }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+    dockerfile: Dockerfile
+    use: buildx
+  - image_templates:
+      - "charmcli/soft-serve:latest-armv6"
+      - "charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-armv6"
+      - "charmcli/soft-serve:v{{ .Version }}-armv6"
+      - "ghcr.io/charmbracelet/soft-serve:latest-armv6"
+      - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-armv6"
+      - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-armv6"
+    ids: [soft-serve]
+    goarch: arm
+    goarm: "6"
+    build_flag_templates:
+      - --platform=linux/arm/v6
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/soft-serve
+      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/soft-serve
+      - --label=org.opencontainers.image.version=v{{ .Version }}
+      - --label=org.opencontainers.image.created={{ .Date }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+    dockerfile: Dockerfile
+    use: buildx
+  - image_templates:
+      - "charmcli/soft-serve:latest-armv7"
+      - "charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-armv7"
+      - "charmcli/soft-serve:v{{ .Version }}-armv7"
+      - "ghcr.io/charmbracelet/soft-serve:latest-armv7"
+      - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-armv7"
+      - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-armv7"
+    ids: [soft-serve]
+    goarch: arm
+    goarm: "7"
+    build_flag_templates:
+      - --platform=linux/arm/v7
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/soft-serve
+      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/soft-serve
+      - --label=org.opencontainers.image.version=v{{ .Version }}
+      - --label=org.opencontainers.image.created={{ .Date }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+    dockerfile: Dockerfile
+    use: buildx
+
+docker_manifests:
+  - name_template: charmcli/soft-serve:latest
+    image_templates:
+      - charmcli/soft-serve:latest-amd64
+      - charmcli/soft-serve:latest-arm64
+      - charmcli/soft-serve:latest-armv6
+      - charmcli/soft-serve:latest-armv7
+      - charmcli/soft-serve:latest-i386
+  - name_template: ghcr.io/charmbracelet/soft-serve:latest
+    image_templates:
+      - ghcr.io/charmbracelet/soft-serve:latest-amd64
+      - ghcr.io/charmbracelet/soft-serve:latest-arm64
+      - ghcr.io/charmbracelet/soft-serve:latest-armv6
+      - ghcr.io/charmbracelet/soft-serve:latest-armv7
+      - ghcr.io/charmbracelet/soft-serve:latest-i386
+  - name_template: charmcli/soft-serve:v{{ .Major }}
+    image_templates:
+      - charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-amd64
+      - charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-arm64
+      - charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-armv6
+      - charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-armv7
+      - charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-i386
+  - name_template: ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}
+    image_templates:
+      - ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-amd64
+      - ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-arm64
+      - ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-armv6
+      - ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-armv7
+      - ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-i386
+  - name_template: charmcli/soft-serve:v{{ .Version }}
+    image_templates:
+      - charmcli/soft-serve:v{{ .Version }}-amd64
+      - charmcli/soft-serve:v{{ .Version }}-arm64
+      - charmcli/soft-serve:v{{ .Version }}-armv6
+      - charmcli/soft-serve:v{{ .Version }}-armv7
+      - charmcli/soft-serve:v{{ .Version }}-i386
+  - name_template: ghcr.io/charmbracelet/soft-serve:v{{ .Version }}
+    image_templates:
+      - ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-amd64
+      - ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-arm64
+      - ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-armv6
+      - ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-armv7
+      - ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-i386
