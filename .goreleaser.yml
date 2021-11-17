@@ -14,8 +14,8 @@ builds:
     ldflags: -s -w -X main.Version=v{{ .Version }} -X main.CommitSHA={{ .Commit }}
     goos:
       - linux
-      # - darwin
-      # - windows
+      - darwin
+      - windows
     goarch:
       - amd64
       - arm64
@@ -149,7 +149,7 @@ docker_manifests:
       - ghcr.io/charmbracelet/soft-serve:latest-armv6
       - ghcr.io/charmbracelet/soft-serve:latest-armv7
       - ghcr.io/charmbracelet/soft-serve:latest-i386
-  - name_template: charmcli/soft-serve:v{{ .Major }}
+  - name_template: charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}
     image_templates:
       - charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-amd64
       - charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-arm64
