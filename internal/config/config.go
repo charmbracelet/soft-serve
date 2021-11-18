@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -167,6 +169,12 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 			return err
 		}
 		err = cr.Repository.Push(&gg.PushOptions{})
+		if err != nil {
+			return err
+		}
+		cmd := exec.Command("git", "update-server-info")
+		cmd.Dir = filepath.Join(rs.Path, cn)
+		err = cmd.Run()
 		if err != nil {
 			return err
 		}
