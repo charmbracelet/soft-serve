@@ -12,6 +12,8 @@ permissions:
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -41,6 +43,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
 
       - name: Set up Docker Buildx
         id: buildx
