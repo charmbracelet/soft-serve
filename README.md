@@ -30,6 +30,35 @@ go install
 
 Make sure `git` is installed, then run `soft`. That’s it.
 
+## Docker
+
+Here are some example snippets to help you run `soft-serve` as a container.
+
+```sh
+docker run -d \
+  --name=soft-seve \
+  -v /path/to/data:/soft-serve \
+  -p 23231:23231 \
+  --restart unless-stopped \
+  ghcr.io/charmbracelet/soft-serve:latest
+```
+
+or by using docker-compose
+
+```yaml
+---
+version: "3.1"
+services:
+  soft-serve:
+    image: ghcr.io/charmbracelet/soft-serve:latest
+    container_name: soft-serve
+    volumes:
+      - /path/to/data:/soft-serve
+    ports:
+      - 23231:23231
+    restart: unless-stopped
+```
+
 ## Configuration
 
 The Soft Serve configuration is simple and straightforward:
