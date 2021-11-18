@@ -60,10 +60,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update Docker Hub Readme
-        uses: christian-korneck/update-container-description-action@v1
-        with:
-          destination_container_repo: charmcli/soft-serve
-          provider: dockerhub
-          short_description: "A tasty Git server 🍦"
-          readme_file: "README.md"
+      # - name: Update Docker Hub Readme
+      #   uses: christian-korneck/update-container-description-action@v1
+      #   env:
+      #     DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     DOCKER_PASS: ${{ secrets.DOCKERHUB_TOKEN }}
+      #   with:
+      #     destination_container_repo: charmcli/soft-serve
+      #     provider: dockerhub
+      #     short_description: "A tasty Git server 🍦"
+      #     readme_file: "README.md"
