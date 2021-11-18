@@ -4,12 +4,16 @@ import (
 	"errors"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
 
+	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/storage/memory"
 )
 
 var ErrMissingRepo = errors.New("missing repo")
@@ -70,9 +74,20 @@ func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
 func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
-	rg, err := git.PlainInit(rs.Path+string(os.PathSeparator)+name, bare)
+	rp := filepath.Join(rs.Path, name)
+	rg, err := git.PlainInit(rp, bare)
 	if err != nil {
 		return nil, err
+	}
+	if bare {
+		// Clone repo into memory storage
+		ar, err := git.Clone(memory.NewStorage(), memfs.New(), &git.CloneOptions{
+			URL: rp,
+		})
+		if err != nil && err != transport.ErrEmptyRemoteRepository {
+			return nil, err
+		}
+		rg = ar
 	}
 	r := &Repo{
 		Name:       name,
@@ -102,7 +117,7 @@ func (rs *RepoSource) LoadRepos() error {
 	rs.commits = make([]RepoCommit, 0)
 	for _, de := range rd {
 		rn := de.Name()
-		rg, err := git.PlainOpen(rs.Path + string(os.PathSeparator) + rn)
+		rg, err := git.PlainOpen(filepath.Join(rs.Path, rn))
 		if err != nil {
 			return err
 		}

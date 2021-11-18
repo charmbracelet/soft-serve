@@ -7,7 +7,6 @@ import (
 
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/charmbracelet/soft/config"
 	"github.com/charmbracelet/soft/internal/git"
@@ -125,22 +124,27 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	}
 	_, err = rs.GetRepo(cn)
 	if err == git.ErrMissingRepo {
-		cr, err := rs.InitRepo(cn, false)
-		if err != nil {
-			return err
-		}
-
-		rp := filepath.Join(rs.Path, cn, "README.md")
-		err = createFile(rp, defaultReadme)
-		if err != nil {
-			return err
-		}
-		cp := filepath.Join(rs.Path, cn, "config.yaml")
-		err = createFile(cp, yaml)
+		cr, err := rs.InitRepo(cn, true)
 		if err != nil {
 			return err
 		}
 		wt, err := cr.Repository.Worktree()
+		if err != nil {
+			return err
+		}
+		rm, err := wt.Filesystem.Create("README.md")
+		if err != nil {
+			return err
+		}
+		_, err = rm.Write([]byte(defaultReadme))
+		if err != nil {
+			return err
+		}
+		cf, err := wt.Filesystem.Create("config.yaml")
+		if err != nil {
+			return err
+		}
+		_, err = cf.Write([]byte(yaml))
 		if err != nil {
 			return err
 		}
@@ -162,6 +166,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
+		err = cr.Repository.Push(&gg.PushOptions{})
 		if err != nil {
 			return err
 		}
