@@ -40,17 +40,17 @@ docker run -d \
   -v /path/to/data:/soft-serve \
   -p 23231:23231 \
   --restart unless-stopped \
-  ghcr.io/charmbracelet/soft-serve:latest
+  charmcli/soft-serve:latest
 ```
 
-or by using docker-compose
+or by using docker-compose:
 
 ```yaml
 ---
 version: "3.1"
 services:
   soft-serve:
-    image: ghcr.io/charmbracelet/soft-serve:latest
+    image: charmcli/soft-serve:latest
     container_name: soft-serve
     volumes:
       - /path/to/data:/soft-serve
