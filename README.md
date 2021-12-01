@@ -1,6 +1,15 @@
 Soft Serve
 ==========
 
+<p>
+    <picture>
+        <source srcset="https://stuff.charm.sh/soft-serve/soft-serve-header.webp" type="image/webp">
+        <img style="width: 451px" src="https://stuff.charm.sh/soft-serve/soft-serve-header.png" alt="A nice rendering of some melting ice cream with the words ‘Charm Soft Serve’ next to it">
+    </picture><br>
+    <a href="https://github.com/charmbracelet/soft-serve/releases"><img src="https://img.shields.io/github/release/charmbracelet/soft-serve.svg" alt="Latest Release"></a>
+    <a href="https://github.com/charmbracelet/soft-serve/actions"><img src="https://github.com/charmbracelet/soft-serve/workflows/build/badge.svg" alt="Build Status"></a>
+</p>
+
 A tasty Git server that runs its own SSH service. 🍦
 
 * Configure with `git`
@@ -161,3 +170,13 @@ environment-level settings:
 * `SOFT_SERVE_KEY_PATH`: SSH host key-pair path (_default .ssh/soft_serve_server_ed25519_)
 * `SOFT_SERVE_REPO_PATH`: Path where repos are stored (_default .repos_)
 * `SOFT_SERVE_INITIAL_ADMIN_KEY`: The public key that will initially have admin access to repos (_default ""_). This must be set before `soft` runs for the first time and creates the `config` repo. If set after the `config` repo has been created, this setting has no effect.
+
+## License
+
+[MIT](https://github.com/charmbracelet/soft-serve/raw/main/LICENSE)
+
+***
+
+<a href="https://charm.sh/"><img alt="The Charm logo" src="https://stuff.charm.sh/charm-badge-unrounded.jpg" width="400"></a>
+
+Charm热爱开源 • Charm loves open source
