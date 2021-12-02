@@ -3,14 +3,16 @@ Soft Serve
 
 <p>
     <picture>
-        <source srcset="https://stuff.charm.sh/soft-serve/soft-serve-header.webp" type="image/webp">
-        <img style="width: 451px" src="https://stuff.charm.sh/soft-serve/soft-serve-header.png" alt="A nice rendering of some melting ice cream with the words ‘Charm Soft Serve’ next to it">
+        <source srcset="https://stuff.charm.sh/soft-serve/soft-serve-header.webp?0" type="image/webp">
+        <img style="width: 451px" src="https://stuff.charm.sh/soft-serve/soft-serve-header.png?0" alt="A nice rendering of some melting ice cream with the words ‘Charm Soft Serve’ next to it">
     </picture><br>
     <a href="https://github.com/charmbracelet/soft-serve/releases"><img src="https://img.shields.io/github/release/charmbracelet/soft-serve.svg" alt="Latest Release"></a>
     <a href="https://github.com/charmbracelet/soft-serve/actions"><img src="https://github.com/charmbracelet/soft-serve/workflows/build/badge.svg" alt="Build Status"></a>
 </p>
 
 A tasty Git server that runs its own SSH service. 🍦
+
+<img src="https://stuff.charm.sh/soft-serve/soft-serve-cli-demo.gif" width="700" alt="Soft Serve screencast">
 
 * Configure with `git`
 * Create repos on demand with `git push`
@@ -20,7 +22,7 @@ A tasty Git server that runs its own SSH service. 🍦
   - Add collaborators with SSH public keys
   - Repos can be public or private
 
-## What does it look like?
+## Where can I see it?
 
 Just run `ssh git.charm.sh` for an example.
 
