@@ -10,7 +10,7 @@ Soft Serve
     <a href="https://github.com/charmbracelet/soft-serve/actions"><img src="https://github.com/charmbracelet/soft-serve/workflows/build/badge.svg" alt="Build Status"></a>
 </p>
 
-A tasty Git server that runs its own SSH service. 🍦
+A tasty, self-hosted Git server for the command line. 🍦
 
 <img src="https://stuff.charm.sh/soft-serve/soft-serve-cli-demo.gif" width="700" alt="Soft Serve screencast">
 
@@ -41,34 +41,7 @@ go install
 
 Make sure `git` is installed, then run `soft`. That’s it.
 
-## Docker
-
-Here are some example snippets to help you run `soft-serve` as a container.
-
-```sh
-docker run -d \
-  --name=soft-seve \
-  -v /path/to/data:/soft-serve \
-  -p 23231:23231 \
-  --restart unless-stopped \
-  charmcli/soft-serve:latest
-```
-
-or by using docker-compose:
-
-```yaml
----
-version: "3.1"
-services:
-  soft-serve:
-    image: charmcli/soft-serve:latest
-    container_name: soft-serve
-    volumes:
-      - /path/to/data:/soft-serve
-    ports:
-      - 23231:23231
-    restart: unless-stopped
-```
+A [Docker image](https://github.com/charmbracelet/soft-serve/blob/main/DOCKER.md) is also available.
 
 ## Configuration
 
@@ -178,6 +151,8 @@ environment-level settings:
 [MIT](https://github.com/charmbracelet/soft-serve/raw/main/LICENSE)
 
 ***
+
+Part of [Charm](https://charm.sh).
 
 <a href="https://charm.sh/"><img alt="The Charm logo" src="https://stuff.charm.sh/charm-badge-unrounded.jpg" width="400"></a>
 
