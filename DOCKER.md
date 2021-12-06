@@ -11,7 +11,7 @@ repositories are stored in the `/soft-serve` directory, so you’ll likely want
 to mount that directory as a volume in order keep your repositories backed up.
 
 ```sh
-docker run -d \
+docker run \
   --name=soft-seve \
   --volume /path/to/data:/soft-serve \
   --publish 23231:23231 \
