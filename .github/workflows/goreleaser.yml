@@ -3,7 +3,7 @@ name: goreleaser
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 permissions:
   contents: write
@@ -19,12 +19,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
-      - name: Clone internal repositories
-        run: |
-          git clone -b release https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/charm-internal ../charm
-          git clone -b master https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/bubbletea-internal ../bubbletea
-          git clone -b main https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/wish ../wish
 
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -59,14 +53,3 @@ jobs:
           args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # - name: Update Docker Hub Readme
-      #   uses: christian-korneck/update-container-description-action@v1
-      #   env:
-      #     DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-      #     DOCKER_PASS: ${{ secrets.DOCKERHUB_TOKEN }}
-      #   with:
-      #     destination_container_repo: charmcli/soft-serve
-      #     provider: dockerhub
-      #     short_description: "A tasty Git server 🍦"
-      #     readme_file: "README.md"
