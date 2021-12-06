@@ -2,14 +2,12 @@ module github.com/charmbracelet/soft
 
 go 1.17
 
-replace github.com/charmbracelet/wish => ../wish
-
 require (
 	github.com/charmbracelet/bubbles v0.9.0
 	github.com/charmbracelet/bubbletea v0.19.0
 	github.com/charmbracelet/glamour v0.3.0
 	github.com/charmbracelet/lipgloss v0.4.0
-	github.com/charmbracelet/wish v0.0.0-00010101000000-000000000000
+	github.com/charmbracelet/wish v0.1.1
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gliderlabs/ssh v0.3.3
 	github.com/go-git/go-git/v5 v5.4.2
