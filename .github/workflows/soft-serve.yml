@@ -14,27 +14,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Clone internal repositories
-        run: |
-          git clone -b release https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/charm-internal ../charm
-          git clone -b master https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/bubbletea-internal ../bubbletea
-          git clone -b main https://${{ secrets.ACCESS_TOKEN }}@github.com/charmbracelet/wish ../wish
-
       - name: Push to Soft-Serve
         uses: charmbracelet/soft-serve-action@v1
         with:
           server: "git.charm.sh"
           ssh-key: "${{ secrets.CHARM_SOFT_SERVE_KEY }}"
           name: "soft-serve"
-
-      - name: Push vendor to Soft-Serve
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: |
-          git config --global user.email "actions@github.com"
-          git config --global user.name "Charmbracelet[bot]"
-          git checkout -b vendor
-          go mod vendor
-          git add vendor
-          git commit -m 'vendor'
-          git push -f soft-serve vendor
