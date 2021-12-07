@@ -25,16 +25,65 @@ builds:
       - "6"
       - "7"
 
+archives:
+  - id: default
+    builds:
+      - soft-serve
+    format_overrides:
+      - goos: windows
+        format: zip
+    replacements:
+      windows: Windows
+      darwin: Darwin
+      386: i386
+      amd64: x86_64
+
+nfpms:
+  - builds:
+      - soft-serve
+
+    vendor: charmbracelet
+    homepage: "https://charm.sh/"
+    maintainer: "Christian Rocha <christian@charm.sh>"
+    description: "A personal key value store"
+    license: MIT
+    formats:
+      - apk
+      - deb
+      - rpm
+    bindir: /usr/bin
+
+brews:
+  - goarm: 6
+    tap:
+      owner: charmbracelet
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: "Christian Rocha"
+      email: "christian@charm.sh"
+    homepage: "https://charm.sh/"
+    description: "A personal key value store"
+
+signs:
+  - artifacts: checksum
+
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
 release:
   footer: |
     * * *
-
     Thoughts? Questions? We love hearing from you. Feel free to reach out on [Twitter](https://twitter.com/charmcli) or [The Fediverse](https://mastodon.technology/@charm).
-
     <a href="https://charm.sh/"><img alt="The Charm logo" src="https://stuff.charm.sh/charm-badge-unrounded.jpg" width="400"></a>
-
-changelog:
-  use: git
 
 dockers:
   - image_templates:
