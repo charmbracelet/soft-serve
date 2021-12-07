@@ -9,8 +9,7 @@ before:
     - go mod download
 
 builds:
-  - id: "soft-serve"
-    binary: "soft-serve"
+  - binary: "soft"
     ldflags: -s -w -X main.Version=v{{ .Version }} -X main.CommitSHA={{ .Commit }}
     goos:
       - linux
@@ -26,10 +25,7 @@ builds:
       - "7"
 
 archives:
-  - id: default
-    builds:
-      - soft-serve
-    format_overrides:
+  - format_overrides:
       - goos: windows
         format: zip
     replacements:
@@ -39,10 +35,7 @@ archives:
       amd64: x86_64
 
 nfpms:
-  - builds:
-      - soft-serve
-
-    vendor: charmbracelet
+  - vendor: charmbracelet
     homepage: "https://charm.sh/"
     maintainer: "Christian Rocha <christian@charm.sh>"
     description: "A personal key value store"
@@ -54,8 +47,7 @@ nfpms:
     bindir: /usr/bin
 
 brews:
-  - goarm: 6
-    tap:
+  - tap:
       owner: charmbracelet
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
@@ -93,7 +85,6 @@ dockers:
       - "ghcr.io/charmbracelet/soft-serve:latest-amd64"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-amd64"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-amd64"
-    ids: [soft-serve]
     goarch: amd64
     build_flag_templates:
       - --platform=linux/amd64
@@ -114,7 +105,6 @@ dockers:
       - "ghcr.io/charmbracelet/soft-serve:latest-i386"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-i386"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-i386"
-    ids: [soft-serve]
     goarch: "386"
     build_flag_templates:
       - --platform=linux/i386
@@ -135,7 +125,6 @@ dockers:
       - "ghcr.io/charmbracelet/soft-serve:latest-arm64"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-arm64"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-arm64"
-    ids: [soft-serve]
     goarch: arm64
     build_flag_templates:
       - --platform=linux/arm64
@@ -156,7 +145,6 @@ dockers:
       - "ghcr.io/charmbracelet/soft-serve:latest-armv6"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-armv6"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-armv6"
-    ids: [soft-serve]
     goarch: arm
     goarm: "6"
     build_flag_templates:
@@ -178,7 +166,6 @@ dockers:
       - "ghcr.io/charmbracelet/soft-serve:latest-armv7"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-armv7"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-armv7"
-    ids: [soft-serve]
     goarch: arm
     goarm: "7"
     build_flag_templates:

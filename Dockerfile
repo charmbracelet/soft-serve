@@ -2,7 +2,7 @@ FROM alpine:latest
 
 RUN apk update && apk add --update git && rm -rf /var/cache/apk/*
 
-COPY soft-serve /usr/local/bin/soft-serve
+COPY soft /usr/local/bin/soft
 
 # Create directories
 WORKDIR /soft-serve
@@ -19,4 +19,4 @@ ENV SOFT_SERVE_REPO_PATH "/soft-serve/repos"
 EXPOSE 23231/tcp
 
 # Set the default command
-ENTRYPOINT [ "/usr/local/bin/soft-serve" ]
+ENTRYPOINT [ "/usr/local/bin/soft" ]
