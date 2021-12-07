@@ -27,9 +27,7 @@ builds:
       - goos: windows
         goarch: arm64
       - goos: windows
-        goarm: "6"
-      - goos: windows
-        goarm: "7"
+        goarch: arm
 
 archives:
   - format_overrides:
