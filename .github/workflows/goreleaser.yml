@@ -3,7 +3,9 @@ name: goreleaser
 on:
   push:
     tags:
-      - "v*.*.*"
+      - v*.*.*
+
+concurrency: goreleaser
 
 permissions:
   contents: write
