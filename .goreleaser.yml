@@ -10,7 +10,7 @@ before:
 
 builds:
   - id: "soft-serve"
-    binary: "soft-serve"
+    binary: "soft"
     ldflags: -s -w -X main.Version=v{{ .Version }} -X main.CommitSHA={{ .Commit }}
     goos:
       - linux
