@@ -26,10 +26,24 @@ A tasty, self-hosted Git server for the command line. 🍦
 
 Just run `ssh git.charm.sh` for an example.
 
-## Building/installing
+## Installation
 
-The Soft Serve command is called `soft`. You can build and install it with
-`go`:
+Soft Serve is a single binary called `soft`. You can get it from a package
+manager:
+
+```bash
+# macOS or Linux
+brew tap charmbracelet/tap && brew install charmbracelet/tap/soft-serve
+
+# Arch Linux
+yay -S soft-serve
+```
+
+You can also download a binary from the [releases][releases] page. Packages are
+available in Alpine, Debian, and RPM formats. Binaries are available for Linux,
+macOS, and Windows.
+
+Or just build and install it with `go`:
 
 ```bash
 git clone ssh://git.charm.sh/soft-serve
@@ -41,7 +55,9 @@ go install
 
 Make sure `git` is installed, then run `soft`. That’s it.
 
-A [Docker image](https://github.com/charmbracelet/soft-serve/blob/main/DOCKER.md) is also available.
+A [Docker image][docker] is also available.
+
+[docker]: https://github.com/charmbracelet/soft-serve/blob/main/docker.md
 
 ## Configuration
 
