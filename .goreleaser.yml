@@ -9,8 +9,7 @@ before:
     - go mod download
 
 builds:
-  - id: "soft-serve"
-    binary: "soft"
+  - binary: "soft"
     ldflags: -s -w -X main.Version=v{{ .Version }} -X main.CommitSHA={{ .Commit }}
     goos:
       - linux
@@ -26,13 +25,10 @@ builds:
       - "7"
     ignore:
       - goos: windows
-        goarch: arm64
+        goarm: "6"
 
 archives:
-  - id: default
-    builds:
-      - soft-serve
-    format_overrides:
+  - format_overrides:
       - goos: windows
         format: zip
     replacements:
@@ -42,10 +38,7 @@ archives:
       amd64: x86_64
 
 nfpms:
-  - builds:
-      - soft-serve
-
-    vendor: charmbracelet
+  - vendor: charmbracelet
     homepage: "https://charm.sh/"
     maintainer: "Christian Rocha <christian@charm.sh>"
     description: "A personal key value store"
@@ -57,8 +50,7 @@ nfpms:
     bindir: /usr/bin
 
 brews:
-  - goarm: "6"
-    tap:
+  - tap:
       owner: charmbracelet
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
@@ -96,7 +88,6 @@ dockers:
       - "ghcr.io/charmbracelet/soft-serve:latest-amd64"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-amd64"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-amd64"
-    ids: [soft-serve]
     goarch: amd64
     build_flag_templates:
       - --platform=linux/amd64
@@ -117,7 +108,6 @@ dockers:
       - "ghcr.io/charmbracelet/soft-serve:latest-i386"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-i386"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-i386"
-    ids: [soft-serve]
     goarch: "386"
     build_flag_templates:
       - --platform=linux/i386
@@ -138,32 +128,9 @@ dockers:
       - "ghcr.io/charmbracelet/soft-serve:latest-arm64"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-arm64"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-arm64"
-    ids: [soft-serve]
     goarch: arm64
     build_flag_templates:
       - --platform=linux/arm64
-      - --label=org.opencontainers.image.title={{ .ProjectName }}
-      - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/charmbracelet/soft-serve
-      - --label=org.opencontainers.image.source=https://github.com/charmbracelet/soft-serve
-      - --label=org.opencontainers.image.version=v{{ .Version }}
-      - --label=org.opencontainers.image.created={{ .Date }}
-      - --label=org.opencontainers.image.revision={{ .FullCommit }}
-      - --label=org.opencontainers.image.licenses=MIT
-    dockerfile: Dockerfile
-    use: buildx
-  - image_templates:
-      - "docker.io/charmcli/soft-serve:latest-armv6"
-      - "docker.io/charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-armv6"
-      - "docker.io/charmcli/soft-serve:v{{ .Version }}-armv6"
-      - "ghcr.io/charmbracelet/soft-serve:latest-armv6"
-      - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-armv6"
-      - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-armv6"
-    ids: [soft-serve]
-    goarch: arm
-    goarm: "6"
-    build_flag_templates:
-      - --platform=linux/arm/v6
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
       - --label=org.opencontainers.image.url=https://github.com/charmbracelet/soft-serve
@@ -181,7 +148,6 @@ dockers:
       - "ghcr.io/charmbracelet/soft-serve:latest-armv7"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-armv7"
       - "ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-armv7"
-    ids: [soft-serve]
     goarch: arm
     goarm: "7"
     build_flag_templates:
@@ -202,41 +168,35 @@ docker_manifests:
     image_templates:
       - docker.io/charmcli/soft-serve:latest-amd64
       - docker.io/charmcli/soft-serve:latest-arm64
-      - docker.io/charmcli/soft-serve:latest-armv6
       - docker.io/charmcli/soft-serve:latest-armv7
       - docker.io/charmcli/soft-serve:latest-i386
   - name_template: ghcr.io/charmbracelet/soft-serve:latest
     image_templates:
       - ghcr.io/charmbracelet/soft-serve:latest-amd64
       - ghcr.io/charmbracelet/soft-serve:latest-arm64
-      - ghcr.io/charmbracelet/soft-serve:latest-armv6
       - ghcr.io/charmbracelet/soft-serve:latest-armv7
       - ghcr.io/charmbracelet/soft-serve:latest-i386
   - name_template: docker.io/charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}
     image_templates:
       - docker.io/charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-amd64
       - docker.io/charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-arm64
-      - docker.io/charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-armv6
       - docker.io/charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-armv7
       - docker.io/charmcli/soft-serve:v{{ .Major }}.{{ .Minor }}-i386
   - name_template: ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}
     image_templates:
       - ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-amd64
       - ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-arm64
-      - ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-armv6
       - ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-armv7
       - ghcr.io/charmbracelet/soft-serve:v{{ .Major }}.{{ .Minor }}-i386
   - name_template: docker.io/charmcli/soft-serve:v{{ .Version }}
     image_templates:
       - docker.io/charmcli/soft-serve:v{{ .Version }}-amd64
       - docker.io/charmcli/soft-serve:v{{ .Version }}-arm64
-      - docker.io/charmcli/soft-serve:v{{ .Version }}-armv6
       - docker.io/charmcli/soft-serve:v{{ .Version }}-armv7
       - docker.io/charmcli/soft-serve:v{{ .Version }}-i386
   - name_template: ghcr.io/charmbracelet/soft-serve:v{{ .Version }}
     image_templates:
       - ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-amd64
       - ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-arm64
-      - ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-armv6
       - ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-armv7
       - ghcr.io/charmbracelet/soft-serve:v{{ .Version }}-i386
