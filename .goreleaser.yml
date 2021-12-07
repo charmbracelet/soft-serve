@@ -24,6 +24,9 @@ builds:
     goarm:
       - "6"
       - "7"
+    ignore:
+      - goos: windows
+        goarch: arm64
 
 archives:
   - id: default
@@ -54,7 +57,7 @@ nfpms:
     bindir: /usr/bin
 
 brews:
-  - goarm: 6
+  - goarm: "6"
     tap:
       owner: charmbracelet
       name: homebrew-tap
