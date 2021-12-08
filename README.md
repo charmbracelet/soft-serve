@@ -43,6 +43,8 @@ You can also download a binary from the [releases][releases] page. Packages are
 available in Alpine, Debian, and RPM formats. Binaries are available for Linux,
 macOS, and Windows.
 
+[releases]: https://github.com/charmbracelet/soft-serve/releases
+
 Or just build and install it with `go`:
 
 ```bash
