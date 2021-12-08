@@ -10,7 +10,7 @@ Soft Serve
     <a href="https://github.com/charmbracelet/soft-serve/actions"><img src="https://github.com/charmbracelet/soft-serve/workflows/build/badge.svg" alt="Build Status"></a>
 </p>
 
-A tasty, self-hosted Git server for the command line. 🍦
+A tasty, self-hostable Git server for the command line. 🍦
 
 <img src="https://stuff.charm.sh/soft-serve/soft-serve-cli-demo.gif" width="700" alt="Soft Serve screencast">
 
