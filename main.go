@@ -18,6 +18,11 @@ var (
 )
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Soft Serve, a self-hostable Git server for the command line.\n\n")
+		flag.PrintDefaults()
+	}
+
 	flag.Parse()
 
 	if *version {
