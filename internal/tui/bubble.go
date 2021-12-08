@@ -174,7 +174,7 @@ func (b Bubble) footerView() string {
 			{"q", "quit"},
 		}
 		if _, ok := b.boxes[b.activeBox].(*repo.Bubble); ok {
-			h = append(h[:2], helpEntry{"f/b", "pgup/pgdown"}, h[2])
+			h = append(h[:2], helpEntry{"f/b", "pgdown/pgup"}, h[2])
 		}
 	}
 	for i, v := range h {
