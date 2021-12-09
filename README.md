@@ -45,12 +45,10 @@ macOS, and Windows.
 
 [releases]: https://github.com/charmbracelet/soft-serve/releases
 
-Or just build and install it with `go`:
+Or just install it with `go`:
 
 ```bash
-git clone ssh://git.charm.sh/soft-serve
-cd soft-serve/cmd/soft
-go install
+go install github.com/charmbracelet/soft-serve/cmd/soft@latest
 ```
 
 ## Setting up a server
