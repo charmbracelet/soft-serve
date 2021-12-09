@@ -65,7 +65,6 @@ func DefaultStyles() *Styles {
 		SetString(">")
 
 	s.MenuItem = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252")).
 		PaddingLeft(2)
 
 	s.SelectedMenuItem = lipgloss.NewStyle().
@@ -106,8 +105,7 @@ func DefaultStyles() *Styles {
 	}
 
 	s.RepoTitle = lipgloss.NewStyle().
-		Padding(0, 2).
-		Foreground(lipgloss.Color("252"))
+		Padding(0, 2)
 
 	s.RepoTitleBox = lipgloss.NewStyle().
 		BorderStyle(s.RepoTitleBorder).
