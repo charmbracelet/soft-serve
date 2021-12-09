@@ -11,7 +11,12 @@ import (
 )
 
 var (
-	Version   = ""
+	// Version contains the application version number. It's set via ldflags
+	// when building.
+	Version = ""
+
+	// CommitSHA contains the SHA of the commit that this application was built
+	// against. It's set via lgflags when building.
 	CommitSHA = ""
 
 	version = flag.Bool("version", false, "display version")

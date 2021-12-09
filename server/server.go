@@ -15,6 +15,7 @@ import (
 	"github.com/gliderlabs/ssh"
 )
 
+// Server is the Soft Serve server.
 type Server struct {
 	SSHServer *ssh.Server
 	Config    *config.Config
@@ -53,10 +54,12 @@ func NewServer(cfg *config.Config) *Server {
 	}
 }
 
+// Reload reloads the server configuration.
 func (srv *Server) Reload() error {
 	return srv.config.Reload()
 }
 
+// Start starts the SSH server.
 func (srv *Server) Start() error {
 	return srv.SSHServer.ListenAndServe()
 }

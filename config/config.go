@@ -13,7 +13,7 @@ type Callbacks interface {
 	Fetch(repo string)
 }
 
-// Config is the configuration for the soft-serve.
+// Config is the configuration for Soft Serve.
 type Config struct {
 	Host            string `env:"SOFT_SERVE_HOST" default:""`
 	Port            int    `env:"SOFT_SERVE_PORT" default:"23231"`
@@ -34,6 +34,7 @@ func DefaultConfig() *Config {
 	return scfg.WithCallbacks(nil)
 }
 
+// WithCallbacks applies the given Callbacks to the configuration.
 func (cfg *Config) WithCallbacks(c Callbacks) *Config {
 	cfg.Callbacks = c
 	return cfg
