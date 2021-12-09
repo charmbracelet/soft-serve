@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/soft/config"
-	"github.com/charmbracelet/soft/internal/git"
+	"github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/internal/git"
 	gg "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )

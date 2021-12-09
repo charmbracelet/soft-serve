@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/charmbracelet/soft/config"
-	"github.com/charmbracelet/soft/server"
+	"github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/server"
 )
 
 var (
