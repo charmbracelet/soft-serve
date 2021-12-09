@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/internal/git"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
@@ -20,6 +21,15 @@ const (
 	glamourMaxWidth  = 120
 	repoNameMaxWidth = 32
 )
+
+var glamourStyle = func() ansi.StyleConfig {
+	noColor := ""
+	s := glamour.DarkStyleConfig
+	s.Document.StylePrimitive.Color = &noColor
+	s.CodeBlock.Chroma.Text.Color = &noColor
+	s.CodeBlock.Chroma.Name.Color = &noColor
+	return s
+}()
 
 type ErrMsg struct {
 	Error error
@@ -203,7 +213,7 @@ func (b *Bubble) glamourize(md string) (string, error) {
 		w = glamourMaxWidth
 	}
 	tr, err := glamour.NewTermRenderer(
-		glamour.WithStandardStyle("dark"),
+		glamour.WithStyles(glamourStyle),
 		glamour.WithWordWrap(w),
 	)
 
