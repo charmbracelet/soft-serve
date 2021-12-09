@@ -16,8 +16,10 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 )
 
+// ErrMissingRepo indicates that the requested repository could not be found.
 var ErrMissingRepo = errors.New("missing repo")
 
+// Repo represents a Git repository.
 type Repo struct {
 	Name        string
 	Repository  *git.Repository
@@ -25,11 +27,13 @@ type Repo struct {
 	LastUpdated *time.Time
 }
 
+// RepoCommit contains metadata for a Git commit.
 type RepoCommit struct {
 	Name   string
 	Commit *object.Commit
 }
 
+// CommitLog is a series of Git commits.
 type CommitLog []RepoCommit
 
 func (cl CommitLog) Len() int      { return len(cl) }
@@ -38,6 +42,7 @@ func (cl CommitLog) Less(i, j int) bool {
 	return cl[i].Commit.Author.When.After(cl[j].Commit.Author.When)
 }
 
+// RepoSource is a reference to an on-disk repositories.
 type RepoSource struct {
 	Path    string
 	mtx     sync.Mutex
@@ -45,6 +50,7 @@ type RepoSource struct {
 	commits CommitLog
 }
 
+// NewRepoSource creates a new RepoSource.
 func NewRepoSource(repoPath string) *RepoSource {
 	err := os.MkdirAll(repoPath, os.ModeDir|os.FileMode(0700))
 	if err != nil {
@@ -54,12 +60,14 @@ func NewRepoSource(repoPath string) *RepoSource {
 	return rs
 }
 
+// AllRepos returns all repositories for the given RepoSource.
 func (rs *RepoSource) AllRepos() []*Repo {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	return rs.repos
 }
 
+// GetRepo returns a repository by name.
 func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
@@ -71,6 +79,7 @@ func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
 	return nil, ErrMissingRepo
 }
 
+// InitRepo initializes a new Git repository.
 func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
@@ -97,6 +106,7 @@ func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 	return r, nil
 }
 
+// GetCommits returns commits for the repository.
 func (rs *RepoSource) GetCommits(limit int) []RepoCommit {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
@@ -106,6 +116,7 @@ func (rs *RepoSource) GetCommits(limit int) []RepoCommit {
 	return rs.commits[:limit]
 }
 
+// LoadRepos opens Git repositories.
 func (rs *RepoSource) LoadRepos() error {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
@@ -158,6 +169,7 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 	return r, nil
 }
 
+// LatestFile returns the latest file at the specified path in the repository.
 func (r *Repo) LatestFile(path string) (string, error) {
 	lg, err := r.Repository.Log(&git.LogOptions{})
 	if err != nil {

@@ -16,6 +16,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
+// Config is the Soft Serve configuration.
 type Config struct {
 	Name         string `yaml:"name"`
 	Host         string `yaml:"host"`
@@ -28,6 +29,7 @@ type Config struct {
 	Cfg          *config.Config
 }
 
+// User contains user-level configuration for a repository.
 type User struct {
 	Name        string   `yaml:"name"`
 	Admin       bool     `yaml:"admin"`
@@ -35,6 +37,7 @@ type User struct {
 	CollabRepos []string `yaml:"collab-repos"`
 }
 
+// Repo contains repository configuration information.
 type Repo struct {
 	Name    string `yaml:"name"`
 	Repo    string `yaml:"repo"`
@@ -42,6 +45,7 @@ type Repo struct {
 	Private bool   `yaml:"private"`
 }
 
+// NewConfig creates a new internal Config struct.
 func NewConfig(cfg *config.Config) (*Config, error) {
 	var anonAccess string
 	var yamlUsers string
@@ -84,6 +88,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	return c, nil
 }
 
+// Reload reloads the configuration.
 func (cfg *Config) Reload() error {
 	err := cfg.Source.LoadRepos()
 	if err != nil {

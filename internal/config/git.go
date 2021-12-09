@@ -8,6 +8,7 @@ import (
 	"github.com/gliderlabs/ssh"
 )
 
+// Push registers Git push functionality for the given repo and key.
 func (cfg *Config) Push(repo string, pk ssh.PublicKey) {
 	err := cfg.Reload()
 	if err != nil {
@@ -18,20 +19,25 @@ func (cfg *Config) Push(repo string, pk ssh.PublicKey) {
 	}
 }
 
+// Fetch registers Git fetch functionality for the given repo and key.
 func (cfg *Config) Fetch(repo string, pk ssh.PublicKey) {
 	if cfg.Cfg.Callbacks != nil {
 		cfg.Cfg.Callbacks.Fetch(repo)
 	}
 }
 
+// AuthRepo grants repo authorization to the given key.
 func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) gm.AccessLevel {
 	return cfg.accessForKey(repo, pk)
 }
 
+// PasswordHandler returns whether or not password access is allowed.
 func (cfg *Config) PasswordHandler(ctx ssh.Context, password string) bool {
 	return (cfg.AnonAccess != "no-access") && cfg.AllowKeyless
 }
 
+// PublicKeyHandler returns whether or not the given public key may access the
+// repo.
 func (cfg *Config) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
 	return cfg.accessForKey("", pk) != gm.NoAccess
 }

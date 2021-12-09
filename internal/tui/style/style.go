@@ -7,6 +7,7 @@ import (
 // XXX: For now, this is in its own package so that it can be shared between
 // different packages without incurring an illegal import cycle.
 
+// Styles defines styles for the TUI.
 type Styles struct {
 	ActiveBorderColor   lipgloss.Color
 	InactiveBorderColor lipgloss.Color
@@ -39,6 +40,7 @@ type Styles struct {
 	ErrorBody  lipgloss.Style
 }
 
+// DefaultStyles returns default styles for the TUI.
 func DefaultStyles() *Styles {
 	s := new(Styles)
 
