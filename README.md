@@ -49,7 +49,7 @@ Or just build and install it with `go`:
 
 ```bash
 git clone ssh://git.charm.sh/soft-serve
-cd soft-serve
+cd soft-serve/cmd/soft
 go install
 ```
 

@@ -10,6 +10,7 @@ before:
 
 builds:
   - binary: "soft"
+    main: "./cmd/soft"
     ldflags: -s -w -X main.Version=v{{ .Version }} -X main.CommitSHA={{ .Commit }}
     goos:
       - linux

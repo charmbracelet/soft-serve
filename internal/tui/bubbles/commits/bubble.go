@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/soft/internal/git"
+	"github.com/charmbracelet/soft-serve/internal/git"
 	"github.com/dustin/go-humanize"
 )
 

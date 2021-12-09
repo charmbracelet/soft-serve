@@ -6,10 +6,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft/internal/config"
-	"github.com/charmbracelet/soft/internal/tui/bubbles/repo"
-	"github.com/charmbracelet/soft/internal/tui/bubbles/selection"
-	"github.com/charmbracelet/soft/internal/tui/style"
+	"github.com/charmbracelet/soft-serve/internal/config"
+	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/repo"
+	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/selection"
+	"github.com/charmbracelet/soft-serve/internal/tui/style"
 	"github.com/gliderlabs/ssh"
 )
 
