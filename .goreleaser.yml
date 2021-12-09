@@ -16,6 +16,9 @@ builds:
       - linux
       - darwin
       - windows
+      - freebsd
+      - openbsd
+      - netbsd
     goarch:
       - amd64
       - arm64
@@ -26,6 +29,12 @@ builds:
       - "7"
     ignore:
       - goos: windows
+        goarch: arm64
+      - goos: windows
+        goarm: "6"
+      - goos: windows
+        goarm: "7"
+      - goos: openbsd
         goarm: "6"
 
 archives:

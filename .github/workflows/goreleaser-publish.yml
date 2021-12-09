@@ -1,6 +1,17 @@
-name: goreleaser
+name: goreleaser-publish
 
-on: [push, pull_request]
+on:
+  push:
+    tags:
+      - v*.*.*
+
+concurrency:
+  group: goreleaser
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   goreleaser:
@@ -18,6 +29,19 @@ jobs:
         with:
           go-version: 1.17
 
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
 
@@ -30,7 +54,7 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: release --snapshot --rm-dist --skip-sign
+          args: release --rm-dist --skip-sign
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
