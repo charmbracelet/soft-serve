@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"path/filepath"
 
 	"github.com/meowgorithm/babyenv"
 )
@@ -15,12 +16,35 @@ type Callbacks interface {
 
 // Config is the configuration for Soft Serve.
 type Config struct {
-	Host            string `env:"SOFT_SERVE_HOST" default:""`
-	Port            int    `env:"SOFT_SERVE_PORT" default:"23231"`
-	KeyPath         string `env:"SOFT_SERVE_KEY_PATH" default:".ssh/soft_serve_server_ed25519"`
-	RepoPath        string `env:"SOFT_SERVE_REPO_PATH" default:".repos"`
-	InitialAdminKey string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY" default:""`
+	Host            string `env:"SOFT_SERVE_HOST"`
+	Port            int    `env:"SOFT_SERVE_PORT"`
+	KeyPath         string `env:"SOFT_SERVE_KEY_PATH"`
+	RepoPath        string `env:"SOFT_SERVE_REPO_PATH"`
+<<<<<<< HEAD
+	ReadmePath      string `env:"SOFT_SERVE_README_PATH"`
+=======
+>>>>>>> Fix bug where ssh key cannot be written on Windows
+	InitialAdminKey string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY"`
 	Callbacks       Callbacks
+}
+
+func (c *Config) applyDefaults() {
+	if c.Port == 0 {
+		c.Port = 23231
+	}
+	if c.KeyPath == "" {
+		// NB: cross-platform-compatible path
+		c.KeyPath = filepath.Join(".ssh", "soft_serve_server_ed25519")
+	}
+	if c.RepoPath == "" {
+		c.RepoPath = ".repos"
+	}
+<<<<<<< HEAD
+	if c.ReadmePath == "" {
+		c.ReadmePath = "README.md"
+	}
+=======
+>>>>>>> Fix bug where ssh key cannot be written on Windows
 }
 
 // DefaultConfig returns a Config with the values populated with the defaults
@@ -31,6 +55,7 @@ func DefaultConfig() *Config {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	scfg.applyDefaults()
 	return scfg.WithCallbacks(nil)
 }
 

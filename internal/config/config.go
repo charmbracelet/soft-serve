@@ -90,7 +90,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 
 // Reload reloads the configuration.
 func (cfg *Config) Reload() error {
-	err := cfg.Source.LoadRepos()
+	err := cfg.Source.LoadRepos(cfg.Cfg.ReadmePath)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func createFile(path string, content string) error {
 func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	cn := "config"
 	rs := cfg.Source
-	err := rs.LoadRepos()
+	err := rs.LoadRepos(cfg.Cfg.ReadmePath)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		rm, err := wt.Filesystem.Create("README.md")
+		rm, err := wt.Filesystem.Create(cfg.Cfg.ReadmePath)
 		if err != nil {
 			return err
 		}
@@ -155,7 +155,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		_, err = wt.Add("README.md")
+		_, err = wt.Add(cfg.Cfg.ReadmePath)
 		if err != nil {
 			return err
 		}

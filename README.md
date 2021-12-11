@@ -67,7 +67,9 @@ The Soft Serve configuration is simple and straightforward:
 # The name of the server to show in the TUI.
 name: Soft Serve
 
-# The host and port to listen on. Defaults to 0.0.0.0:23231.
+# The host and port to display in the TUI. You may want to change this if your
+# server is accessible from a different host and/or port that what it's
+# actually listening on (for example, if it's behind a reverse proxy).
 host: localhost
 port: 23231
 
@@ -160,6 +162,7 @@ environment-level settings:
 * `SOFT_SERVE_HOST`: SSH listen host (_default 0.0.0.0_)
 * `SOFT_SERVE_KEY_PATH`: SSH host key-pair path (_default .ssh/soft_serve_server_ed25519_)
 * `SOFT_SERVE_REPO_PATH`: Path where repos are stored (_default .repos_)
+* `SOFT_SERVE_README_PATH`: Path where the README.md is created (_default README.md_)
 * `SOFT_SERVE_INITIAL_ADMIN_KEY`: The public key that will initially have admin access to repos (_default ""_). This must be set before `soft` runs for the first time and creates the `config` repo. If set after the `config` repo has been created, this setting has no effect.
 
 ## License

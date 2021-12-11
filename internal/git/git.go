@@ -117,7 +117,7 @@ func (rs *RepoSource) GetCommits(limit int) []RepoCommit {
 }
 
 // LoadRepos opens Git repositories.
-func (rs *RepoSource) LoadRepos() error {
+func (rs *RepoSource) LoadRepos(rmp string) error {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	rd, err := os.ReadDir(rs.Path)
@@ -132,7 +132,7 @@ func (rs *RepoSource) LoadRepos() error {
 		if err != nil {
 			return err
 		}
-		r, err := rs.loadRepo(rn, rg)
+		r, err := rs.loadRepo(rn, rg, rmp)
 		if err != nil {
 			return err
 		}
@@ -141,7 +141,7 @@ func (rs *RepoSource) LoadRepos() error {
 	return nil
 }
 
-func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
+func (rs *RepoSource) loadRepo(name string, rg *git.Repository, rmp string) (*Repo, error) {
 	r := &Repo{Name: name}
 	r.Repository = rg
 	l, err := rg.Log(&git.LogOptions{All: true})
@@ -151,7 +151,7 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 	err = l.ForEach(func(c *object.Commit) error {
 		if r.LastUpdated == nil {
 			r.LastUpdated = &c.Author.When
-			rf, err := c.File("README.md")
+			rf, err := c.File(rmp)
 			if err == nil {
 				rmd, err := rf.Contents()
 				if err == nil {
