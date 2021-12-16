@@ -20,10 +20,7 @@ type Config struct {
 	Port            int    `env:"SOFT_SERVE_PORT"`
 	KeyPath         string `env:"SOFT_SERVE_KEY_PATH"`
 	RepoPath        string `env:"SOFT_SERVE_REPO_PATH"`
-<<<<<<< HEAD
 	ReadmePath      string `env:"SOFT_SERVE_README_PATH"`
-=======
->>>>>>> Fix bug where ssh key cannot be written on Windows
 	InitialAdminKey string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY"`
 	Callbacks       Callbacks
 }
@@ -39,12 +36,9 @@ func (c *Config) applyDefaults() {
 	if c.RepoPath == "" {
 		c.RepoPath = ".repos"
 	}
-<<<<<<< HEAD
 	if c.ReadmePath == "" {
 		c.ReadmePath = "README.md"
 	}
-=======
->>>>>>> Fix bug where ssh key cannot be written on Windows
 }
 
 // DefaultConfig returns a Config with the values populated with the defaults
