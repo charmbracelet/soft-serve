@@ -32,17 +32,6 @@ func NewServer(cfg *config.Config) *Server {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// If the host and port are set in config.yaml, and they weren't set in the
-	// environment, update the environment level config accordingly, which is
-	// the config used to start the server.
-	if cfg.Host == "" {
-		cfg.Host = ac.Host
-	}
-	if cfg.Port == 0 {
-		cfg.Port = ac.Port
-	}
-
 	mw := []wish.Middleware{
 		bm.Middleware(tui.SessionHandler(ac)),
 		gm.Middleware(cfg.RepoPath, ac),

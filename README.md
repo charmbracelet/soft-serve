@@ -67,7 +67,9 @@ The Soft Serve configuration is simple and straightforward:
 # The name of the server to show in the TUI.
 name: Soft Serve
 
-# The host and port to listen on. Defaults to 0.0.0.0:23231.
+# The host and port to display in the TUI. You may want to change this if your
+# server is accessible from a different host and/or port that what it's
+# actually listening on (for example, if it's behind a reverse proxy).
 host: localhost
 port: 23231
 
