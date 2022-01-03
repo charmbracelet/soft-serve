@@ -1,7 +1,12 @@
 name: build
+
 on: [push, pull_request]
+
+permissions:
+  packages: write
+
 jobs:
-  test:
+  build:
     strategy:
       matrix:
         go-version: [~1.17, ^1]
@@ -26,3 +31,121 @@ jobs:
 
       - name: Test
         run: go test ./...
+
+  nightly:
+    env:
+      GO111MODULE: "on"
+      DOCKER_CLI_EXPERIMENTAL: enabled
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "~1.17"
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --snapshot --rm-dist --skip-sign
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Push docker images
+        run: |
+          GIT_HASH=$(git rev-parse --short "$GITHUB_SHA")
+
+          docker tag ghcr.io/$GITHUB_REPOSITORY:latest-amd64 ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-amd64
+          docker tag ghcr.io/$GITHUB_REPOSITORY:latest-arm64 ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-arm64
+          docker tag ghcr.io/$GITHUB_REPOSITORY:latest-armv7 ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-armv7
+          docker tag ghcr.io/$GITHUB_REPOSITORY:latest-i386 ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-i386
+
+          docker push ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-amd64
+          docker push ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-arm64
+          docker push ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-armv7
+          docker push ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-i386
+
+          docker manifest create ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH \
+            ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-amd64 \
+            ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-arm64 \
+            ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-armv7 \
+            ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH-i386
+          docker manifest push ghcr.io/$GITHUB_REPOSITORY:devel-$GIT_HASH
+
+          if [[ $GITHUB_REF = 'refs/heads/main' && $GITHUB_EVENT_NAME = 'push' ]]; then
+            docker tag ghcr.io/$GITHUB_REPOSITORY:latest-amd64 ghcr.io/$GITHUB_REPOSITORY:devel-amd64
+            docker tag ghcr.io/$GITHUB_REPOSITORY:latest-arm64 ghcr.io/$GITHUB_REPOSITORY:devel-arm64
+            docker tag ghcr.io/$GITHUB_REPOSITORY:latest-armv7 ghcr.io/$GITHUB_REPOSITORY:devel-armv7
+            docker tag ghcr.io/$GITHUB_REPOSITORY:latest-i386 ghcr.io/$GITHUB_REPOSITORY:devel-i386
+
+            docker push ghcr.io/$GITHUB_REPOSITORY:devel-amd64
+            docker push ghcr.io/$GITHUB_REPOSITORY:devel-arm64
+            docker push ghcr.io/$GITHUB_REPOSITORY:devel-armv7
+            docker push ghcr.io/$GITHUB_REPOSITORY:devel-i386
+
+            docker manifest create ghcr.io/$GITHUB_REPOSITORY:devel \
+              ghcr.io/$GITHUB_REPOSITORY:devel-amd64 \
+              ghcr.io/$GITHUB_REPOSITORY:devel-arm64 \
+              ghcr.io/$GITHUB_REPOSITORY:devel-armv7 \
+              ghcr.io/$GITHUB_REPOSITORY:devel-i386
+            docker manifest push ghcr.io/$GITHUB_REPOSITORY:devel
+          fi
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Linux (x86_64)
+          path: |
+            dist/soft-serve_linux_amd64/*
+            LICENSE
+            README.md
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Linux (arm64)
+          path: |
+            dist/soft-serve_linux_arm64/*
+            LICENSE
+            README.md
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: MacOS (x86_64)
+          path: |
+            dist/soft-serve_darwin_amd64/*
+            LICENSE
+            README.md
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: MacOS (arm64)
+          path: |
+            dist/soft-serve_darwin_arm64/*
+            LICENSE
+            README.md
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Windows (x86_64)
+          path: |
+            dist/soft-serve_windows_amd64/*
+            LICENSE
+            README.md
