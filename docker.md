@@ -1,6 +1,6 @@
 # Running Soft-Serve with Docker
 
-The official Soft Serve Docker images are available at [charmcli/soft-serve][docker].
+The official Soft Serve Docker images are available at [charmcli/soft-serve][docker]. Development and nightly builds are available at [ghcr.io/charmbracelet/soft-serve][ghcr]
 
 ```sh
 docker pull charmcli/soft-serve:latest
@@ -36,6 +36,7 @@ services:
 ```
 
 [docker]: https://hub.docker.com/r/charmcli/soft-serve
+[ghcr]: https://github.com/charmbracelet/soft-serve/pkgs/container/soft-serve
 
 ***
 
