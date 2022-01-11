@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -62,4 +63,9 @@ func (srv *Server) Reload() error {
 // Start starts the SSH server.
 func (srv *Server) Start() error {
 	return srv.SSHServer.ListenAndServe()
+}
+
+// Shutdown lets the server gracefully shutdown.
+func (srv *Server) Shutdown(ctx context.Context) error {
+	return srv.SSHServer.Shutdown(ctx)
 }

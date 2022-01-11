@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/server"
@@ -49,9 +53,23 @@ func main() {
 
 	cfg := config.DefaultConfig()
 	s := server.NewServer(cfg)
-	log.Printf("Starting SSH server on %s:%d\n", cfg.Host, cfg.Port)
-	err := s.Start()
-	if err != nil {
+
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	log.Printf("Starting SSH server on %s:%d", cfg.Host, cfg.Port)
+	go func() {
+		if err := s.Start(); err != nil {
+			log.Fatalln(err)
+		}
+	}()
+
+	<-done
+
+	log.Printf("Stopping SSH server on %s:%d", cfg.Host, cfg.Port)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer func() { cancel() }()
+	if err := s.Shutdown(ctx); err != nil {
 		log.Fatalln(err)
 	}
 }
