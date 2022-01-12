@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/charmbracelet/soft-serve/pkg/webhooks"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -18,13 +19,14 @@ import (
 
 // Config is the Soft Serve configuration.
 type Config struct {
-	Name         string `yaml:"name"`
-	Host         string `yaml:"host"`
-	Port         int    `yaml:"port"`
-	AnonAccess   string `yaml:"anon-access"`
-	AllowKeyless bool   `yaml:"allow-keyless"`
-	Users        []User `yaml:"users"`
-	Repos        []Repo `yaml:"repos"`
+	Name         string   `yaml:"name"`
+	Host         string   `yaml:"host"`
+	Port         int      `yaml:"port"`
+	AnonAccess   string   `yaml:"anon-access"`
+	AllowKeyless bool     `yaml:"allow-keyless"`
+	Users        []User   `yaml:"users"`
+	Repos        []Repo   `yaml:"repos"`
+	Webhooks     Webhooks `yaml:"webhooks"`
 	Source       *git.RepoSource
 	Cfg          *config.Config
 }
@@ -43,6 +45,23 @@ type Repo struct {
 	Repo    string `yaml:"repo"`
 	Note    string `yaml:"note"`
 	Private bool   `yaml:"private"`
+}
+
+// Webhooks contains infos about the incoming webhooks that are served
+type Webhooks struct {
+	// TLSCertificatePath is an optional setting that points to the path with the tls
+	// certificate used to serve the webhooks. Make sure soft-serve can read that file.
+	TLSCertificatePath string `yaml:"tls-certificate-path"`
+
+	// TLSKeyPath is an optional setting that points to the path with the tls
+	// key used to serve the webhooks. Make sure soft-serve can read that file.
+	TLSKeyPath string `yaml:"tls-key-path"`
+
+	PluginPath string               `yaml:"plugin-path"`
+	Routes     webhooks.RouteSpec[] `yaml:"routes"`
+
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
 }
 
 // NewConfig creates a new internal Config struct.
