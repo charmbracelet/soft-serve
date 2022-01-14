@@ -2,9 +2,6 @@ name: build
 
 on: [push, pull_request]
 
-permissions:
-  packages: write
-
 jobs:
   build:
     strategy:
