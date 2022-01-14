@@ -42,7 +42,6 @@ require (
 	github.com/muesli/ansi v0.0.0-20211031195517-c9f0611b6c70 // indirect
 	github.com/muesli/termenv v0.9.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
