@@ -34,7 +34,8 @@ jobs:
 
   nightly:
     uses: charmbracelet/meta/.github/workflows/nightly.yml@main
-    secrets:
-      docker_username: caarlos0
-      docker_token: ${{ secrets.DOCKER_PASSWORD }}
+    with:
+      docker_username: charmcli
+      docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      gh_pat: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       goreleaser_key: ${{ secrets.GORELEASER_KEY }}
