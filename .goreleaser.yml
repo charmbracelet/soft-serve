@@ -1,6 +1,6 @@
 includes:
   - from_url:
-      url: charmbracelet/meta/95706854f48e6c525284dcf8d2ca912228f06b0f/goreleaser.yaml
+      url: charmbracelet/meta/main/goreleaser.yaml
 
 variables:
   main: "./cmd/soft"
