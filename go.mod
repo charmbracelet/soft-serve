@@ -23,6 +23,11 @@ require (
 )
 
 require (
+	github.com/muesli/mango v0.1.0
+	github.com/muesli/roff v0.1.0
+)
+
+require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20220113124808-70ae35bab23f // indirect
 	github.com/acomagu/bufpipe v1.0.3 // indirect
