@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 
 	"fmt"
@@ -53,6 +54,16 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	host := cfg.Host
 	port := cfg.Port
 	pk := cfg.InitialAdminKey
+
+	if bts, err := os.ReadFile(pk); err == nil {
+		// pk is a file, set its contents as pk
+		pk = string(bts)
+	}
+	// it is a valid ssh key, nothing to do
+	if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pk)); err != nil {
+		return nil, fmt.Errorf("invalid initial admin key: %w", err)
+	}
+
 	rs := git.NewRepoSource(cfg.RepoPath)
 	c := &Config{
 		Cfg: cfg,
