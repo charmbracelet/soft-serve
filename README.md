@@ -103,13 +103,15 @@ users:
   - name: Beatrice
     admin: true
     public-keys:
-      - KEY TEXT
+      - ssh-rsa AAAAB3Nz...   # redacted
+      - ssh-ed25519 AAAA...   # redacted
   - name: Frankie
     collab-repos:
       - my-public-repo
       - my-private-repo
     public-keys:
-      - KEY TEXT
+      - ssh-rsa AAAAB3Nz...   # redacted
+      - ssh-ed25519 AAAA...   # redacted
 ```
 
 When `soft` is run for the first time, it creates a configuration repo
