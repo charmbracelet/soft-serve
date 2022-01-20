@@ -126,8 +126,8 @@ The `config` repo is publicly writable by default, so be sure to setup your
 access as desired. You can also set the `SOFT_SERVE_INITIAL_ADMIN_KEY`
 environment variable before first run and it will restrict access to that
 initial public key until you configure things otherwise.
-Another caveat is that even it is publicly writable, it won't allow connections
-without a public key.
+If you're having trouble, make sure you have generated keys with `ssh-keygen`
+as configuration is not supported for keyless users.
 
 ## Pushing (and creating!) repos
 
