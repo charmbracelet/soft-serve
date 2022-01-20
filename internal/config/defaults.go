@@ -44,12 +44,14 @@ const defaultUserConfig = `
 #   - name: Admin
 #     admin: true
 #     public-keys:
-#       - KEY TEXT`
+#       - ssh-ed25519 AAAA... # redacted
+#       - ssh-rsa AAAAB3Nz... # redacted`
 
 const exampleUserConfig = `
 #   - name: Example User
 #     collab-repos:
 #       - REPO
 #     public-keys:
-#       - KEY TEXT
+#       - ssh-ed25519 AAAA... # redacted
+#       - ssh-rsa AAAAB3Nz... # redacted
 `
