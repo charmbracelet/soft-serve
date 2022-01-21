@@ -51,10 +51,10 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	var anonAccess string
 	var yamlUsers string
 	var displayHost string
-	var pks []string
 	host := cfg.Host
 	port := cfg.Port
 
+	pks := make([]string, 0, len(cfg.InitialAdminKeys))
 	for _, k := range cfg.InitialAdminKeys {
 		var pk = strings.TrimSpace(k)
 		if bts, err := os.ReadFile(k); err == nil {
