@@ -18,6 +18,8 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkY
 github.com/atotto/clipboard v0.1.2/go.mod h1:ZY9tmq7sm5xIbd9bOK4onWV4S6X0u6GY7Vn0Yu86PYI=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
+github.com/caarlos0/env/v6 v6.9.1 h1:zOkkjM0F6ltnQ5eBX6IPI41UP/KDGEK7rRPwGCNos8k=
+github.com/caarlos0/env/v6 v6.9.1/go.mod h1:hvp/ryKXKipEkcuYjs9mI4bBCg+UI0Yhgm5Zu0ddvwc=
 github.com/charmbracelet/bubbles v0.10.0 h1:ZYqBwnmFGp91HSRRbhxKq5jr6bUPsVUBdkrGGWtv0Wk=
 github.com/charmbracelet/bubbles v0.10.0/go.mod h1:4tiDrWzH1MTD4t5NnrcthaedmI3MxU0FIutax7//dvk=
 github.com/charmbracelet/bubbletea v0.19.0/go.mod h1:VuXF2pToRxDUHcBUcPmCRUHRvFATM4Ckb/ql1rBl3KA=
@@ -94,8 +96,6 @@ github.com/mattn/go-runewidth v0.0.10/go.mod h1:RAqKPSqVFrSLVXbA8x7dzmKdmGzieGRC
 github.com/mattn/go-runewidth v0.0.12/go.mod h1:RAqKPSqVFrSLVXbA8x7dzmKdmGzieGRCM46jaSJTDAk=
 github.com/mattn/go-runewidth v0.0.13 h1:lTGmDsbAYt5DmK6OnoV7EuIF1wEIFAcxld6ypU4OSgU=
 github.com/mattn/go-runewidth v0.0.13/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
-github.com/meowgorithm/babyenv v1.3.1 h1:18ZEYIgbzoFQfRLF9+lxjRfk/ui6w8U0FWl07CgWvvc=
-github.com/meowgorithm/babyenv v1.3.1/go.mod h1:lwNX+J6AGBFqNrMZ2PTLkM6SO+W4X8DOg9zBDO4j3Ig=
 github.com/microcosm-cc/bluemonday v1.0.17 h1:Z1a//hgsQ4yjC+8zEkV8IWySkXnsxmdSY642CTFQb5Y=
 github.com/microcosm-cc/bluemonday v1.0.17/go.mod h1:Z0r70sCuXHig8YpBzCc5eGHAap2K7e/u082ZUpDRRqM=
 github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a h1:eU8j/ClY2Ty3qdHnn0TyW3ivFoPC/0F1gQZz8yTxbbE=
