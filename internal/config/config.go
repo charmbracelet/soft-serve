@@ -55,13 +55,13 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	port := cfg.Port
 	pk := cfg.InitialAdminKey
 
-	if bts, err := os.ReadFile(pk); err == nil {
-		// pk is a file, set its contents as pk
+	// parse pk if it's a file and set its contents as pk
+	if _, err := os.Stat(pk); err == nil {
+		bts, err := os.ReadFile(pk)
+		if err != nil {
+			return nil, fmt.Errorf("error reading initial admin key: %s", err)
+		}
 		pk = string(bts)
-	}
-	// it is a valid ssh key, nothing to do
-	if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pk)); err != nil {
-		return nil, fmt.Errorf("invalid initial admin key: %w", err)
 	}
 
 	rs := git.NewRepoSource(cfg.RepoPath)
@@ -85,6 +85,10 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	if pk != "" {
 		pks := ""
 		for _, key := range strings.Split(strings.TrimSpace(pk), "\n") {
+			// check if key is valid
+			if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key)); err != nil {
+				return nil, fmt.Errorf("invalid initial admin key %q: %w", key, err)
+			}
 			pks += fmt.Sprintf("      - %s\n", key)
 		}
 		yamlUsers = fmt.Sprintf(hasKeyUserConfig, pks)
