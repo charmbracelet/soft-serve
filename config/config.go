@@ -41,8 +41,7 @@ func (c *Config) applyDefaults() {
 // or specified environment variables.
 func DefaultConfig() *Config {
 	var scfg Config
-	err := env.Parse(&scfg)
-	if err != nil {
+	if err := env.Parse(&scfg); err != nil {
 		log.Fatalln(err)
 	}
 	scfg.applyDefaults()
@@ -50,7 +49,7 @@ func DefaultConfig() *Config {
 }
 
 // WithCallbacks applies the given Callbacks to the configuration.
-func (cfg *Config) WithCallbacks(c Callbacks) *Config {
-	cfg.Callbacks = c
-	return cfg
+func (c *Config) WithCallbacks(callbacks Callbacks) *Config {
+	c.Callbacks = callbacks
+	return c
 }
