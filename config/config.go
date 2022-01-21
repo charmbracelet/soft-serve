@@ -4,7 +4,7 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/meowgorithm/babyenv"
+	"github.com/caarlos0/env/v6"
 )
 
 // Callbacks provides an interface that can be used to run callbacks on different events.
@@ -16,12 +16,12 @@ type Callbacks interface {
 
 // Config is the configuration for Soft Serve.
 type Config struct {
-	Host            string `env:"SOFT_SERVE_HOST"`
-	Port            int    `env:"SOFT_SERVE_PORT"`
-	KeyPath         string `env:"SOFT_SERVE_KEY_PATH"`
-	RepoPath        string `env:"SOFT_SERVE_REPO_PATH"`
-	InitialAdminKey string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY"`
-	Callbacks       Callbacks
+	Host             string   `env:"SOFT_SERVE_HOST"`
+	Port             int      `env:"SOFT_SERVE_PORT"`
+	KeyPath          string   `env:"SOFT_SERVE_KEY_PATH"`
+	RepoPath         string   `env:"SOFT_SERVE_REPO_PATH"`
+	InitialAdminKeys []string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY" envSeparator:"\n"`
+	Callbacks        Callbacks
 }
 
 func (c *Config) applyDefaults() {
@@ -41,7 +41,7 @@ func (c *Config) applyDefaults() {
 // or specified environment variables.
 func DefaultConfig() *Config {
 	var scfg Config
-	err := babyenv.Parse(&scfg)
+	err := env.Parse(&scfg)
 	if err != nil {
 		log.Fatalln(err)
 	}

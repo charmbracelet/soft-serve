@@ -3,6 +3,7 @@ module github.com/charmbracelet/soft-serve
 go 1.17
 
 require (
+	github.com/caarlos0/env/v6 v6.9.1
 	github.com/charmbracelet/bubbles v0.10.0
 	github.com/charmbracelet/bubbletea v0.19.3
 	github.com/charmbracelet/glamour v0.4.0
@@ -12,8 +13,9 @@ require (
 	github.com/gliderlabs/ssh v0.3.3
 	github.com/go-git/go-billy/v5 v5.3.1
 	github.com/go-git/go-git/v5 v5.4.2
-	github.com/meowgorithm/babyenv v1.3.1
+	github.com/matryer/is v1.2.0
 	github.com/muesli/reflow v0.3.0
+	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -47,7 +49,6 @@ require (
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	github.com/yuin/goldmark v1.4.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
-	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
 	golang.org/x/net v0.0.0-20220111093109-d55c255bac03 // indirect
 	golang.org/x/sys v0.0.0-20220111092808-5a964db01320 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect

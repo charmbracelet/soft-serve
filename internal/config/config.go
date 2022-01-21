@@ -51,17 +51,21 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	var anonAccess string
 	var yamlUsers string
 	var displayHost string
+	var pks []string
 	host := cfg.Host
 	port := cfg.Port
-	pk := cfg.InitialAdminKey
 
-	if bts, err := os.ReadFile(pk); err == nil {
-		// pk is a file, set its contents as pk
-		pk = string(bts)
-	}
-	// it is a valid ssh key, nothing to do
-	if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pk)); err != nil {
-		return nil, fmt.Errorf("invalid initial admin key: %w", err)
+	for _, k := range cfg.InitialAdminKeys {
+		var pk = strings.TrimSpace(k)
+		if bts, err := os.ReadFile(k); err == nil {
+			// pk is a file, set its contents as pk
+			pk = string(bts)
+		}
+		// it is a valid ssh key, nothing to do
+		if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pk)); err != nil {
+			return nil, fmt.Errorf("invalid initial admin key %q: %w", k, err)
+		}
+		pks = append(pks, pk)
 	}
 
 	rs := git.NewRepoSource(cfg.RepoPath)
@@ -71,7 +75,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	c.Host = cfg.Host
 	c.Port = port
 	c.Source = rs
-	if pk == "" {
+	if len(pks) == 0 {
 		anonAccess = "read-write"
 	} else {
 		anonAccess = "no-access"
@@ -82,14 +86,14 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 		displayHost = host
 	}
 	yamlConfig := fmt.Sprintf(defaultConfig, displayHost, port, anonAccess)
-	if pk != "" {
-		pks := ""
-		for _, key := range strings.Split(strings.TrimSpace(pk), "\n") {
-			pks += fmt.Sprintf("      - %s\n", key)
-		}
-		yamlUsers = fmt.Sprintf(hasKeyUserConfig, pks)
-	} else {
+	if len(pks) == 0 {
 		yamlUsers = defaultUserConfig
+	} else {
+		var result string
+		for _, pk := range pks {
+			result += fmt.Sprintf("      - %s\n", pk)
+		}
+		yamlUsers = fmt.Sprintf(hasKeyUserConfig, result)
 	}
 	yaml := fmt.Sprintf("%s%s%s", yamlConfig, yamlUsers, exampleUserConfig)
 	err := c.createDefaultConfigRepo(yaml)
