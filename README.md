@@ -170,6 +170,22 @@ environment-level settings:
 * `SOFT_SERVE_REPO_PATH`: Path where repos are stored (_default .repos_)
 * `SOFT_SERVE_INITIAL_ADMIN_KEY`: The public key that will initially have admin access to repos (_default ""_). This must be set before `soft` runs for the first time and creates the `config` repo. If set after the `config` repo has been created, this setting has no effect.
 
+
+### A note about RSA keys
+
+Go's `x/crypto/ssh` package does not support new SSH RSA keys, only the old
+SHA-1 ones are supported.
+
+To be able to access a soft-serve instance, you'd either need an SHA-1 RSA key,
+or some other algorithm, e.g. ED25519.
+
+If you're curious about the inner workings of this, check out the following
+links:
+
+- https://github.com/golang/go/issues/37278
+- https://go-review.googlesource.com/c/crypto/+/220037
+- https://github.com/golang/crypto/pull/197
+
 ## License
 
 [MIT](https://github.com/charmbracelet/soft-serve/raw/main/LICENSE)
