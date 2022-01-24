@@ -179,7 +179,7 @@ ones will work.
 
 Until we sort this out you'll either need an SHA-1 RSA key or a key with
 another algorithm, e.g. Ed25519. Not sure what type of keys you have?
-You can check  with the following:
+You can check with the following:
 
 ```
 $ find ~/.ssh/id_*.pub -exec ssh-keygen -l -f {} \;
