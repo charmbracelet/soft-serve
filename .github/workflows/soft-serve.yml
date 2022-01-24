@@ -1,4 +1,4 @@
-name: Soft-Serve
+name: soft-serve
 
 on:
   push:
@@ -6,17 +6,7 @@ on:
       - main
 
 jobs:
-  softserve:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
-      - name: Push to Soft-Serve
-        uses: charmbracelet/soft-serve-action@v1
-        with:
-          server: "git.charm.sh"
-          ssh-key: "${{ secrets.CHARM_SOFT_SERVE_KEY }}"
-          name: "soft-serve"
+  soft-serve:
+    uses: charmbracelet/meta/.github/workflows/soft-serve.yml@main
+    secrets:
+      ssh-key: "${{ secrets.CHARM_SOFT_SERVE_KEY }}"
