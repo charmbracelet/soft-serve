@@ -173,14 +173,19 @@ environment-level settings:
 
 ### A note about RSA keys
 
-Go's `x/crypto/ssh` package does not support new SSH RSA keys, only the old
-SHA-1 ones are supported.
+Unfortunately, due to a shortcoming in Go’s `x/crypto/ssh` package, Soft Serve
+does not currently support access via new SSH RSA keys: only the old SHA-1
+ones will work.
 
-To be able to access a soft-serve instance, you'd either need an SHA-1 RSA key,
-or some other algorithm, e.g. ED25519.
+Until we sort this out you'll either need an SHA-1 RSA key or a key with a
+other algorithm, e.g. Ed25519. Not sure what type of keys you have?
+You can check  with the following:
 
-If you're curious about the inner workings of this, check out the following
-links:
+```
+$ find ~/.ssh/id_*.pub -exec ssh-keygen -l -f {} \;
+```
+
+If you're curious about the inner workings of this problem have a look at:
 
 - https://github.com/golang/go/issues/37278
 - https://go-review.googlesource.com/c/crypto/+/220037
