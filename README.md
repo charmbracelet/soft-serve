@@ -177,8 +177,8 @@ Unfortunately, due to a shortcoming in Go’s `x/crypto/ssh` package, Soft Serve
 does not currently support access via new SSH RSA keys: only the old SHA-1
 ones will work.
 
-Until we sort this out you'll either need an SHA-1 RSA key or a key with a
-other algorithm, e.g. Ed25519. Not sure what type of keys you have?
+Until we sort this out you'll either need an SHA-1 RSA key or a key with
+another algorithm, e.g. Ed25519. Not sure what type of keys you have?
 You can check  with the following:
 
 ```
