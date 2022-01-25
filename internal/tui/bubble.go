@@ -7,10 +7,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/internal/config"
+	gittypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/repo"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/selection"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
 	"github.com/gliderlabs/ssh"
+)
+
+const (
+	repoNameMaxWidth = 32
 )
 
 type sessionState int
@@ -112,11 +117,8 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case selection.SelectedMsg:
 		b.activeBox = 1
 		rb := b.repoMenu[msg.Index].bubble
-		rb.GotoTop()
 		b.boxes[1] = rb
 	case selection.ActiveMsg:
-		rb := b.repoMenu[msg.Index].bubble
-		rb.GotoTop()
 		b.boxes[1] = b.repoMenu[msg.Index].bubble
 		cmds = append(cmds, func() tea.Msg {
 			return b.lastResize
@@ -163,27 +165,39 @@ func (b Bubble) headerView() string {
 
 func (b Bubble) footerView() string {
 	w := &strings.Builder{}
-	var h []helpEntry
+	var h []gittypes.HelpEntry
 	switch b.state {
 	case errorState:
-		h = []helpEntry{{"q", "quit"}}
+		h = []gittypes.HelpEntry{{"q", "quit"}}
 	default:
-		h = []helpEntry{
+		h = []gittypes.HelpEntry{
 			{"tab", "section"},
 			{"↑/↓", "navigate"},
-			{"q", "quit"},
 		}
-		if _, ok := b.boxes[b.activeBox].(*repo.Bubble); ok {
-			h = append(h[:2], helpEntry{"f/b", "pgdown/pgup"}, h[2])
+		if box, ok := b.boxes[b.activeBox].(*repo.Bubble); ok {
+			help := box.Help()
+			for _, he := range help {
+				h = append(h, he)
+			}
 		}
+		h = append(h, gittypes.HelpEntry{"q", "quit"})
 	}
 	for i, v := range h {
-		fmt.Fprint(w, v.Render(b.styles))
+		fmt.Fprint(w, helpEntryRender(v, b.styles))
 		if i != len(h)-1 {
 			fmt.Fprint(w, b.styles.HelpDivider)
 		}
 	}
-	return b.styles.Footer.Copy().Width(b.width).Render(w.String())
+	branch := ""
+	if b.state == loadedState {
+		branch = b.boxes[1].(*repo.Bubble).Reference().Short()
+	}
+	footer := b.styles.Footer.Copy().Width(b.width - b.styles.App.GetHorizontalFrameSize())
+	left := w.String()
+	leftMargin := lipgloss.Width(left) + b.styles.App.GetHorizontalFrameSize()
+	branch = gittypes.TruncateString(branch, b.width-leftMargin, "…")
+	right := b.styles.Branch.Width(footer.GetWidth() - lipgloss.Width(left)).Align(lipgloss.Right).Render(branch)
+	return footer.Render(left + right)
 }
 
 func (b Bubble) errorView() string {
@@ -219,11 +233,6 @@ func (b Bubble) View() string {
 	return b.styles.App.Render(s.String())
 }
 
-type helpEntry struct {
-	key string
-	val string
-}
-
-func (h helpEntry) Render(s *style.Styles) string {
-	return fmt.Sprintf("%s %s", s.HelpKey.Render(h.key), s.HelpValue.Render(h.val))
+func helpEntryRender(h gittypes.HelpEntry, s *style.Styles) string {
+	return fmt.Sprintf("%s %s", s.HelpKey.Render(h.Key), s.HelpValue.Render(h.Value))
 }

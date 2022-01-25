@@ -25,6 +25,7 @@ type Repo struct {
 	Repository  *git.Repository
 	Readme      string
 	LastUpdated *time.Time
+	commits     CommitLog
 }
 
 // RepoCommit contains metadata for a Git commit.
@@ -44,10 +45,9 @@ func (cl CommitLog) Less(i, j int) bool {
 
 // RepoSource is a reference to an on-disk repositories.
 type RepoSource struct {
-	Path    string
-	mtx     sync.Mutex
-	repos   []*Repo
-	commits CommitLog
+	Path  string
+	mtx   sync.Mutex
+	repos []*Repo
 }
 
 // NewRepoSource creates a new RepoSource.
@@ -106,14 +106,14 @@ func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 	return r, nil
 }
 
-// GetCommits returns commits for the repository.
-func (rs *RepoSource) GetCommits(limit int) []RepoCommit {
-	rs.mtx.Lock()
-	defer rs.mtx.Unlock()
-	if limit > len(rs.commits) {
-		limit = len(rs.commits)
+func (r *Repo) GetCommits(limit int) CommitLog {
+	if limit <= 0 {
+		return r.commits
 	}
-	return rs.commits[:limit]
+	if limit > len(r.commits) {
+		limit = len(r.commits)
+	}
+	return r.commits[:limit]
 }
 
 // LoadRepos opens Git repositories.
@@ -125,7 +125,6 @@ func (rs *RepoSource) LoadRepos() error {
 		return err
 	}
 	rs.repos = make([]*Repo, 0)
-	rs.commits = make([]RepoCommit, 0)
 	for _, de := range rd {
 		rn := de.Name()
 		rg, err := git.PlainOpen(filepath.Join(rs.Path, rn))
@@ -143,6 +142,7 @@ func (rs *RepoSource) LoadRepos() error {
 
 func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 	r := &Repo{Name: name}
+	r.commits = make([]RepoCommit, 0)
 	r.Repository = rg
 	l, err := rg.Log(&git.LogOptions{All: true})
 	if err != nil {
@@ -159,13 +159,13 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 				}
 			}
 		}
-		rs.commits = append(rs.commits, RepoCommit{Name: name, Commit: c})
+		r.commits = append(r.commits, RepoCommit{Name: name, Commit: c})
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	sort.Sort(rs.commits)
+	sort.Sort(r.commits)
 	return r, nil
 }
 

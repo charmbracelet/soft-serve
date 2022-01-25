@@ -1,4 +1,4 @@
-package repo
+package viewport
 
 import (
 	"github.com/charmbracelet/bubbles/viewport"

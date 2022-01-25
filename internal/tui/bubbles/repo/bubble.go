@@ -1,111 +1,71 @@
 package repo
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
-	"text/template"
 
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/internal/git"
+	gitui "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git"
+	gitypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/reflow/wrap"
 )
 
 const (
-	glamourMaxWidth  = 120
 	repoNameMaxWidth = 32
 )
 
-var glamourStyle = func() ansi.StyleConfig {
-	noColor := ""
-	s := glamour.DarkStyleConfig
-	s.Document.StylePrimitive.Color = &noColor
-	s.CodeBlock.Chroma.Text.Color = &noColor
-	s.CodeBlock.Chroma.Name.Color = &noColor
-	return s
-}()
-
-type ErrMsg struct {
-	Error error
-}
-
 type Bubble struct {
-	templateObject interface{}
-	repoSource     *git.RepoSource
-	name           string
-	repo           *git.Repo
-	styles         *style.Styles
-	readmeViewport *ViewportBubble
-	readme         string
-	height         int
-	heightMargin   int
-	width          int
-	widthMargin    int
-	Active         bool
+	name         string
+	host         string
+	port         int
+	repo         gitypes.Repo
+	styles       *style.Styles
+	width        int
+	widthMargin  int
+	height       int
+	heightMargin int
+	box          *gitui.Bubble
 
-	// XXX: ideally, we get these from the parent as a pointer. Currently, we
-	// can't add a *tui.Config because it's an illegal import cycle. One
-	// solution would be to (rename and) move this Bubble into the parent
-	// package.
-	Host string
-	Port int
+	Active bool
 }
 
-func NewBubble(rs *git.RepoSource, name string, styles *style.Styles, width, wm, height, hm int, tmp interface{}) *Bubble {
+func NewBubble(name, host string, port int, repo gitypes.Repo, styles *style.Styles, width, wm, height, hm int) *Bubble {
 	b := &Bubble{
-		templateObject: tmp,
-		repoSource:     rs,
-		name:           name,
-		styles:         styles,
-		heightMargin:   hm,
-		widthMargin:    wm,
-		readmeViewport: &ViewportBubble{
-			Viewport: &viewport.Model{},
-		},
+		name:         name,
+		host:         host,
+		port:         port,
+		repo:         repo,
+		width:        width,
+		widthMargin:  wm,
+		height:       height,
+		heightMargin: hm,
+		styles:       styles,
 	}
-	b.SetSize(width, height)
+	b.box = gitui.NewBubble(repo, styles, width, wm+styles.RepoBody.GetHorizontalBorderSize(), height, hm+lipgloss.Height(b.headerView())-styles.RepoBody.GetVerticalBorderSize())
 	return b
 }
 
 func (b *Bubble) Init() tea.Cmd {
-	return b.setupCmd
+	return b.box.Init()
 }
 
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		b.SetSize(msg.Width, msg.Height)
-		// XXX: if we find that longer readmes take more than a few
-		// milliseconds to render we may need to move Glamour rendering into a
-		// command.
-		md, err := b.glamourize(b.readme)
-		if err != nil {
-			return b, nil
-		}
-		b.readmeViewport.Viewport.SetContent(md)
+		b.width = msg.Width
+		b.height = msg.Height
 	}
-	rv, cmd := b.readmeViewport.Update(msg)
-	b.readmeViewport = rv.(*ViewportBubble)
-	cmds = append(cmds, cmd)
-	return b, tea.Batch(cmds...)
+	box, cmd := b.box.Update(msg)
+	b.box = box.(*gitui.Bubble)
+	return b, cmd
 }
 
-func (b *Bubble) SetSize(w, h int) {
-	b.width = w
-	b.height = h
-	b.readmeViewport.Viewport.Width = w - b.widthMargin
-	b.readmeViewport.Viewport.Height = h - lipgloss.Height(b.headerView()) - b.heightMargin
-}
-
-func (b *Bubble) GotoTop() {
-	b.readmeViewport.Viewport.GotoTop()
+func (b *Bubble) Help() []gitypes.HelpEntry {
+	return b.box.Help()
 }
 
 func (b Bubble) headerView() string {
@@ -157,83 +117,20 @@ func (b *Bubble) View() string {
 	}
 	body := bs.Width(b.width - b.widthMargin - b.styles.RepoBody.GetVerticalFrameSize()).
 		Height(b.height - b.heightMargin - lipgloss.Height(header)).
-		Render(b.readmeViewport.View())
+		Render(b.box.View())
 	return header + body
 }
 
+func (b *Bubble) Reference() plumbing.ReferenceName {
+	return b.box.Reference()
+}
+
 func (b Bubble) sshAddress() string {
-	p := ":" + strconv.Itoa(int(b.Port))
+	p := ":" + strconv.Itoa(int(b.port))
 	if p == ":22" {
 		p = ""
 	}
-	return fmt.Sprintf("ssh://%s%s/%s", b.Host, p, b.name)
-}
-
-func (b *Bubble) setupCmd() tea.Msg {
-	r, err := b.repoSource.GetRepo(b.name)
-	if err == git.ErrMissingRepo {
-		return nil
-	}
-	if err != nil {
-		return ErrMsg{err}
-	}
-	md := r.Readme
-	if b.templateObject != nil {
-		md, err = b.templatize(md)
-		if err != nil {
-			return ErrMsg{err}
-		}
-	}
-	b.readme = md
-	md, err = b.glamourize(md)
-	if err != nil {
-		return ErrMsg{err}
-	}
-	b.readmeViewport.Viewport.SetContent(md)
-	b.GotoTop()
-	return nil
-}
-
-func (b *Bubble) templatize(mdt string) (string, error) {
-	t, err := template.New("readme").Parse(mdt)
-	if err != nil {
-		return "", err
-	}
-	buf := &bytes.Buffer{}
-	err = t.Execute(buf, b.templateObject)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), nil
-}
-
-func (b *Bubble) glamourize(md string) (string, error) {
-	w := b.width - b.widthMargin - b.styles.RepoBody.GetHorizontalFrameSize()
-	if w > glamourMaxWidth {
-		w = glamourMaxWidth
-	}
-	tr, err := glamour.NewTermRenderer(
-		glamour.WithStyles(glamourStyle),
-		glamour.WithWordWrap(w),
-	)
-
-	if err != nil {
-		return "", err
-	}
-	mdt, err := tr.Render(md)
-	if err != nil {
-		return "", err
-	}
-	// For now, truncate long lines in Glamour that would otherwise break the
-	// layout when wrapping. This is very likely due to #43 in Reflow, which
-	// has to do with a bug in the way lines longer than the given width are
-	// wrapped.
-	//
-	//     https://github.com/muesli/reflow/issues/43
-	//
-	// TODO: solve this upstream in Glamour/Reflow.
-	mdt = lipgloss.NewStyle().MaxWidth(w).Render(mdt)
-	return mdt, nil
+	return fmt.Sprintf("ssh://%s%s/%s", b.host, p, b.name)
 }
 
 func max(a, b int) int {
