@@ -38,7 +38,7 @@ manager:
 brew tap charmbracelet/tap && brew install charmbracelet/tap/soft-serve
 
 # Arch Linux
-yay -S soft-serve
+pacman -S soft-serve
 ```
 
 You can also download a binary from the [releases][releases] page. Packages are
