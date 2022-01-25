@@ -7,10 +7,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/internal/config"
+	gittypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/repo"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/selection"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
 	"github.com/gliderlabs/ssh"
+)
+
+const (
+	repoNameMaxWidth = 32
 )
 
 type sessionState int
@@ -83,14 +88,6 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return b, tea.Quit
 		case "tab", "shift+tab":
 			b.activeBox = (b.activeBox + 1) % 2
-		case "h", "left":
-			if b.activeBox > 0 {
-				b.activeBox--
-			}
-		case "l", "right":
-			if b.activeBox < len(b.boxes)-1 {
-				b.activeBox++
-			}
 		}
 	case errMsg:
 		b.error = msg.Error()
@@ -112,11 +109,8 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case selection.SelectedMsg:
 		b.activeBox = 1
 		rb := b.repoMenu[msg.Index].bubble
-		rb.GotoTop()
 		b.boxes[1] = rb
 	case selection.ActiveMsg:
-		rb := b.repoMenu[msg.Index].bubble
-		rb.GotoTop()
 		b.boxes[1] = b.repoMenu[msg.Index].bubble
 		cmds = append(cmds, func() tea.Msg {
 			return b.lastResize
@@ -163,27 +157,42 @@ func (b Bubble) headerView() string {
 
 func (b Bubble) footerView() string {
 	w := &strings.Builder{}
-	var h []helpEntry
-	switch b.state {
-	case errorState:
-		h = []helpEntry{{"q", "quit"}}
-	default:
-		h = []helpEntry{
+	var h []gittypes.HelpEntry
+	if b.state != errorState {
+		h = []gittypes.HelpEntry{
 			{"tab", "section"},
-			{"↑/↓", "navigate"},
-			{"q", "quit"},
 		}
-		if _, ok := b.boxes[b.activeBox].(*repo.Bubble); ok {
-			h = append(h[:2], helpEntry{"f/b", "pgdown/pgup"}, h[2])
+		if box, ok := b.boxes[b.activeBox].(gittypes.HelpableBubble); ok {
+			help := box.Help()
+			for _, he := range help {
+				h = append(h, he)
+			}
 		}
 	}
+	h = append(h, gittypes.HelpEntry{"q", "quit"})
 	for i, v := range h {
-		fmt.Fprint(w, v.Render(b.styles))
+		fmt.Fprint(w, helpEntryRender(v, b.styles))
 		if i != len(h)-1 {
 			fmt.Fprint(w, b.styles.HelpDivider)
 		}
 	}
-	return b.styles.Footer.Copy().Width(b.width).Render(w.String())
+	branch := ""
+	if b.state == loadedState {
+		branch = b.boxes[1].(*repo.Bubble).Reference().Short()
+	}
+	help := w.String()
+	branchMaxWidth := b.width - // bubble width
+		lipgloss.Width(help) - // help width
+		b.styles.App.GetHorizontalFrameSize() // App paddings
+	branch = b.styles.Branch.Render(gittypes.TruncateString(branch, branchMaxWidth-1, "…"))
+	gap := lipgloss.NewStyle().
+		Width(b.width -
+			lipgloss.Width(help) -
+			lipgloss.Width(branch) -
+			b.styles.App.GetHorizontalFrameSize()).
+		Render("")
+	footer := lipgloss.JoinHorizontal(lipgloss.Top, help, gap, branch)
+	return b.styles.Footer.Render(footer)
 }
 
 func (b Bubble) errorView() string {
@@ -219,11 +228,6 @@ func (b Bubble) View() string {
 	return b.styles.App.Render(s.String())
 }
 
-type helpEntry struct {
-	key string
-	val string
-}
-
-func (h helpEntry) Render(s *style.Styles) string {
-	return fmt.Sprintf("%s %s", s.HelpKey.Render(h.key), s.HelpValue.Render(h.val))
+func helpEntryRender(h gittypes.HelpEntry, s *style.Styles) string {
+	return fmt.Sprintf("%s %s", s.HelpKey.Render(h.Key), s.HelpValue.Render(h.Value))
 }

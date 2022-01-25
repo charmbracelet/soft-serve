@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/internal/config"
@@ -16,6 +18,10 @@ func SessionHandler(cfg *config.Config) func(ssh.Session) (tea.Model, []tea.Prog
 		case 0:
 			scfg.InitialRepo = ""
 		case 1:
+			p, err := url.Parse(cmd[0])
+			if err != nil || strings.Contains(p.Path, "/") {
+				return nil, nil
+			}
 			scfg.InitialRepo = cmd[0]
 		default:
 			return nil, nil
