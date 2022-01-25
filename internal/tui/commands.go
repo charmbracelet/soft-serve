@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"bytes"
 	"fmt"
+	"text/template"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/internal/config"
-	br "github.com/charmbracelet/soft-serve/internal/tui/bubbles/repo"
+	gitypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
+	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/repo"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/selection"
 	gm "github.com/charmbracelet/wish/git"
 )
@@ -93,37 +95,54 @@ func (b *Bubble) menuEntriesFromSource() ([]MenuEntry, error) {
 	return mes, nil
 }
 
-func (b *Bubble) newMenuEntry(name string, repo string) (MenuEntry, error) {
-	var tmplConfig *config.Config
-	if repo == "config" {
-		tmplConfig = b.config
+func (b *Bubble) newMenuEntry(name string, rn string) (MenuEntry, error) {
+	gr := &Repo{
+		name: rn,
 	}
-	me := MenuEntry{Name: name, Repo: repo}
-	width := b.width
+	me := MenuEntry{Name: name, Repo: rn}
+	r, err := b.config.Source.GetRepo(rn)
+	if err != nil {
+		return me, err
+	}
+	if rn == "config" {
+		md, err := templatize(r.Readme, b.config)
+		if err != nil {
+			return me, err
+		}
+		r.Readme = md
+	}
+	gr.repo = r.Repository
+	gr.readme = r.Readme
+	gr.ref, err = r.Repository.Head()
+	if err != nil {
+		return me, err
+	}
 	boxLeftWidth := b.styles.Menu.GetWidth() + b.styles.Menu.GetHorizontalFrameSize()
 	// TODO: also send this along with a tea.WindowSizeMsg
 	var heightMargin = lipgloss.Height(b.headerView()) +
 		lipgloss.Height(b.footerView()) +
 		b.styles.RepoBody.GetVerticalFrameSize() +
 		b.styles.App.GetVerticalMargins()
-	rb := br.NewBubble(
-		b.config.Source,
-		me.Repo,
-		b.styles,
-		width,
-		boxLeftWidth,
-		b.height,
-		heightMargin,
-		tmplConfig,
-	)
-	rb.Host = b.config.Host
-	rb.Port = b.config.Port
+	rb := repo.NewBubble(rn, b.config.Host, b.config.Port, gr, b.styles, b.width, boxLeftWidth, b.height, heightMargin)
 	initCmd := rb.Init()
 	msg := initCmd()
 	switch msg := msg.(type) {
-	case br.ErrMsg:
-		return me, fmt.Errorf("missing %s: %s", me.Repo, msg.Error)
+	case gitypes.ErrMsg:
+		return me, fmt.Errorf("missing %s: %s", me.Repo, msg.Err.Error())
 	}
 	me.bubble = rb
 	return me, nil
+}
+
+func templatize(mdt string, tmpl interface{}) (string, error) {
+	t, err := template.New("readme").Parse(mdt)
+	if err != nil {
+		return "", err
+	}
+	buf := &bytes.Buffer{}
+	err = t.Execute(buf, tmpl)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }

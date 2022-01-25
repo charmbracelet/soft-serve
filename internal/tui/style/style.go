@@ -31,6 +31,7 @@ type Styles struct {
 	RepoBody     lipgloss.Style
 
 	Footer      lipgloss.Style
+	Branch      lipgloss.Style
 	HelpKey     lipgloss.Style
 	HelpValue   lipgloss.Style
 	HelpDivider lipgloss.Style
@@ -38,6 +39,32 @@ type Styles struct {
 	Error      lipgloss.Style
 	ErrorTitle lipgloss.Style
 	ErrorBody  lipgloss.Style
+
+	LogItemSelector   lipgloss.Style
+	LogItemActive     lipgloss.Style
+	LogItemInactive   lipgloss.Style
+	LogItemHash       lipgloss.Style
+	LogCommit         lipgloss.Style
+	LogCommitHash     lipgloss.Style
+	LogCommitAuthor   lipgloss.Style
+	LogCommitDate     lipgloss.Style
+	LogCommitBody     lipgloss.Style
+	LogCommitStatsAdd lipgloss.Style
+	LogCommitStatsDel lipgloss.Style
+
+	RefItemSelector lipgloss.Style
+	RefItemActive   lipgloss.Style
+	RefItemInactive lipgloss.Style
+	RefItemBranch   lipgloss.Style
+	RefItemTag      lipgloss.Style
+
+	TreeItemSelector lipgloss.Style
+	TreeItemActive   lipgloss.Style
+	TreeItemInactive lipgloss.Style
+	TreeFileDir      lipgloss.Style
+	TreeFileMode     lipgloss.Style
+	TreeFileSize     lipgloss.Style
+	TreeFileContent  lipgloss.Style
 }
 
 // DefaultStyles returns default styles for the TUI.
@@ -133,6 +160,11 @@ func DefaultStyles() *Styles {
 	s.Footer = lipgloss.NewStyle().
 		MarginTop(1)
 
+	s.Branch = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("203")).
+		Background(lipgloss.Color("236")).
+		Padding(0, 1)
+
 	s.HelpKey = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("241"))
 
@@ -156,6 +188,69 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("252")).
 		MarginLeft(2).
 		Width(52) // for now
+
+	s.LogItemInactive = lipgloss.NewStyle().
+		MarginLeft(1)
+
+	s.LogItemSelector = s.LogItemInactive.Copy().
+		Width(1).
+		Foreground(lipgloss.Color("#B083EA"))
+
+	s.LogItemActive = s.LogItemInactive.Copy().
+		Bold(true)
+
+	s.LogItemHash = s.LogItemInactive.Copy().
+		Width(7).
+		Foreground(lipgloss.Color("#A3A322"))
+
+	s.LogCommit = lipgloss.NewStyle().
+		Margin(0, 2)
+
+	s.LogCommitHash = s.LogItemHash.Copy().
+		UnsetMarginLeft().
+		UnsetWidth().
+		Bold(true)
+
+	s.LogCommitBody = lipgloss.NewStyle().
+		MarginTop(1).
+		MarginLeft(2)
+
+	s.LogCommitStatsAdd = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#00D787")).
+		Bold(true)
+
+	s.LogCommitStatsDel = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FD5B5B")).
+		Bold(true)
+
+	s.RefItemSelector = s.LogItemSelector.Copy()
+
+	s.RefItemActive = s.LogItemActive.Copy()
+
+	s.RefItemInactive = s.LogItemInactive.Copy()
+
+	s.RefItemBranch = lipgloss.NewStyle()
+
+	s.RefItemTag = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#A3A322"))
+
+	s.TreeItemSelector = s.LogItemSelector.Copy()
+
+	s.TreeItemActive = s.LogItemActive.Copy()
+
+	s.TreeItemInactive = s.LogItemInactive.Copy()
+
+	s.TreeFileDir = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#00AAFF"))
+
+	s.TreeFileMode = s.LogItemInactive.Copy().
+		Width(10).
+		Foreground(lipgloss.Color("#777777"))
+
+	s.TreeFileSize = s.LogItemInactive.Copy().
+		Foreground(lipgloss.Color("252"))
+
+	s.TreeFileContent = lipgloss.NewStyle()
 
 	return s
 }
