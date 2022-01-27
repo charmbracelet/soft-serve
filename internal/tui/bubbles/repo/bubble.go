@@ -224,16 +224,14 @@ func (b *Bubble) glamourize(md string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// For now, truncate long lines in Glamour that would otherwise break the
-	// layout when wrapping. This is very likely due to #43 in Reflow, which
-	// has to do with a bug in the way lines longer than the given width are
-	// wrapped.
+	// For now, hard-wrap long lines in Glamour that would otherwise break the
+	// layout when wrapping. This may be due to #43 in Reflow, which has to do
+	// with a bug in the way lines longer than the given width are wrapped.
 	//
 	//     https://github.com/muesli/reflow/issues/43
 	//
 	// TODO: solve this upstream in Glamour/Reflow.
-	mdt = lipgloss.NewStyle().MaxWidth(w).Render(mdt)
-	return mdt, nil
+	return wrap.String(mdt, w), nil
 }
 
 func max(a, b int) int {
