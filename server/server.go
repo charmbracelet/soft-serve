@@ -41,7 +41,7 @@ func NewServer(cfg *config.Config) *Server {
 	s, err := wish.NewServer(
 		ssh.PublicKeyAuth(ac.PublicKeyHandler),
 		ssh.PasswordAuth(ac.PasswordHandler),
-		wish.WithAddress(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)),
+		wish.WithAddress(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port)),
 		wish.WithHostKeyPath(cfg.KeyPath),
 		wish.WithMiddleware(mw...),
 	)
