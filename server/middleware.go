@@ -26,7 +26,7 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 			cmds := s.Command()
 			if !active && len(cmds) > 0 {
 				func() {
-					formatting := false
+					color := false
 					lineno := false
 					fp := filepath.Clean(cmds[0])
 					ps := strings.Split(fp, "/")
@@ -47,9 +47,9 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						return
 					}
 					for _, op := range cmds[1:] {
-						if op == "formatting" {
-							formatting = true
-						} else if op == "lineno" || op == "linenumber" {
+						if op == "-c" || op == "--color" {
+							color = true
+						} else if op == "-l" || op == "--lineno" || op == "--linenumber" {
 							lineno = true
 						}
 					}
@@ -65,7 +65,7 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						_ = s.Exit(1)
 						return
 					}
-					if formatting {
+					if color {
 						ffc, err := withFormatting(fp, fc)
 						if err != nil {
 							s.Write([]byte(err.Error()))
@@ -75,7 +75,7 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						fc = ffc
 					}
 					if lineno {
-						fc = withLineNumber(fc, formatting)
+						fc = withLineNumber(fc, color)
 					}
 					s.Write([]byte(fc))
 				}()
@@ -105,13 +105,13 @@ func readFile(r *gg.Repository, fp string) (string, error) {
 	return fc, nil
 }
 
-func withLineNumber(s string, formatting bool) string {
+func withLineNumber(s string, color bool) string {
 	st := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
 	lines := strings.Split(s, "\n")
 	mll := fmt.Sprintf("%d", len(fmt.Sprintf("%d", len(lines))))
 	for i, l := range lines {
 		lines[i] = fmt.Sprintf("%-"+mll+"d │ %s", i+1, l)
-		if formatting {
+		if color {
 			lines[i] = st.Render(lines[i])
 		}
 	}
