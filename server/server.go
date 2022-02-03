@@ -13,6 +13,7 @@ import (
 	bm "github.com/charmbracelet/wish/bubbletea"
 	gm "github.com/charmbracelet/wish/git"
 	lm "github.com/charmbracelet/wish/logging"
+	rm "github.com/charmbracelet/wish/recover"
 	"github.com/gliderlabs/ssh"
 )
 
@@ -34,9 +35,12 @@ func NewServer(cfg *config.Config) *Server {
 		log.Fatal(err)
 	}
 	mw := []wish.Middleware{
-		bm.Middleware(tui.SessionHandler(ac)),
-		gm.Middleware(cfg.RepoPath, ac),
-		lm.Middleware(),
+		rm.MiddlewareWithLogger(
+			cfg.ErrorLog,
+			bm.Middleware(tui.SessionHandler(ac)),
+			gm.Middleware(cfg.RepoPath, ac),
+			lm.Middleware(),
+		),
 	}
 	s, err := wish.NewServer(
 		ssh.PublicKeyAuth(ac.PublicKeyHandler),

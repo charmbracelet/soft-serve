@@ -30,6 +30,9 @@ func SessionHandler(cfg *config.Config) func(ssh.Session) (tea.Model, []tea.Prog
 		if cfg.Cfg.Callbacks != nil {
 			cfg.Cfg.Callbacks.Tui("view")
 		}
-		return NewBubble(cfg, scfg), []tea.ProgramOption{tea.WithAltScreen()}
+		return NewBubble(cfg, scfg), []tea.ProgramOption{
+			tea.WithAltScreen(),
+			tea.WithoutCatchPanics(),
+		}
 	}
 }
