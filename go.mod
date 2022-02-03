@@ -5,10 +5,10 @@ go 1.17
 require (
 	github.com/caarlos0/env/v6 v6.9.1
 	github.com/charmbracelet/bubbles v0.10.0
-	github.com/charmbracelet/bubbletea v0.19.3
+	github.com/charmbracelet/bubbletea v0.19.4-0.20220208181305-42cd4c31919c
 	github.com/charmbracelet/glamour v0.4.0
 	github.com/charmbracelet/lipgloss v0.4.0
-	github.com/charmbracelet/wish v0.1.2
+	github.com/charmbracelet/wish v0.2.1-0.20220208182816-534842b53d2a
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gliderlabs/ssh v0.3.3
 	github.com/go-git/go-billy/v5 v5.3.1
@@ -42,7 +42,7 @@ require (
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/muesli/ansi v0.0.0-20211031195517-c9f0611b6c70 // indirect
-	github.com/muesli/termenv v0.9.0 // indirect
+	github.com/muesli/termenv v0.11.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
