@@ -54,18 +54,20 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	host := cfg.BindAddr
 	port := cfg.Port
 
-	pks := make([]string, 0, len(cfg.InitialAdminKeys))
+	pks := make([]string, 0)
 	for _, k := range cfg.InitialAdminKeys {
 		var pk = strings.TrimSpace(k)
-		if bts, err := os.ReadFile(k); err == nil {
-			// pk is a file, set its contents as pk
-			pk = string(bts)
+		if pk != "" {
+			if bts, err := os.ReadFile(k); err == nil {
+				// pk is a file, set its contents as pk
+				pk = string(bts)
+			}
+			// it is a valid ssh key, nothing to do
+			if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pk)); err != nil {
+				return nil, fmt.Errorf("invalid initial admin key %q: %w", k, err)
+			}
+			pks = append(pks, pk)
 		}
-		// it is a valid ssh key, nothing to do
-		if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pk)); err != nil {
-			return nil, fmt.Errorf("invalid initial admin key %q: %w", k, err)
-		}
-		pks = append(pks, pk)
 	}
 
 	rs := git.NewRepoSource(cfg.RepoPath)
