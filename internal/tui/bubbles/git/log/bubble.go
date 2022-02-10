@@ -140,16 +140,7 @@ func (b *Bubble) updateItems() tea.Cmd {
 }
 
 func (b *Bubble) Help() []types.HelpEntry {
-	switch b.state {
-	case logState:
-		return []types.HelpEntry{
-			{"enter", "select"},
-		}
-	default:
-		return []types.HelpEntry{
-			{"esc", "back"},
-		}
-	}
+	return nil
 }
 
 func (b *Bubble) GotoTop() {

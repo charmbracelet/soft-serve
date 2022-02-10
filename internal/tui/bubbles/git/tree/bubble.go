@@ -175,14 +175,7 @@ func (b *Bubble) SetSize(width, height int) {
 }
 
 func (b *Bubble) Help() []types.HelpEntry {
-	h := []types.HelpEntry{}
-	switch b.state {
-	case errorState:
-		h = append(h, types.HelpEntry{"esc", "back"})
-	default:
-		h = append(h, types.HelpEntry{"←/↑/→/↓", "navigate"})
-	}
-	return h
+	return nil
 }
 
 func (b *Bubble) updateItems() tea.Cmd {

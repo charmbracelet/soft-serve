@@ -110,9 +110,7 @@ func (b *Bubble) SetSize(width, height int) {
 }
 
 func (b *Bubble) Help() []types.HelpEntry {
-	return []types.HelpEntry{
-		{"enter", "select"},
-	}
+	return nil
 }
 
 func (b *Bubble) updateItems() tea.Cmd {

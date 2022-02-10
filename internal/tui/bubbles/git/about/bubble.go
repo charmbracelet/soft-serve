@@ -78,9 +78,7 @@ func (b *Bubble) View() string {
 }
 
 func (b *Bubble) Help() []types.HelpEntry {
-	return []types.HelpEntry{
-		{"f/b", "pgup/pgdown"},
-	}
+	return nil
 }
 
 func (b *Bubble) setupCmd() tea.Msg {

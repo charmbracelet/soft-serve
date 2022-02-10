@@ -63,15 +63,17 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "A":
-			b.state = aboutPage
-		case "R":
-			b.state = refsPage
-		case "L":
-			b.state = logPage
-		case "T":
-			b.state = treePage
+		if b.repo.Name() != "config" {
+			switch msg.String() {
+			case "r", "R":
+				b.state = aboutPage
+			case "b", "B":
+				b.state = refsPage
+			case "c", "C":
+				b.state = logPage
+			case "f", "F":
+				b.state = treePage
+			}
 		}
 	case tea.WindowSizeMsg:
 		b.width = msg.Width
@@ -105,21 +107,12 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (b *Bubble) Help() []types.HelpEntry {
 	h := []types.HelpEntry{}
-	if b.state != treePage {
-		h = append(h, types.HelpEntry{"↑/↓", "navigate"})
-	}
 	h = append(h, b.boxes[b.state].(types.HelpableBubble).Help()...)
-	if b.state != aboutPage {
-		h = append(h, types.HelpEntry{"A", "about"})
-	}
-	if b.state != refsPage {
-		h = append(h, types.HelpEntry{"R", "refs"})
-	}
-	if b.state != logPage {
-		h = append(h, types.HelpEntry{"L", "log"})
-	}
-	if b.state != treePage {
-		h = append(h, types.HelpEntry{"T", "tree"})
+	if b.repo.Name() != "config" {
+		h = append(h, types.HelpEntry{"r", "readme"})
+		h = append(h, types.HelpEntry{"f", "files"})
+		h = append(h, types.HelpEntry{"c", "commits"})
+		h = append(h, types.HelpEntry{"b", "branches/tags"})
 	}
 	return h
 }
