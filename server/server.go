@@ -2,26 +2,18 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/charmbracelet/soft-serve/config"
 	appCfg "github.com/charmbracelet/soft-serve/internal/config"
-	"github.com/charmbracelet/soft-serve/internal/tui"
-
-	"github.com/charmbracelet/wish"
-	bm "github.com/charmbracelet/wish/bubbletea"
-	gm "github.com/charmbracelet/wish/git"
-	lm "github.com/charmbracelet/wish/logging"
-	rm "github.com/charmbracelet/wish/recover"
-	"github.com/gliderlabs/ssh"
 )
 
 // Server is the Soft Serve server.
 type Server struct {
-	SSHServer *ssh.Server
-	Config    *config.Config
-	config    *appCfg.Config
+	HTTPServer *HTTPServer
+	SSHServer  *SSHServer
+	Cfg        *config.Config
+	ac         *appCfg.Config
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -34,43 +26,38 @@ func NewServer(cfg *config.Config) *Server {
 	if err != nil {
 		log.Fatal(err)
 	}
-	mw := []wish.Middleware{
-		rm.MiddlewareWithLogger(
-			cfg.ErrorLog,
-			softServeMiddleware(ac),
-			bm.Middleware(tui.SessionHandler(ac)),
-			gm.Middleware(cfg.RepoPath, ac),
-			lm.Middleware(),
-		),
-	}
-	s, err := wish.NewServer(
-		ssh.PublicKeyAuth(ac.PublicKeyHandler),
-		ssh.PasswordAuth(ac.PasswordHandler),
-		wish.WithAddress(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port)),
-		wish.WithHostKeyPath(cfg.KeyPath),
-		wish.WithMiddleware(mw...),
-	)
-	if err != nil {
-		log.Fatalln(err)
-	}
 	return &Server{
-		SSHServer: s,
-		Config:    cfg,
-		config:    ac,
+		HTTPServer: NewHTTPServer(cfg, ac),
+		SSHServer:  NewSSHServer(cfg, ac),
+		Cfg:        cfg,
+		ac:         ac,
 	}
 }
 
 // Reload reloads the server configuration.
 func (srv *Server) Reload() error {
-	return srv.config.Reload()
+	return srv.ac.Reload()
 }
 
-// Start starts the SSH server.
-func (srv *Server) Start() error {
-	return srv.SSHServer.ListenAndServe()
+func (s *Server) Start() {
+	go func() {
+		log.Printf("Starting HTTP server on %s:%d", s.Cfg.BindAddr, s.Cfg.HTTPPort)
+		if err := s.HTTPServer.Start(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	log.Printf("Starting SSH server on %s:%d", s.Cfg.BindAddr, s.Cfg.SSHPort)
+	if err := s.SSHServer.Start(); err != nil {
+		log.Fatal(err)
+	}
 }
 
-// Shutdown lets the server gracefully shutdown.
-func (srv *Server) Shutdown(ctx context.Context) error {
-	return srv.SSHServer.Shutdown(ctx)
+func (s *Server) Shutdown(ctx context.Context) error {
+	log.Printf("Stopping SSH server on %s:%d", s.Cfg.BindAddr, s.Cfg.SSHPort)
+	err := s.SSHServer.Shutdown(ctx)
+	if err != nil {
+		return err
+	}
+	log.Printf("Stopping HTTP server on %s:%d", s.Cfg.BindAddr, s.Cfg.SSHPort)
+	return s.HTTPServer.Shutdown(ctx)
 }

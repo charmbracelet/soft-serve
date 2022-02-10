@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/tls"
 	"log"
 	"path/filepath"
 
@@ -17,12 +18,14 @@ type Callbacks interface {
 // Config is the configuration for Soft Serve.
 type Config struct {
 	BindAddr         string   `env:"SOFT_SERVE_BIND_ADDRESS" envDefault:""`
-	Port             int      `env:"SOFT_SERVE_PORT" envDefault:"23231"`
+	SSHPort          int      `env:"SOFT_SERVE_SSH_PORT" envDefault:"23231"`
+	HTTPPort         int      `env:"SOFT_SERVE_HTTP_PORT" envDefault:"23232"`
 	KeyPath          string   `env:"SOFT_SERVE_KEY_PATH"`
 	RepoPath         string   `env:"SOFT_SERVE_REPO_PATH" envDefault:".repos"`
 	InitialAdminKeys []string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY" envSeparator:"\n"`
 	Callbacks        Callbacks
 	ErrorLog         *log.Logger
+	TLSConfig        *tls.Config
 }
 
 // DefaultConfig returns a Config with the values populated with the defaults
@@ -48,5 +51,10 @@ func (c *Config) WithCallbacks(callbacks Callbacks) *Config {
 // WithErrorLogger sets the error logger for the configuration.
 func (c *Config) WithErrorLogger(logger *log.Logger) *Config {
 	c.ErrorLog = logger
+	return c
+}
+
+func (c *Config) WithTLSConfig(t *tls.Config) *Config {
+	c.TLSConfig = t
 	return c
 }

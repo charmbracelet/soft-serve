@@ -57,16 +57,12 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Printf("Starting SSH server on %s:%d", cfg.BindAddr, cfg.Port)
 	go func() {
-		if err := s.Start(); err != nil {
-			log.Fatalln(err)
-		}
+		s.Start()
 	}()
 
 	<-done
 
-	log.Printf("Stopping SSH server on %s:%d", cfg.BindAddr, cfg.Port)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer func() { cancel() }()
 	if err := s.Shutdown(ctx); err != nil {

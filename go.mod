@@ -22,6 +22,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
+require goji.io v2.0.2+incompatible
+
 require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20220113124808-70ae35bab23f // indirect

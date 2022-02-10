@@ -52,7 +52,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	var yamlUsers string
 	var displayHost string
 	host := cfg.BindAddr
-	port := cfg.Port
+	port := cfg.SSHPort
 
 	pks := make([]string, 0)
 	for _, k := range cfg.InitialAdminKeys {
