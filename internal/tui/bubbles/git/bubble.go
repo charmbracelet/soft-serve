@@ -85,22 +85,13 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 		}
+	case refs.RefMsg:
+		b.state = treePage
 	}
 	m, cmd := b.boxes[b.state].Update(msg)
 	b.boxes[b.state] = m
 	if cmd != nil {
 		cmds = append(cmds, cmd)
-	}
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "enter":
-			if b.state == refsPage {
-				b.state = treePage
-				cmds = append(cmds, b.boxes[b.state].Init())
-			}
-		}
 	}
 	return b, tea.Batch(cmds...)
 }

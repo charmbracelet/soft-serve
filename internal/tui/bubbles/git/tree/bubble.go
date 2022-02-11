@@ -13,6 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/refs"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
@@ -35,16 +36,16 @@ const (
 )
 
 type item struct {
-	*object.TreeEntry
-	*object.File
+	entry *object.TreeEntry
+	file  *object.File
 }
 
 func (i item) Name() string {
-	return i.TreeEntry.Name
+	return i.entry.Name
 }
 
 func (i item) Mode() filemode.FileMode {
-	return i.TreeEntry.Mode
+	return i.entry.Mode
 }
 
 func (i item) FilterValue() string { return i.Name() }
@@ -84,8 +85,8 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		name = s.TreeFileDir.Render(name)
 	}
 	size := ""
-	if i.File != nil {
-		size = humanize.Bytes(uint64(i.File.Size))
+	if i.file != nil {
+		size = humanize.Bytes(uint64(i.file.Size))
 	}
 	var cs lipgloss.Style
 	mode, _ := i.Mode().ToOSFileMode()
@@ -151,19 +152,21 @@ func NewBubble(repo types.Repo, style *style.Styles, width, widthMargin, height,
 		widthMargin:  widthMargin,
 		heightMargin: heightMargin,
 		list:         l,
-		path:         "",
 		state:        treeState,
-		lastSelected: []int{},
 	}
 	b.SetSize(width, height)
 	return b
 }
 
-func (b *Bubble) Init() tea.Cmd {
+func (b *Bubble) reset() tea.Cmd {
 	b.path = ""
-	b.list.Select(0)
 	b.state = treeState
+	b.lastSelected = make([]int, 0)
 	return b.updateItems()
+}
+
+func (b *Bubble) Init() tea.Cmd {
+	return b.reset()
 }
 
 func (b *Bubble) SetSize(width, height int) {
@@ -191,12 +194,10 @@ func (b *Bubble) updateItems() tea.Cmd {
 		if err != nil {
 			break
 		}
-		i := item{
-			TreeEntry: &e,
-		}
+		i := item{entry: &e}
 		if e.Mode.IsFile() {
 			if f, err := t.TreeEntryFile(&e); err == nil {
-				i.File = f
+				i.file = f
 			}
 		}
 		its = append(its, i)
@@ -220,9 +221,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "T":
-			b.state = treeState
-			b.path = ""
-			cmds = append(cmds, b.updateItems())
+			return b, b.reset()
 		case "enter", "right", "l":
 			if b.state == treeState {
 				index := b.list.Index()
@@ -234,7 +233,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, b.updateItems())
 				} else {
 					b.lastSelected = append(b.lastSelected, index)
-					cmds = append(cmds, b.loadFile())
+					cmds = append(cmds, b.loadFile(item))
 				}
 			}
 		case "esc", "left", "h":
@@ -251,6 +250,9 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			b.list.Select(index)
 		}
+
+	case refs.RefMsg:
+		return b, b.reset()
 
 	case types.ErrMsg:
 		b.error = msg
@@ -291,27 +293,19 @@ func (b *Bubble) View() string {
 	}
 }
 
-func (b *Bubble) loadFile() tea.Cmd {
+func (b *Bubble) loadFile(i item) tea.Cmd {
 	return func() tea.Msg {
-		i := b.list.SelectedItem()
-		if i == nil {
-			return nil
-		}
-		f, ok := i.(item)
-		if !ok {
-			return nil
-		}
-		if !f.Mode().IsFile() || f.File == nil {
+		if !i.Mode().IsFile() || i.file == nil {
 			return types.ErrMsg{types.ErrInvalidFile}
 		}
-		bin, err := f.File.IsBinary()
+		bin, err := i.file.IsBinary()
 		if err != nil {
 			return types.ErrMsg{err}
 		}
 		if bin {
 			return types.ErrMsg{types.ErrBinaryFile}
 		}
-		c, err := f.File.Contents()
+		c, err := i.file.Contents()
 		if err != nil {
 			return types.ErrMsg{err}
 		}
