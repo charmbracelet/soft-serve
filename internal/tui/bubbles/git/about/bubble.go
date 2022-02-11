@@ -52,7 +52,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.readmeViewport.Viewport.SetContent(md)
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "A":
+		case "R":
 			b.GotoTop()
 		}
 	}
