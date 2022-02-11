@@ -99,8 +99,8 @@ type Bubble struct {
 	error          types.ErrMsg
 }
 
-func NewBubble(repo types.Repo, style *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
-	l := list.New([]list.Item{}, itemDelegate{style}, width-widthMargin, height-heightMargin)
+func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
+	l := list.New([]list.Item{}, itemDelegate{styles}, width-widthMargin, height-heightMargin)
 	l.SetShowFilter(false)
 	l.SetShowHelp(false)
 	l.SetShowPagination(false)
@@ -115,7 +115,7 @@ func NewBubble(repo types.Repo, style *style.Styles, width, widthMargin, height,
 			Viewport: &viewport.Model{},
 		},
 		repo:         repo,
-		style:        style,
+		style:        styles,
 		state:        logState,
 		width:        width,
 		widthMargin:  widthMargin,

@@ -130,8 +130,8 @@ type Bubble struct {
 	lastSelected []int
 }
 
-func NewBubble(repo types.Repo, style *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
-	l := list.New([]list.Item{}, itemDelegate{style}, width-widthMargin, height-heightMargin)
+func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
+	l := list.New([]list.Item{}, itemDelegate{styles}, width-widthMargin, height-heightMargin)
 	l.SetShowFilter(false)
 	l.SetShowHelp(false)
 	l.SetShowPagination(false)
@@ -146,7 +146,7 @@ func NewBubble(repo types.Repo, style *style.Styles, width, widthMargin, height,
 			Viewport: &viewport.Model{},
 		},
 		repo:         repo,
-		style:        style,
+		style:        styles,
 		width:        width,
 		height:       height,
 		widthMargin:  widthMargin,
@@ -330,12 +330,22 @@ func (b *Bubble) renderFile(m fileMsg) string {
 			Code:     c,
 			Language: lang,
 		}
-		r := strings.Builder{}
-		err := formatter.Render(&r, types.RenderCtx)
-		if err != nil {
-			s.WriteString(err.Error())
+		if lang == "markdown" {
+			w := b.width - b.widthMargin - b.style.RepoBody.GetHorizontalFrameSize()
+			md, err := types.Glamourize(w, c)
+			if err != nil {
+				s.WriteString(err.Error())
+			} else {
+				s.WriteString(md)
+			}
 		} else {
-			s.WriteString(r.String())
+			r := strings.Builder{}
+			err := formatter.Render(&r, types.RenderCtx)
+			if err != nil {
+				s.WriteString(err.Error())
+			} else {
+				s.WriteString(r.String())
+			}
 		}
 	}
 	return b.style.TreeFileContent.Copy().Width(b.width - b.widthMargin).Render(s.String())
