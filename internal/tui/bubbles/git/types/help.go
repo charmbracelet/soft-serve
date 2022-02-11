@@ -1,6 +1,6 @@
 package types
 
-type HelpableBubble interface {
+type BubbleHelper interface {
 	Help() []HelpEntry
 }
 

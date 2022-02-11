@@ -162,7 +162,7 @@ func (b Bubble) footerView() string {
 		h = []gittypes.HelpEntry{
 			{"tab", "section"},
 		}
-		if box, ok := b.boxes[b.activeBox].(gittypes.HelpableBubble); ok {
+		if box, ok := b.boxes[b.activeBox].(gittypes.BubbleHelper); ok {
 			help := box.Help()
 			for _, he := range help {
 				h = append(h, he)
