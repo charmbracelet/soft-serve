@@ -75,8 +75,8 @@ type Bubble struct {
 	heightMargin int
 }
 
-func NewBubble(repo types.Repo, style *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
-	l := list.NewModel([]list.Item{}, itemDelegate{style}, width-widthMargin, height-heightMargin)
+func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
+	l := list.NewModel([]list.Item{}, itemDelegate{styles}, width-widthMargin, height-heightMargin)
 	l.SetShowFilter(false)
 	l.SetShowHelp(false)
 	l.SetShowPagination(false)
@@ -86,7 +86,7 @@ func NewBubble(repo types.Repo, style *style.Styles, width, widthMargin, height,
 	l.DisableQuitKeybindings()
 	b := &Bubble{
 		repo:         repo,
-		style:        style,
+		style:        styles,
 		width:        width,
 		height:       height,
 		widthMargin:  widthMargin,

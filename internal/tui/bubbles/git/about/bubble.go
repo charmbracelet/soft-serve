@@ -3,11 +3,9 @@ package about
 import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/muesli/reflow/wrap"
 )
 
 type Bubble struct {
@@ -45,7 +43,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// XXX: if we find that longer readmes take more than a few
 		// milliseconds to render we may need to move Glamour rendering into a
 		// command.
-		md, err := b.glamourize(b.repo.GetReadme())
+		md, err := b.glamourize()
 		if err != nil {
 			return b, nil
 		}
@@ -81,39 +79,17 @@ func (b *Bubble) Help() []types.HelpEntry {
 	return nil
 }
 
+func (b *Bubble) glamourize() (string, error) {
+	w := b.width - b.widthMargin - b.styles.RepoBody.GetHorizontalFrameSize()
+	return types.Glamourize(w, b.repo.GetReadme())
+}
+
 func (b *Bubble) setupCmd() tea.Msg {
-	md, err := b.glamourize(b.repo.GetReadme())
+	md, err := b.glamourize()
 	if err != nil {
 		return types.ErrMsg{err}
 	}
 	b.readmeViewport.Viewport.SetContent(md)
 	b.GotoTop()
 	return nil
-}
-
-func (b *Bubble) glamourize(md string) (string, error) {
-	w := b.width - b.widthMargin - b.styles.RepoBody.GetHorizontalFrameSize()
-	if w > types.GlamourMaxWidth {
-		w = types.GlamourMaxWidth
-	}
-	tr, err := glamour.NewTermRenderer(
-		glamour.WithStyles(types.DefaultStyles()),
-		glamour.WithWordWrap(w),
-	)
-
-	if err != nil {
-		return "", err
-	}
-	mdt, err := tr.Render(md)
-	if err != nil {
-		return "", err
-	}
-	// For now, hard-wrap long lines in Glamour that would otherwise break the
-	// layout when wrapping. This may be due to #43 in Reflow, which has to do
-	// with a bug in the way lines longer than the given width are wrapped.
-	//
-	//     https://github.com/muesli/reflow/issues/43
-	//
-	// TODO: solve this upstream in Glamour/Reflow.
-	return wrap.String(mdt, w), nil
 }
