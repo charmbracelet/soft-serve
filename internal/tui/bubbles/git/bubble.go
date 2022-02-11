@@ -65,13 +65,13 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		if b.repo.Name() != "config" {
 			switch msg.String() {
-			case "r", "R":
+			case "R":
 				b.state = aboutPage
-			case "b", "B":
+			case "B":
 				b.state = refsPage
-			case "c", "C":
+			case "C":
 				b.state = logPage
-			case "f", "F":
+			case "F":
 				b.state = treePage
 			}
 		}
@@ -98,12 +98,12 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (b *Bubble) Help() []types.HelpEntry {
 	h := []types.HelpEntry{}
-	h = append(h, b.boxes[b.state].(types.HelpableBubble).Help()...)
+	h = append(h, b.boxes[b.state].(types.BubbleHelper).Help()...)
 	if b.repo.Name() != "config" {
-		h = append(h, types.HelpEntry{"r", "readme"})
-		h = append(h, types.HelpEntry{"f", "files"})
-		h = append(h, types.HelpEntry{"c", "commits"})
-		h = append(h, types.HelpEntry{"b", "branches/tags"})
+		h = append(h, types.HelpEntry{"R", "readme"})
+		h = append(h, types.HelpEntry{"F", "files"})
+		h = append(h, types.HelpEntry{"C", "commits"})
+		h = append(h, types.HelpEntry{"B", "branches"})
 	}
 	return h
 }

@@ -155,7 +155,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "R":
+		case "B":
 			cmds = append(cmds, b.updateItems())
 		case "enter", "right", "l":
 			if b.list.Index() >= 0 {

@@ -220,7 +220,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "T":
+		case "F":
 			return b, b.reset()
 		case "enter", "right", "l":
 			if b.state == treeState {

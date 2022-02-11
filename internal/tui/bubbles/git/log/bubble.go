@@ -167,7 +167,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "L":
+		case "C":
 			b.state = logState
 			b.list.Select(0)
 			cmds = append(cmds, b.updateItems())
