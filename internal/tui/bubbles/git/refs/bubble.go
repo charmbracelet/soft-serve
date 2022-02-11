@@ -12,6 +12,8 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
+type RefMsg = *plumbing.Reference
+
 type item struct {
 	*plumbing.Reference
 }
@@ -95,8 +97,11 @@ func NewBubble(repo types.Repo, style *style.Styles, width, widthMargin, height,
 	return b
 }
 
-func (b *Bubble) SetBranch(ref *plumbing.Reference) {
-	b.repo.SetReference(ref)
+func (b *Bubble) SetBranch(ref *plumbing.Reference) (tea.Model, tea.Cmd) {
+	return b, func() tea.Msg {
+		b.repo.SetReference(ref)
+		return RefMsg(ref)
+	}
 }
 
 func (b *Bubble) Init() tea.Cmd {
@@ -155,7 +160,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", "right", "l":
 			if b.list.Index() >= 0 {
 				ref := b.list.SelectedItem().(item).Reference
-				b.SetBranch(ref)
+				return b.SetBranch(ref)
 			}
 		}
 	}
