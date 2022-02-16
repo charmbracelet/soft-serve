@@ -7,13 +7,13 @@ import (
 )
 
 type Repo interface {
-	Name() string
+	GetName() string
 	GetReference() *plumbing.Reference
 	SetReference(*plumbing.Reference) error
 	GetReadme() string
-	GetCommits(limit int) (Commits, error)
-	Repository() *git.Repository
-	Tree(path string) (*object.Tree, error)
+	GetCommits(*plumbing.Reference) (Commits, error)
+	GetRepository() *git.Repository
+	Tree(*plumbing.Reference, string) (*object.Tree, error)
 }
 
 type Commit struct {

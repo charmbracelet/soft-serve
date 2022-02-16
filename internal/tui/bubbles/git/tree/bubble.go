@@ -128,6 +128,7 @@ type Bubble struct {
 	error        types.ErrMsg
 	fileViewport *vp.ViewportBubble
 	lastSelected []int
+	ref          *plumbing.Reference
 }
 
 func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
@@ -153,6 +154,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		heightMargin: heightMargin,
 		list:         l,
 		state:        treeState,
+		ref:          repo.GetReference(),
 	}
 	b.SetSize(width, height)
 	return b
@@ -183,7 +185,7 @@ func (b *Bubble) Help() []types.HelpEntry {
 
 func (b *Bubble) updateItems() tea.Cmd {
 	its := make(items, 0)
-	t, err := b.repo.Tree(b.path)
+	t, err := b.repo.Tree(b.ref, b.path)
 	if err != nil {
 		return func() tea.Msg { return types.ErrMsg{err} }
 	}
@@ -219,6 +221,14 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.SetSize(msg.Width, msg.Height)
 
 	case tea.KeyMsg:
+		if b.state == errorState {
+			ref := b.repo.GetReference()
+			b.ref = ref
+			return b, tea.Batch(b.reset(), func() tea.Msg {
+				return ref
+			})
+		}
+
 		switch msg.String() {
 		case "F":
 			return b, b.reset()
@@ -252,6 +262,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case refs.RefMsg:
+		b.ref = msg
 		return b, b.reset()
 
 	case types.ErrMsg:

@@ -3,9 +3,11 @@ package about
 import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/refs"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
+	"github.com/go-git/go-git/v5/plumbing"
 )
 
 type Bubble struct {
@@ -16,6 +18,7 @@ type Bubble struct {
 	heightMargin   int
 	width          int
 	widthMargin    int
+	ref            *plumbing.Reference
 }
 
 func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int) *Bubble {
@@ -27,6 +30,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int)
 		styles:       styles,
 		widthMargin:  wm,
 		heightMargin: hm,
+		ref:          repo.GetReference(),
 	}
 	b.SetSize(width, height)
 	return b
@@ -53,6 +57,9 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "R":
 			b.GotoTop()
 		}
+	case refs.RefMsg:
+		b.ref = msg
+		return b, b.setupCmd
 	}
 	rv, cmd := b.readmeViewport.Update(msg)
 	b.readmeViewport = rv.(*vp.ViewportBubble)
@@ -87,7 +94,7 @@ func (b *Bubble) glamourize() (string, error) {
 func (b *Bubble) setupCmd() tea.Msg {
 	md, err := b.glamourize()
 	if err != nil {
-		return types.ErrMsg{err}
+		return types.ErrMsg{Err: err}
 	}
 	b.readmeViewport.Viewport.SetContent(md)
 	b.GotoTop()

@@ -12,10 +12,12 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	gansi "github.com/charmbracelet/glamour/ansi"
+	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/refs"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
 	"github.com/dustin/go-humanize/english"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
@@ -91,6 +93,7 @@ type Bubble struct {
 	list           list.Model
 	state          sessionState
 	commitViewport *vp.ViewportBubble
+	ref            *plumbing.Reference
 	style          *style.Styles
 	width          int
 	widthMargin    int
@@ -122,16 +125,23 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		height:       height,
 		heightMargin: heightMargin,
 		list:         l,
+		ref:          repo.GetReference(),
 	}
 	b.SetSize(width, height)
 	return b
 }
 
+func (b *Bubble) reset() tea.Cmd {
+	b.state = logState
+	b.list.Select(0)
+	return b.updateItems()
+}
+
 func (b *Bubble) updateItems() tea.Cmd {
 	items := make([]list.Item, 0)
-	cc, err := b.repo.GetCommits(0)
+	cc, err := b.repo.GetCommits(b.ref)
 	if err != nil {
-		return func() tea.Msg { return types.ErrMsg{err} }
+		return func() tea.Msg { return types.ErrMsg{Err: err} }
 	}
 	for _, c := range cc {
 		items = append(items, item{c})
@@ -148,7 +158,7 @@ func (b *Bubble) GotoTop() {
 }
 
 func (b *Bubble) Init() tea.Cmd {
-	return b.updateItems()
+	return b.reset()
 }
 
 func (b *Bubble) SetSize(width, height int) {
@@ -168,9 +178,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "C":
-			b.state = logState
-			b.list.Select(0)
-			cmds = append(cmds, b.updateItems())
+			return b, b.reset()
 		case "enter", "right", "l":
 			if b.state == logState {
 				cmds = append(cmds, b.loadCommit())
@@ -189,6 +197,8 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.state = commitState
 		b.commitViewport.Viewport.SetContent(content)
 		b.GotoTop()
+	case refs.RefMsg:
+		b.ref = msg
 	}
 
 	switch b.state {

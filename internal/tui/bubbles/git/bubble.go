@@ -34,6 +34,7 @@ type Bubble struct {
 	widthMargin  int
 	style        *style.Styles
 	boxes        []tea.Model
+	ref          *plumbing.Reference
 }
 
 func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int) *Bubble {
@@ -46,6 +47,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int)
 		heightMargin: hm,
 		style:        styles,
 		boxes:        make([]tea.Model, 4),
+		ref:          repo.GetReference(),
 	}
 	heightMargin := hm + lipgloss.Height(b.headerView())
 	b.boxes[aboutPage] = about.NewBubble(repo, b.style, b.width, wm, b.height, heightMargin)
@@ -63,7 +65,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if b.repo.Name() != "config" {
+		if b.repo.GetName() != "config" {
 			switch msg.String() {
 			case "R":
 				b.state = aboutPage
@@ -87,6 +89,14 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case refs.RefMsg:
 		b.state = treePage
+		b.ref = msg
+		for i, bx := range b.boxes {
+			m, cmd := bx.Update(msg)
+			b.boxes[i] = m
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
 	}
 	m, cmd := b.boxes[b.state].Update(msg)
 	b.boxes[b.state] = m
@@ -99,7 +109,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (b *Bubble) Help() []types.HelpEntry {
 	h := []types.HelpEntry{}
 	h = append(h, b.boxes[b.state].(types.BubbleHelper).Help()...)
-	if b.repo.Name() != "config" {
+	if b.repo.GetName() != "config" {
 		h = append(h, types.HelpEntry{"R", "readme"})
 		h = append(h, types.HelpEntry{"F", "files"})
 		h = append(h, types.HelpEntry{"C", "commits"})
@@ -109,7 +119,7 @@ func (b *Bubble) Help() []types.HelpEntry {
 }
 
 func (b *Bubble) Reference() plumbing.ReferenceName {
-	return b.repo.GetReference().Name()
+	return b.ref.Name()
 }
 
 func (b *Bubble) headerView() string {
