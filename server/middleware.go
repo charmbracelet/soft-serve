@@ -31,6 +31,9 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 					fp := filepath.Clean(cmds[0])
 					ps := strings.Split(fp, "/")
 					repo := ps[0]
+					if repo == "config" {
+						return
+					}
 					repoExists := false
 					for _, rp := range ac.Source.AllRepos() {
 						if rp.Name == repo {
