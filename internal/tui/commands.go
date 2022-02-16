@@ -96,9 +96,6 @@ func (b *Bubble) menuEntriesFromSource() ([]MenuEntry, error) {
 }
 
 func (b *Bubble) newMenuEntry(name string, rn string) (MenuEntry, error) {
-	gr := &Repo{
-		name: rn,
-	}
 	me := MenuEntry{Name: name, Repo: rn}
 	r, err := b.config.Source.GetRepo(rn)
 	if err != nil {
@@ -111,19 +108,13 @@ func (b *Bubble) newMenuEntry(name string, rn string) (MenuEntry, error) {
 		}
 		r.Readme = md
 	}
-	gr.repo = r.Repository
-	gr.readme = r.Readme
-	gr.ref, err = r.Repository.Head()
-	if err != nil {
-		return me, err
-	}
 	boxLeftWidth := b.styles.Menu.GetWidth() + b.styles.Menu.GetHorizontalFrameSize()
 	// TODO: also send this along with a tea.WindowSizeMsg
 	var heightMargin = lipgloss.Height(b.headerView()) +
 		lipgloss.Height(b.footerView()) +
 		b.styles.RepoBody.GetVerticalFrameSize() +
 		b.styles.App.GetVerticalMargins()
-	rb := repo.NewBubble(rn, b.config.Host, b.config.Port, gr, b.styles, b.width, boxLeftWidth, b.height, heightMargin)
+	rb := repo.NewBubble(rn, b.config.Host, b.config.Port, r, b.styles, b.width, boxLeftWidth, b.height, heightMargin)
 	initCmd := rb.Init()
 	msg := initCmd()
 	switch msg := msg.(type) {

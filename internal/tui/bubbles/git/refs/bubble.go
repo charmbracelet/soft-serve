@@ -73,6 +73,7 @@ type Bubble struct {
 	widthMargin  int
 	height       int
 	heightMargin int
+	ref          *plumbing.Reference
 }
 
 func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
@@ -92,14 +93,15 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		widthMargin:  widthMargin,
 		heightMargin: heightMargin,
 		list:         l,
+		ref:          repo.GetReference(),
 	}
 	b.SetSize(width, height)
 	return b
 }
 
 func (b *Bubble) SetBranch(ref *plumbing.Reference) (tea.Model, tea.Cmd) {
+	b.ref = ref
 	return b, func() tea.Msg {
-		b.repo.SetReference(ref)
 		return RefMsg(ref)
 	}
 }
@@ -121,7 +123,7 @@ func (b *Bubble) Help() []types.HelpEntry {
 func (b *Bubble) updateItems() tea.Cmd {
 	its := make(items, 0)
 	tags := make(items, 0)
-	ri, err := b.repo.Repository().References()
+	ri, err := b.repo.GetRepository().References()
 	if err != nil {
 		return nil
 	}
