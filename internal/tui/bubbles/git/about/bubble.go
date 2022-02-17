@@ -30,7 +30,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int)
 		styles:       styles,
 		widthMargin:  wm,
 		heightMargin: hm,
-		ref:          repo.GetReference(),
+		ref:          repo.GetHEAD(),
 	}
 	b.SetSize(width, height)
 	return b

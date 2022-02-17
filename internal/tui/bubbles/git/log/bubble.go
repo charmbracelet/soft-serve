@@ -125,7 +125,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		height:       height,
 		heightMargin: heightMargin,
 		list:         l,
-		ref:          repo.GetReference(),
+		ref:          repo.GetHEAD(),
 	}
 	b.SetSize(width, height)
 	return b

@@ -154,7 +154,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		heightMargin: heightMargin,
 		list:         l,
 		state:        treeState,
-		ref:          repo.GetReference(),
+		ref:          repo.GetHEAD(),
 	}
 	b.SetSize(width, height)
 	return b
@@ -222,7 +222,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if b.state == errorState {
-			ref := b.repo.GetReference()
+			ref := b.repo.GetHEAD()
 			b.ref = ref
 			return b, tea.Batch(b.reset(), func() tea.Msg {
 				return ref
