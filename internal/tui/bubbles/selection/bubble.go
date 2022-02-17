@@ -82,7 +82,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (b *Bubble) Help() []gittypes.HelpEntry {
 	return []gittypes.HelpEntry{
-		{"↑/↓", "navigate"},
+		{Key: "↑/↓", Value: "navigate"},
 	}
 }
 

@@ -110,10 +110,10 @@ func (b *Bubble) Help() []types.HelpEntry {
 	h := []types.HelpEntry{}
 	h = append(h, b.boxes[b.state].(types.BubbleHelper).Help()...)
 	if b.repo.Name() != "config" {
-		h = append(h, types.HelpEntry{"R", "readme"})
-		h = append(h, types.HelpEntry{"F", "files"})
-		h = append(h, types.HelpEntry{"C", "commits"})
-		h = append(h, types.HelpEntry{"B", "branches"})
+		h = append(h, types.HelpEntry{Key: "R", Value: "readme"})
+		h = append(h, types.HelpEntry{Key: "F", Value: "files"})
+		h = append(h, types.HelpEntry{Key: "C", Value: "commits"})
+		h = append(h, types.HelpEntry{Key: "B", Value: "branches"})
 	}
 	return h
 }
