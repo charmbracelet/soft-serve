@@ -45,7 +45,7 @@ const (
 )
 
 type item struct {
-	*types.Commit
+	*object.Commit
 }
 
 func (i item) Title() string {
@@ -229,28 +229,28 @@ func (b *Bubble) loadCommit() tea.Cmd {
 		// https://github.com/go-git/go-git/issues/281
 		tree, err := c.Tree()
 		if err != nil {
-			return types.ErrMsg{err}
+			return types.ErrMsg{Err: err}
 		}
 		var parent *object.Commit
 		parentTree := &object.Tree{}
 		if c.NumParents() > 0 {
 			parent, err = c.Parents().Next()
 			if err != nil {
-				return types.ErrMsg{err}
+				return types.ErrMsg{Err: err}
 			}
 			parentTree, err = parent.Tree()
 			if err != nil {
-				return types.ErrMsg{err}
+				return types.ErrMsg{Err: err}
 			}
 		}
 		ctx, cancel := context.WithTimeout(context.TODO(), types.MaxPatchWait)
 		defer cancel()
 		patch, err := parentTree.PatchContext(ctx, tree)
 		if err != nil {
-			return types.ErrMsg{err}
+			return types.ErrMsg{Err: err}
 		}
 		return commitMsg{
-			commit:     c.Commit.Commit,
+			commit:     c.Commit,
 			tree:       tree,
 			parent:     parent,
 			parentTree: parentTree,

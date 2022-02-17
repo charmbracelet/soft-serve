@@ -160,7 +160,7 @@ func (b Bubble) footerView() string {
 	var h []gittypes.HelpEntry
 	if b.state != errorState {
 		h = []gittypes.HelpEntry{
-			{"tab", "section"},
+			{Key: "tab", Value: "section"},
 		}
 		if box, ok := b.boxes[b.activeBox].(gittypes.BubbleHelper); ok {
 			help := box.Help()
@@ -169,7 +169,7 @@ func (b Bubble) footerView() string {
 			}
 		}
 	}
-	h = append(h, gittypes.HelpEntry{"q", "quit"})
+	h = append(h, gittypes.HelpEntry{Key: "q", Value: "quit"})
 	for i, v := range h {
 		fmt.Fprint(w, helpEntryRender(v, b.styles))
 		if i != len(h)-1 {

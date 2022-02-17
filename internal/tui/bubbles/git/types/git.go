@@ -17,11 +17,7 @@ type Repo interface {
 	Tree(*plumbing.Reference, string) (*object.Tree, error)
 }
 
-type Commit struct {
-	*object.Commit
-}
-
-type Commits []*Commit
+type Commits []*object.Commit
 
 func (cl Commits) Len() int      { return len(cl) }
 func (cl Commits) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }

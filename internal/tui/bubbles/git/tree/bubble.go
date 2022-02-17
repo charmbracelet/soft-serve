@@ -187,7 +187,7 @@ func (b *Bubble) updateItems() tea.Cmd {
 	its := make(items, 0)
 	t, err := b.repo.Tree(b.ref, b.path)
 	if err != nil {
-		return func() tea.Msg { return types.ErrMsg{err} }
+		return func() tea.Msg { return types.ErrMsg{Err: err} }
 	}
 	tw := object.NewTreeWalker(t, false, map[plumbing.Hash]bool{})
 	defer tw.Close()
@@ -307,18 +307,18 @@ func (b *Bubble) View() string {
 func (b *Bubble) loadFile(i item) tea.Cmd {
 	return func() tea.Msg {
 		if !i.Mode().IsFile() || i.file == nil {
-			return types.ErrMsg{types.ErrInvalidFile}
+			return types.ErrMsg{Err: types.ErrInvalidFile}
 		}
 		bin, err := i.file.IsBinary()
 		if err != nil {
-			return types.ErrMsg{err}
+			return types.ErrMsg{Err: err}
 		}
 		if bin {
-			return types.ErrMsg{types.ErrBinaryFile}
+			return types.ErrMsg{Err: types.ErrBinaryFile}
 		}
 		c, err := i.file.Contents()
 		if err != nil {
-			return types.ErrMsg{err}
+			return types.ErrMsg{Err: err}
 		}
 		return fileMsg{
 			content: c,
