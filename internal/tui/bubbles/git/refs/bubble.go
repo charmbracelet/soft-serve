@@ -93,7 +93,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		widthMargin:  widthMargin,
 		heightMargin: heightMargin,
 		list:         l,
-		ref:          repo.GetReference(),
+		ref:          repo.GetHEAD(),
 	}
 	b.SetSize(width, height)
 	return b
@@ -123,21 +123,15 @@ func (b *Bubble) Help() []types.HelpEntry {
 func (b *Bubble) updateItems() tea.Cmd {
 	its := make(items, 0)
 	tags := make(items, 0)
-	ri, err := b.repo.GetRepository().References()
-	if err != nil {
-		return nil
-	}
-	if err = ri.ForEach(func(r *plumbing.Reference) error {
-		if r.Type() == plumbing.HashReference {
-			if r.Name().IsTag() {
-				tags = append(tags, item{r})
-			} else {
-				its = append(its, item{r})
-			}
+	for _, r := range b.repo.GetReferences() {
+		if r.Type() != plumbing.HashReference {
+			continue
 		}
-		return nil
-	}); err != nil {
-		return nil
+		if r.Name().IsTag() {
+			tags = append(tags, item{r})
+		} else {
+			its = append(its, item{r})
+		}
 	}
 	sort.Sort(its)
 	sort.Sort(tags)

@@ -8,8 +8,9 @@ import (
 
 type Repo interface {
 	GetName() string
-	GetReference() *plumbing.Reference
-	SetReference(*plumbing.Reference) error
+	GetHEAD() *plumbing.Reference
+	SetHEAD(*plumbing.Reference) error
+	GetReferences() []*plumbing.Reference
 	GetReadme() string
 	GetCommits(*plumbing.Reference) (Commits, error)
 	GetRepository() *git.Repository

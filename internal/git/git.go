@@ -29,6 +29,7 @@ type Repo struct {
 	LastUpdated *time.Time
 	refCommits  map[plumbing.Hash]gitypes.Commits
 	ref         *plumbing.Reference
+	refs        []*plumbing.Reference
 }
 
 // GetName returns the name of the repository.
@@ -36,15 +37,19 @@ func (r *Repo) GetName() string {
 	return r.Name
 }
 
-// GetReference returns the reference for a repository.
-func (r *Repo) GetReference() *plumbing.Reference {
+// GetHEAD returns the reference for a repository.
+func (r *Repo) GetHEAD() *plumbing.Reference {
 	return r.ref
 }
 
-// SetReference sets the repository head reference.
-func (r *Repo) SetReference(ref *plumbing.Reference) error {
+// SetHEAD sets the repository head reference.
+func (r *Repo) SetHEAD(ref *plumbing.Reference) error {
 	r.ref = ref
 	return nil
+}
+
+func (r *Repo) GetReferences() []*plumbing.Reference {
+	return r.refs
 }
 
 // GetRepository returns the underlying go-git repository object.
@@ -273,13 +278,23 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 		return nil, err
 	}
 	r.Readme = rm
+	refs := make([]*plumbing.Reference, 0)
+	ri, err := rg.References()
+	if err != nil {
+		return nil, err
+	}
+	ri.ForEach(func(r *plumbing.Reference) error {
+		refs = append(refs, r)
+		return nil
+	})
+	r.refs = refs
 	return r, nil
 }
 
 // LatestFile returns the latest file at the specified path in the repository.
 func (r *Repo) LatestFile(path string) (string, error) {
 	lg, err := r.Repository.Log(&git.LogOptions{
-		From: r.GetReference().Hash(),
+		From: r.GetHEAD().Hash(),
 	})
 	if err != nil {
 		return "", err
