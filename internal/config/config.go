@@ -152,7 +152,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		wt, err := cr.Repository.Worktree()
+		wt, err := cr.Repository().Worktree()
 		if err != nil {
 			return err
 		}
@@ -190,7 +190,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		err = cr.Repository.Push(&gg.PushOptions{})
+		err = cr.Repository().Push(&gg.PushOptions{})
 		if err != nil {
 			return err
 		}

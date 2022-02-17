@@ -7,13 +7,13 @@ import (
 )
 
 type Repo interface {
-	GetName() string
+	Name() string
 	GetHEAD() *plumbing.Reference
 	SetHEAD(*plumbing.Reference) error
 	GetReferences() []*plumbing.Reference
 	GetReadme() string
 	GetCommits(*plumbing.Reference) (Commits, error)
-	GetRepository() *git.Repository
+	Repository() *git.Repository
 	Tree(*plumbing.Reference, string) (*object.Tree, error)
 }
 

@@ -36,7 +36,7 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 					}
 					repoExists := false
 					for _, rp := range ac.Source.AllRepos() {
-						if rp.Name == repo {
+						if rp.Name() == repo {
 							repoExists = true
 						}
 					}
@@ -62,7 +62,7 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						_ = s.Exit(1)
 						return
 					}
-					fc, err := readFile(rs.Repository, strings.Join(ps[1:], "/"))
+					fc, err := readFile(rs.Repository(), strings.Join(ps[1:], "/"))
 					if err != nil {
 						_, _ = s.Write([]byte(err.Error()))
 						_ = s.Exit(1)
