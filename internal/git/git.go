@@ -28,6 +28,8 @@ type Repo struct {
 	refCommits map[plumbing.Hash]gitypes.Commits
 	head       *plumbing.Reference
 	refs       []*plumbing.Reference
+	trees      map[plumbing.Hash]*object.Tree
+	commits    map[plumbing.Hash]*object.Commit
 }
 
 // GetName returns the name of the repository.
@@ -46,6 +48,7 @@ func (r *Repo) SetHEAD(ref *plumbing.Reference) error {
 	return nil
 }
 
+// GetReferences returns the references for a repository.
 func (r *Repo) GetReferences() []*plumbing.Reference {
 	return r.refs
 }
@@ -62,11 +65,11 @@ func (r *Repo) Tree(ref *plumbing.Reference, path string) (*object.Tree, error) 
 	if err != nil {
 		return nil, err
 	}
-	c, err := r.repository.CommitObject(hash)
+	c, err := r.commitForHash(hash)
 	if err != nil {
 		return nil, err
 	}
-	t, err := c.Tree()
+	t, err := r.treeForHash(c.TreeHash)
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +77,32 @@ func (r *Repo) Tree(ref *plumbing.Reference, path string) (*object.Tree, error) 
 		return t, nil
 	}
 	return t.Tree(path)
+}
+
+func (r *Repo) treeForHash(treeHash plumbing.Hash) (*object.Tree, error) {
+	var err error
+	t, ok := r.trees[treeHash]
+	if !ok {
+		t, err = r.repository.TreeObject(treeHash)
+		if err != nil {
+			return nil, err
+		}
+		r.trees[treeHash] = t
+	}
+	return t, nil
+}
+
+func (r *Repo) commitForHash(hash plumbing.Hash) (*object.Commit, error) {
+	var err error
+	co, ok := r.commits[hash]
+	if !ok {
+		co, err = r.repository.CommitObject(hash)
+		if err != nil {
+			return nil, err
+		}
+		r.commits[hash] = co
+	}
+	return co, nil
 }
 
 // GetCommits returns the commits for a repository.
@@ -87,23 +116,19 @@ func (r *Repo) GetCommits(ref *plumbing.Reference) (gitypes.Commits, error) {
 	if ok {
 		return commits, nil
 	}
-	log.Printf("caching commits for %s/%s: %s", r.name, ref.Name(), ref.Hash())
 	commits = gitypes.Commits{}
-	co, err := r.repository.CommitObject(hash)
+	co, err := r.commitForHash(hash)
 	if err != nil {
 		return nil, err
 	}
 	// traverse the commit tree to get all commits
-	commits = append(commits, &gitypes.Commit{Commit: co})
-	for {
-		co, err = co.Parent(0)
+	commits = append(commits, co)
+	for co.NumParents() > 0 {
+		co, err = r.commitForHash(co.ParentHashes[0])
 		if err != nil {
-			if err == object.ErrParentNotFound {
-				err = nil
-			}
-			break
+			return nil, err
 		}
-		commits = append(commits, &gitypes.Commit{Commit: co})
+		commits = append(commits, co)
 	}
 	if err != nil {
 		return nil, err
@@ -134,31 +159,6 @@ func (r *Repo) targetHash(ref *plumbing.Reference) (plumbing.Hash, error) {
 		}
 	}
 	return hash, nil
-}
-
-// loadCommits loads the commits for a repository.
-func (r *Repo) loadCommits(ref *plumbing.Reference) (gitypes.Commits, error) {
-	commits := gitypes.Commits{}
-	hash, err := r.targetHash(ref)
-	if err != nil {
-		return nil, err
-	}
-	l, err := r.repository.Log(&git.LogOptions{
-		Order: git.LogOrderCommitterTime,
-		From:  hash,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer l.Close()
-	err = l.ForEach(func(c *object.Commit) error {
-		commits = append(commits, &gitypes.Commit{Commit: c})
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return commits, nil
 }
 
 // GetReadme returns the readme for a repository.
@@ -265,6 +265,8 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 		name:       name,
 		repository: rg,
 	}
+	r.commits = make(map[plumbing.Hash]*object.Commit)
+	r.trees = make(map[plumbing.Hash]*object.Tree)
 	r.refCommits = make(map[plumbing.Hash]gitypes.Commits)
 	ref, err := rg.Head()
 	if err != nil {
@@ -276,6 +278,17 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 		return nil, err
 	}
 	r.Readme = rm
+	l, err := r.repository.Log(&git.LogOptions{All: true})
+	if err != nil {
+		return nil, err
+	}
+	err = l.ForEach(func(c *object.Commit) error {
+		r.commits[c.Hash] = c
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 	refs := make([]*plumbing.Reference, 0)
 	ri, err := rg.References()
 	if err != nil {
