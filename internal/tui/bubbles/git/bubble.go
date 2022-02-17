@@ -65,7 +65,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if b.repo.GetName() != "config" {
+		if b.repo.Name() != "config" {
 			switch msg.String() {
 			case "R":
 				b.state = aboutPage
@@ -109,7 +109,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (b *Bubble) Help() []types.HelpEntry {
 	h := []types.HelpEntry{}
 	h = append(h, b.boxes[b.state].(types.BubbleHelper).Help()...)
-	if b.repo.GetName() != "config" {
+	if b.repo.Name() != "config" {
 		h = append(h, types.HelpEntry{"R", "readme"})
 		h = append(h, types.HelpEntry{"F", "files"})
 		h = append(h, types.HelpEntry{"C", "commits"})

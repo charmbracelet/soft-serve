@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
-	"time"
 
 	gitypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/go-git/go-billy/v5/memfs"
@@ -23,28 +22,27 @@ var ErrMissingRepo = errors.New("missing repo")
 
 // Repo represents a Git repository.
 type Repo struct {
-	Name        string
-	Repository  *git.Repository
-	Readme      string
-	LastUpdated *time.Time
-	refCommits  map[plumbing.Hash]gitypes.Commits
-	ref         *plumbing.Reference
-	refs        []*plumbing.Reference
+	name       string
+	repository *git.Repository
+	Readme     string
+	refCommits map[plumbing.Hash]gitypes.Commits
+	head       *plumbing.Reference
+	refs       []*plumbing.Reference
 }
 
 // GetName returns the name of the repository.
-func (r *Repo) GetName() string {
-	return r.Name
+func (r *Repo) Name() string {
+	return r.name
 }
 
 // GetHEAD returns the reference for a repository.
 func (r *Repo) GetHEAD() *plumbing.Reference {
-	return r.ref
+	return r.head
 }
 
 // SetHEAD sets the repository head reference.
 func (r *Repo) SetHEAD(ref *plumbing.Reference) error {
-	r.ref = ref
+	r.head = ref
 	return nil
 }
 
@@ -53,8 +51,8 @@ func (r *Repo) GetReferences() []*plumbing.Reference {
 }
 
 // GetRepository returns the underlying go-git repository object.
-func (r *Repo) GetRepository() *git.Repository {
-	return r.Repository
+func (r *Repo) Repository() *git.Repository {
+	return r.repository
 }
 
 // Tree returns the git tree for a given path.
@@ -64,7 +62,7 @@ func (r *Repo) Tree(ref *plumbing.Reference, path string) (*object.Tree, error) 
 	if err != nil {
 		return nil, err
 	}
-	c, err := r.Repository.CommitObject(hash)
+	c, err := r.repository.CommitObject(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -89,9 +87,9 @@ func (r *Repo) GetCommits(ref *plumbing.Reference) (gitypes.Commits, error) {
 	if ok {
 		return commits, nil
 	}
-	log.Printf("caching commits for %s/%s: %s", r.Name, ref.Name(), ref.Hash())
+	log.Printf("caching commits for %s/%s: %s", r.name, ref.Name(), ref.Hash())
 	commits = gitypes.Commits{}
-	co, err := r.Repository.CommitObject(hash)
+	co, err := r.repository.CommitObject(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +122,7 @@ func (r *Repo) targetHash(ref *plumbing.Reference) (plumbing.Hash, error) {
 		return plumbing.ZeroHash, plumbing.ErrInvalidType
 	}
 	if ref.Name().IsTag() {
-		to, err := r.Repository.TagObject(hash)
+		to, err := r.repository.TagObject(hash)
 		switch err {
 		case nil:
 			// annotated tag (object has a target hash)
@@ -145,7 +143,7 @@ func (r *Repo) loadCommits(ref *plumbing.Reference) (gitypes.Commits, error) {
 	if err != nil {
 		return nil, err
 	}
-	l, err := r.Repository.Log(&git.LogOptions{
+	l, err := r.repository.Log(&git.LogOptions{
 		Order: git.LogOrderCommitterTime,
 		From:  hash,
 	})
@@ -204,7 +202,7 @@ func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	for _, r := range rs.repos {
-		if r.Name == name {
+		if r.name == name {
 			return r, nil
 		}
 	}
@@ -231,8 +229,8 @@ func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 		rg = ar
 	}
 	r := &Repo{
-		Name:       name,
-		Repository: rg,
+		name:       name,
+		repository: rg,
 	}
 	rs.repos = append(rs.repos, r)
 	return r, nil
@@ -264,15 +262,15 @@ func (rs *RepoSource) LoadRepos() error {
 
 func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 	r := &Repo{
-		Name:       name,
-		Repository: rg,
+		name:       name,
+		repository: rg,
 	}
 	r.refCommits = make(map[plumbing.Hash]gitypes.Commits)
 	ref, err := rg.Head()
 	if err != nil {
 		return nil, err
 	}
-	r.ref = ref
+	r.head = ref
 	rm, err := r.LatestFile("README.md")
 	if err != nil {
 		return nil, err
@@ -293,7 +291,7 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 
 // LatestFile returns the latest file at the specified path in the repository.
 func (r *Repo) LatestFile(path string) (string, error) {
-	lg, err := r.Repository.Log(&git.LogOptions{
+	lg, err := r.repository.Log(&git.LogOptions{
 		From: r.GetHEAD().Hash(),
 	})
 	if err != nil {

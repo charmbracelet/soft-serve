@@ -75,17 +75,18 @@ func (b *Bubble) menuEntriesFromSource() ([]MenuEntry, error) {
 	}
 	for _, r := range b.config.Source.AllRepos() {
 		var found bool
+		rn := r.Name()
 		for _, me := range mes {
-			if me.Repo == r.Name {
+			if me.Repo == rn {
 				found = true
 			}
 		}
 		if !found {
-			acc := b.config.AuthRepo(r.Name, b.session.PublicKey())
+			acc := b.config.AuthRepo(rn, b.session.PublicKey())
 			if acc == gm.NoAccess {
 				continue
 			}
-			me, err := b.newMenuEntry(r.Name, r.Name)
+			me, err := b.newMenuEntry(rn, rn)
 			if err != nil {
 				return nil, err
 			}
