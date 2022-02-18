@@ -16,17 +16,17 @@ const (
 	repoNameMaxWidth = 32
 )
 
-type pageState int
+type state int
 
 const (
-	aboutPage pageState = iota
-	refsPage
-	logPage
-	treePage
+	aboutState state = iota
+	refsState
+	logState
+	treeState
 )
 
 type Bubble struct {
-	state        pageState
+	state        state
 	repo         types.Repo
 	height       int
 	heightMargin int
@@ -40,7 +40,7 @@ type Bubble struct {
 func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int) *Bubble {
 	b := &Bubble{
 		repo:         repo,
-		state:        aboutPage,
+		state:        aboutState,
 		width:        width,
 		widthMargin:  wm,
 		height:       height,
@@ -50,10 +50,10 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int)
 		ref:          repo.GetHEAD(),
 	}
 	heightMargin := hm + lipgloss.Height(b.headerView())
-	b.boxes[aboutPage] = about.NewBubble(repo, b.style, b.width, wm, b.height, heightMargin)
-	b.boxes[refsPage] = refs.NewBubble(repo, b.style, b.width, wm, b.height, heightMargin)
-	b.boxes[logPage] = log.NewBubble(repo, b.style, width, wm, height, heightMargin)
-	b.boxes[treePage] = tree.NewBubble(repo, b.style, width, wm, height, heightMargin)
+	b.boxes[aboutState] = about.NewBubble(repo, b.style, b.width, wm, b.height, heightMargin)
+	b.boxes[refsState] = refs.NewBubble(repo, b.style, b.width, wm, b.height, heightMargin)
+	b.boxes[logState] = log.NewBubble(repo, b.style, width, wm, height, heightMargin)
+	b.boxes[treeState] = tree.NewBubble(repo, b.style, width, wm, height, heightMargin)
 	return b
 }
 
@@ -68,27 +68,20 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if b.repo.Name() != "config" {
 			switch msg.String() {
 			case "R":
-				b.state = aboutPage
+				b.state = aboutState
 			case "B":
-				b.state = refsPage
+				b.state = refsState
 			case "C":
-				b.state = logPage
+				b.state = logState
 			case "F":
-				b.state = treePage
+				b.state = treeState
 			}
 		}
 	case tea.WindowSizeMsg:
 		b.width = msg.Width
 		b.height = msg.Height
-		for i, bx := range b.boxes {
-			m, cmd := bx.Update(msg)
-			b.boxes[i] = m
-			if cmd != nil {
-				cmds = append(cmds, cmd)
-			}
-		}
 	case refs.RefMsg:
-		b.state = treePage
+		b.state = treeState
 		b.ref = msg
 		for i, bx := range b.boxes {
 			m, cmd := bx.Update(msg)

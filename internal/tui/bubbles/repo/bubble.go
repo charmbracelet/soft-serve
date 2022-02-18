@@ -33,18 +33,18 @@ type Bubble struct {
 	Active bool
 }
 
-func NewBubble(name, host string, port int, repo gittypes.Repo, styles *style.Styles, width, wm, height, hm int) *Bubble {
+func NewBubble(repo gittypes.Repo, host string, port int, styles *style.Styles, width, wm, height, hm int) *Bubble {
 	b := &Bubble{
-		name:         name,
+		name:         repo.Name(),
 		host:         host,
 		port:         port,
-		repo:         repo,
 		width:        width,
 		widthMargin:  wm,
 		height:       height,
 		heightMargin: hm,
 		styles:       styles,
 	}
+	b.repo = repo
 	b.box = gitui.NewBubble(repo, styles, width, wm+styles.RepoBody.GetHorizontalBorderSize(), height, hm+lipgloss.Height(b.headerView())-styles.RepoBody.GetVerticalBorderSize())
 	return b
 }

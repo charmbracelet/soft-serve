@@ -115,7 +115,7 @@ func (b *Bubble) newMenuEntry(name string, rn string) (MenuEntry, error) {
 		lipgloss.Height(b.footerView()) +
 		b.styles.RepoBody.GetVerticalFrameSize() +
 		b.styles.App.GetVerticalMargins()
-	rb := repo.NewBubble(rn, b.config.Host, b.config.Port, r, b.styles, b.width, boxLeftWidth, b.height, heightMargin)
+	rb := repo.NewBubble(r, b.config.Host, b.config.Port, b.styles, b.width, boxLeftWidth, b.height, heightMargin)
 	initCmd := rb.Init()
 	msg := initCmd()
 	switch msg := msg.(type) {
