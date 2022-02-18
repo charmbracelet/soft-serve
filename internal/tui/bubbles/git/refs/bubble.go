@@ -106,8 +106,12 @@ func (b *Bubble) SetBranch(ref *plumbing.Reference) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (b *Bubble) Init() tea.Cmd {
+func (b *Bubble) reset() tea.Cmd {
 	return b.updateItems()
+}
+
+func (b *Bubble) Init() tea.Cmd {
+	return nil
 }
 
 func (b *Bubble) SetSize(width, height int) {
@@ -152,7 +156,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "B":
-			cmds = append(cmds, b.updateItems())
+			return b, b.reset()
 		case "enter", "right", "l":
 			if b.list.Index() >= 0 {
 				ref := b.list.SelectedItem().(item).Reference

@@ -168,7 +168,7 @@ func (b *Bubble) reset() tea.Cmd {
 }
 
 func (b *Bubble) Init() tea.Cmd {
-	return b.reset()
+	return nil
 }
 
 func (b *Bubble) SetSize(width, height int) {
