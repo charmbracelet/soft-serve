@@ -10,13 +10,15 @@ import (
 
 // Push registers Git push functionality for the given repo and key.
 func (cfg *Config) Push(repo string, pk ssh.PublicKey) {
-	err := cfg.Reload()
-	if err != nil {
-		log.Printf("error reloading after push: %s", err)
-	}
-	if cfg.Cfg.Callbacks != nil {
-		cfg.Cfg.Callbacks.Push(repo)
-	}
+	go func() {
+		err := cfg.Reload()
+		if err != nil {
+			log.Printf("error reloading after push: %s", err)
+		}
+		if cfg.Cfg.Callbacks != nil {
+			cfg.Cfg.Callbacks.Push(repo)
+		}
+	}()
 }
 
 // Fetch registers Git fetch functionality for the given repo and key.
