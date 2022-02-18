@@ -4,6 +4,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
@@ -28,6 +29,7 @@ type Config struct {
 	Repos        []Repo `yaml:"repos"`
 	Source       *git.RepoSource
 	Cfg          *config.Config
+	reloadMtx    sync.Mutex
 }
 
 // User contains user-level configuration for a repository.
@@ -107,6 +109,8 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 
 // Reload reloads the configuration.
 func (cfg *Config) Reload() error {
+	cfg.reloadMtx.Lock()
+	defer cfg.reloadMtx.Unlock()
 	err := cfg.Source.LoadRepos()
 	if err != nil {
 		return err
