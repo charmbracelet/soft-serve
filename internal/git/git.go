@@ -274,7 +274,9 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 	}
 	r.head = ref
 	rm, err := r.LatestFile("README.md")
-	if err != nil {
+	if err == object.ErrFileNotFound {
+		rm = ""
+	} else if err != nil {
 		return nil, err
 	}
 	r.Readme = rm
