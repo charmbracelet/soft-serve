@@ -131,9 +131,10 @@ func (b *Bubble) updateItems() tea.Cmd {
 		if r.Type() != plumbing.HashReference {
 			continue
 		}
-		if r.Name().IsTag() {
+		n := r.Name()
+		if n.IsTag() {
 			tags = append(tags, item{r})
-		} else {
+		} else if n.IsBranch() {
 			its = append(its, item{r})
 		}
 	}
