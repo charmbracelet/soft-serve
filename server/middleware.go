@@ -151,12 +151,16 @@ func withLineNumber(s string, color bool) string {
 	mll := len(fmt.Sprintf("%d", len(lines)))
 	for i, l := range lines {
 		digit := fmt.Sprintf("%*d", mll, i)
-		line := "│"
+		bar := "│"
 		if color {
 			digit = lineDigitStyle.Render(digit)
-			line = lineBarStyle.Render(line)
+			bar = lineBarStyle.Render(bar)
 		}
-		lines[i] = fmt.Sprintf(" %s %s %s", digit, line, l)
+		if i < len(lines)-1 || len(l) != 0 {
+			// If the final line was a newline we'll get an empty string for
+			// the final line, so drop the newline altogether.
+			lines[i] = fmt.Sprintf(" %s %s %s", digit, bar, l)
+		}
 	}
 	return strings.Join(lines, "\n")
 }
