@@ -66,6 +66,8 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						}
 					}
 					if !repoExists {
+						s.Write([]byte("repository not found"))
+						s.Exit(1)
 						return
 					}
 					auth := ac.AuthRepo(repo, s.PublicKey())
