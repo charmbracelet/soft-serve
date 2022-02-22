@@ -53,7 +53,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	var anonAccess string
 	var yamlUsers string
 	var displayHost string
-	host := cfg.BindAddr
+	host := cfg.Host
 	port := cfg.Port
 
 	pks := make([]string, 0)
@@ -76,7 +76,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	c := &Config{
 		Cfg: cfg,
 	}
-	c.Host = cfg.BindAddr
+	c.Host = cfg.Host
 	c.Port = port
 	c.Source = rs
 	if len(pks) == 0 {

@@ -17,6 +17,7 @@ type Callbacks interface {
 // Config is the configuration for Soft Serve.
 type Config struct {
 	BindAddr         string   `env:"SOFT_SERVE_BIND_ADDRESS" envDefault:""`
+	Host             string   `env:"SOFT_SERVE_HOST" envDefault:"localhost"`
 	Port             int      `env:"SOFT_SERVE_PORT" envDefault:"23231"`
 	KeyPath          string   `env:"SOFT_SERVE_KEY_PATH"`
 	RepoPath         string   `env:"SOFT_SERVE_REPO_PATH" envDefault:".repos"`
