@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/alecthomas/chroma/lexers"
@@ -11,15 +12,35 @@ import (
 	appCfg "github.com/charmbracelet/soft-serve/internal/config"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/wish"
-	"github.com/charmbracelet/wish/git"
+	gitwish "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
-	gg "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/muesli/termenv"
 )
 
 var (
-	linenoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	linenoStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	dirnameStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#00AAFF"))
+	filenameStyle = lipgloss.NewStyle()
+	filemodeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#777777"))
 )
+
+type entries []object.TreeEntry
+
+func (cl entries) Len() int      { return len(cl) }
+func (cl entries) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
+func (cl entries) Less(i, j int) bool {
+	if cl[i].Mode == filemode.Dir && cl[j].Mode == filemode.Dir {
+		return cl[i].Name < cl[j].Name
+	} else if cl[i].Mode == filemode.Dir {
+		return true
+	} else if cl[j].Mode == filemode.Dir {
+		return false
+	} else {
+		return cl[i].Name < cl[j].Name
+	}
+}
 
 // softServeMiddleware is a middleware that handles displaying files with the
 // option of syntax highlighting and line numbers.
@@ -48,7 +69,7 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						return
 					}
 					auth := ac.AuthRepo(repo, s.PublicKey())
-					if auth < git.ReadOnlyAccess {
+					if auth < gitwish.ReadOnlyAccess {
 						s.Write([]byte("unauthorized"))
 						s.Exit(1)
 						return
@@ -66,50 +87,57 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						_ = s.Exit(1)
 						return
 					}
-					fc, err := readFile(rs.Repository(), strings.Join(ps[1:], "/"))
-					if err != nil {
+					p := strings.Join(ps[1:], "/")
+					t, err := rs.LatestTree(p)
+					if err != nil && err != object.ErrDirectoryNotFound {
 						_, _ = s.Write([]byte(err.Error()))
 						_ = s.Exit(1)
 						return
 					}
-					if color {
-						ffc, err := withFormatting(fp, fc)
+					if err == object.ErrDirectoryNotFound {
+						fc, err := rs.LatestFile(p)
 						if err != nil {
-							s.Write([]byte(err.Error()))
-							s.Exit(1)
+							_, _ = s.Write([]byte(err.Error()))
+							_ = s.Exit(1)
 							return
 						}
-						fc = ffc
+						if color {
+							ffc, err := withFormatting(fp, fc)
+							if err != nil {
+								s.Write([]byte(err.Error()))
+								s.Exit(1)
+								return
+							}
+							fc = ffc
+						}
+						if lineno {
+							fc = withLineNumber(fc, color)
+						}
+						s.Write([]byte(fc))
+					} else {
+						ents := entries(t.Entries)
+						sort.Sort(ents)
+						for _, e := range ents {
+							m, _ := e.Mode.ToOSFileMode()
+							if m == 0 {
+								s.Write([]byte(strings.Repeat(" ", 10)))
+							} else {
+								s.Write([]byte(filemodeStyle.Render(m.String())))
+							}
+							s.Write([]byte(" "))
+							if e.Mode.IsFile() {
+								s.Write([]byte(filenameStyle.Render(e.Name)))
+							} else {
+								s.Write([]byte(dirnameStyle.Render(e.Name)))
+							}
+							s.Write([]byte("\n"))
+						}
 					}
-					if lineno {
-						fc = withLineNumber(fc, color)
-					}
-					s.Write([]byte(fc))
 				}()
 			}
 			sh(s)
 		}
 	}
-}
-
-func readFile(r *gg.Repository, fp string) (string, error) {
-	l, err := r.Log(&gg.LogOptions{})
-	if err != nil {
-		return "", err
-	}
-	c, err := l.Next()
-	if err != nil {
-		return "", err
-	}
-	f, err := c.File(fp)
-	if err != nil {
-		return "", err
-	}
-	fc, err := f.Contents()
-	if err != nil {
-		return "", err
-	}
-	return fc, nil
 }
 
 func withLineNumber(s string, color bool) string {

@@ -306,13 +306,7 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 
 // LatestFile returns the latest file at the specified path in the repository.
 func (r *Repo) LatestFile(path string) (string, error) {
-	lg, err := r.repository.Log(&git.LogOptions{
-		From: r.GetHEAD().Hash(),
-	})
-	if err != nil {
-		return "", err
-	}
-	c, err := lg.Next()
+	c, err := r.commitForHash(r.head.Hash())
 	if err != nil {
 		return "", err
 	}
@@ -325,4 +319,9 @@ func (r *Repo) LatestFile(path string) (string, error) {
 		return "", err
 	}
 	return content, nil
+}
+
+// LatestTree returns the latest tree at the specified path in the repository.
+func (r *Repo) LatestTree(path string) (*object.Tree, error) {
+	return r.Tree(r.head, path)
 }
