@@ -150,7 +150,8 @@ In addition to the Git-based configuration above, there are a few
 environment-level settings:
 
 * `SOFT_SERVE_PORT`: SSH listen port (_default 23231_)
-* `SOFT_SERVE_HOST`: SSH listen host (_default 0.0.0.0_)
+* `SOFT_SERVE_HOST`: Address to use in public clone URLs
+* `SOFT_SERVE_BIND_ADDRESS`: Network interface to listen on (_default 0.0.0.0_)
 * `SOFT_SERVE_KEY_PATH`: SSH host key-pair path (_default .ssh/soft_serve_server_ed25519_)
 * `SOFT_SERVE_REPO_PATH`: Path where repos are stored (_default .repos_)
 * `SOFT_SERVE_INITIAL_ADMIN_KEY`: The public key that will initially have admin access to repos (_default ""_). This must be set before `soft` runs for the first time and creates the `config` repo. If set after the `config` repo has been created, this setting has no effect.
