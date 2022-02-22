@@ -17,6 +17,10 @@ import (
 	"github.com/muesli/termenv"
 )
 
+var (
+	linenoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+)
+
 // softServeMiddleware is a middleware that handles displaying files with the
 // option of syntax highlighting and line numbers.
 func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
@@ -109,14 +113,14 @@ func readFile(r *gg.Repository, fp string) (string, error) {
 }
 
 func withLineNumber(s string, color bool) string {
-	st := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
 	lines := strings.Split(s, "\n")
 	mll := fmt.Sprintf("%d", len(fmt.Sprintf("%d", len(lines))))
 	for i, l := range lines {
-		lines[i] = fmt.Sprintf("%-"+mll+"d │ %s", i+1, l)
+		lines[i] = fmt.Sprintf("%-"+mll+"d", i+1)
 		if color {
-			lines[i] = st.Render(lines[i])
+			lines[i] = linenoStyle.Render(lines[i])
 		}
+		lines[i] += " │ " + l
 	}
 	return strings.Join(lines, "\n")
 }
