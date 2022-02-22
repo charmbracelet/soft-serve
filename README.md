@@ -18,7 +18,8 @@ A tasty, self-hostable Git server for the command line. 🍦
 
 * Configure with `git`
 * Create repos on demand with `git push`
-* Browse repos with an SSH-accessible TUI
+* Browse repos, files and commits with an SSH-accessible TUI
+* Print files over SSH with or without syntax highlighting and line numbers
 * Easy access control
   - Allow/disallow anonymous access
   - Add collaborators with SSH public keys
@@ -26,7 +27,21 @@ A tasty, self-hostable Git server for the command line. 🍦
 
 ## Where can I see it?
 
-Just run `ssh git.charm.sh` for an example.
+Just run `ssh git.charm.sh` for an example. You can also try some of the following commands:
+
+```bash
+# Jump directly to a repo in the TUI
+ssh git.charm.sh -t soft-serve
+
+# Print out a directory tree for a repo
+ssh git.charm.sh soft-serve
+
+# Print a specific file
+ssh git.charm.sh soft-serve/cmd/soft/main.go
+
+# Print a file with syntax highlighting and line numbers
+ssh git.charm.sh soft-serve/cmd/soft/main.go -c -l
+```
 
 ## Installation
 
@@ -129,6 +144,17 @@ initial public key until you configure things otherwise.
 If you're having trouble, make sure you have generated keys with `ssh-keygen`
 as configuration is not supported for keyless users.
 
+### Server Settings
+
+In addition to the Git-based configuration above, there are a few
+environment-level settings:
+
+* `SOFT_SERVE_PORT`: SSH listen port (_default 23231_)
+* `SOFT_SERVE_HOST`: SSH listen host (_default 0.0.0.0_)
+* `SOFT_SERVE_KEY_PATH`: SSH host key-pair path (_default .ssh/soft_serve_server_ed25519_)
+* `SOFT_SERVE_REPO_PATH`: Path where repos are stored (_default .repos_)
+* `SOFT_SERVE_INITIAL_ADMIN_KEY`: The public key that will initially have admin access to repos (_default ""_). This must be set before `soft` runs for the first time and creates the `config` repo. If set after the `config` repo has been created, this setting has no effect.
+
 ## Pushing (and creating!) repos
 
 You can add your Soft Serve server as a remote to any existing repo:
@@ -146,8 +172,8 @@ git push soft main
 
 ## The Soft Serve TUI
 
-Soft Serve serves a TUI over SSH for browsing repos, viewing READMEs, and
-grabbing clone commands:
+Soft Serve serves a TUI over SSH for browsing repos, viewing files and commits,
+and grabbing clone commands:
 
 ```
 ssh localhost -p 23231
@@ -159,17 +185,38 @@ It's also possible to “link” to a specific repo:
 ssh localhost -t -p 23231 REPO
 ```
 
-### Server Settings
+You can use the `tab` key to move between the repo menu and a particular repo.
+When a repo is highlighted you can use the following keys for navigation:
 
-In addition to the Git-based configuration above, there are a few
-environment-level settings:
+* `R` - View the project's README file
+* `F` - Navigate and view all of the files in the project
+* `C` - View the commit log for the repo
+* `B` - View branches and tags for the repo
 
-* `SOFT_SERVE_PORT`: SSH listen port (_default 23231_)
-* `SOFT_SERVE_HOST`: SSH listen host (_default 0.0.0.0_)
-* `SOFT_SERVE_KEY_PATH`: SSH host key-pair path (_default .ssh/soft_serve_server_ed25519_)
-* `SOFT_SERVE_REPO_PATH`: Path where repos are stored (_default .repos_)
-* `SOFT_SERVE_INITIAL_ADMIN_KEY`: The public key that will initially have admin access to repos (_default ""_). This must be set before `soft` runs for the first time and creates the `config` repo. If set after the `config` repo has been created, this setting has no effect.
+## Printing files over SSH
 
+Soft Serve gives you the ability to print out files directly from a repo
+without having to clone or use the TUI.
+
+To print a file tree for the project, just use the repo name as the SSH command
+to your Soft Serve server:
+
+```
+ssh git.charm.sh soft-serve
+```
+
+From there you can print individual files:
+
+```
+ssh git.charm.sh soft-serve/cmd/soft/main.go
+```
+
+You can add the `-c` flag to enable syntax coloring and `-l` to print line
+numbers:
+
+```
+ssh git.charm.sh soft-serve/cmd/soft/main.go -c -l
+```
 
 ### A note about RSA keys
 
