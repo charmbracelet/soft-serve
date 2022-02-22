@@ -150,7 +150,7 @@ func withLineNumber(s string, color bool) string {
 	// because we're only dealing with digits, which are one byte each.
 	mll := len(fmt.Sprintf("%d", len(lines)))
 	for i, l := range lines {
-		digit := fmt.Sprintf("%*d", mll, i)
+		digit := fmt.Sprintf("%*d", mll, i+1)
 		bar := "│"
 		if color {
 			digit = lineDigitStyle.Render(digit)
