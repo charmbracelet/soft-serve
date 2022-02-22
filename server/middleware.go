@@ -20,10 +20,11 @@ import (
 )
 
 var (
-	linenoStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	dirnameStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#00AAFF"))
-	filenameStyle = lipgloss.NewStyle()
-	filemodeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#777777"))
+	lineDigitStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("239"))
+	lineBarStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("236"))
+	dirnameStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00AAFF"))
+	filenameStyle  = lipgloss.NewStyle()
+	filemodeStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#777777"))
 )
 
 type entries []object.TreeEntry
@@ -144,13 +145,18 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 
 func withLineNumber(s string, color bool) string {
 	lines := strings.Split(s, "\n")
-	mll := fmt.Sprintf("%d", len(fmt.Sprintf("%d", len(lines))))
+	// NB: len() is not a particularly safe way to count string width (because
+	// it's counting bytes instead of runes) but in this case it's okay
+	// because we're only dealing with digits, which are one byte each.
+	mll := len(fmt.Sprintf("%d", len(lines)))
 	for i, l := range lines {
-		lines[i] = fmt.Sprintf("%-"+mll+"d", i+1)
+		digit := fmt.Sprintf("%*d", mll, i)
+		line := "│"
 		if color {
-			lines[i] = linenoStyle.Render(lines[i])
+			digit = lineDigitStyle.Render(digit)
+			line = lineBarStyle.Render(line)
 		}
-		lines[i] += " │ " + l
+		lines[i] = fmt.Sprintf(" %s %s %s", digit, line, l)
 	}
 	return strings.Join(lines, "\n")
 }
