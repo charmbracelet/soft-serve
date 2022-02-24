@@ -173,6 +173,8 @@ git push soft main
 
 ## The Soft Serve TUI
 
+<img src="https://stuff.charm.sh/soft-serve/soft-serve-tui-diff.png" width="750" alt="TUI example showing a diff">
+
 Soft Serve serves a TUI over SSH for browsing repos, viewing files and commits,
 and grabbing clone commands:
 
@@ -196,7 +198,7 @@ When a repo is highlighted you can use the following keys for navigation:
 
 ## Printing files over SSH
 
-<img src="https://stuff.charm.sh/soft-serve/soft-serve-cat-example.png?0" width="750" alt="Example tree and file output on the CLI">
+<img src="https://stuff.charm.sh/soft-serve/soft-serve-cat-example.png?1" width="750" alt="Example tree and file output on the CLI">
 
 Soft Serve also has the ability to print files and directories directly from a
 remote repo without the need to clone or use the TUI.
