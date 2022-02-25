@@ -14,7 +14,7 @@ Soft Serve
 
 A tasty, self-hostable Git server for the command line. 🍦
 
-<img src="https://stuff.charm.sh/soft-serve/soft-serve-cli-demo.gif" width="700" alt="Soft Serve screencast">
+<img src="https://stuff.charm.sh/soft-serve/soft-serve-cli-demo.gif?0" width="750" alt="Soft Serve screencast">
 
 * Configure with `git`
 * Create repos on demand with `git push`
@@ -173,6 +173,8 @@ git push soft main
 
 ## The Soft Serve TUI
 
+<img src="https://stuff.charm.sh/soft-serve/soft-serve-tui-diff.png" width="750" alt="TUI example showing a diff">
+
 Soft Serve serves a TUI over SSH for browsing repos, viewing files and commits,
 and grabbing clone commands:
 
@@ -189,15 +191,17 @@ ssh localhost -t -p 23231 REPO
 You can use the `tab` key to move between the repo menu and a particular repo.
 When a repo is highlighted you can use the following keys for navigation:
 
-* `R` - View the project's README file
-* `F` - Navigate and view all of the files in the project
-* `C` - View the commit log for the repo
-* `B` - View branches and tags for the repo
+* `R` – View the project's README file
+* `F` – Navigate and view all of the files in the project
+* `C` – View the commit log for the repo
+* `B` – View branches and tags for the repo
 
 ## Printing files over SSH
 
-Soft Serve gives you the ability to print out files directly from a repo
-without having to clone or use the TUI.
+<img src="https://stuff.charm.sh/soft-serve/soft-serve-cat-example.png?1" width="750" alt="Example tree and file output on the CLI">
+
+Soft Serve also has the ability to print files and directories directly from a
+remote repo without the need to clone or use the TUI.
 
 To print a file tree for the project, just use the repo name as the SSH command
 to your Soft Serve server:
