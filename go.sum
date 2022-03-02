@@ -21,8 +21,8 @@ github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuP
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/caarlos0/env/v6 v6.9.1 h1:zOkkjM0F6ltnQ5eBX6IPI41UP/KDGEK7rRPwGCNos8k=
 github.com/caarlos0/env/v6 v6.9.1/go.mod h1:hvp/ryKXKipEkcuYjs9mI4bBCg+UI0Yhgm5Zu0ddvwc=
-github.com/charmbracelet/bubbles v0.10.3-0.20220208194203-1d489252fe50 h1:hAsXGdqKHVoEbBlvReSfz8X605xddHMBFSxSrCaSSO4=
-github.com/charmbracelet/bubbles v0.10.3-0.20220208194203-1d489252fe50/go.mod h1:jOA+DUF1rjZm7gZHcNyIVW+YrBPALKfpGVdJu8UiJsA=
+github.com/charmbracelet/bubbles v0.10.4-0.20220302223835-88562515cf7b h1:o+LFpRn1fXtu1hDJLtBFjp7tMZ8AqwSpl84w1TnUj0Y=
+github.com/charmbracelet/bubbles v0.10.4-0.20220302223835-88562515cf7b/go.mod h1:jOA+DUF1rjZm7gZHcNyIVW+YrBPALKfpGVdJu8UiJsA=
 github.com/charmbracelet/bubbletea v0.19.3/go.mod h1:VuXF2pToRxDUHcBUcPmCRUHRvFATM4Ckb/ql1rBl3KA=
 github.com/charmbracelet/bubbletea v0.19.4-0.20220208181305-42cd4c31919c h1:hcS4xdVQwblKo8xuA5gRO/jql+yCVfnBlOwWcZrxOmA=
 github.com/charmbracelet/bubbletea v0.19.4-0.20220208181305-42cd4c31919c/go.mod h1:5nPeULOIxbAMykb3ggwhw1kruS7nP+Y4Za9yEH4J27U=

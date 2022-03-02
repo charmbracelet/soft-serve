@@ -51,12 +51,14 @@ type Styles struct {
 	LogCommitBody     lipgloss.Style
 	LogCommitStatsAdd lipgloss.Style
 	LogCommitStatsDel lipgloss.Style
+	LogPaginator      lipgloss.Style
 
 	RefItemSelector lipgloss.Style
 	RefItemActive   lipgloss.Style
 	RefItemInactive lipgloss.Style
 	RefItemBranch   lipgloss.Style
 	RefItemTag      lipgloss.Style
+	RefPaginator    lipgloss.Style
 
 	TreeItemSelector lipgloss.Style
 	TreeItemActive   lipgloss.Style
@@ -225,6 +227,10 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("#FD5B5B")).
 		Bold(true)
 
+	s.LogPaginator = lipgloss.NewStyle().
+		Margin(0).
+		Align(lipgloss.Center)
+
 	s.RefItemSelector = s.LogItemSelector.Copy()
 
 	s.RefItemActive = s.LogItemActive.Copy()
@@ -235,6 +241,8 @@ func DefaultStyles() *Styles {
 
 	s.RefItemTag = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#A3A322"))
+
+	s.RefPaginator = s.LogPaginator.Copy()
 
 	s.TreeItemSelector = s.LogItemSelector.Copy()
 
