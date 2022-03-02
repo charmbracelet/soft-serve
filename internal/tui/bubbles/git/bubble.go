@@ -80,6 +80,13 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		b.width = msg.Width
 		b.height = msg.Height
+		for i, bx := range b.boxes {
+			m, cmd := bx.Update(msg)
+			b.boxes[i] = m
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
 	case refs.RefMsg:
 		b.state = treeState
 		b.ref = msg
