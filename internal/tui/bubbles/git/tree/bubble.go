@@ -135,7 +135,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 	l := list.New([]list.Item{}, itemDelegate{styles}, width-widthMargin, height-heightMargin)
 	l.SetShowFilter(false)
 	l.SetShowHelp(false)
-	l.SetShowPagination(false)
+	l.SetShowPagination(true)
 	l.SetShowStatusBar(false)
 	l.SetShowTitle(false)
 	l.SetFilteringEnabled(false)
@@ -164,7 +164,9 @@ func (b *Bubble) reset() tea.Cmd {
 	b.path = ""
 	b.state = treeState
 	b.lastSelected = make([]int, 0)
-	return b.updateItems()
+	cmd := b.updateItems()
+	b.SetSize(b.width, b.height)
+	return cmd
 }
 
 func (b *Bubble) Init() tea.Cmd {
@@ -177,6 +179,7 @@ func (b *Bubble) SetSize(width, height int) {
 	b.fileViewport.Viewport.Width = width - b.widthMargin
 	b.fileViewport.Viewport.Height = height - b.heightMargin
 	b.list.SetSize(width-b.widthMargin, height-b.heightMargin)
+	b.list.Styles.PaginationStyle = b.style.LogPaginator.Copy().Width(width - b.widthMargin)
 }
 
 func (b *Bubble) Help() []types.HelpEntry {
