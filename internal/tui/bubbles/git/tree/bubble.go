@@ -236,7 +236,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "F":
 			return b, b.reset()
 		case "enter", "right", "l":
-			if b.state == treeState {
+			if len(b.list.Items()) > 0 && b.state == treeState {
 				index := b.list.Index()
 				item := b.list.SelectedItem().(item)
 				mode := item.Mode()
