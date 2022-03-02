@@ -142,6 +142,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 	l.DisableQuitKeybindings()
 	l.KeyMap.NextPage = types.NextPage
 	l.KeyMap.PrevPage = types.PrevPage
+	l.Styles.NoItems = styles.TreeNoItems
 	b := &Bubble{
 		fileViewport: &vp.ViewportBubble{
 			Viewport: &viewport.Model{},
