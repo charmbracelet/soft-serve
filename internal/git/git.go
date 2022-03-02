@@ -1,6 +1,7 @@
 package git
 
 import (
+	"context"
 	"errors"
 	"log"
 	"os"
@@ -30,6 +31,7 @@ type Repo struct {
 	refs       []*plumbing.Reference
 	trees      map[plumbing.Hash]*object.Tree
 	commits    map[plumbing.Hash]*object.Commit
+	patch      map[plumbing.Hash]*object.Patch
 }
 
 // GetName returns the name of the repository.
@@ -103,6 +105,40 @@ func (r *Repo) commitForHash(hash plumbing.Hash) (*object.Commit, error) {
 		r.commits[hash] = co
 	}
 	return co, nil
+}
+
+func (r *Repo) PatchCtx(ctx context.Context, commit *object.Commit) (*object.Patch, error) {
+	hash := commit.Hash
+	p, ok := r.patch[hash]
+	if !ok {
+		c, err := r.commitForHash(hash)
+		if err != nil {
+			return nil, err
+		}
+		// Using commit trees fixes the issue when generating diff for the first commit
+		// https://github.com/go-git/go-git/issues/281
+		tree, err := r.treeForHash(c.TreeHash)
+		if err != nil {
+			return nil, err
+		}
+		var parent *object.Commit
+		parentTree := &object.Tree{}
+		if c.NumParents() > 0 {
+			parent, err = r.commitForHash(c.ParentHashes[0])
+			if err != nil {
+				return nil, err
+			}
+			parentTree, err = r.treeForHash(parent.TreeHash)
+			if err != nil {
+				return nil, err
+			}
+		}
+		p, err = parentTree.PatchContext(ctx, tree)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
 }
 
 // GetCommits returns the commits for a repository.
@@ -264,6 +300,7 @@ func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
 	r := &Repo{
 		name:       name,
 		repository: rg,
+		patch:      make(map[plumbing.Hash]*object.Patch),
 	}
 	r.commits = make(map[plumbing.Hash]*object.Commit)
 	r.trees = make(map[plumbing.Hash]*object.Tree)

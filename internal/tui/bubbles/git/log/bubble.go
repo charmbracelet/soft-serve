@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	gansi "github.com/charmbracelet/glamour/ansi"
@@ -26,21 +27,17 @@ var (
 		Code:     "",
 		Language: "diff",
 	}
+	waitBeforeLoading = time.Millisecond * 300
 )
 
-type commitMsg struct {
-	commit     *object.Commit
-	parent     *object.Commit
-	tree       *object.Tree
-	parentTree *object.Tree
-	patch      *object.Patch
-}
+type commitMsg *object.Commit
 
 type sessionState int
 
 const (
 	logState sessionState = iota
 	commitState
+	loadingState
 	errorState
 )
 
@@ -100,6 +97,7 @@ type Bubble struct {
 	height         int
 	heightMargin   int
 	error          types.ErrMsg
+	spinner        spinner.Model
 }
 
 func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
@@ -113,6 +111,9 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 	l.DisableQuitKeybindings()
 	l.KeyMap.NextPage = types.NextPage
 	l.KeyMap.PrevPage = types.PrevPage
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = styles.Spinner
 	b := &Bubble{
 		commitViewport: &vp.ViewportBubble{
 			Viewport: &viewport.Model{},
@@ -126,6 +127,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		heightMargin: heightMargin,
 		list:         l,
 		ref:          repo.GetHEAD(),
+		spinner:      s,
 	}
 	b.SetSize(width, height)
 	return b
@@ -193,12 +195,19 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.state = errorState
 		return b, nil
 	case commitMsg:
-		content := b.renderCommit(msg)
-		b.state = commitState
-		b.commitViewport.Viewport.SetContent(content)
-		b.GotoTop()
+		if b.state == loadingState {
+			cmds = append(cmds, b.spinner.Tick)
+		}
 	case refs.RefMsg:
 		b.ref = msg
+	case spinner.TickMsg:
+		if b.state == loadingState {
+			s, cmd := b.spinner.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			b.spinner = s
+		}
 	}
 
 	switch b.state {
@@ -215,83 +224,77 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, tea.Batch(cmds...)
 }
 
+func (b *Bubble) loadPatch(c *object.Commit) error {
+	var patch strings.Builder
+	style := b.style.LogCommit.Copy().Width(b.width - b.widthMargin - b.style.LogCommit.GetHorizontalFrameSize())
+	ctx, cancel := context.WithTimeout(context.TODO(), types.MaxPatchWait)
+	defer cancel()
+	p, err := b.repo.PatchCtx(ctx, c)
+	if err != nil {
+		return err
+	}
+	patch.WriteString(b.renderCommit(c))
+	fpl := len(p.FilePatches())
+	if fpl > types.MaxDiffFiles {
+		patch.WriteString("\n" + types.ErrDiffFilesTooLong.Error())
+	} else {
+		patch.WriteString("\n" + b.renderStats(p.Stats()))
+	}
+	if fpl <= types.MaxDiffFiles {
+		ps := p.String()
+		if len(strings.Split(ps, "\n")) > types.MaxDiffLines {
+			patch.WriteString("\n" + types.ErrDiffTooLong.Error())
+		} else {
+			patch.WriteString("\n" + b.renderDiff(ps))
+		}
+	}
+	content := style.Render(patch.String())
+	b.commitViewport.Viewport.SetContent(content)
+	b.GotoTop()
+	return nil
+}
+
 func (b *Bubble) loadCommit() tea.Cmd {
+	var err error
+	done := make(chan struct{}, 1)
+	i := b.list.SelectedItem()
+	if i == nil {
+		return nil
+	}
+	c, ok := i.(item)
+	if !ok {
+		return nil
+	}
+	go func() {
+		err = b.loadPatch(c.Commit)
+		done <- struct{}{}
+		b.state = commitState
+	}()
 	return func() tea.Msg {
-		i := b.list.SelectedItem()
-		if i == nil {
-			return nil
+		select {
+		case <-done:
+		case <-time.After(waitBeforeLoading):
+			b.state = loadingState
 		}
-		c, ok := i.(item)
-		if !ok {
-			return nil
-		}
-		// Using commit trees fixes the issue when generating diff for the first commit
-		// https://github.com/go-git/go-git/issues/281
-		tree, err := c.Tree()
 		if err != nil {
 			return types.ErrMsg{Err: err}
 		}
-		var parent *object.Commit
-		parentTree := &object.Tree{}
-		if c.NumParents() > 0 {
-			parent, err = c.Parents().Next()
-			if err != nil {
-				return types.ErrMsg{Err: err}
-			}
-			parentTree, err = parent.Tree()
-			if err != nil {
-				return types.ErrMsg{Err: err}
-			}
-		}
-		ctx, cancel := context.WithTimeout(context.TODO(), types.MaxPatchWait)
-		defer cancel()
-		patch, err := parentTree.PatchContext(ctx, tree)
-		if err != nil {
-			return types.ErrMsg{Err: err}
-		}
-		return commitMsg{
-			commit:     c.Commit,
-			tree:       tree,
-			parent:     parent,
-			parentTree: parentTree,
-			patch:      patch,
-		}
+		return commitMsg(c.Commit)
 	}
 }
 
-func (b *Bubble) renderCommit(m commitMsg) string {
+func (b *Bubble) renderCommit(c *object.Commit) string {
 	s := strings.Builder{}
-	st := b.style
-	c := m.commit
 	// FIXME: lipgloss prints empty lines when CRLF is used
 	// sanitize commit message from CRLF
 	msg := strings.ReplaceAll(c.Message, "\r\n", "\n")
 	s.WriteString(fmt.Sprintf("%s\n%s\n%s\n%s\n",
-		st.LogCommitHash.Render("commit "+c.Hash.String()),
-		st.LogCommitAuthor.Render("Author: "+c.Author.String()),
-		st.LogCommitDate.Render("Date:   "+c.Committer.When.Format(time.UnixDate)),
-		st.LogCommitBody.Render(msg),
+		b.style.LogCommitHash.Render("commit "+c.Hash.String()),
+		b.style.LogCommitAuthor.Render("Author: "+c.Author.String()),
+		b.style.LogCommitDate.Render("Date:   "+c.Committer.When.Format(time.UnixDate)),
+		b.style.LogCommitBody.Render(msg),
 	))
-	stats := m.patch.Stats()
-	if len(stats) > types.MaxDiffFiles {
-		s.WriteString("\n" + types.ErrDiffFilesTooLong.Error())
-	} else {
-		s.WriteString("\n" + b.renderStats(stats))
-	}
-	ps := m.patch.String()
-	if len(strings.Split(ps, "\n")) > types.MaxDiffLines {
-		s.WriteString("\n" + types.ErrDiffTooLong.Error())
-	} else {
-		p := strings.Builder{}
-		diffChroma.Code = ps
-		err := diffChroma.Render(&p, types.RenderCtx)
-		if err != nil {
-			s.WriteString(fmt.Sprintf("\n%s", err.Error()))
-		} else {
-			s.WriteString(fmt.Sprintf("\n%s", p.String()))
-		}
-	}
-	return st.LogCommit.Copy().Width(b.width - b.widthMargin - st.LogCommit.GetHorizontalFrameSize()).Render(s.String())
+	return s.String()
 }
 
 func (b *Bubble) renderStats(fileStats object.FileStats) string {
@@ -381,10 +384,25 @@ func (b *Bubble) renderStats(fileStats object.FileStats) string {
 	return output.String()
 }
 
+func (b *Bubble) renderDiff(diff string) string {
+	var s strings.Builder
+	pr := strings.Builder{}
+	diffChroma.Code = diff
+	err := diffChroma.Render(&pr, types.RenderCtx)
+	if err != nil {
+		s.WriteString(fmt.Sprintf("\n%s", err.Error()))
+	} else {
+		s.WriteString(fmt.Sprintf("\n%s", pr.String()))
+	}
+	return s.String()
+}
+
 func (b *Bubble) View() string {
 	switch b.state {
 	case logState:
 		return b.list.View()
+	case loadingState:
+		return fmt.Sprintf("%s loading commit", b.spinner.View())
 	case errorState:
 		return b.error.ViewWithPrefix(b.style, "Error")
 	case commitState:
