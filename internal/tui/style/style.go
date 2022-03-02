@@ -65,6 +65,8 @@ type Styles struct {
 	TreeFileMode     lipgloss.Style
 	TreeFileSize     lipgloss.Style
 	TreeFileContent  lipgloss.Style
+
+	Spinner lipgloss.Style
 }
 
 // DefaultStyles returns default styles for the TUI.
@@ -251,6 +253,10 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("252"))
 
 	s.TreeFileContent = lipgloss.NewStyle()
+
+	s.Spinner = lipgloss.NewStyle().
+		MarginLeft(1).
+		Foreground(lipgloss.Color("205"))
 
 	return s
 }

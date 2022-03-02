@@ -1,6 +1,8 @@
 package types
 
 import (
+	"context"
+
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -15,6 +17,7 @@ type Repo interface {
 	GetCommits(*plumbing.Reference) (Commits, error)
 	Repository() *git.Repository
 	Tree(*plumbing.Reference, string) (*object.Tree, error)
+	PatchCtx(context.Context, *object.Commit) (*object.Patch, error)
 }
 
 type Commits []*object.Commit
