@@ -40,6 +40,8 @@ type Styles struct {
 	ErrorTitle lipgloss.Style
 	ErrorBody  lipgloss.Style
 
+	AboutNoReadme lipgloss.Style
+
 	LogItemSelector   lipgloss.Style
 	LogItemActive     lipgloss.Style
 	LogItemInactive   lipgloss.Style
@@ -67,6 +69,8 @@ type Styles struct {
 	TreeFileMode     lipgloss.Style
 	TreeFileSize     lipgloss.Style
 	TreeFileContent  lipgloss.Style
+	TreePaginator    lipgloss.Style
+	TreeNoItems      lipgloss.Style
 
 	Spinner lipgloss.Style
 }
@@ -193,6 +197,10 @@ func DefaultStyles() *Styles {
 		MarginLeft(2).
 		Width(52) // for now
 
+	s.AboutNoReadme = lipgloss.NewStyle().
+		MarginLeft(1).
+		Foreground(lipgloss.Color("#626262"))
+
 	s.LogItemInactive = lipgloss.NewStyle().
 		MarginLeft(1)
 
@@ -261,6 +269,10 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("252"))
 
 	s.TreeFileContent = lipgloss.NewStyle()
+
+	s.TreePaginator = s.LogPaginator.Copy()
+
+	s.TreeNoItems = s.AboutNoReadme.Copy()
 
 	s.Spinner = lipgloss.NewStyle().
 		MarginLeft(1).

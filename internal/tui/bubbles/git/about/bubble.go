@@ -88,7 +88,11 @@ func (b *Bubble) Help() []types.HelpEntry {
 
 func (b *Bubble) glamourize() (string, error) {
 	w := b.width - b.widthMargin - b.styles.RepoBody.GetHorizontalFrameSize()
-	return types.Glamourize(w, b.repo.GetReadme())
+	rm := b.repo.GetReadme()
+	if rm == "" {
+		return b.styles.AboutNoReadme.Render("No readme found."), nil
+	}
+	return types.Glamourize(w, rm)
 }
 
 func (b *Bubble) setupCmd() tea.Msg {
