@@ -18,6 +18,15 @@ func (cfg *Config) Push(repo string, pk ssh.PublicKey) {
 		if cfg.Cfg.Callbacks != nil {
 			cfg.Cfg.Callbacks.Push(repo)
 		}
+		r, err := cfg.Source.GetRepo(repo)
+		if err != nil {
+			log.Printf("error getting repo after push: %s", err)
+			return
+		}
+		err = r.UpdateServerInfo()
+		if err != nil {
+			log.Printf("error updating server info after push: %s", err)
+		}
 	}()
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -385,3 +386,9 @@ func (r *Repo) LatestTree(path string) (*object.Tree, error) {
 	return r.Tree(r.head, path)
 }
 
+// UpdateServerInfo updates the server info for the repository.
+func (r *Repo) UpdateServerInfo() error {
+	cmd := exec.Command("git", "update-server-info")
+	cmd.Dir = r.path
+	return cmd.Run()
+}
