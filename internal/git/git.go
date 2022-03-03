@@ -23,7 +23,7 @@ var ErrMissingRepo = errors.New("missing repo")
 
 // Repo represents a Git repository.
 type Repo struct {
-	name       string
+	path       string
 	repository *git.Repository
 	Readme     string
 	refCommits map[plumbing.Hash]gitypes.Commits
@@ -36,7 +36,7 @@ type Repo struct {
 
 // GetName returns the name of the repository.
 func (r *Repo) Name() string {
-	return r.name
+	return filepath.Base(r.path)
 }
 
 // GetHEAD returns the reference for a repository.
@@ -238,7 +238,7 @@ func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	for _, r := range rs.repos {
-		if r.name == name {
+		if filepath.Base(r.path) == name {
 			return r, nil
 		}
 	}
@@ -265,7 +265,7 @@ func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 		rg = ar
 	}
 	r := &Repo{
-		name:       name,
+		path:       rp,
 		repository: rg,
 	}
 	rs.repos = append(rs.repos, r)
@@ -282,12 +282,12 @@ func (rs *RepoSource) LoadRepos() error {
 	}
 	rs.repos = make([]*Repo, 0)
 	for _, de := range rd {
-		rn := de.Name()
-		rg, err := git.PlainOpen(filepath.Join(rs.Path, rn))
+		rp := filepath.Join(rs.Path, de.Name())
+		rg, err := git.PlainOpen(rp)
 		if err != nil {
 			return err
 		}
-		r, err := rs.loadRepo(rn, rg)
+		r, err := rs.loadRepo(rp, rg)
 		if err != nil {
 			return err
 		}
@@ -296,9 +296,9 @@ func (rs *RepoSource) LoadRepos() error {
 	return nil
 }
 
-func (rs *RepoSource) loadRepo(name string, rg *git.Repository) (*Repo, error) {
+func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (*Repo, error) {
 	r := &Repo{
-		name:       name,
+		path:       path,
 		repository: rg,
 		patch:      make(map[plumbing.Hash]*object.Patch),
 	}
@@ -362,3 +362,4 @@ func (r *Repo) LatestFile(path string) (string, error) {
 func (r *Repo) LatestTree(path string) (*object.Tree, error) {
 	return r.Tree(r.head, path)
 }
+
