@@ -7,11 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/alecthomas/chroma/lexers"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/refs"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
@@ -336,31 +334,12 @@ func (b *Bubble) renderFile(m fileMsg) string {
 	if len(strings.Split(c, "\n")) > types.MaxDiffLines {
 		s.WriteString(types.ErrFileTooLarge.Error())
 	} else {
-		lexer := lexers.Match(b.path)
-		lang := ""
-		if lexer != nil && lexer.Config() != nil {
-			lang = lexer.Config().Name
-		}
-		formatter := &gansi.CodeBlockElement{
-			Code:     c,
-			Language: lang,
-		}
-		if lang == "markdown" {
-			w := b.width - b.widthMargin - b.style.RepoBody.GetHorizontalFrameSize()
-			md, err := types.Glamourize(w, c)
-			if err != nil {
-				s.WriteString(err.Error())
-			} else {
-				s.WriteString(md)
-			}
+		w := b.width - b.widthMargin - b.style.RepoBody.GetHorizontalFrameSize()
+		f, err := types.RenderFile(b.path, m.content, w)
+		if err != nil {
+			s.WriteString(err.Error())
 		} else {
-			r := strings.Builder{}
-			err := formatter.Render(&r, types.RenderCtx)
-			if err != nil {
-				s.WriteString(err.Error())
-			} else {
-				s.WriteString(r.String())
-			}
+			s.WriteString(f)
 		}
 	}
 	return b.style.TreeFileContent.Copy().Width(b.width - b.widthMargin).Render(s.String())

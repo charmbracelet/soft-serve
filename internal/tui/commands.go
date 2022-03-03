@@ -1,9 +1,7 @@
 package tui
 
 import (
-	"bytes"
 	"fmt"
-	"text/template"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -102,13 +100,6 @@ func (b *Bubble) newMenuEntry(name string, rn string) (MenuEntry, error) {
 	if err != nil {
 		return me, err
 	}
-	if rn == "config" {
-		md, err := templatize(r.Readme, b.config)
-		if err != nil {
-			return me, err
-		}
-		r.Readme = md
-	}
 	boxLeftWidth := b.styles.Menu.GetWidth() + b.styles.Menu.GetHorizontalFrameSize()
 	// TODO: also send this along with a tea.WindowSizeMsg
 	var heightMargin = lipgloss.Height(b.headerView()) +
@@ -124,17 +115,4 @@ func (b *Bubble) newMenuEntry(name string, rn string) (MenuEntry, error) {
 	}
 	me.bubble = rb
 	return me, nil
-}
-
-func templatize(mdt string, tmpl interface{}) (string, error) {
-	t, err := template.New("readme").Parse(mdt)
-	if err != nil {
-		return "", err
-	}
-	buf := &bytes.Buffer{}
-	err = t.Execute(buf, tmpl)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), nil
 }

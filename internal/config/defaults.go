@@ -19,13 +19,13 @@ anon-access: %s
 # will be accepted.
 allow-keyless: false
 
-# Customize repo display in the menu. Only repos in this list will appear in
-# the TUI.
+# Customize repo display in the menu.
 repos:
   - name: Home
     repo: config
     private: true
     note: "Configuration and content repo for this server"
+    readme: README.md
 `
 
 const hasKeyUserConfig = `

@@ -1,10 +1,10 @@
 package config
 
 import (
-	"os/exec"
-	"path/filepath"
+	"bytes"
 	"strings"
 	"sync"
+	"text/template"
 
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
@@ -46,6 +46,7 @@ type Repo struct {
 	Repo    string `yaml:"repo"`
 	Note    string `yaml:"note"`
 	Private bool   `yaml:"private"`
+	Readme  string `yaml:"readme"`
 }
 
 // NewConfig creates a new internal Config struct.
@@ -127,6 +128,41 @@ func (cfg *Config) Reload() error {
 	if err != nil {
 		return fmt.Errorf("bad yaml in config.yaml: %s", err)
 	}
+	for _, r := range cfg.Source.AllRepos() {
+		name := r.Name()
+		pat := "README*"
+		rp := ""
+		for _, rr := range cfg.Repos {
+			if name == rr.Repo {
+				rp = rr.Readme
+				break
+			}
+		}
+		if rp != "" {
+			pat = rp
+		}
+		rm := ""
+		f, err := r.FindLatestFile(pat)
+		if err != nil && err != object.ErrFileNotFound {
+			return err
+		}
+		if err == nil {
+			fc, err := f.Contents()
+			if err != nil {
+				return err
+			}
+			rm = fc
+			r.ReadmePath = f.Name
+		}
+		if name == "config" {
+			md, err := templatize(rm, cfg)
+			if err != nil {
+				return err
+			}
+			rm = md
+		}
+		r.Readme = rm
+	}
 	return nil
 }
 
@@ -150,7 +186,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	if err != nil {
 		return err
 	}
-	_, err = rs.GetRepo(cn)
+	r, err := rs.GetRepo(cn)
 	if err == git.ErrMissingRepo {
 		cr, err := rs.InitRepo(cn, true)
 		if err != nil {
@@ -217,4 +253,17 @@ func (cfg *Config) isPrivate(repo string) bool {
 		}
 	}
 	return false
+}
+
+func templatize(mdt string, tmpl interface{}) (string, error) {
+	t, err := template.New("readme").Parse(mdt)
+	if err != nil {
+		return "", err
+	}
+	buf := &bytes.Buffer{}
+	err = t.Execute(buf, tmpl)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }

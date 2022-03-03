@@ -23,6 +23,7 @@ require (
 )
 
 require (
+	github.com/gobwas/glob v0.2.3
 	github.com/muesli/mango v0.1.0
 	github.com/muesli/roff v0.1.0
 )
