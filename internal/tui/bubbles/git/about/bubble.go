@@ -8,6 +8,7 @@ import (
 	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/muesli/reflow/wrap"
 )
 
 type Bubble struct {
@@ -92,7 +93,18 @@ func (b *Bubble) glamourize() (string, error) {
 	if rm == "" {
 		return b.styles.AboutNoReadme.Render("No readme found."), nil
 	}
-	return types.Glamourize(w, rm)
+	f, err := types.RenderFile(b.repo.GetReadmePath(), rm, w)
+	if err != nil {
+		return "", err
+	}
+	// For now, hard-wrap long lines in Glamour that would otherwise break the
+	// layout when wrapping. This may be due to #43 in Reflow, which has to do
+	// with a bug in the way lines longer than the given width are wrapped.
+	//
+	//     https://github.com/muesli/reflow/issues/43
+	//
+	// TODO: solve this upstream in Glamour/Reflow.
+	return wrap.String(f, w), nil
 }
 
 func (b *Bubble) setupCmd() tea.Msg {

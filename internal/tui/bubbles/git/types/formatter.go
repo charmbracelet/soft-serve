@@ -1,9 +1,11 @@
 package types
 
 import (
+	"strings"
+
+	"github.com/alecthomas/chroma/lexers"
 	"github.com/charmbracelet/glamour"
 	gansi "github.com/charmbracelet/glamour/ansi"
-	"github.com/muesli/reflow/wrap"
 	"github.com/muesli/termenv"
 )
 
@@ -52,12 +54,35 @@ func Glamourize(w int, md string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// For now, hard-wrap long lines in Glamour that would otherwise break the
-	// layout when wrapping. This may be due to #43 in Reflow, which has to do
-	// with a bug in the way lines longer than the given width are wrapped.
-	//
-	//     https://github.com/muesli/reflow/issues/43
-	//
-	// TODO: solve this upstream in Glamour/Reflow.
-	return wrap.String(mdt, w), nil
+	return mdt, nil
+}
+
+func RenderFile(path, content string, width int) (string, error) {
+	lexer := lexers.Fallback
+	if path == "" {
+		lexer = lexers.Analyse(content)
+	} else {
+		lexer = lexers.Match(path)
+	}
+	lang := ""
+	if lexer != nil && lexer.Config() != nil {
+		lang = lexer.Config().Name
+	}
+	formatter := &gansi.CodeBlockElement{
+		Code:     content,
+		Language: lang,
+	}
+	if lang == "markdown" {
+		md, err := Glamourize(width, content)
+		if err != nil {
+			return "", err
+		}
+		return md, nil
+	}
+	r := strings.Builder{}
+	err := formatter.Render(&r, RenderCtx)
+	if err != nil {
+		return "", err
+	}
+	return r.String(), nil
 }

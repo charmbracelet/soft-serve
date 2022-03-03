@@ -14,8 +14,10 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/gobwas/glob"
 )
 
 // ErrMissingRepo indicates that the requested repository could not be found.
@@ -26,6 +28,7 @@ type Repo struct {
 	path       string
 	repository *git.Repository
 	Readme     string
+	ReadmePath string
 	refCommits map[plumbing.Hash]gitypes.Commits
 	head       *plumbing.Reference
 	refs       []*plumbing.Reference
@@ -107,6 +110,7 @@ func (r *Repo) commitForHash(hash plumbing.Hash) (*object.Commit, error) {
 	return co, nil
 }
 
+// PatchCtx returns the patch for a given commit.
 func (r *Repo) PatchCtx(ctx context.Context, commit *object.Commit) (*object.Patch, error) {
 	hash := commit.Hash
 	p, ok := r.patch[hash]
@@ -199,14 +203,12 @@ func (r *Repo) targetHash(ref *plumbing.Reference) (plumbing.Hash, error) {
 
 // GetReadme returns the readme for a repository.
 func (r *Repo) GetReadme() string {
-	if r.Readme != "" {
-		return r.Readme
-	}
-	md, err := r.LatestFile("README.md")
-	if err != nil {
-		return ""
-	}
-	return md
+	return r.Readme
+}
+
+// GetReadmePath returns the path to the readme for a repository.
+func (r *Repo) GetReadmePath() string {
+	return r.ReadmePath
 }
 
 // RepoSource is a reference to an on-disk repositories.
@@ -310,13 +312,6 @@ func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (*Repo, error) {
 		return nil, err
 	}
 	r.head = ref
-	rm, err := r.LatestFile("README.md")
-	if err == object.ErrFileNotFound {
-		rm = ""
-	} else if err != nil {
-		return nil, err
-	}
-	r.Readme = rm
 	l, err := r.repository.Log(&git.LogOptions{All: true})
 	if err != nil {
 		return nil, err
@@ -341,13 +336,40 @@ func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (*Repo, error) {
 	return r, nil
 }
 
-// LatestFile returns the latest file at the specified path in the repository.
-func (r *Repo) LatestFile(path string) (string, error) {
+// FindLatestFile returns the latest file for a given path.
+func (r *Repo) FindLatestFile(pattern string) (*object.File, error) {
+	g, err := glob.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
 	c, err := r.commitForHash(r.head.Hash())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	f, err := c.File(path)
+	fi, err := c.Files()
+	if err != nil {
+		return nil, err
+	}
+	var f *object.File
+	err = fi.ForEach(func(ff *object.File) error {
+		if g.Match(ff.Name) {
+			f = ff
+			return storer.ErrStop
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if f == nil {
+		return nil, object.ErrFileNotFound
+	}
+	return f, nil
+}
+
+// LatestFile returns the contents of the latest file at the specified path in the repository.
+func (r *Repo) LatestFile(pattern string) (string, error) {
+	f, err := r.FindLatestFile(pattern)
 	if err != nil {
 		return "", err
 	}

@@ -14,6 +14,7 @@ type Repo interface {
 	SetHEAD(*plumbing.Reference) error
 	GetReferences() []*plumbing.Reference
 	GetReadme() string
+	GetReadmePath() string
 	GetCommits(*plumbing.Reference) (Commits, error)
 	Repository() *git.Repository
 	Tree(*plumbing.Reference, string) (*object.Tree, error)
