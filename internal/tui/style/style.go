@@ -198,7 +198,8 @@ func DefaultStyles() *Styles {
 		Width(52) // for now
 
 	s.AboutNoReadme = lipgloss.NewStyle().
-		MarginLeft(1).
+		MarginTop(1).
+		MarginLeft(2).
 		Foreground(lipgloss.Color("#626262"))
 
 	s.LogItemInactive = lipgloss.NewStyle().
@@ -275,7 +276,8 @@ func DefaultStyles() *Styles {
 	s.TreeNoItems = s.AboutNoReadme.Copy()
 
 	s.Spinner = lipgloss.NewStyle().
-		MarginLeft(1).
+		MarginTop(1).
+		MarginLeft(2).
 		Foreground(lipgloss.Color("205"))
 
 	return s

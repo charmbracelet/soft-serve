@@ -405,7 +405,7 @@ func (b *Bubble) View() string {
 	case logState:
 		return b.list.View()
 	case loadingState:
-		return fmt.Sprintf("%s loading commit", b.spinner.View())
+		return fmt.Sprintf("%s loading commit…", b.spinner.View())
 	case errorState:
 		return b.error.ViewWithPrefix(b.style, "Error")
 	case commitState:
