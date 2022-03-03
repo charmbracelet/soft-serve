@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"log"
 	"strings"
 	"sync"
 	"text/template"
@@ -130,6 +131,10 @@ func (cfg *Config) Reload() error {
 	}
 	for _, r := range cfg.Source.AllRepos() {
 		name := r.Name()
+		err = r.UpdateServerInfo()
+		if err != nil {
+			log.Printf("error updating server info for %s: %s", name, err)
+		}
 		pat := "README*"
 		rp := ""
 		for _, rr := range cfg.Repos {
@@ -186,7 +191,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	if err != nil {
 		return err
 	}
-	r, err := rs.GetRepo(cn)
+	_, err = rs.GetRepo(cn)
 	if err == git.ErrMissingRepo {
 		cr, err := rs.InitRepo(cn, true)
 		if err != nil {
@@ -231,12 +236,6 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 			return err
 		}
 		err = cr.Repository().Push(&gg.PushOptions{})
-		if err != nil {
-			return err
-		}
-		cmd := exec.Command("git", "update-server-info")
-		cmd.Dir = filepath.Join(rs.Path, cn)
-		err = cmd.Run()
 		if err != nil {
 			return err
 		}
