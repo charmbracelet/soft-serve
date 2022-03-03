@@ -97,7 +97,7 @@ anon-access: read-write
 # You can grant read-only access to users without private keys.
 allow-keyless: false
 
-# Which repos should appear in the menu?
+# Customize repos in the menu
 repos:
   - name: Home
     repo: config
@@ -107,6 +107,7 @@ repos:
     repo: my-public-repo
     private: false
     note: "A publicly-accessible repo"
+    readme: docs/README.md
   - name: Example Private Repo
     repo: my-private-repo
     private: true
