@@ -313,26 +313,19 @@ func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (*Repo, error) {
 		return nil, err
 	}
 	r.head = ref
-	l, err := r.repository.Log(&git.LogOptions{All: true})
-	if err != nil {
-		return nil, err
-	}
-	err = l.ForEach(func(c *object.Commit) error {
-		r.commits[c.Hash] = c
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
 	refs := make([]*plumbing.Reference, 0)
 	ri, err := rg.References()
 	if err != nil {
 		return nil, err
 	}
-	ri.ForEach(func(r *plumbing.Reference) error {
+	err = ri.ForEach(func(r *plumbing.Reference) error {
 		refs = append(refs, r)
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
 	r.refs = refs
 	return r, nil
 }
