@@ -30,7 +30,7 @@ type Config struct {
 	Repos        []Repo `yaml:"repos"`
 	Source       *git.RepoSource
 	Cfg          *config.Config
-	reloadMtx    sync.Mutex
+	mtx          sync.Mutex
 }
 
 // User contains user-level configuration for a repository.
@@ -106,13 +106,17 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = c.Reload()
+	if err != nil {
+		return nil, err
+	}
 	return c, nil
 }
 
 // Reload reloads the configuration.
 func (cfg *Config) Reload() error {
-	cfg.reloadMtx.Lock()
-	defer cfg.reloadMtx.Unlock()
+	cfg.mtx.Lock()
+	defer cfg.mtx.Unlock()
 	err := cfg.Source.LoadRepos()
 	if err != nil {
 		return err
@@ -187,12 +191,8 @@ func createFile(path string, content string) error {
 func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	cn := "config"
 	rs := cfg.Source
-	err := rs.LoadRepos()
-	if err != nil {
-		return err
-	}
-	_, err = rs.GetRepo(cn)
-	if err == git.ErrMissingRepo {
+	err := rs.LoadRepo(cn)
+	if err == gg.ErrRepositoryNotExists {
 		cr, err := rs.InitRepo(cn, true)
 		if err != nil {
 			return err
@@ -242,7 +242,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	} else if err != nil {
 		return err
 	}
-	return cfg.Reload()
+	return nil
 }
 
 func (cfg *Config) isPrivate(repo string) bool {

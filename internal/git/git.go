@@ -216,7 +216,7 @@ func (r *Repo) GetReadmePath() string {
 type RepoSource struct {
 	Path  string
 	mtx   sync.Mutex
-	repos []*Repo
+	repos map[string]*Repo
 }
 
 // NewRepoSource creates a new RepoSource.
@@ -226,6 +226,7 @@ func NewRepoSource(repoPath string) *RepoSource {
 		log.Fatal(err)
 	}
 	rs := &RepoSource{Path: repoPath}
+	rs.repos = make(map[string]*Repo, 0)
 	return rs
 }
 
@@ -233,19 +234,22 @@ func NewRepoSource(repoPath string) *RepoSource {
 func (rs *RepoSource) AllRepos() []*Repo {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
-	return rs.repos
+	repos := make([]*Repo, 0, len(rs.repos))
+	for _, r := range rs.repos {
+		repos = append(repos, r)
+	}
+	return repos
 }
 
 // GetRepo returns a repository by name.
 func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
-	for _, r := range rs.repos {
-		if filepath.Base(r.path) == name {
-			return r, nil
-		}
+	r, ok := rs.repos[name]
+	if !ok {
+		return nil, ErrMissingRepo
 	}
-	return nil, ErrMissingRepo
+	return r, nil
 }
 
 // InitRepo initializes a new Git repository.
@@ -271,30 +275,38 @@ func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 		path:       rp,
 		repository: rg,
 	}
-	rs.repos = append(rs.repos, r)
+	rs.repos[name] = r
 	return r, nil
+}
+
+// LoadRepo loads a repository from disk.
+func (rs *RepoSource) LoadRepo(name string) error {
+	rs.mtx.Lock()
+	defer rs.mtx.Unlock()
+	rp := filepath.Join(rs.Path, name)
+	rg, err := git.PlainOpen(rp)
+	if err != nil {
+		return err
+	}
+	r, err := rs.loadRepo(rp, rg)
+	if err != nil {
+		return err
+	}
+	rs.repos[name] = r
+	return nil
 }
 
 // LoadRepos opens Git repositories.
 func (rs *RepoSource) LoadRepos() error {
-	rs.mtx.Lock()
-	defer rs.mtx.Unlock()
 	rd, err := os.ReadDir(rs.Path)
 	if err != nil {
 		return err
 	}
-	rs.repos = make([]*Repo, 0)
 	for _, de := range rd {
-		rp := filepath.Join(rs.Path, de.Name())
-		rg, err := git.PlainOpen(rp)
+		err = rs.LoadRepo(de.Name())
 		if err != nil {
 			return err
 		}
-		r, err := rs.loadRepo(rp, rg)
-		if err != nil {
-			return err
-		}
-		rs.repos = append(rs.repos, r)
 	}
 	return nil
 }
@@ -325,7 +337,6 @@ func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (*Repo, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	r.refs = refs
 	return r, nil
 }
