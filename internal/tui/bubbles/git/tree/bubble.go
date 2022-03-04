@@ -332,7 +332,7 @@ func (b *Bubble) renderFile(m fileMsg) string {
 	s := strings.Builder{}
 	c := m.content
 	if len(strings.Split(c, "\n")) > types.MaxDiffLines {
-		s.WriteString(types.ErrFileTooLarge.Error())
+		s.WriteString(b.style.TreeNoItems.Render(types.ErrFileTooLarge.Error()))
 	} else {
 		w := b.width - b.widthMargin - b.style.RepoBody.GetHorizontalFrameSize()
 		f, err := types.RenderFile(b.path, m.content, w)

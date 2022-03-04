@@ -75,6 +75,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	}
 
 	rs := git.NewRepoSource(cfg.RepoPath)
+	rs.CacheSize = cfg.CacheSize
 	c := &Config{
 		Cfg: cfg,
 	}

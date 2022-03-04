@@ -3,6 +3,7 @@ package git
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -19,6 +20,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/gobwas/glob"
+	"github.com/golang/groupcache/lru"
 )
 
 // ErrMissingRepo indicates that the requested repository could not be found.
@@ -30,12 +32,13 @@ type Repo struct {
 	repository *git.Repository
 	Readme     string
 	ReadmePath string
-	refCommits map[plumbing.Hash]gitypes.Commits
 	head       *plumbing.Reference
 	refs       []*plumbing.Reference
-	trees      map[plumbing.Hash]*object.Tree
-	commits    map[plumbing.Hash]*object.Commit
-	patch      map[plumbing.Hash]*object.Patch
+	trees      *lru.Cache
+	commits    *lru.Cache
+	patch      *lru.Cache
+	mtx        sync.Mutex
+	pmtx       sync.Mutex
 }
 
 // GetName returns the name of the repository.
@@ -86,61 +89,112 @@ func (r *Repo) Tree(ref *plumbing.Reference, path string) (*object.Tree, error) 
 }
 
 func (r *Repo) treeForHash(treeHash plumbing.Hash) (*object.Tree, error) {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	var err error
-	t, ok := r.trees[treeHash]
+	if r.trees == nil {
+		t, err := r.repository.TreeObject(treeHash)
+		if err != nil {
+			return nil, err
+		}
+		return t, nil
+	}
+	var t *object.Tree
+	i, ok := r.trees.Get(treeHash)
 	if !ok {
 		t, err = r.repository.TreeObject(treeHash)
 		if err != nil {
 			return nil, err
 		}
-		r.trees[treeHash] = t
+		r.trees.Add(treeHash, t)
+	} else {
+		t, ok = i.(*object.Tree)
+		if !ok {
+			return nil, fmt.Errorf("error casting interface to tree")
+		}
 	}
 	return t, nil
 }
 
 func (r *Repo) commitForHash(hash plumbing.Hash) (*object.Commit, error) {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	var err error
-	co, ok := r.commits[hash]
-	if !ok {
-		co, err = r.repository.CommitObject(hash)
+	if r.commits == nil {
+		co, err := r.repository.CommitObject(hash)
 		if err != nil {
 			return nil, err
 		}
-		r.commits[hash] = co
+		return co, nil
 	}
-	return co, nil
+	var c *object.Commit
+	i, ok := r.commits.Get(hash)
+	if !ok {
+		c, err = r.repository.CommitObject(hash)
+		if err != nil {
+			return nil, err
+		}
+		r.commits.Add(hash, c)
+	} else {
+		c, ok = i.(*object.Commit)
+		if !ok {
+			return nil, fmt.Errorf("error casting interface to commit")
+		}
+	}
+	return c, nil
+}
+
+func (r *Repo) patchForHashCtx(ctx context.Context, hash plumbing.Hash) (*object.Patch, error) {
+	r.pmtx.Lock()
+	defer r.pmtx.Unlock()
+	c, err := r.commitForHash(hash)
+	if err != nil {
+		return nil, err
+	}
+	// Using commit trees fixes the issue when generating diff for the first commit
+	// https://github.com/go-git/go-git/issues/281
+	tree, err := r.treeForHash(c.TreeHash)
+	if err != nil {
+		return nil, err
+	}
+	var parent *object.Commit
+	parentTree := &object.Tree{}
+	if c.NumParents() > 0 {
+		parent, err = r.commitForHash(c.ParentHashes[0])
+		if err != nil {
+			return nil, err
+		}
+		parentTree, err = r.treeForHash(parent.TreeHash)
+		if err != nil {
+			return nil, err
+		}
+	}
+	p, err := parentTree.PatchContext(ctx, tree)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 // PatchCtx returns the patch for a given commit.
 func (r *Repo) PatchCtx(ctx context.Context, commit *object.Commit) (*object.Patch, error) {
+	var err error
 	hash := commit.Hash
-	p, ok := r.patch[hash]
+	if r.patch == nil {
+		return r.patchForHashCtx(ctx, hash)
+	}
+	var p *object.Patch
+	i, ok := r.patch.Get(hash)
 	if !ok {
-		c, err := r.commitForHash(hash)
+		p, err = r.patchForHashCtx(ctx, hash)
 		if err != nil {
 			return nil, err
 		}
-		// Using commit trees fixes the issue when generating diff for the first commit
-		// https://github.com/go-git/go-git/issues/281
-		tree, err := r.treeForHash(c.TreeHash)
-		if err != nil {
-			return nil, err
-		}
-		var parent *object.Commit
-		parentTree := &object.Tree{}
-		if c.NumParents() > 0 {
-			parent, err = r.commitForHash(c.ParentHashes[0])
-			if err != nil {
-				return nil, err
-			}
-			parentTree, err = r.treeForHash(parent.TreeHash)
-			if err != nil {
-				return nil, err
-			}
-		}
-		p, err = parentTree.PatchContext(ctx, tree)
-		if err != nil {
-			return nil, err
+		r.patch.Add(hash, p)
+	} else {
+		p, ok = i.(*object.Patch)
+		if !ok {
+			return nil, fmt.Errorf("error casting interface to patch")
 		}
 	}
 	return p, nil
@@ -148,16 +202,12 @@ func (r *Repo) PatchCtx(ctx context.Context, commit *object.Commit) (*object.Pat
 
 // GetCommits returns the commits for a repository.
 func (r *Repo) GetCommits(ref *plumbing.Reference) (gitypes.Commits, error) {
+	var err error
 	hash, err := r.targetHash(ref)
 	if err != nil {
 		return nil, err
 	}
-	// return cached commits if available
-	commits, ok := r.refCommits[hash]
-	if ok {
-		return commits, nil
-	}
-	commits = gitypes.Commits{}
+	commits := gitypes.Commits{}
 	co, err := r.commitForHash(hash)
 	if err != nil {
 		return nil, err
@@ -175,8 +225,6 @@ func (r *Repo) GetCommits(ref *plumbing.Reference) (gitypes.Commits, error) {
 		return nil, err
 	}
 	sort.Sort(commits)
-	// cache the commits in the repo
-	r.refCommits[hash] = commits
 	return commits, nil
 }
 
@@ -214,9 +262,10 @@ func (r *Repo) GetReadmePath() string {
 
 // RepoSource is a reference to an on-disk repositories.
 type RepoSource struct {
-	Path  string
-	mtx   sync.Mutex
-	repos map[string]*Repo
+	Path      string
+	CacheSize int
+	mtx       sync.Mutex
+	repos     map[string]*Repo
 }
 
 // NewRepoSource creates a new RepoSource.
@@ -315,11 +364,12 @@ func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (*Repo, error) {
 	r := &Repo{
 		path:       path,
 		repository: rg,
-		patch:      make(map[plumbing.Hash]*object.Patch),
 	}
-	r.commits = make(map[plumbing.Hash]*object.Commit)
-	r.trees = make(map[plumbing.Hash]*object.Tree)
-	r.refCommits = make(map[plumbing.Hash]gitypes.Commits)
+	if rs.CacheSize > 0 {
+		r.commits = lru.New(rs.CacheSize)
+		r.trees = lru.New(rs.CacheSize)
+		r.patch = lru.New(rs.CacheSize)
+	}
 	ref, err := rg.Head()
 	if err != nil {
 		return nil, err
