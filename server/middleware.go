@@ -14,7 +14,6 @@ import (
 	"github.com/charmbracelet/wish"
 	gitwish "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
-	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/muesli/termenv"
 )
@@ -26,22 +25,6 @@ var (
 	filenameStyle  = lipgloss.NewStyle()
 	filemodeStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#777777"))
 )
-
-type entries []object.TreeEntry
-
-func (cl entries) Len() int      { return len(cl) }
-func (cl entries) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
-func (cl entries) Less(i, j int) bool {
-	if cl[i].Mode == filemode.Dir && cl[j].Mode == filemode.Dir {
-		return cl[i].Name < cl[j].Name
-	} else if cl[i].Mode == filemode.Dir {
-		return true
-	} else if cl[j].Mode == filemode.Dir {
-		return false
-	} else {
-		return cl[i].Name < cl[j].Name
-	}
-}
 
 // softServeMiddleware is a middleware that handles displaying files with the
 // option of syntax highlighting and line numbers.
@@ -118,20 +101,20 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						}
 						s.Write([]byte(fc))
 					} else {
-						ents := entries(t.Entries)
+						ents := t.Entries
 						sort.Sort(ents)
 						for _, e := range ents {
-							m, _ := e.Mode.ToOSFileMode()
+							m := e.Mode()
 							if m == 0 {
 								s.Write([]byte(strings.Repeat(" ", 10)))
 							} else {
 								s.Write([]byte(filemodeStyle.Render(m.String())))
 							}
 							s.Write([]byte(" "))
-							if e.Mode.IsFile() {
-								s.Write([]byte(filenameStyle.Render(e.Name)))
+							if e.Mode().IsRegular() {
+								s.Write([]byte(filenameStyle.Render(e.Name())))
 							} else {
-								s.Write([]byte(dirnameStyle.Render(e.Name)))
+								s.Write([]byte(dirnameStyle.Render(e.Name())))
 							}
 							s.Write([]byte("\n"))
 						}

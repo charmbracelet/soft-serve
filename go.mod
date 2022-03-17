@@ -24,7 +24,6 @@ require (
 
 require (
 	github.com/gobwas/glob v0.2.3
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/muesli/mango v0.1.0
 	github.com/muesli/roff v0.1.0
 )

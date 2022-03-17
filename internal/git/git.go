@@ -1,26 +1,32 @@
 package git
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	gitypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/go-git/go-billy/v5/memfs"
+	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/storage/filesystem"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/gobwas/glob"
-	"github.com/golang/groupcache/lru"
 )
 
 // ErrMissingRepo indicates that the requested repository could not be found.
@@ -28,17 +34,28 @@ var ErrMissingRepo = errors.New("missing repo")
 
 // Repo represents a Git repository.
 type Repo struct {
-	path       string
-	repository *git.Repository
-	Readme     string
-	ReadmePath string
-	head       *plumbing.Reference
-	refs       []*plumbing.Reference
-	trees      *lru.Cache
-	commits    *lru.Cache
-	patch      *lru.Cache
-	mtx        sync.Mutex
-	pmtx       sync.Mutex
+	path         string
+	repository   *git.Repository
+	Readme       string
+	ReadmePath   string
+	head         *plumbing.Reference
+	refs         []*plumbing.Reference
+	totalCommits int
+}
+
+type noCache struct{}
+
+func (n *noCache) Put(o plumbing.EncodedObject) {}
+func (n *noCache) Get(k plumbing.Hash) (plumbing.EncodedObject, bool) {
+	return nil, false
+}
+func (n *noCache) Clear() {}
+
+func (rs *RepoSource) Open(path string) (*git.Repository, error) {
+	path = filepath.Clean(path)
+	b := osfs.New(path)
+	s := filesystem.NewStorage(b, &noCache{})
+	return git.Open(s, nil)
 }
 
 // GetName returns the name of the repository.
@@ -67,86 +84,89 @@ func (r *Repo) Repository() *git.Repository {
 	return r.repository
 }
 
+var treeEntryRe = regexp.MustCompile(`([0-9]{6})\s+(\w+)\s+([0-9a-z]+)\s+([0-9-]+)\s+(.*)`)
+
 // Tree returns the git tree for a given path.
-func (r *Repo) Tree(ref *plumbing.Reference, path string) (*object.Tree, error) {
+func (r *Repo) Tree(ref *plumbing.Reference, path string) (*gitypes.Tree, error) {
+	t := &gitypes.Tree{
+		Entries: make(gitypes.TreeEntries, 0),
+	}
 	path = filepath.Clean(path)
+	if path == "." {
+		path = ""
+	}
 	hash, err := r.targetHash(ref)
 	if err != nil {
 		return nil, err
 	}
-	c, err := r.commitForHash(hash)
+	c, err := r.Commit(hash.String())
 	if err != nil {
 		return nil, err
 	}
-	t, err := r.treeForHash(c.TreeHash)
+	t.Hash = c.TreeHash
+	lstree, err := r.LsTree("-l", "--full-tree", fmt.Sprintf("%s:%s", c.TreeHash, path))
 	if err != nil {
 		return nil, err
 	}
-	if path == "." {
-		return t, nil
+	lines := strings.Split(lstree, "\n")
+	for _, line := range lines {
+		m := treeEntryRe.FindStringSubmatch(line)
+		mo, err := strconv.ParseUint(m[1], 8, 32)
+		if err != nil {
+			return nil, err
+		}
+		var si int64
+		if m[4] != "-" {
+			si, err = strconv.ParseInt(m[4], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+		}
+		e := &gitypes.TreeEntry{
+			EntryMode: fs.FileMode(mo),
+			EntryType: m[2],
+			EntryHash: m[3],
+			EntrySize: si,
+			EntryName: filepath.Join(path, m[5]),
+		}
+		t.Entries = append(t.Entries, e)
 	}
-	return t.Tree(path)
+	return t, nil
+}
+
+func (r *Repo) TreeEntryFile(e *gitypes.TreeEntry) (*gitypes.File, error) {
+	if e.IsDir() {
+		return nil, object.ErrFileNotFound
+	}
+	f, err := r.Show("-q", "--text", "--format=", fmt.Sprintf("%s:%s", r.head.Hash().String(), e.Path()))
+	if err != nil {
+		return nil, object.ErrFileNotFound
+	}
+	return &gitypes.File{
+		Entry: e,
+		Blob:  []byte(f),
+	}, nil
 }
 
 func (r *Repo) treeForHash(treeHash plumbing.Hash) (*object.Tree, error) {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
 	var err error
-	if r.trees == nil {
-		t, err := r.repository.TreeObject(treeHash)
-		if err != nil {
-			return nil, err
-		}
-		return t, nil
-	}
-	var t *object.Tree
-	i, ok := r.trees.Get(treeHash)
-	if !ok {
-		t, err = r.repository.TreeObject(treeHash)
-		if err != nil {
-			return nil, err
-		}
-		r.trees.Add(treeHash, t)
-	} else {
-		t, ok = i.(*object.Tree)
-		if !ok {
-			return nil, fmt.Errorf("error casting interface to tree")
-		}
+	t, err := r.repository.TreeObject(treeHash)
+	if err != nil {
+		return nil, err
 	}
 	return t, nil
 }
 
 func (r *Repo) commitForHash(hash plumbing.Hash) (*object.Commit, error) {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
 	var err error
-	if r.commits == nil {
-		co, err := r.repository.CommitObject(hash)
-		if err != nil {
-			return nil, err
-		}
-		return co, nil
+	co, err := r.repository.CommitObject(hash)
+	if err != nil {
+		return nil, err
 	}
-	var c *object.Commit
-	i, ok := r.commits.Get(hash)
-	if !ok {
-		c, err = r.repository.CommitObject(hash)
-		if err != nil {
-			return nil, err
-		}
-		r.commits.Add(hash, c)
-	} else {
-		c, ok = i.(*object.Commit)
-		if !ok {
-			return nil, fmt.Errorf("error casting interface to commit")
-		}
-	}
-	return c, nil
+	return co, nil
 }
 
 func (r *Repo) patchForHashCtx(ctx context.Context, hash plumbing.Hash) (*object.Patch, error) {
-	r.pmtx.Lock()
-	defer r.pmtx.Unlock()
 	c, err := r.commitForHash(hash)
 	if err != nil {
 		return nil, err
@@ -177,53 +197,153 @@ func (r *Repo) patchForHashCtx(ctx context.Context, hash plumbing.Hash) (*object
 }
 
 // PatchCtx returns the patch for a given commit.
-func (r *Repo) PatchCtx(ctx context.Context, commit *object.Commit) (*object.Patch, error) {
-	var err error
+func (r *Repo) Patch(commit *gitypes.Commit) (*gitypes.Patch, error) {
 	hash := commit.Hash
-	if r.patch == nil {
-		return r.patchForHashCtx(ctx, hash)
+	p := &gitypes.Patch{}
+	ps, err := r.Show("--format=", "--stat", "--patch", hash)
+	if err != nil {
+		return nil, err
 	}
-	var p *object.Patch
-	i, ok := r.patch.Get(hash)
-	if !ok {
-		p, err = r.patchForHashCtx(ctx, hash)
-		if err != nil {
-			return nil, err
+	diff := false
+	for _, l := range strings.Split(ps, "\n") {
+		l = strings.TrimSpace(l)
+		if diff {
+			p.Diff += l + "\n"
+		} else {
+			p.Stat += l + "\n"
 		}
-		r.patch.Add(hash, p)
-	} else {
-		p, ok = i.(*object.Patch)
-		if !ok {
-			return nil, fmt.Errorf("error casting interface to patch")
+		if l == "" {
+			diff = true
 		}
 	}
 	return p, nil
 }
 
+// Matches the "raw" format of a git commit.
+// commit ([0-9a-f]{40})\ntree ([0-9a-f]{40})\nparent ([0-9a-f]{40})\nauthor (.*) <(.*)> (.*)\ncommitter (.*) <(.*)> (.*)\n((?:.*\n?)*)?
+// (?:gpgsig ((?:-----BEGIN PGP SIGNATURE-----\n)\n(?: (?:.*\n?))*(?:-----END PGP SIGNATURE-----))\n)?\n((?:.*\n?)*)
+// commit ([0-9a-f]{40}) ?\(?(.*[^\)])?\)?
+// Author:\s+(.*) <(.*)>
+// AuthorDate:\s+(.*)
+// Commit:\s+(.*) <(.*)>
+// CommitDate:\s+(.*)
+// \s+(.*)\n?\n?((.*\n?)*)
+// var commitMessageRe = regexp.MustCompile(`(?:gpgsig ((?:-----BEGIN PGP SIGNATURE-----\n)\n?(?: (?:.*\n?))*(?:-----END PGP SIGNATURE-----))\n)?\n((?:.*\n?)*)`)
+// var commitRe = regexp.MustCompile(`commit ([0-9a-f]{40})\ntree ([0-9a-f]{40})\nparent ([0-9a-f]{40})\nauthor (.*) <(.*)> (.*)\ncommitter (.*) <(.*)> (.*)\n((?:.*\n?)*)`)
+
+var authorRe = regexp.MustCompile(`(.*) <(.*)> ([0-9]+) ([-+][0-9]{4})`)
+
+func (r *Repo) parseCommitDate(timestamp, offset string) (*time.Time, error) {
+	ts, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	date := time.Unix(ts, 0).UTC()
+	if offset != "" {
+		of, err := strconv.ParseInt(offset, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		loc := time.FixedZone("UTC"+offset, int(of))
+		date = date.In(loc)
+	}
+	return &date, nil
+}
+
+var commitMessageRe = regexp.MustCompile(`(?:\t| {4})(.*)`)
+
+func (r *Repo) parseCommitString(cs string) (*gitypes.Commit, error) {
+	c := &gitypes.Commit{}
+	for _, l := range strings.Split(cs, "\n") {
+		switch {
+		case strings.HasPrefix(l, "commit "):
+			c.Hash = strings.TrimPrefix(l, "commit ")
+		case strings.HasPrefix(l, "tree "):
+			c.TreeHash = strings.TrimPrefix(l, "tree ")
+		case strings.HasPrefix(l, "parent "):
+			c.Parents = append(c.Parents, strings.TrimPrefix(l, "parent "))
+		case strings.HasPrefix(l, "author "):
+			m := authorRe.FindStringSubmatch(strings.TrimPrefix(l, "author "))
+			date, err := r.parseCommitDate(m[3], m[4])
+			if err != nil {
+				return nil, err
+			}
+			c.Author = gitypes.Signature{
+				Name:  m[1],
+				Email: m[2],
+				When:  *date,
+			}
+		case strings.HasPrefix(l, "committer "):
+			m := authorRe.FindStringSubmatch(strings.TrimPrefix(l, "committer "))
+			date, err := r.parseCommitDate(m[3], m[4])
+			if err != nil {
+				return nil, err
+			}
+			c.Committer = gitypes.Signature{
+				Name:  m[1],
+				Email: m[2],
+				When:  *date,
+			}
+		case commitMessageRe.MatchString(l):
+			c.Message += gitypes.CommitMessage(strings.TrimSpace(l) + "\n")
+		// TODO implement mergetag and PGP signature parsing
+		default:
+		}
+	}
+	return c, nil
+}
+
+func (r *Repo) Commit(hash string) (*gitypes.Commit, error) {
+	s, err := r.Show("-q", "--pretty=raw", hash)
+	if err != nil {
+		return nil, err
+	}
+	return r.parseCommitString(s)
+}
+
 // GetCommits returns the commits for a repository.
 func (r *Repo) GetCommits(ref *plumbing.Reference) (gitypes.Commits, error) {
+	count, err := r.Count(ref)
+	if err != nil {
+		return nil, err
+	}
+	return r.GetCommitsLimit(ref, count)
+}
+
+func (r *Repo) GetCommitsLimit(ref *plumbing.Reference, limit int) (gitypes.Commits, error) {
+	return r.GetCommitsSkip(ref, 0, limit)
+}
+
+func (r *Repo) GetCommitsSkip(ref *plumbing.Reference, skip, limit int) (gitypes.Commits, error) {
 	var err error
 	hash, err := r.targetHash(ref)
 	if err != nil {
 		return nil, err
 	}
 	commits := gitypes.Commits{}
-	co, err := r.commitForHash(hash)
-	if err != nil {
-		return nil, err
-	}
-	// traverse the commit tree to get all commits
-	commits = append(commits, co)
-	for co.NumParents() > 0 {
-		co, err = r.commitForHash(co.ParentHashes[0])
-		if err != nil {
-			return nil, err
+	var cs string
+	err = r.LogProcessLine(func(line string) (bool, error) {
+		if strings.HasPrefix(line, "commit ") && cs != "" {
+			c, err := r.parseCommitString(cs)
+			if err != nil {
+				return true, err
+			}
+			commits = append(commits, c)
+			cs = ""
 		}
-		commits = append(commits, co)
-	}
+		cs += line + "\n"
+		return false, nil
+	},
+		"--pretty=raw", "--topo-order", fmt.Sprintf("--skip=%d", skip),
+		fmt.Sprintf("--max-count=%d", limit), hash.String())
 	if err != nil {
 		return nil, err
 	}
+	c, err := r.parseCommitString(cs)
+	if err != nil {
+		return nil, err
+	}
+	commits = append(commits, c)
 	sort.Sort(commits)
 	return commits, nil
 }
@@ -262,10 +382,9 @@ func (r *Repo) GetReadmePath() string {
 
 // RepoSource is a reference to an on-disk repositories.
 type RepoSource struct {
-	Path      string
-	CacheSize int
-	mtx       sync.Mutex
-	repos     map[string]*Repo
+	Path  string
+	mtx   sync.Mutex
+	repos map[string]*Repo
 }
 
 // NewRepoSource creates a new RepoSource.
@@ -333,7 +452,7 @@ func (rs *RepoSource) LoadRepo(name string) error {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	rp := filepath.Join(rs.Path, name)
-	rg, err := git.PlainOpen(rp)
+	rg, err := rs.Open(rp)
 	if err != nil {
 		return err
 	}
@@ -365,11 +484,6 @@ func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (*Repo, error) {
 		path:       path,
 		repository: rg,
 	}
-	if rs.CacheSize > 0 {
-		r.commits = lru.New(rs.CacheSize)
-		r.trees = lru.New(rs.CacheSize)
-		r.patch = lru.New(rs.CacheSize)
-	}
 	ref, err := rg.Head()
 	if err != nil {
 		return nil, err
@@ -391,58 +505,119 @@ func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (*Repo, error) {
 	return r, nil
 }
 
-// FindLatestFile returns the latest file for a given path.
-func (r *Repo) FindLatestFile(pattern string) (*object.File, error) {
+func (r *Repo) LsFiles(pattern string) ([]string, error) {
+	out, err := r.LsTree("--name-only", "-r", r.head.Hash().String())
+	if err != nil {
+		return nil, err
+	}
+	lines := strings.Split(out, "\n")
 	g, err := glob.Compile(pattern)
 	if err != nil {
 		return nil, err
 	}
-	c, err := r.commitForHash(r.head.Hash())
-	if err != nil {
-		return nil, err
-	}
-	fi, err := c.Files()
-	if err != nil {
-		return nil, err
-	}
-	var f *object.File
-	err = fi.ForEach(func(ff *object.File) error {
-		if g.Match(ff.Name) {
-			f = ff
-			return storer.ErrStop
+	match := make([]string, 0)
+	for _, l := range lines {
+		if g.Match(l) {
+			match = append(match, l)
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
-	if f == nil {
-		return nil, object.ErrFileNotFound
-	}
-	return f, nil
+	return match, nil
 }
 
 // LatestFile returns the contents of the latest file at the specified path in the repository.
 func (r *Repo) LatestFile(pattern string) (string, error) {
-	f, err := r.FindLatestFile(pattern)
+	lines, err := r.LsFiles(pattern)
 	if err != nil {
 		return "", err
 	}
-	content, err := f.Contents()
-	if err != nil {
-		return "", err
+	if len(lines) == 0 {
+		return "", object.ErrFileNotFound
 	}
-	return content, nil
+	return r.Show("-q", "--format=", fmt.Sprintf("%s:%s", r.head.Hash().String(), lines[0]))
 }
 
 // LatestTree returns the latest tree at the specified path in the repository.
-func (r *Repo) LatestTree(path string) (*object.Tree, error) {
+func (r *Repo) LatestTree(path string) (*gitypes.Tree, error) {
 	return r.Tree(r.head, path)
 }
 
 // UpdateServerInfo updates the server info for the repository.
 func (r *Repo) UpdateServerInfo() error {
-	cmd := exec.Command("git", "update-server-info")
+	return r.gitCmd("update-server-info").Run()
+}
+
+func (r *Repo) Count(ref *plumbing.Reference) (int, error) {
+	if r.totalCommits != 0 {
+		return r.totalCommits, nil
+	}
+	hash, err := r.targetHash(ref)
+	if err != nil {
+		return 0, err
+	}
+	out, err := r.gitCmdOutput("rev-list", "--count", hash.String())
+	if err != nil {
+		return 0, err
+	}
+	tc, err := strconv.Atoi(string(out))
+	if err != nil {
+		return 0, err
+	}
+	r.totalCommits = tc
+	return tc, nil
+}
+
+func (r *Repo) Show(args ...string) (string, error) {
+	return r.gitCmdOutput(append([]string{"show"}, args...)...)
+}
+
+func (r *Repo) LogProcessLine(cb func(line string) (bool, error), args ...string) error {
+	return r.gitCmdProcessLine(cb, append([]string{"log"}, args...)...)
+}
+
+func (r *Repo) LsTree(args ...string) (string, error) {
+	return r.gitCmdOutput(append([]string{"ls-tree"}, args...)...)
+}
+
+func (r *Repo) gitCmdOutput(args ...string) (string, error) {
+	out, err := r.gitCmd(args...).Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(strings.ReplaceAll(string(out), "\r", "")), nil
+}
+
+func (r *Repo) gitCmdProcessLine(cb func(line string) (bool, error), args ...string) error {
+	cmd := r.gitCmd(args...)
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	scanner := bufio.NewScanner(stdoutPipe)
+	scanner.Split(bufio.ScanLines)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	for scanner.Scan() {
+		line := strings.ReplaceAll(scanner.Text(), "\r", "")
+		stop, err := cb(line)
+		if err != nil {
+			return err
+		}
+		if stop {
+			_ = cmd.Process.Kill()
+			break
+		}
+	}
+
+	_ = cmd.Wait()
+
+	return nil
+}
+
+func (r *Repo) gitCmd(args ...string) *exec.Cmd {
+	log.Printf("git %s", strings.Join(args, " "))
+	cmd := exec.Command("git", args...)
 	cmd.Dir = r.path
-	return cmd.Run()
+	return cmd
 }

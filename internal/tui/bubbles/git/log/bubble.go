@@ -1,9 +1,9 @@
 package log
 
 import (
-	"context"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"strings"
 	"time"
@@ -30,7 +30,7 @@ var (
 	waitBeforeLoading = time.Millisecond * 300
 )
 
-type commitMsg *object.Commit
+type commitMsg *types.Commit
 
 type sessionState int
 
@@ -42,13 +42,12 @@ const (
 )
 
 type item struct {
-	*object.Commit
+	*types.Commit
 }
 
 func (i item) Title() string {
-	lines := strings.Split(i.Message, "\n")
-	if len(lines) > 0 {
-		return lines[0]
+	if i.Commit != nil {
+		return i.Commit.Message.Title()
 	}
 	return ""
 }
@@ -67,6 +66,9 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if !ok {
 		return
 	}
+	if i.Commit == nil {
+		return
+	}
 
 	leftMargin := d.style.LogItemSelector.GetMarginLeft() +
 		d.style.LogItemSelector.GetWidth() +
@@ -76,11 +78,11 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	title := types.TruncateString(i.Title(), m.Width()-leftMargin, "…")
 	if index == m.Index() {
 		fmt.Fprint(w, d.style.LogItemSelector.Render(">")+
-			d.style.LogItemHash.Bold(true).Render(i.Hash.String()[:7])+
+			d.style.LogItemHash.Bold(true).Render(i.Hash[:7])+
 			d.style.LogItemActive.Render(title))
 	} else {
 		fmt.Fprint(w, d.style.LogItemSelector.Render(" ")+
-			d.style.LogItemHash.Render(i.Hash.String()[:7])+
+			d.style.LogItemHash.Render(i.Hash[:7])+
 			d.style.LogItemInactive.Render(title))
 	}
 }
@@ -136,20 +138,26 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 func (b *Bubble) reset() tea.Cmd {
 	b.state = logState
 	b.list.Select(0)
-	cmd := b.updateItems()
+	cmd := b.updateItems(0, b.list.Paginator.PerPage)
 	b.SetSize(b.width, b.height)
 	return cmd
 }
 
-func (b *Bubble) updateItems() tea.Cmd {
+func (b *Bubble) updateItems(skip, limit int) tea.Cmd {
 	items := make([]list.Item, 0)
-	cc, err := b.repo.GetCommits(b.ref)
+	count, err := b.repo.Count(b.ref)
+	if err != nil {
+		return func() tea.Msg { return types.ErrMsg{Err: err} }
+	}
+	log.Printf("from: %d, to: %d per page: %d", skip, limit, b.list.Paginator.PerPage)
+	cc, err := b.repo.GetCommitsSkip(b.ref, skip, limit)
 	if err != nil {
 		return func() tea.Msg { return types.ErrMsg{Err: err} }
 	}
 	for _, c := range cc {
 		items = append(items, item{c})
 	}
+	b.list.Paginator.TotalPages = (count / b.list.Paginator.PerPage) + 1
 	return b.list.SetItems(items)
 }
 
@@ -193,6 +201,12 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				b.state = logState
 			}
 		}
+		for _, k := range b.list.KeyMap.NextPage.Keys() {
+			if msg.String() == k {
+				skip := b.list.Paginator.PerPage * (b.list.Paginator.Page + 1)
+				cmds = append(cmds, b.updateItems(skip, b.list.Paginator.PerPage))
+			}
+		}
 	case types.ErrMsg:
 		b.error = msg
 		b.state = errorState
@@ -227,24 +241,24 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, tea.Batch(cmds...)
 }
 
-func (b *Bubble) loadPatch(c *object.Commit) error {
+func (b *Bubble) loadPatch(c *types.Commit) error {
 	var patch strings.Builder
 	style := b.style.LogCommit.Copy().Width(b.width - b.widthMargin - b.style.LogCommit.GetHorizontalFrameSize())
-	ctx, cancel := context.WithTimeout(context.TODO(), types.MaxPatchWait)
-	defer cancel()
-	p, err := b.repo.PatchCtx(ctx, c)
+	// ctx, cancel := context.WithTimeout(context.TODO(), types.MaxPatchWait)
+	// defer cancel()
+	p, err := b.repo.Patch(c)
 	if err != nil {
 		return err
 	}
 	patch.WriteString(b.renderCommit(c))
-	fpl := len(p.FilePatches())
+	fpl := len(strings.Split(p.Stat, "\n"))
 	if fpl > types.MaxDiffFiles {
 		patch.WriteString("\n" + types.ErrDiffFilesTooLong.Error())
 	} else {
-		patch.WriteString("\n" + b.renderStats(p.Stats()))
+		patch.WriteString("\n" + p.Stat)
 	}
 	if fpl <= types.MaxDiffFiles {
-		ps := p.String()
+		ps := p.Diff
 		if len(strings.Split(ps, "\n")) > types.MaxDiffLines {
 			patch.WriteString("\n" + types.ErrDiffTooLong.Error())
 		} else {
@@ -271,6 +285,7 @@ func (b *Bubble) loadCommit() tea.Cmd {
 	go func() {
 		err = b.loadPatch(c.Commit)
 		done <- struct{}{}
+		log.Print("done")
 		b.state = commitState
 	}()
 	return func() tea.Msg {
@@ -286,13 +301,13 @@ func (b *Bubble) loadCommit() tea.Cmd {
 	}
 }
 
-func (b *Bubble) renderCommit(c *object.Commit) string {
+func (b *Bubble) renderCommit(c *types.Commit) string {
 	s := strings.Builder{}
 	// FIXME: lipgloss prints empty lines when CRLF is used
 	// sanitize commit message from CRLF
-	msg := strings.ReplaceAll(c.Message, "\r\n", "\n")
+	msg := strings.ReplaceAll(c.Message.String(), "\r\n", "\n")
 	s.WriteString(fmt.Sprintf("%s\n%s\n%s\n%s\n",
-		b.style.LogCommitHash.Render("commit "+c.Hash.String()),
+		b.style.LogCommitHash.Render("commit "+c.Hash),
 		b.style.LogCommitAuthor.Render("Author: "+c.Author.String()),
 		b.style.LogCommitDate.Render("Date:   "+c.Committer.When.Format(time.UnixDate)),
 		b.style.LogCommitBody.Render(msg),

@@ -75,7 +75,6 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	}
 
 	rs := git.NewRepoSource(cfg.RepoPath)
-	rs.CacheSize = cfg.CacheSize
 	c := &Config{
 		Cfg: cfg,
 	}
@@ -128,6 +127,7 @@ func (cfg *Config) Reload() error {
 	}
 	cs, err := cr.LatestFile("config.yaml")
 	if err != nil {
+		log.Print("here")
 		return err
 	}
 	err = yaml.Unmarshal([]byte(cs), cfg)
@@ -152,17 +152,17 @@ func (cfg *Config) Reload() error {
 			pat = rp
 		}
 		rm := ""
-		f, err := r.FindLatestFile(pat)
-		if err != nil && err != object.ErrFileNotFound {
+		fs, err := r.LsFiles(pat)
+		if err != nil {
 			return err
 		}
-		if err == nil {
-			fc, err := f.Contents()
+		if len(fs) > 0 {
+			fc, err := r.LatestFile(fs[0])
 			if err != nil {
 				return err
 			}
 			rm = fc
-			r.ReadmePath = f.Name
+			r.ReadmePath = fs[0]
 		}
 		if name == "config" {
 			md, err := templatize(rm, cfg)

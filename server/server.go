@@ -4,10 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"runtime/pprof"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/config"
 	appCfg "github.com/charmbracelet/soft-serve/internal/config"
 	"github.com/charmbracelet/soft-serve/internal/tui"
+
+	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -67,6 +73,18 @@ func (srv *Server) Reload() error {
 
 // Start starts the SSH server.
 func (srv *Server) Start() error {
+	go func() {
+		time.Sleep(120 * time.Second)
+		memprof, err := os.Create("mem.pprof")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.WriteHeapProfile(memprof)
+		memprof.Close()
+	}()
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	return srv.SSHServer.ListenAndServe()
 }
 

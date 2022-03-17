@@ -22,7 +22,6 @@ type Config struct {
 	KeyPath          string   `env:"SOFT_SERVE_KEY_PATH"`
 	RepoPath         string   `env:"SOFT_SERVE_REPO_PATH" envDefault:".repos"`
 	InitialAdminKeys []string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY" envSeparator:"\n"`
-	CacheSize        int      `env:"SOFT_SERVE_CACHE_SIZE" envDefault:"0"`
 	Callbacks        Callbacks
 	ErrorLog         *log.Logger
 }

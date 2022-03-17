@@ -3,6 +3,8 @@ package tree
 import (
 	"fmt"
 	"io"
+	"io/fs"
+	"log"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -17,8 +19,6 @@ import (
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
 	"github.com/dustin/go-humanize"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/filemode"
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 type fileMsg struct {
@@ -34,16 +34,15 @@ const (
 )
 
 type item struct {
-	entry *object.TreeEntry
-	file  *object.File
+	entry *types.TreeEntry
 }
 
 func (i item) Name() string {
-	return i.entry.Name
+	return i.entry.Name()
 }
 
-func (i item) Mode() filemode.FileMode {
-	return i.entry.Mode
+func (i item) Mode() fs.FileMode {
+	return i.entry.Mode()
 }
 
 func (i item) FilterValue() string { return i.Name() }
@@ -53,11 +52,11 @@ type items []item
 func (cl items) Len() int      { return len(cl) }
 func (cl items) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
 func (cl items) Less(i, j int) bool {
-	if cl[i].Mode() == filemode.Dir && cl[j].Mode() == filemode.Dir {
+	if cl[i].entry.IsDir() && cl[j].entry.IsDir() {
 		return cl[i].Name() < cl[j].Name()
-	} else if cl[i].Mode() == filemode.Dir {
+	} else if cl[i].entry.IsDir() {
 		return true
-	} else if cl[j].Mode() == filemode.Dir {
+	} else if cl[j].entry.IsDir() {
 		return false
 	} else {
 		return cl[i].Name() < cl[j].Name()
@@ -79,15 +78,13 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	name := i.Name()
-	if i.Mode() == filemode.Dir {
+	size := humanize.Bytes(uint64(i.entry.Size()))
+	if i.entry.IsDir() {
+		size = ""
 		name = s.TreeFileDir.Render(name)
 	}
-	size := ""
-	if i.file != nil {
-		size = humanize.Bytes(uint64(i.file.Size))
-	}
 	var cs lipgloss.Style
-	mode, _ := i.Mode().ToOSFileMode()
+	mode := i.Mode()
 	if index == m.Index() {
 		cs = s.TreeItemActive
 		fmt.Fprint(w, s.TreeItemSelector.Render(">"))
@@ -191,21 +188,26 @@ func (b *Bubble) updateItems() tea.Cmd {
 	if err != nil {
 		return func() tea.Msg { return types.ErrMsg{Err: err} }
 	}
-	tw := object.NewTreeWalker(t, false, map[plumbing.Hash]bool{})
-	defer tw.Close()
-	for {
-		_, e, err := tw.Next()
-		if err != nil {
-			break
-		}
-		i := item{entry: &e}
-		if e.Mode.IsFile() {
-			if f, err := t.TreeEntryFile(&e); err == nil {
-				i.file = f
-			}
-		}
-		its = append(its, i)
+	for _, e := range t.Entries {
+		its = append(its, item{
+			entry: e,
+		})
 	}
+	// tw := object.NewTreeWalker(t, false, map[plumbing.Hash]bool{})
+	// defer tw.Close()
+	// for {
+	// 	_, e, err := tw.Next()
+	// 	if err != nil {
+	// 		break
+	// 	}
+	// 	i := item{entry: &e}
+	// 	if e.Mode.IsFile() {
+	// 		if f, err := t.TreeEntryFile(&e); err == nil {
+	// 			i.file = f
+	// 		}
+	// 	}
+	// 	its = append(its, i)
+	// }
 	sort.Sort(its)
 	itt := make([]list.Item, len(its))
 	for i, it := range its {
@@ -240,7 +242,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				item := b.list.SelectedItem().(item)
 				mode := item.Mode()
 				b.path = filepath.Join(b.path, item.Name())
-				if mode == filemode.Dir {
+				if mode.IsDir() {
 					b.lastSelected = append(b.lastSelected, index)
 					cmds = append(cmds, b.updateItems())
 				} else {
@@ -308,17 +310,22 @@ func (b *Bubble) View() string {
 
 func (b *Bubble) loadFile(i item) tea.Cmd {
 	return func() tea.Msg {
-		if !i.Mode().IsFile() || i.file == nil {
+		f, _ := b.repo.TreeEntryFile(i.entry)
+		if f == nil {
+			log.Printf("is null")
+		}
+		if i.Mode().IsDir() || f == nil {
+			log.Printf("file not found: %s %v", i.entry.Name(), i.Mode().IsDir())
 			return types.ErrMsg{Err: types.ErrInvalidFile}
 		}
-		bin, err := i.file.IsBinary()
+		bin, err := f.IsBinary()
 		if err != nil {
 			return types.ErrMsg{Err: err}
 		}
 		if bin {
 			return types.ErrMsg{Err: types.ErrBinaryFile}
 		}
-		c, err := i.file.Contents()
+		c, err := f.Contents()
 		if err != nil {
 			return types.ErrMsg{Err: err}
 		}
