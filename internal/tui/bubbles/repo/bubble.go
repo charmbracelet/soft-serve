@@ -9,7 +9,7 @@ import (
 	gitui "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git"
 	gittypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/gogs/git-module"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/reflow/wrap"
 )
@@ -121,7 +121,7 @@ func (b *Bubble) View() string {
 	return header + body
 }
 
-func (b *Bubble) Reference() plumbing.ReferenceName {
+func (b *Bubble) Reference() *git.Reference {
 	return b.box.Reference()
 }
 

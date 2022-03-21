@@ -18,8 +18,7 @@ import (
 	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
 	"github.com/dustin/go-humanize/english"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/gogs/git-module"
 )
 
 var (
@@ -30,7 +29,7 @@ var (
 	waitBeforeLoading = time.Millisecond * 300
 )
 
-type commitMsg *types.Commit
+type commitMsg *git.Commit
 
 type sessionState int
 
@@ -42,12 +41,12 @@ const (
 )
 
 type item struct {
-	*types.Commit
+	*git.Commit
 }
 
 func (i item) Title() string {
 	if i.Commit != nil {
-		return i.Commit.Message.Title()
+		return strings.Split(i.Commit.Message, "\n")[0]
 	}
 	return ""
 }
@@ -70,6 +69,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
+	hash := i.ID.String()
 	leftMargin := d.style.LogItemSelector.GetMarginLeft() +
 		d.style.LogItemSelector.GetWidth() +
 		d.style.LogItemHash.GetMarginLeft() +
@@ -78,11 +78,11 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	title := types.TruncateString(i.Title(), m.Width()-leftMargin, "…")
 	if index == m.Index() {
 		fmt.Fprint(w, d.style.LogItemSelector.Render(">")+
-			d.style.LogItemHash.Bold(true).Render(i.Hash[:7])+
+			d.style.LogItemHash.Bold(true).Render(hash[:7])+
 			d.style.LogItemActive.Render(title))
 	} else {
 		fmt.Fprint(w, d.style.LogItemSelector.Render(" ")+
-			d.style.LogItemHash.Render(i.Hash[:7])+
+			d.style.LogItemHash.Render(hash[:7])+
 			d.style.LogItemInactive.Render(title))
 	}
 }
@@ -92,7 +92,7 @@ type Bubble struct {
 	list           list.Model
 	state          sessionState
 	commitViewport *vp.ViewportBubble
-	ref            *plumbing.Reference
+	ref            *git.Reference
 	style          *style.Styles
 	width          int
 	widthMargin    int
@@ -138,27 +138,40 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 func (b *Bubble) reset() tea.Cmd {
 	b.state = logState
 	b.list.Select(0)
-	cmd := b.updateItems(0, b.list.Paginator.PerPage)
+	cmd := b.updateItems(0)
 	b.SetSize(b.width, b.height)
 	return cmd
 }
 
-func (b *Bubble) updateItems(skip, limit int) tea.Cmd {
-	items := make([]list.Item, 0)
+func (b *Bubble) updateItems(nextPage int) tea.Cmd {
 	count, err := b.repo.Count(b.ref)
 	if err != nil {
 		return func() tea.Msg { return types.ErrMsg{Err: err} }
 	}
-	log.Printf("from: %d, to: %d per page: %d", skip, limit, b.list.Paginator.PerPage)
-	cc, err := b.repo.GetCommitsSkip(b.ref, skip, limit)
+	limit := b.list.Paginator.PerPage
+	totalPages := (int(count) / limit) + 1
+	if nextPage < 0 {
+		nextPage = 0
+	}
+	if nextPage >= totalPages {
+		nextPage = totalPages - 1
+	}
+	skip := nextPage * limit
+	items := make([]list.Item, count)
+	cc, err := b.repo.GetCommitsByPage(b.ref, nextPage, limit)
 	if err != nil {
 		return func() tea.Msg { return types.ErrMsg{Err: err} }
 	}
-	for _, c := range cc {
-		items = append(items, item{c})
+	for i, c := range cc {
+		idx := i + skip
+		if idx >= int(count) {
+			break
+		}
+		items[idx] = item{c}
 	}
-	b.list.Paginator.TotalPages = (count / b.list.Paginator.PerPage) + 1
-	return b.list.SetItems(items)
+	log.Printf("page %d/%d %d/%d", nextPage, totalPages, skip, limit)
+	cmd := b.list.SetItems(items)
+	return cmd
 }
 
 func (b *Bubble) Help() []types.HelpEntry {
@@ -201,12 +214,21 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				b.state = logState
 			}
 		}
-		for _, k := range b.list.KeyMap.NextPage.Keys() {
-			if msg.String() == k {
-				skip := b.list.Paginator.PerPage * (b.list.Paginator.Page + 1)
-				cmds = append(cmds, b.updateItems(skip, b.list.Paginator.PerPage))
+		switch b.state {
+		case logState:
+			curPage := b.list.Paginator.Page
+			m, cmd := b.list.Update(msg)
+			b.list = m
+			cmds = append(cmds, cmd)
+			if m.Paginator.Page != curPage {
+				cmds = append(cmds, b.updateItems(m.Paginator.Page))
 			}
+		case commitState:
+			rv, cmd := b.commitViewport.Update(msg)
+			b.commitViewport = rv.(*vp.ViewportBubble)
+			cmds = append(cmds, cmd)
 		}
+		return b, tea.Batch(cmds...)
 	case types.ErrMsg:
 		b.error = msg
 		b.state = errorState
@@ -227,42 +249,33 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	switch b.state {
-	case commitState:
-		rv, cmd := b.commitViewport.Update(msg)
-		b.commitViewport = rv.(*vp.ViewportBubble)
-		cmds = append(cmds, cmd)
-	case logState:
-		l, cmd := b.list.Update(msg)
-		b.list = l
-		cmds = append(cmds, cmd)
-	}
-
 	return b, tea.Batch(cmds...)
 }
 
-func (b *Bubble) loadPatch(c *types.Commit) error {
+func (b *Bubble) loadPatch(c *git.Commit) error {
 	var patch strings.Builder
+	hash := c.ID.String()
 	style := b.style.LogCommit.Copy().Width(b.width - b.widthMargin - b.style.LogCommit.GetHorizontalFrameSize())
 	// ctx, cancel := context.WithTimeout(context.TODO(), types.MaxPatchWait)
 	// defer cancel()
-	p, err := b.repo.Patch(c)
+	p, err := b.repo.Patch(hash)
 	if err != nil {
 		return err
 	}
+	p.NumFiles()
 	patch.WriteString(b.renderCommit(c))
-	fpl := len(strings.Split(p.Stat, "\n"))
+	fpl := p.NumFiles()
 	if fpl > types.MaxDiffFiles {
 		patch.WriteString("\n" + types.ErrDiffFilesTooLong.Error())
 	} else {
-		patch.WriteString("\n" + p.Stat)
+		patch.WriteString("\n" + b.renderStats(p))
 	}
 	if fpl <= types.MaxDiffFiles {
-		ps := p.Diff
+		ps := ""
 		if len(strings.Split(ps, "\n")) > types.MaxDiffLines {
 			patch.WriteString("\n" + types.ErrDiffTooLong.Error())
 		} else {
-			patch.WriteString("\n" + b.renderDiff(ps))
+			patch.WriteString("\n" + b.renderDiff(p))
 		}
 	}
 	content := style.Render(patch.String())
@@ -301,21 +314,21 @@ func (b *Bubble) loadCommit() tea.Cmd {
 	}
 }
 
-func (b *Bubble) renderCommit(c *types.Commit) string {
+func (b *Bubble) renderCommit(c *git.Commit) string {
 	s := strings.Builder{}
 	// FIXME: lipgloss prints empty lines when CRLF is used
 	// sanitize commit message from CRLF
-	msg := strings.ReplaceAll(c.Message.String(), "\r\n", "\n")
+	msg := strings.ReplaceAll(c.Message, "\r\n", "\n")
 	s.WriteString(fmt.Sprintf("%s\n%s\n%s\n%s\n",
-		b.style.LogCommitHash.Render("commit "+c.Hash),
-		b.style.LogCommitAuthor.Render("Author: "+c.Author.String()),
+		b.style.LogCommitHash.Render("commit "+c.ID.String()),
+		b.style.LogCommitAuthor.Render(fmt.Sprintf("Author: %s <%s>", c.Author.Name, c.Author.Email)),
 		b.style.LogCommitDate.Render("Date:   "+c.Committer.When.Format(time.UnixDate)),
 		b.style.LogCommitBody.Render(msg),
 	))
 	return s.String()
 }
 
-func (b *Bubble) renderStats(fileStats object.FileStats) string {
+func (b *Bubble) renderStats(diff *git.Diff) string {
 	padLength := float64(len(" "))
 	newlineLength := float64(len("\n"))
 	separatorLength := float64(len("|"))
@@ -327,11 +340,11 @@ func (b *Bubble) renderStats(fileStats object.FileStats) string {
 	// Get the longest filename and longest total change.
 	var longestLength float64
 	var longestTotalChange float64
-	for _, fs := range fileStats {
+	for _, fs := range diff.Files {
 		if int(longestLength) < len(fs.Name) {
 			longestLength = float64(len(fs.Name))
 		}
-		totalChange := fs.Addition + fs.Deletion
+		totalChange := fs.NumAdditions() + fs.NumDeletions()
 		if int(longestTotalChange) < totalChange {
 			longestTotalChange = float64(totalChange)
 		}
@@ -363,11 +376,11 @@ func (b *Bubble) renderStats(fileStats object.FileStats) string {
 	taddc := 0
 	tdelc := 0
 	output := strings.Builder{}
-	for _, fs := range fileStats {
-		taddc += fs.Addition
-		tdelc += fs.Deletion
-		addn := float64(fs.Addition)
-		deln := float64(fs.Deletion)
+	for _, fs := range diff.Files {
+		taddc += fs.NumAdditions()
+		tdelc += fs.NumDeletions()
+		addn := float64(fs.NumAdditions())
+		deln := float64(fs.NumDeletions())
 		addc := int(math.Floor(addn / scaleFactor))
 		delc := int(math.Floor(deln / scaleFactor))
 		if addc < 0 {
@@ -378,7 +391,7 @@ func (b *Bubble) renderStats(fileStats object.FileStats) string {
 		}
 		adds := strings.Repeat("+", addc)
 		dels := strings.Repeat("-", delc)
-		diffLines := fmt.Sprint(fs.Addition + fs.Deletion)
+		diffLines := fmt.Sprint(fs.NumAdditions() + fs.NumDeletions())
 		totalDiffLines := fmt.Sprint(int(longestTotalChange))
 		fmt.Fprintf(&output, "%s | %s %s%s\n",
 			fs.Name+strings.Repeat(" ", int(longestLength)-len(fs.Name)),
@@ -386,7 +399,7 @@ func (b *Bubble) renderStats(fileStats object.FileStats) string {
 			b.style.LogCommitStatsAdd.Render(adds),
 			b.style.LogCommitStatsDel.Render(dels))
 	}
-	files := len(fileStats)
+	files := diff.NumFiles()
 	fc := fmt.Sprintf("%s changed", english.Plural(files, "file", ""))
 	ins := fmt.Sprintf("%s(+)", english.Plural(taddc, "insertion", ""))
 	dels := fmt.Sprintf("%s(-)", english.Plural(tdelc, "deletion", ""))
@@ -402,10 +415,10 @@ func (b *Bubble) renderStats(fileStats object.FileStats) string {
 	return output.String()
 }
 
-func (b *Bubble) renderDiff(diff string) string {
+func (b *Bubble) renderDiff(diff *git.Diff) string {
 	var s strings.Builder
 	pr := strings.Builder{}
-	diffChroma.Code = diff
+	diffChroma.Code = ""
 	err := diffChroma.Render(&pr, types.RenderCtx)
 	if err != nil {
 		s.WriteString(fmt.Sprintf("\n%s", err.Error()))

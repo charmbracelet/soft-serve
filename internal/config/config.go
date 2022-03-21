@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"log"
+	"path/filepath"
 	"strings"
 	"sync"
 	"text/template"
@@ -15,8 +16,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/internal/git"
-	gg "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
+	gg "github.com/gogs/git-module"
 )
 
 // Config is the Soft Serve configuration.
@@ -193,16 +193,14 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	cn := "config"
 	rs := cfg.Source
 	err := rs.LoadRepo(cn)
-	if err == gg.ErrRepositoryNotExists {
+	if err == gg.ErrURLNotExist {
 		cr, err := rs.InitRepo(cn, true)
 		if err != nil {
 			return err
 		}
-		wt, err := cr.Repository().Worktree()
-		if err != nil {
-			return err
-		}
-		rm, err := wt.Filesystem.Create("README.md")
+		repo := cr.Repository()
+		wt := repo.Path()
+		rm, err := os.Create(filepath.Join(wt, "README.md"))
 		if err != nil {
 			return err
 		}
@@ -210,7 +208,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		cf, err := wt.Filesystem.Create("config.yaml")
+		cf, err := os.Create(filepath.Join(wt, "config.yaml"))
 		if err != nil {
 			return err
 		}
@@ -218,25 +216,14 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		_, err = wt.Add("README.md")
+		err = gg.CreateCommit(wt, &gg.Signature{
+			Name:  "Soft Serve Server",
+			Email: "vt100@charm.sh",
+		}, "Default init")
 		if err != nil {
 			return err
 		}
-		_, err = wt.Add("config.yaml")
-		if err != nil {
-			return err
-		}
-		_, err = wt.Commit("Default init", &gg.CommitOptions{
-			All: true,
-			Author: &object.Signature{
-				Name:  "Soft Serve Server",
-				Email: "vt100@charm.sh",
-			},
-		})
-		if err != nil {
-			return err
-		}
-		err = cr.Repository().Push(&gg.PushOptions{})
+		err = repo.Push("origin", "master")
 		if err != nil {
 			return err
 		}

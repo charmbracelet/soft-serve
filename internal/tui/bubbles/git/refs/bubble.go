@@ -4,22 +4,23 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/gogs/git-module"
 )
 
-type RefMsg = *plumbing.Reference
+type RefMsg = *git.Reference
 
 type item struct {
-	*plumbing.Reference
+	*git.Reference
 }
 
 func (i item) Short() string {
-	return i.Name().Short()
+	return git.RefShortName(i.Refspec)
 }
 
 func (i item) FilterValue() string { return i.Short() }
@@ -29,7 +30,7 @@ type items []item
 func (cl items) Len() int      { return len(cl) }
 func (cl items) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
 func (cl items) Less(i, j int) bool {
-	return cl[i].Name().Short() < cl[j].Name().Short()
+	return cl[i].Short() < cl[j].Short()
 }
 
 type itemDelegate struct {
@@ -47,7 +48,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	ref := i.Short()
-	if i.Name().IsTag() {
+	if strings.HasPrefix(i.Refspec, git.RefsTags) {
 		ref = s.RefItemTag.Render(ref)
 	}
 	ref = s.RefItemBranch.Render(ref)
@@ -73,7 +74,7 @@ type Bubble struct {
 	widthMargin  int
 	height       int
 	heightMargin int
-	ref          *plumbing.Reference
+	ref          *git.Reference
 }
 
 func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
@@ -99,7 +100,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 	return b
 }
 
-func (b *Bubble) SetBranch(ref *plumbing.Reference) (tea.Model, tea.Cmd) {
+func (b *Bubble) SetBranch(ref *git.Reference) (tea.Model, tea.Cmd) {
 	b.ref = ref
 	return b, func() tea.Msg {
 		return RefMsg(ref)
@@ -131,13 +132,9 @@ func (b *Bubble) updateItems() tea.Cmd {
 	its := make(items, 0)
 	tags := make(items, 0)
 	for _, r := range b.repo.GetReferences() {
-		if r.Type() != plumbing.HashReference {
-			continue
-		}
-		n := r.Name()
-		if n.IsTag() {
+		if strings.HasPrefix(r.Refspec, git.RefsTags) {
 			tags = append(tags, item{r})
-		} else if n.IsBranch() {
+		} else if strings.HasPrefix(r.Refspec, git.RefsHeads) {
 			its = append(its, item{r})
 		}
 	}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	gitwish "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/gogs/git-module"
 	"github.com/muesli/termenv"
 )
 
@@ -75,7 +77,7 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 					}
 					p := strings.Join(ps[1:], "/")
 					t, err := rs.LatestTree(p)
-					if err != nil && err != object.ErrDirectoryNotFound {
+					if err != nil && err != git.ErrURLNotExist {
 						_, _ = s.Write([]byte(err.Error()))
 						_ = s.Exit(1)
 						return
@@ -101,17 +103,22 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						}
 						s.Write([]byte(fc))
 					} else {
-						ents := t.Entries
+						ents, err := t.Entries()
+						if err != nil {
+							s.Write([]byte(err.Error()))
+							s.Exit(1)
+							return
+						}
 						sort.Sort(ents)
 						for _, e := range ents {
 							m := e.Mode()
 							if m == 0 {
 								s.Write([]byte(strings.Repeat(" ", 10)))
 							} else {
-								s.Write([]byte(filemodeStyle.Render(m.String())))
+								s.Write([]byte(filemodeStyle.Render(modeToOSMode(m).String())))
 							}
 							s.Write([]byte(" "))
-							if e.Mode().IsRegular() {
+							if !e.IsTree() {
 								s.Write([]byte(filenameStyle.Render(e.Name())))
 							} else {
 								s.Write([]byte(dirnameStyle.Render(e.Name())))
@@ -123,6 +130,15 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 			}
 			sh(s)
 		}
+	}
+}
+
+func modeToOSMode(mode git.EntryMode) fs.FileMode {
+	switch mode {
+	case git.EntryTree:
+		return fs.ModeDir | fs.ModePerm
+	default:
+		return fs.FileMode(mode)
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -13,12 +12,13 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	gg "github.com/charmbracelet/soft-serve/internal/git"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/refs"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
 	"github.com/dustin/go-humanize"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/gogs/git-module"
 )
 
 type fileMsg struct {
@@ -34,7 +34,7 @@ const (
 )
 
 type item struct {
-	entry *types.TreeEntry
+	entry *git.TreeEntry
 }
 
 func (i item) Name() string {
@@ -42,7 +42,13 @@ func (i item) Name() string {
 }
 
 func (i item) Mode() fs.FileMode {
-	return i.entry.Mode()
+	m := i.entry.Mode()
+	switch m {
+	case git.EntryTree:
+		return fs.ModeDir | fs.ModePerm
+	default:
+		return fs.FileMode(m)
+	}
 }
 
 func (i item) FilterValue() string { return i.Name() }
@@ -52,11 +58,11 @@ type items []item
 func (cl items) Len() int      { return len(cl) }
 func (cl items) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
 func (cl items) Less(i, j int) bool {
-	if cl[i].entry.IsDir() && cl[j].entry.IsDir() {
+	if cl[i].entry.IsTree() && cl[j].entry.IsTree() {
 		return cl[i].Name() < cl[j].Name()
-	} else if cl[i].entry.IsDir() {
+	} else if cl[i].entry.IsTree() {
 		return true
-	} else if cl[j].entry.IsDir() {
+	} else if cl[j].entry.IsTree() {
 		return false
 	} else {
 		return cl[i].Name() < cl[j].Name()
@@ -79,7 +85,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 	name := i.Name()
 	size := humanize.Bytes(uint64(i.entry.Size()))
-	if i.entry.IsDir() {
+	if i.entry.IsTree() {
 		size = ""
 		name = s.TreeFileDir.Render(name)
 	}
@@ -123,7 +129,7 @@ type Bubble struct {
 	error        types.ErrMsg
 	fileViewport *vp.ViewportBubble
 	lastSelected []int
-	ref          *plumbing.Reference
+	ref          *git.Reference
 }
 
 func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
@@ -188,7 +194,11 @@ func (b *Bubble) updateItems() tea.Cmd {
 	if err != nil {
 		return func() tea.Msg { return types.ErrMsg{Err: err} }
 	}
-	for _, e := range t.Entries {
+	ents, err := t.Entries()
+	if err != nil {
+		return func() tea.Msg { return types.ErrMsg{Err: err} }
+	}
+	for _, e := range ents {
 		its = append(its, item{
 			entry: e,
 		})
@@ -311,26 +321,22 @@ func (b *Bubble) View() string {
 func (b *Bubble) loadFile(i item) tea.Cmd {
 	return func() tea.Msg {
 		f, _ := b.repo.TreeEntryFile(i.entry)
-		if f == nil {
-			log.Printf("is null")
-		}
 		if i.Mode().IsDir() || f == nil {
-			log.Printf("file not found: %s %v", i.entry.Name(), i.Mode().IsDir())
 			return types.ErrMsg{Err: types.ErrInvalidFile}
 		}
-		bin, err := f.IsBinary()
+		bin, err := gg.IsBinary(f)
 		if err != nil {
 			return types.ErrMsg{Err: err}
 		}
 		if bin {
 			return types.ErrMsg{Err: types.ErrBinaryFile}
 		}
-		c, err := f.Contents()
+		c, err := f.Bytes()
 		if err != nil {
 			return types.ErrMsg{Err: err}
 		}
 		return fileMsg{
-			content: c,
+			content: string(c),
 		}
 	}
 }

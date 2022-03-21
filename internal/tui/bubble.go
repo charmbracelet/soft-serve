@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/selection"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
 	"github.com/gliderlabs/ssh"
+	"github.com/gogs/git-module"
 )
 
 const (
@@ -178,7 +179,8 @@ func (b Bubble) footerView() string {
 	}
 	branch := ""
 	if b.state == loadedState {
-		branch = b.boxes[1].(*repo.Bubble).Reference().Short()
+		ref := b.boxes[1].(*repo.Bubble).Reference()
+		branch = git.RefShortName(ref.Refspec)
 	}
 	help := w.String()
 	branchMaxWidth := b.width - // bubble width

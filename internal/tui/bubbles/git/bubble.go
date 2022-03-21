@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/tree"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/gogs/git-module"
 )
 
 const (
@@ -34,7 +34,7 @@ type Bubble struct {
 	widthMargin  int
 	style        *style.Styles
 	boxes        []tea.Model
-	ref          *plumbing.Reference
+	ref          *git.Reference
 }
 
 func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int) *Bubble {
@@ -118,8 +118,8 @@ func (b *Bubble) Help() []types.HelpEntry {
 	return h
 }
 
-func (b *Bubble) Reference() plumbing.ReferenceName {
-	return b.ref.Name()
+func (b *Bubble) Reference() *git.Reference {
+	return b.ref
 }
 
 func (b *Bubble) headerView() string {
