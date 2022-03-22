@@ -5,20 +5,18 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	gg "github.com/charmbracelet/soft-serve/internal/git"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/refs"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
-	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/tui/refs"
+	"github.com/charmbracelet/soft-serve/pkg/tui/utils"
+	vp "github.com/charmbracelet/soft-serve/pkg/tui/viewport"
 	"github.com/dustin/go-humanize"
-	"github.com/gogs/git-module"
 )
 
 type fileMsg struct {
@@ -42,13 +40,7 @@ func (i item) Name() string {
 }
 
 func (i item) Mode() fs.FileMode {
-	m := i.entry.Mode()
-	switch m {
-	case git.EntryTree:
-		return fs.ModeDir | fs.ModePerm
-	default:
-		return fs.FileMode(m)
-	}
+	return i.entry.Mode()
 }
 
 func (i item) FilterValue() string { return i.Name() }
@@ -104,7 +96,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		s.TreeFileMode.GetWidth() +
 		cs.GetMarginLeft()
 	rightMargin := s.TreeFileSize.GetMarginLeft() + lipgloss.Width(size)
-	name = types.TruncateString(name, m.Width()-leftMargin-rightMargin, "…")
+	name = utils.TruncateString(name, m.Width()-leftMargin-rightMargin, "…")
 	sizeStyle := s.TreeFileSize.Copy().
 		Width(m.Width() -
 			leftMargin -
@@ -117,7 +109,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type Bubble struct {
-	repo         types.Repo
+	repo         utils.GitRepo
 	list         list.Model
 	style        *style.Styles
 	width        int
@@ -126,13 +118,13 @@ type Bubble struct {
 	heightMargin int
 	path         string
 	state        sessionState
-	error        types.ErrMsg
+	error        utils.ErrMsg
 	fileViewport *vp.ViewportBubble
 	lastSelected []int
 	ref          *git.Reference
 }
 
-func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
+func NewBubble(repo utils.GitRepo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
 	l := list.New([]list.Item{}, itemDelegate{styles}, width-widthMargin, height-heightMargin)
 	l.SetShowFilter(false)
 	l.SetShowHelp(false)
@@ -141,8 +133,8 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 	l.SetShowTitle(false)
 	l.SetFilteringEnabled(false)
 	l.DisableQuitKeybindings()
-	l.KeyMap.NextPage = types.NextPage
-	l.KeyMap.PrevPage = types.PrevPage
+	l.KeyMap.NextPage = utils.NextPage
+	l.KeyMap.PrevPage = utils.PrevPage
 	l.Styles.NoItems = styles.TreeNoItems
 	b := &Bubble{
 		fileViewport: &vp.ViewportBubble{
@@ -156,7 +148,6 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		heightMargin: heightMargin,
 		list:         l,
 		state:        treeState,
-		ref:          repo.GetHEAD(),
 	}
 	b.SetSize(width, height)
 	return b
@@ -172,6 +163,13 @@ func (b *Bubble) reset() tea.Cmd {
 }
 
 func (b *Bubble) Init() tea.Cmd {
+	head, err := b.repo.HEAD()
+	if err != nil {
+		return func() tea.Msg {
+			return utils.ErrMsg{Err: err}
+		}
+	}
+	b.ref = head
 	return nil
 }
 
@@ -184,7 +182,7 @@ func (b *Bubble) SetSize(width, height int) {
 	b.list.Styles.PaginationStyle = b.style.LogPaginator.Copy().Width(width - b.widthMargin)
 }
 
-func (b *Bubble) Help() []types.HelpEntry {
+func (b *Bubble) Help() []utils.HelpEntry {
 	return nil
 }
 
@@ -192,33 +190,18 @@ func (b *Bubble) updateItems() tea.Cmd {
 	its := make(items, 0)
 	t, err := b.repo.Tree(b.ref, b.path)
 	if err != nil {
-		return func() tea.Msg { return types.ErrMsg{Err: err} }
+		return func() tea.Msg { return utils.ErrMsg{Err: err} }
 	}
 	ents, err := t.Entries()
 	if err != nil {
-		return func() tea.Msg { return types.ErrMsg{Err: err} }
+		return func() tea.Msg { return utils.ErrMsg{Err: err} }
 	}
 	for _, e := range ents {
 		its = append(its, item{
 			entry: e,
 		})
 	}
-	// tw := object.NewTreeWalker(t, false, map[plumbing.Hash]bool{})
-	// defer tw.Close()
-	// for {
-	// 	_, e, err := tw.Next()
-	// 	if err != nil {
-	// 		break
-	// 	}
-	// 	i := item{entry: &e}
-	// 	if e.Mode.IsFile() {
-	// 		if f, err := t.TreeEntryFile(&e); err == nil {
-	// 			i.file = f
-	// 		}
-	// 	}
-	// 	its = append(its, i)
-	// }
-	sort.Sort(its)
+	ents.Sort()
 	itt := make([]list.Item, len(its))
 	for i, it := range its {
 		itt[i] = it
@@ -236,7 +219,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if b.state == errorState {
-			ref := b.repo.GetHEAD()
+			ref, _ := b.repo.HEAD()
 			b.ref = ref
 			return b, tea.Batch(b.reset(), func() tea.Msg {
 				return ref
@@ -279,7 +262,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.ref = msg
 		return b, b.reset()
 
-	case types.ErrMsg:
+	case utils.ErrMsg:
 		b.error = msg
 		b.state = errorState
 		return b, nil
@@ -320,20 +303,20 @@ func (b *Bubble) View() string {
 
 func (b *Bubble) loadFile(i item) tea.Cmd {
 	return func() tea.Msg {
-		f, _ := b.repo.TreeEntryFile(i.entry)
+		f := i.entry.File()
 		if i.Mode().IsDir() || f == nil {
-			return types.ErrMsg{Err: types.ErrInvalidFile}
+			return utils.ErrMsg{Err: utils.ErrInvalidFile}
 		}
-		bin, err := gg.IsBinary(f)
+		bin, err := f.IsBinary()
 		if err != nil {
-			return types.ErrMsg{Err: err}
+			return utils.ErrMsg{Err: err}
 		}
 		if bin {
-			return types.ErrMsg{Err: types.ErrBinaryFile}
+			return utils.ErrMsg{Err: utils.ErrBinaryFile}
 		}
 		c, err := f.Bytes()
 		if err != nil {
-			return types.ErrMsg{Err: err}
+			return utils.ErrMsg{Err: err}
 		}
 		return fileMsg{
 			content: string(c),
@@ -344,11 +327,11 @@ func (b *Bubble) loadFile(i item) tea.Cmd {
 func (b *Bubble) renderFile(m fileMsg) string {
 	s := strings.Builder{}
 	c := m.content
-	if len(strings.Split(c, "\n")) > types.MaxDiffLines {
-		s.WriteString(b.style.TreeNoItems.Render(types.ErrFileTooLarge.Error()))
+	if len(strings.Split(c, "\n")) > utils.MaxDiffLines {
+		s.WriteString(b.style.TreeNoItems.Render(utils.ErrFileTooLarge.Error()))
 	} else {
 		w := b.width - b.widthMargin - b.style.RepoBody.GetHorizontalFrameSize()
-		f, err := types.RenderFile(b.path, m.content, w)
+		f, err := utils.RenderFile(b.path, m.content, w)
 		if err != nil {
 			s.WriteString(err.Error())
 		} else {

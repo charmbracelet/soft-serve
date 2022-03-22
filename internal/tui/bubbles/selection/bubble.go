@@ -5,8 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	gittypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
+	"github.com/charmbracelet/soft-serve/pkg/tui/utils"
 	"github.com/muesli/reflow/truncate"
 )
 
@@ -80,8 +80,8 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, tea.Batch(cmds...)
 }
 
-func (b *Bubble) Help() []gittypes.HelpEntry {
-	return []gittypes.HelpEntry{
+func (b *Bubble) Help() []utils.HelpEntry {
+	return []utils.HelpEntry{
 		{Key: "↑/↓", Value: "navigate"},
 	}
 }

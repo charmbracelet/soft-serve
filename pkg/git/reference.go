@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	HEAD ReferenceName = "HEAD"
+	HEAD string = "HEAD"
 )
 
 // Reference is a wrapper around git.Reference with helper methods.
@@ -27,7 +27,11 @@ func (r ReferenceName) String() string {
 
 // Short returns the short name of the reference i.e. master.
 func (r ReferenceName) Short() string {
-	return git.RefShortName(r.String())
+	s := strings.Split(r.String(), "/")
+	if len(s) > 0 {
+		return s[len(s)-1]
+	}
+	return r.String()
 }
 
 // Name returns the reference name i.e. refs/heads/master.

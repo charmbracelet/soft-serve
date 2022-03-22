@@ -1,4 +1,4 @@
-package types
+package utils
 
 import "github.com/muesli/reflow/truncate"
 

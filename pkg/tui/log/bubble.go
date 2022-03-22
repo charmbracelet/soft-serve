@@ -13,12 +13,12 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	gansi "github.com/charmbracelet/glamour/ansi"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/refs"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
-	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/tui/refs"
+	"github.com/charmbracelet/soft-serve/pkg/tui/utils"
+	vp "github.com/charmbracelet/soft-serve/pkg/tui/viewport"
 	"github.com/dustin/go-humanize/english"
-	"github.com/gogs/git-module"
 )
 
 var (
@@ -75,7 +75,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		d.style.LogItemHash.GetMarginLeft() +
 		d.style.LogItemHash.GetWidth() +
 		d.style.LogItemInactive.GetMarginLeft()
-	title := types.TruncateString(i.Title(), m.Width()-leftMargin, "…")
+	title := utils.TruncateString(i.Title(), m.Width()-leftMargin, "…")
 	if index == m.Index() {
 		fmt.Fprint(w, d.style.LogItemSelector.Render(">")+
 			d.style.LogItemHash.Bold(true).Render(hash[:7])+
@@ -88,7 +88,8 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type Bubble struct {
-	repo           types.Repo
+	repo           utils.GitRepo
+	count          int64
 	list           list.Model
 	state          sessionState
 	commitViewport *vp.ViewportBubble
@@ -98,11 +99,11 @@ type Bubble struct {
 	widthMargin    int
 	height         int
 	heightMargin   int
-	error          types.ErrMsg
+	error          utils.ErrMsg
 	spinner        spinner.Model
 }
 
-func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
+func NewBubble(repo utils.GitRepo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
 	l := list.New([]list.Item{}, itemDelegate{styles}, width-widthMargin, height-heightMargin)
 	l.SetShowFilter(false)
 	l.SetShowHelp(false)
@@ -111,8 +112,8 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 	l.SetShowTitle(false)
 	l.SetFilteringEnabled(false)
 	l.DisableQuitKeybindings()
-	l.KeyMap.NextPage = types.NextPage
-	l.KeyMap.PrevPage = types.PrevPage
+	l.KeyMap.NextPage = utils.NextPage
+	l.KeyMap.PrevPage = utils.PrevPage
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = styles.Spinner
@@ -128,7 +129,6 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		height:       height,
 		heightMargin: heightMargin,
 		list:         l,
-		ref:          repo.GetHEAD(),
 		spinner:      s,
 	}
 	b.SetSize(width, height)
@@ -138,29 +138,20 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 func (b *Bubble) reset() tea.Cmd {
 	b.state = logState
 	b.list.Select(0)
-	cmd := b.updateItems(0)
 	b.SetSize(b.width, b.height)
+	cmd := b.updateItems()
 	return cmd
 }
 
-func (b *Bubble) updateItems(nextPage int) tea.Cmd {
-	count, err := b.repo.Count(b.ref)
-	if err != nil {
-		return func() tea.Msg { return types.ErrMsg{Err: err} }
-	}
+func (b *Bubble) updateItems() tea.Cmd {
+	count := b.count
+	page := b.list.Paginator.Page
 	limit := b.list.Paginator.PerPage
-	totalPages := (int(count) / limit) + 1
-	if nextPage < 0 {
-		nextPage = 0
-	}
-	if nextPage >= totalPages {
-		nextPage = totalPages - 1
-	}
-	skip := nextPage * limit
+	skip := page * limit
 	items := make([]list.Item, count)
-	cc, err := b.repo.GetCommitsByPage(b.ref, nextPage, limit)
+	cc, err := b.repo.CommitsByPage(b.ref, page, limit)
 	if err != nil {
-		return func() tea.Msg { return types.ErrMsg{Err: err} }
+		return func() tea.Msg { return utils.ErrMsg{Err: err} }
 	}
 	for i, c := range cc {
 		idx := i + skip
@@ -169,12 +160,12 @@ func (b *Bubble) updateItems(nextPage int) tea.Cmd {
 		}
 		items[idx] = item{c}
 	}
-	log.Printf("page %d/%d %d/%d", nextPage, totalPages, skip, limit)
 	cmd := b.list.SetItems(items)
+	log.Printf("page %d/%d %d/%d", page, b.list.Paginator.TotalPages, skip, limit)
 	return cmd
 }
 
-func (b *Bubble) Help() []types.HelpEntry {
+func (b *Bubble) Help() []utils.HelpEntry {
 	return nil
 }
 
@@ -183,7 +174,20 @@ func (b *Bubble) GotoTop() {
 }
 
 func (b *Bubble) Init() tea.Cmd {
-	return nil
+	errMsg := func(err error) tea.Cmd {
+		return func() tea.Msg { return utils.ErrMsg{Err: err} }
+	}
+	ref, err := b.repo.HEAD()
+	if err != nil {
+		return errMsg(err)
+	}
+	b.ref = ref
+	count, err := b.repo.CountCommits(ref)
+	if err != nil {
+		return errMsg(err)
+	}
+	b.count = count
+	return func() tea.Msg { return refs.RefMsg(ref) }
 }
 
 func (b *Bubble) SetSize(width, height int) {
@@ -221,7 +225,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			b.list = m
 			cmds = append(cmds, cmd)
 			if m.Paginator.Page != curPage {
-				cmds = append(cmds, b.updateItems(m.Paginator.Page))
+				cmds = append(cmds, b.updateItems())
 			}
 		case commitState:
 			rv, cmd := b.commitViewport.Update(msg)
@@ -229,7 +233,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		return b, tea.Batch(cmds...)
-	case types.ErrMsg:
+	case utils.ErrMsg:
 		b.error = msg
 		b.state = errorState
 		return b, nil
@@ -254,26 +258,24 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (b *Bubble) loadPatch(c *git.Commit) error {
 	var patch strings.Builder
-	hash := c.ID.String()
 	style := b.style.LogCommit.Copy().Width(b.width - b.widthMargin - b.style.LogCommit.GetHorizontalFrameSize())
 	// ctx, cancel := context.WithTimeout(context.TODO(), types.MaxPatchWait)
 	// defer cancel()
-	p, err := b.repo.Patch(hash)
+	p, err := b.repo.Diff(c)
 	if err != nil {
 		return err
 	}
-	p.NumFiles()
 	patch.WriteString(b.renderCommit(c))
-	fpl := p.NumFiles()
-	if fpl > types.MaxDiffFiles {
-		patch.WriteString("\n" + types.ErrDiffFilesTooLong.Error())
+	fpl := len(p.Files)
+	if fpl > utils.MaxDiffFiles {
+		patch.WriteString("\n" + utils.ErrDiffFilesTooLong.Error())
 	} else {
 		patch.WriteString("\n" + b.renderStats(p))
 	}
-	if fpl <= types.MaxDiffFiles {
+	if fpl <= utils.MaxDiffFiles {
 		ps := ""
-		if len(strings.Split(ps, "\n")) > types.MaxDiffLines {
-			patch.WriteString("\n" + types.ErrDiffTooLong.Error())
+		if len(strings.Split(ps, "\n")) > utils.MaxDiffLines {
+			patch.WriteString("\n" + utils.ErrDiffTooLong.Error())
 		} else {
 			patch.WriteString("\n" + b.renderDiff(p))
 		}
@@ -298,7 +300,6 @@ func (b *Bubble) loadCommit() tea.Cmd {
 	go func() {
 		err = b.loadPatch(c.Commit)
 		done <- struct{}{}
-		log.Print("done")
 		b.state = commitState
 	}()
 	return func() tea.Msg {
@@ -308,7 +309,7 @@ func (b *Bubble) loadCommit() tea.Cmd {
 			b.state = loadingState
 		}
 		if err != nil {
-			return types.ErrMsg{Err: err}
+			return utils.ErrMsg{Err: err}
 		}
 		return commitMsg(c.Commit)
 	}
@@ -419,7 +420,7 @@ func (b *Bubble) renderDiff(diff *git.Diff) string {
 	var s strings.Builder
 	pr := strings.Builder{}
 	diffChroma.Code = ""
-	err := diffChroma.Render(&pr, types.RenderCtx)
+	err := diffChroma.Render(&pr, utils.RenderCtx)
 	if err != nil {
 		s.WriteString(fmt.Sprintf("\n%s", err.Error()))
 	} else {

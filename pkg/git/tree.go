@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"sort"
 
 	"github.com/gogs/git-module"
 )
@@ -19,27 +20,53 @@ type Tree struct {
 // TreeEntry is a wrapper around git.TreeEntry with helper methods.
 type TreeEntry struct {
 	*git.TreeEntry
+	// path is the full path of the file
+	path string
+}
+
+// Entries is a wrapper around git.Entries
+type Entries []*TreeEntry
+
+var sorters = []func(t1, t2 *TreeEntry) bool{
+	func(t1, t2 *TreeEntry) bool {
+		return (t1.IsTree() || t1.IsCommit()) && !t2.IsTree() && !t2.IsCommit()
+	},
+	func(t1, t2 *TreeEntry) bool {
+		return t1.Name() < t2.Name()
+	},
+}
+
+// Len implements sort.Interface.
+func (es Entries) Len() int { return len(es) }
+
+// Swap implements sort.Interface.
+func (es Entries) Swap(i, j int) { es[i], es[j] = es[j], es[i] }
+
+// Less implements sort.Interface.
+func (es Entries) Less(i, j int) bool {
+	t1, t2 := es[i], es[j]
+	var k int
+	for k = 0; k < len(sorters)-1; k++ {
+		sorter := sorters[k]
+		switch {
+		case sorter(t1, t2):
+			return true
+		case sorter(t2, t1):
+			return false
+		}
+	}
+	return sorters[k](t1, t2)
+}
+
+// Sort sorts the entries in the tree.
+func (es Entries) Sort() {
+	sort.Sort(es)
 }
 
 // File is a wrapper around git.Blob with helper methods.
 type File struct {
 	*git.Blob
-	// path is the full path of the file
-	path  string
 	Entry *TreeEntry
-}
-
-// File returns the file at the given path.
-func (t *Tree) File(path string) (*File, error) {
-	b, err := t.Blob(path)
-	if err != nil {
-		return nil, err
-	}
-	return &File{
-		Blob:  b,
-		Entry: &TreeEntry{TreeEntry: b.TreeEntry},
-		path:  filepath.Join(t.Path, path),
-	}, nil
 }
 
 // Name returns the name of the file.
@@ -49,7 +76,7 @@ func (f *File) Name() string {
 
 // Path returns the full path of the file.
 func (f *File) Path() string {
-	return f.path
+	return f.Entry.path
 }
 
 // SubTree returns the sub-tree at the given path.
@@ -61,6 +88,33 @@ func (t *Tree) SubTree(path string) (*Tree, error) {
 	return &Tree{
 		Tree: tree,
 		Path: path,
+	}, nil
+}
+
+// Entries returns the entries in the tree.
+func (t *Tree) Entries() (Entries, error) {
+	entries, err := t.Tree.Entries()
+	if err != nil {
+		return nil, err
+	}
+	ret := make(Entries, len(entries))
+	for i, e := range entries {
+		ret[i] = &TreeEntry{
+			TreeEntry: e,
+			path:      filepath.Join(t.Path, e.Name()),
+		}
+	}
+	return ret, nil
+}
+
+func (t *Tree) TreeEntry(path string) (*TreeEntry, error) {
+	entry, err := t.Tree.TreeEntry(path)
+	if err != nil {
+		return nil, err
+	}
+	return &TreeEntry{
+		TreeEntry: entry,
+		path:      filepath.Join(t.Path, entry.Name()),
 	}, nil
 }
 
@@ -115,4 +169,23 @@ func (e *TreeEntry) Mode() fs.FileMode {
 	default:
 		return fs.FileMode(m)
 	}
+}
+
+// File returns the file for the TreeEntry.
+func (e *TreeEntry) File() *File {
+	b := e.Blob()
+	return &File{
+		Blob:  b,
+		Entry: e,
+	}
+}
+
+// Contents returns the contents of the file.
+func (e *TreeEntry) Contents() ([]byte, error) {
+	return e.File().Contents()
+}
+
+// Contents returns the contents of the file.
+func (f *File) Contents() ([]byte, error) {
+	return f.Blob.Bytes()
 }

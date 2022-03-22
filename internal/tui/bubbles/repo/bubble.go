@@ -6,10 +6,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	gitui "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git"
-	gittypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/gogs/git-module"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	gitui "github.com/charmbracelet/soft-serve/pkg/tui"
+	"github.com/charmbracelet/soft-serve/pkg/tui/utils"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/reflow/wrap"
 )
@@ -22,7 +22,7 @@ type Bubble struct {
 	name         string
 	host         string
 	port         int
-	repo         gittypes.Repo
+	repo         utils.GitRepo
 	styles       *style.Styles
 	width        int
 	widthMargin  int
@@ -33,7 +33,7 @@ type Bubble struct {
 	Active bool
 }
 
-func NewBubble(repo gittypes.Repo, host string, port int, styles *style.Styles, width, wm, height, hm int) *Bubble {
+func NewBubble(repo utils.GitRepo, host string, port int, styles *style.Styles, width, wm, height, hm int) *Bubble {
 	b := &Bubble{
 		name:         repo.Name(),
 		host:         host,
@@ -64,7 +64,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, cmd
 }
 
-func (b *Bubble) Help() []gittypes.HelpEntry {
+func (b *Bubble) Help() []utils.HelpEntry {
 	return b.box.Help()
 }
 
@@ -95,7 +95,7 @@ func (b Bubble) headerView() string {
 	note = b.styles.RepoNote.Copy().Width(noteWidth).Render(note)
 
 	// Render borders on name and command
-	height := gittypes.Max(lipgloss.Height(title), lipgloss.Height(note))
+	height := utils.Max(lipgloss.Height(title), lipgloss.Height(note))
 	titleBoxStyle := b.styles.RepoTitleBox.Copy().Height(height)
 	noteBoxStyle := b.styles.RepoNoteBox.Copy().Height(height)
 	if b.Active {

@@ -1,21 +1,14 @@
 package git
 
 import (
-	"bufio"
-	"bytes"
 	"errors"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"sync"
 
-	gitypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
-	"github.com/go-git/go-git/v5/utils/binary"
+	"github.com/charmbracelet/soft-serve/pkg/git"
 	"github.com/gobwas/glob"
-	"github.com/gogs/git-module"
 	"github.com/golang/groupcache/lru"
 )
 
@@ -26,21 +19,21 @@ var ErrMissingRepo = errors.New("missing repo")
 type Repo struct {
 	path         string
 	repository   *git.Repository
-	Readme       string
-	ReadmePath   string
-	head         string
+	readme       string
+	readmePath   string
+	head         *git.Reference
 	refs         []*git.Reference
 	totalCommits int64
 	patchCache   *lru.Cache
-	commitCache  *lru.Cache
 }
 
 func (rs *RepoSource) Open(path string) (*git.Repository, error) {
-	r, err := git.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
+	return git.Open(path)
+}
+
+// Path returns the path to the repository.
+func (r *Repo) Path() string {
+	return r.path
 }
 
 // GetName returns the name of the repository.
@@ -48,88 +41,84 @@ func (r *Repo) Name() string {
 	return filepath.Base(r.path)
 }
 
-// GetHEAD returns the reference for a repository.
-func (r *Repo) GetHEAD() *git.Reference {
-	ref := git.Reference{
-		Refspec: r.head,
+func (r *Repo) Readme() (readme string, path string) {
+	return r.readme, r.readmePath
+}
+
+func (r *Repo) SetReadme(readme, path string) {
+	r.readme = readme
+	r.readmePath = path
+}
+
+// HEAD returns the reference for a repository.
+func (r *Repo) HEAD() (*git.Reference, error) {
+	if r.head != nil {
+		return r.head, nil
 	}
-	ref.ID, _ = git.ShowRefVerify(r.path, r.head)
-	return &ref
+	h, err := r.repository.HEAD()
+	if err != nil {
+		return nil, err
+	}
+	r.head = h
+	log.Printf("caching HEAD: %s", r.path)
+	return h, nil
 }
 
 // GetReferences returns the references for a repository.
-func (r *Repo) GetReferences() []*git.Reference {
-	return r.refs
+func (r *Repo) References() ([]*git.Reference, error) {
+	if r.refs != nil {
+		return r.refs, nil
+	}
+	refs, err := r.repository.References()
+	if err != nil {
+		return nil, err
+	}
+	r.refs = refs
+	log.Printf("caching references: %s", r.path)
+	return refs, nil
 }
-
-// GetRepository returns the underlying go-git repository object.
-func (r *Repo) Repository() *git.Repository {
-	return r.repository
-}
-
-var treeEntryRe = regexp.MustCompile(`([0-9]{6})\s+(\w+)\s+([0-9a-z]+)\s+([0-9-]+)\s+(.*)`)
 
 // Tree returns the git tree for a given path.
 func (r *Repo) Tree(ref *git.Reference, path string) (*git.Tree, error) {
-	path = filepath.Clean(path)
-	if path == "." {
-		path = ""
+	return r.repository.TreePath(ref, path)
+}
+
+// Diff returns the diff for a given commit.
+func (r *Repo) Diff(commit *git.Commit) (*git.Diff, error) {
+	hash := commit.Hash.String()
+	c, ok := r.patchCache.Get(hash)
+	if ok {
+		return c.(*git.Diff), nil
 	}
-	hash := ref.ID
-	t, err := r.repository.LsTree(hash)
+	diff, err := r.repository.Diff(commit)
 	if err != nil {
 		return nil, err
 	}
-	return t, nil
-}
-
-func (r *Repo) TreeEntryFile(e *git.TreeEntry) (*git.Blob, error) {
-	if e.IsTree() {
-		return nil, git.ErrNotBlob
-	}
-	return e.Blob(), nil
-}
-
-func IsBinary(blob *git.Blob) (bool, error) {
-	stdout := new(bytes.Buffer)
-	stderr := new(bytes.Buffer)
-	err := blob.Pipeline(stdout, stderr)
-	if err != nil {
-		return false, err
-	}
-	r := bufio.NewReader(stdout)
-	return binary.IsBinary(r)
-}
-
-// PatchCtx returns the patch for a given commit.
-func (r *Repo) Patch(hash string) (*git.Diff, error) {
-	commit, err := r.Commit(hash)
-	if err != nil {
-		return nil, err
-	}
-	diff, err := r.repository.Diff(commit.ID.String(), 1000, 1000, 1000)
-	if err != nil {
-		return nil, err
-	}
+	r.patchCache.Add(hash, diff)
 	return diff, nil
 }
 
-func (r *Repo) Commit(hash string) (*git.Commit, error) {
-	return r.repository.CommitByRevision(hash)
+// CountCommits returns the number of commits for a repository.
+func (r *Repo) CountCommits(ref *git.Reference) (int64, error) {
+	if r.totalCommits > 0 {
+		return r.totalCommits, nil
+	}
+	tc, err := r.repository.CountCommits(ref)
+	if err != nil {
+		return 0, err
+	}
+	r.totalCommits = tc
+	return tc, nil
 }
 
-func (r *Repo) GetCommitsByPage(ref *git.Reference, page, size int) (gitypes.Commits, error) {
-	return r.repository.CommitsByPage(ref.ID, page, size)
+// CommitsByPage returns the commits for a repository.
+func (r *Repo) CommitsByPage(ref *git.Reference, page, size int) (git.Commits, error) {
+	return r.repository.CommitsByPage(ref, page, size)
 }
 
-// GetReadme returns the readme for a repository.
-func (r *Repo) GetReadme() string {
-	return r.Readme
-}
-
-// GetReadmePath returns the path to the readme for a repository.
-func (r *Repo) GetReadmePath() string {
-	return r.ReadmePath
+// Push pushes the repository to the remote.
+func (r *Repo) Push(remote, branch string) error {
+	return r.repository.Push(remote, branch)
 }
 
 // RepoSource is a reference to an on-disk repositories.
@@ -177,7 +166,7 @@ func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	rp := filepath.Join(rs.Path, name)
-	err := git.Init(rp, git.InitOptions{Bare: bare})
+	_, err := git.Init(rp, bare)
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +175,7 @@ func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 		if err != nil {
 			return nil, err
 		}
+		defer os.RemoveAll(temp)
 		err = git.Clone(rp, temp)
 		if err != nil {
 			return nil, err
@@ -238,147 +228,47 @@ func (rs *RepoSource) LoadRepos() error {
 
 func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (r *Repo, err error) {
 	r = &Repo{
-		path:        path,
-		repository:  rg,
-		commitCache: lru.New(1000),
-		patchCache:  lru.New(1000),
-		refs:        make([]*git.Reference, 0),
+		path:       path,
+		repository: rg,
+		patchCache: lru.New(1000),
 	}
-	r.head, err = rg.SymbolicRef()
+	_, err = r.HEAD()
 	if err != nil {
 		return nil, err
 	}
-	r.refs, err = rg.ShowRef()
+	_, err = r.References()
 	if err != nil {
 		return nil, err
 	}
 	return
 }
 
-func (r *Repo) LsFiles(pattern string) ([]string, error) {
+// LatestFile returns the contents of the latest file at the specified path in the repository.
+func (r *Repo) LatestFile(pattern string) (string, string, error) {
 	g := glob.MustCompile(pattern)
-	t, err := r.repository.LsTree(r.GetHEAD().ID)
+	dir := filepath.Dir(pattern)
+	t, err := r.repository.TreePath(r.head, dir)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 	ents, err := t.Entries()
 	if err != nil {
-		return nil, err
-	}
-	files := make([]string, 0)
-	for _, e := range ents {
-		if g.Match(e.Name()) {
-			files = append(files, e.Name())
-		}
-	}
-	return files, nil
-}
-
-// LatestFile returns the contents of the latest file at the specified path in the repository.
-func (r *Repo) LatestFile(pattern string) (string, error) {
-	g := glob.MustCompile(pattern)
-	c, err := r.repository.CommitByRevision(r.GetHEAD().ID)
-	if err != nil {
-		return "", err
-	}
-	ents, err := c.Tree.Entries()
-	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	for _, e := range ents {
-		if g.Match(e.Name()) {
-			bts, err := e.Blob().Bytes()
+		fp := filepath.Join(dir, e.Name())
+		if g.Match(fp) {
+			bts, err := e.Contents()
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
-			return string(bts), nil
+			return string(bts), fp, nil
 		}
 	}
-	return "", git.ErrURLNotExist
-}
-
-// LatestTree returns the latest tree at the specified path in the repository.
-func (r *Repo) LatestTree(path string) (*git.Tree, error) {
-	path = filepath.Clean(path)
-	t, err := r.repository.LsTree(r.GetHEAD().ID)
-	if err != nil {
-		return nil, err
-	}
-	if path == "." {
-		return t, nil
-	}
-	return t.Subtree(path)
+	return "", "", git.ErrFileNotFound
 }
 
 // UpdateServerInfo updates the server info for the repository.
 func (r *Repo) UpdateServerInfo() error {
-	return r.gitCmd("update-server-info").Run()
-}
-
-func (r *Repo) Count(ref *git.Reference) (int64, error) {
-	if r.totalCommits != 0 {
-		return r.totalCommits, nil
-	}
-	c, err := r.repository.CommitByRevision(r.GetHEAD().ID)
-	if err != nil {
-		return 0, err
-	}
-	return c.CommitsCount()
-}
-
-func (r *Repo) Show(args ...string) (string, error) {
-	return r.gitCmdOutput(append([]string{"show"}, args...)...)
-}
-
-func (r *Repo) LogProcessLine(cb func(line string) (bool, error), args ...string) error {
-	return r.gitCmdProcessLine(cb, append([]string{"log"}, args...)...)
-}
-
-func (r *Repo) LsTree(args ...string) (string, error) {
-	return r.gitCmdOutput(append([]string{"ls-tree"}, args...)...)
-}
-
-func (r *Repo) gitCmdOutput(args ...string) (string, error) {
-	out, err := r.gitCmd(args...).Output()
-	if err != nil {
-		log.Printf("%T", err)
-		return "", err
-	}
-	return strings.TrimSpace(strings.ReplaceAll(string(out), "\r", "")), nil
-}
-
-func (r *Repo) gitCmdProcessLine(cb func(line string) (bool, error), args ...string) error {
-	cmd := r.gitCmd(args...)
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	scanner := bufio.NewScanner(stdoutPipe)
-	scanner.Split(bufio.ScanLines)
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	for scanner.Scan() {
-		line := strings.ReplaceAll(scanner.Text(), "\r", "")
-		stop, err := cb(line)
-		if err != nil {
-			return err
-		}
-		if stop {
-			_ = cmd.Process.Kill()
-			break
-		}
-	}
-
-	_ = cmd.Wait()
-
-	return nil
-}
-
-func (r *Repo) gitCmd(args ...string) *exec.Cmd {
-	log.Printf("git %s", strings.Join(args, " "))
-	cmd := exec.Command("git", args...)
-	cmd.Dir = r.path
-	return cmd
+	return r.repository.UpdateServerInfo()
 }

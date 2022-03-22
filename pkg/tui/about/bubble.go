@@ -3,17 +3,17 @@ package about
 import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/refs"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
-	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/gogs/git-module"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/tui/refs"
+	"github.com/charmbracelet/soft-serve/pkg/tui/utils"
+	vp "github.com/charmbracelet/soft-serve/pkg/tui/viewport"
 	"github.com/muesli/reflow/wrap"
 )
 
 type Bubble struct {
 	readmeViewport *vp.ViewportBubble
-	repo           types.Repo
+	repo           utils.GitRepo
 	styles         *style.Styles
 	height         int
 	heightMargin   int
@@ -22,7 +22,7 @@ type Bubble struct {
 	ref            *git.Reference
 }
 
-func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int) *Bubble {
+func NewBubble(repo utils.GitRepo, styles *style.Styles, width, wm, height, hm int) *Bubble {
 	b := &Bubble{
 		readmeViewport: &vp.ViewportBubble{
 			Viewport: &viewport.Model{},
@@ -31,7 +31,6 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int)
 		styles:       styles,
 		widthMargin:  wm,
 		heightMargin: hm,
-		ref:          repo.GetHEAD(),
 	}
 	b.SetSize(width, height)
 	return b
@@ -83,17 +82,17 @@ func (b *Bubble) View() string {
 	return b.readmeViewport.View()
 }
 
-func (b *Bubble) Help() []types.HelpEntry {
+func (b *Bubble) Help() []utils.HelpEntry {
 	return nil
 }
 
 func (b *Bubble) glamourize() (string, error) {
 	w := b.width - b.widthMargin - b.styles.RepoBody.GetHorizontalFrameSize()
-	rm := b.repo.GetReadme()
+	rm, rp := b.repo.Readme()
 	if rm == "" {
 		return b.styles.AboutNoReadme.Render("No readme found."), nil
 	}
-	f, err := types.RenderFile(b.repo.GetReadmePath(), rm, w)
+	f, err := utils.RenderFile(rp, rm, w)
 	if err != nil {
 		return "", err
 	}
@@ -110,8 +109,13 @@ func (b *Bubble) glamourize() (string, error) {
 func (b *Bubble) setupCmd() tea.Msg {
 	md, err := b.glamourize()
 	if err != nil {
-		return types.ErrMsg{Err: err}
+		return utils.ErrMsg{Err: err}
 	}
+	head, err := b.repo.HEAD()
+	if err != nil {
+		return utils.ErrMsg{Err: err}
+	}
+	b.ref = head
 	b.readmeViewport.Viewport.SetContent(md)
 	b.GotoTop()
 	return nil

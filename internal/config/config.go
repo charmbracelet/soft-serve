@@ -125,9 +125,8 @@ func (cfg *Config) Reload() error {
 	if err != nil {
 		return err
 	}
-	cs, err := cr.LatestFile("config.yaml")
+	cs, _, err := cr.LatestFile("config.yaml")
 	if err != nil {
-		log.Print("here")
 		return err
 	}
 	err = yaml.Unmarshal([]byte(cs), cfg)
@@ -152,18 +151,8 @@ func (cfg *Config) Reload() error {
 			pat = rp
 		}
 		rm := ""
-		fs, err := r.LsFiles(pat)
-		if err != nil {
-			return err
-		}
-		if len(fs) > 0 {
-			fc, err := r.LatestFile(fs[0])
-			if err != nil {
-				return err
-			}
-			rm = fc
-			r.ReadmePath = fs[0]
-		}
+		fc, fp, _ := r.LatestFile(pat)
+		rm = fc
 		if name == "config" {
 			md, err := templatize(rm, cfg)
 			if err != nil {
@@ -171,7 +160,7 @@ func (cfg *Config) Reload() error {
 			}
 			rm = md
 		}
-		r.Readme = rm
+		r.SetReadme(rm, fp)
 	}
 	return nil
 }
@@ -193,12 +182,11 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	cn := "config"
 	rs := cfg.Source
 	err := rs.LoadRepo(cn)
-	if err == gg.ErrURLNotExist {
-		cr, err := rs.InitRepo(cn, true)
+	if os.IsNotExist(err) {
+		repo, err := rs.InitRepo(cn, true)
 		if err != nil {
 			return err
 		}
-		repo := cr.Repository()
 		wt := repo.Path()
 		rm, err := os.Create(filepath.Join(wt, "README.md"))
 		if err != nil {
@@ -213,6 +201,10 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 			return err
 		}
 		_, err = cf.Write([]byte(yaml))
+		if err != nil {
+			return err
+		}
+		err = gg.Add(wt, gg.AddOptions{All: true})
 		if err != nil {
 			return err
 		}

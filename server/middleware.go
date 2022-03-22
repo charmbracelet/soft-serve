@@ -2,21 +2,19 @@ package server
 
 import (
 	"fmt"
-	"io/fs"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/alecthomas/chroma/lexers"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	appCfg "github.com/charmbracelet/soft-serve/internal/config"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/tui/utils"
 	"github.com/charmbracelet/wish"
 	gitwish "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/gogs/git-module"
+	ggit "github.com/gogs/git-module"
 	"github.com/muesli/termenv"
 )
 
@@ -75,15 +73,27 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						_ = s.Exit(1)
 						return
 					}
-					p := strings.Join(ps[1:], "/")
-					t, err := rs.LatestTree(p)
-					if err != nil && err != git.ErrURLNotExist {
+					ref, err := rs.HEAD()
+					if err != nil {
 						_, _ = s.Write([]byte(err.Error()))
 						_ = s.Exit(1)
 						return
 					}
-					if err == object.ErrDirectoryNotFound {
-						fc, err := rs.LatestFile(p)
+					p := strings.Join(ps[1:], "/")
+					t, err := rs.Tree(ref, p)
+					if err != nil && err != ggit.ErrRevisionNotExist {
+						_, _ = s.Write([]byte(err.Error()))
+						_ = s.Exit(1)
+						return
+					}
+					if err == ggit.ErrRevisionNotExist {
+						_, _ = s.Write([]byte(git.ErrFileNotFound.Error()))
+						_ = s.Exit(1)
+						return
+					}
+					ents, err := t.Entries()
+					if err != nil {
+						fc, _, err := rs.LatestFile(p)
 						if err != nil {
 							_, _ = s.Write([]byte(err.Error()))
 							_ = s.Exit(1)
@@ -103,19 +113,13 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						}
 						s.Write([]byte(fc))
 					} else {
-						ents, err := t.Entries()
-						if err != nil {
-							s.Write([]byte(err.Error()))
-							s.Exit(1)
-							return
-						}
-						sort.Sort(ents)
+						ents.Sort()
 						for _, e := range ents {
 							m := e.Mode()
 							if m == 0 {
 								s.Write([]byte(strings.Repeat(" ", 10)))
 							} else {
-								s.Write([]byte(filemodeStyle.Render(modeToOSMode(m).String())))
+								s.Write([]byte(filemodeStyle.Render(m.String())))
 							}
 							s.Write([]byte(" "))
 							if !e.IsTree() {
@@ -130,15 +134,6 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 			}
 			sh(s)
 		}
-	}
-}
-
-func modeToOSMode(mode git.EntryMode) fs.FileMode {
-	switch mode {
-	case git.EntryTree:
-		return fs.ModeDir | fs.ModePerm
-	default:
-		return fs.FileMode(mode)
 	}
 }
 
@@ -176,7 +171,7 @@ func withFormatting(p, c string) (string, error) {
 		Language: lang,
 	}
 	r := strings.Builder{}
-	styles := types.DefaultStyles()
+	styles := utils.DefaultStyles()
 	styles.CodeBlock.Margin = &zero
 	rctx := gansi.NewRenderContext(gansi.Options{
 		Styles:       styles,

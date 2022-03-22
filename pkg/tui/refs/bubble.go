@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"io"
 	"sort"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/gogs/git-module"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/tui/utils"
 )
 
 type RefMsg = *git.Reference
@@ -20,7 +19,7 @@ type item struct {
 }
 
 func (i item) Short() string {
-	return git.RefShortName(i.Refspec)
+	return i.Reference.Name().Short()
 }
 
 func (i item) FilterValue() string { return i.Short() }
@@ -48,7 +47,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	ref := i.Short()
-	if strings.HasPrefix(i.Refspec, git.RefsTags) {
+	if i.Reference.IsTag() {
 		ref = s.RefItemTag.Render(ref)
 	}
 	ref = s.RefItemBranch.Render(ref)
@@ -56,7 +55,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		s.RefItemSelector.GetMarginLeft() -
 		s.RefItemSelector.GetWidth() -
 		s.RefItemInactive.GetMarginLeft()
-	ref = types.TruncateString(ref, refMaxWidth, "…")
+	ref = utils.TruncateString(ref, refMaxWidth, "…")
 	if index == m.Index() {
 		fmt.Fprint(w, s.RefItemSelector.Render(">")+
 			s.RefItemActive.Render(ref))
@@ -67,7 +66,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type Bubble struct {
-	repo         types.Repo
+	repo         utils.GitRepo
 	list         list.Model
 	style        *style.Styles
 	width        int
@@ -77,7 +76,11 @@ type Bubble struct {
 	ref          *git.Reference
 }
 
-func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
+func NewBubble(repo utils.GitRepo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
+	head, err := repo.HEAD()
+	if err != nil {
+		return nil
+	}
 	l := list.NewModel([]list.Item{}, itemDelegate{styles}, width-widthMargin, height-heightMargin)
 	l.SetShowFilter(false)
 	l.SetShowHelp(false)
@@ -94,7 +97,7 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		widthMargin:  widthMargin,
 		heightMargin: heightMargin,
 		list:         l,
-		ref:          repo.GetHEAD(),
+		ref:          head,
 	}
 	b.SetSize(width, height)
 	return b
@@ -124,17 +127,21 @@ func (b *Bubble) SetSize(width, height int) {
 	b.list.Styles.PaginationStyle = b.style.RefPaginator.Copy().Width(width - b.widthMargin)
 }
 
-func (b *Bubble) Help() []types.HelpEntry {
+func (b *Bubble) Help() []utils.HelpEntry {
 	return nil
 }
 
 func (b *Bubble) updateItems() tea.Cmd {
 	its := make(items, 0)
 	tags := make(items, 0)
-	for _, r := range b.repo.GetReferences() {
-		if strings.HasPrefix(r.Refspec, git.RefsTags) {
+	refs, err := b.repo.References()
+	if err != nil {
+		return func() tea.Msg { return utils.ErrMsg{Err: err} }
+	}
+	for _, r := range refs {
+		if r.IsTag() {
 			tags = append(tags, item{r})
-		} else if strings.HasPrefix(r.Refspec, git.RefsHeads) {
+		} else if r.IsBranch() {
 			its = append(its, item{r})
 		}
 	}
