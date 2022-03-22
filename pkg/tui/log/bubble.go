@@ -3,8 +3,6 @@ package log
 import (
 	"fmt"
 	"io"
-	"log"
-	"math"
 	"strings"
 	"time"
 
@@ -18,7 +16,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/tui/refs"
 	"github.com/charmbracelet/soft-serve/pkg/tui/utils"
 	vp "github.com/charmbracelet/soft-serve/pkg/tui/viewport"
-	"github.com/dustin/go-humanize/english"
 )
 
 var (
@@ -145,11 +142,12 @@ func (b *Bubble) reset() tea.Cmd {
 
 func (b *Bubble) updateItems() tea.Cmd {
 	count := b.count
+	items := make([]list.Item, count)
+	b.list.SetItems(items)
 	page := b.list.Paginator.Page
 	limit := b.list.Paginator.PerPage
 	skip := page * limit
-	items := make([]list.Item, count)
-	cc, err := b.repo.CommitsByPage(b.ref, page, limit)
+	cc, err := b.repo.CommitsByPage(b.ref, page+1, limit)
 	if err != nil {
 		return func() tea.Msg { return utils.ErrMsg{Err: err} }
 	}
@@ -161,7 +159,6 @@ func (b *Bubble) updateItems() tea.Cmd {
 		items[idx] = item{c}
 	}
 	cmd := b.list.SetItems(items)
-	log.Printf("page %d/%d %d/%d", page, b.list.Paginator.TotalPages, skip, limit)
 	return cmd
 }
 
@@ -223,10 +220,10 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			curPage := b.list.Paginator.Page
 			m, cmd := b.list.Update(msg)
 			b.list = m
-			cmds = append(cmds, cmd)
 			if m.Paginator.Page != curPage {
 				cmds = append(cmds, b.updateItems())
 			}
+			cmds = append(cmds, cmd)
 		case commitState:
 			rv, cmd := b.commitViewport.Update(msg)
 			b.commitViewport = rv.(*vp.ViewportBubble)
@@ -265,12 +262,22 @@ func (b *Bubble) loadPatch(c *git.Commit) error {
 	if err != nil {
 		return err
 	}
+	stats := strings.Split(p.Stats().String(), "\n")
+	for i, l := range stats {
+		ch := strings.Split(l, "|")
+		if len(ch) > 1 {
+			adddel := ch[len(ch)-1]
+			adddel = strings.ReplaceAll(adddel, "+", b.style.LogCommitStatsAdd.Render("+"))
+			adddel = strings.ReplaceAll(adddel, "-", b.style.LogCommitStatsDel.Render("-"))
+			stats[i] = strings.Join(ch[:len(ch)-1], "|") + "|" + adddel
+		}
+	}
 	patch.WriteString(b.renderCommit(c))
 	fpl := len(p.Files)
 	if fpl > utils.MaxDiffFiles {
 		patch.WriteString("\n" + utils.ErrDiffFilesTooLong.Error())
 	} else {
-		patch.WriteString("\n" + b.renderStats(p))
+		patch.WriteString("\n" + strings.Join(stats, "\n"))
 	}
 	if fpl <= utils.MaxDiffFiles {
 		ps := ""
@@ -329,97 +336,10 @@ func (b *Bubble) renderCommit(c *git.Commit) string {
 	return s.String()
 }
 
-func (b *Bubble) renderStats(diff *git.Diff) string {
-	padLength := float64(len(" "))
-	newlineLength := float64(len("\n"))
-	separatorLength := float64(len("|"))
-	// Soft line length limit. The text length calculation below excludes
-	// length of the change number. Adding that would take it closer to 80,
-	// but probably not more than 80, until it's a huge number.
-	lineLength := 72.0
-
-	// Get the longest filename and longest total change.
-	var longestLength float64
-	var longestTotalChange float64
-	for _, fs := range diff.Files {
-		if int(longestLength) < len(fs.Name) {
-			longestLength = float64(len(fs.Name))
-		}
-		totalChange := fs.NumAdditions() + fs.NumDeletions()
-		if int(longestTotalChange) < totalChange {
-			longestTotalChange = float64(totalChange)
-		}
-	}
-
-	// Parts of the output:
-	// <pad><filename><pad>|<pad><changeNumber><pad><+++/---><newline>
-	// example: " main.go | 10 +++++++--- "
-
-	// <pad><filename><pad>
-	leftTextLength := padLength + longestLength + padLength
-
-	// <pad><number><pad><+++++/-----><newline>
-	// Excluding number length here.
-	rightTextLength := padLength + padLength + newlineLength
-
-	totalTextArea := leftTextLength + separatorLength + rightTextLength
-	heightOfHistogram := lineLength - totalTextArea
-
-	// Scale the histogram.
-	var scaleFactor float64
-	if longestTotalChange > heightOfHistogram {
-		// Scale down to heightOfHistogram.
-		scaleFactor = longestTotalChange / heightOfHistogram
-	} else {
-		scaleFactor = 1.0
-	}
-
-	taddc := 0
-	tdelc := 0
-	output := strings.Builder{}
-	for _, fs := range diff.Files {
-		taddc += fs.NumAdditions()
-		tdelc += fs.NumDeletions()
-		addn := float64(fs.NumAdditions())
-		deln := float64(fs.NumDeletions())
-		addc := int(math.Floor(addn / scaleFactor))
-		delc := int(math.Floor(deln / scaleFactor))
-		if addc < 0 {
-			addc = 0
-		}
-		if delc < 0 {
-			delc = 0
-		}
-		adds := strings.Repeat("+", addc)
-		dels := strings.Repeat("-", delc)
-		diffLines := fmt.Sprint(fs.NumAdditions() + fs.NumDeletions())
-		totalDiffLines := fmt.Sprint(int(longestTotalChange))
-		fmt.Fprintf(&output, "%s | %s %s%s\n",
-			fs.Name+strings.Repeat(" ", int(longestLength)-len(fs.Name)),
-			strings.Repeat(" ", len(totalDiffLines)-len(diffLines))+diffLines,
-			b.style.LogCommitStatsAdd.Render(adds),
-			b.style.LogCommitStatsDel.Render(dels))
-	}
-	files := diff.NumFiles()
-	fc := fmt.Sprintf("%s changed", english.Plural(files, "file", ""))
-	ins := fmt.Sprintf("%s(+)", english.Plural(taddc, "insertion", ""))
-	dels := fmt.Sprintf("%s(-)", english.Plural(tdelc, "deletion", ""))
-	fmt.Fprint(&output, fc)
-	if taddc > 0 {
-		fmt.Fprintf(&output, ", %s", ins)
-	}
-	if tdelc > 0 {
-		fmt.Fprintf(&output, ", %s", dels)
-	}
-	fmt.Fprint(&output, "\n")
-
-	return output.String()
-}
-
 func (b *Bubble) renderDiff(diff *git.Diff) string {
 	var s strings.Builder
-	pr := strings.Builder{}
-	diffChroma.Code = ""
+	var pr strings.Builder
+	diffChroma.Code = diff.Patch()
 	err := diffChroma.Render(&pr, utils.RenderCtx)
 	if err != nil {
 		s.WriteString(fmt.Sprintf("\n%s", err.Error()))

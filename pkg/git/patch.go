@@ -71,22 +71,12 @@ func diffsToString(diffs []diffmatchpatch.Diff, lineType git.DiffLineType) strin
 		buf.WriteByte('-')
 	}
 
-	const (
-		addedCodePrefix   = ``
-		removedCodePrefix = ``
-		codeTagSuffix     = ``
-	)
-
 	for i := range diffs {
 		switch {
 		case diffs[i].Type == diffmatchpatch.DiffInsert && lineType == git.DiffLineAdd:
-			buf.WriteString(addedCodePrefix)
 			buf.WriteString(diffs[i].Text)
-			buf.WriteString(codeTagSuffix)
 		case diffs[i].Type == diffmatchpatch.DiffDelete && lineType == git.DiffLineDelete:
-			buf.WriteString(removedCodePrefix)
 			buf.WriteString(diffs[i].Text)
-			buf.WriteString(codeTagSuffix)
 		case diffs[i].Type == diffmatchpatch.DiffEqual:
 			buf.WriteString(diffs[i].Text)
 		}
