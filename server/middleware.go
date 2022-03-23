@@ -3,19 +3,18 @@ package server
 import (
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/alecthomas/chroma/lexers"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	appCfg "github.com/charmbracelet/soft-serve/internal/config"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/tui/common"
 	"github.com/charmbracelet/wish"
 	gitwish "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
-	"github.com/go-git/go-git/v5/plumbing/filemode"
-	"github.com/go-git/go-git/v5/plumbing/object"
+	ggit "github.com/gogs/git-module"
 	"github.com/muesli/termenv"
 )
 
@@ -26,22 +25,6 @@ var (
 	filenameStyle  = lipgloss.NewStyle()
 	filemodeStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#777777"))
 )
-
-type entries []object.TreeEntry
-
-func (cl entries) Len() int      { return len(cl) }
-func (cl entries) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
-func (cl entries) Less(i, j int) bool {
-	if cl[i].Mode == filemode.Dir && cl[j].Mode == filemode.Dir {
-		return cl[i].Name < cl[j].Name
-	} else if cl[i].Mode == filemode.Dir {
-		return true
-	} else if cl[j].Mode == filemode.Dir {
-		return false
-	} else {
-		return cl[i].Name < cl[j].Name
-	}
-}
 
 // softServeMiddleware is a middleware that handles displaying files with the
 // option of syntax highlighting and line numbers.
@@ -90,15 +73,27 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						_ = s.Exit(1)
 						return
 					}
-					p := strings.Join(ps[1:], "/")
-					t, err := rs.LatestTree(p)
-					if err != nil && err != object.ErrDirectoryNotFound {
+					ref, err := rs.HEAD()
+					if err != nil {
 						_, _ = s.Write([]byte(err.Error()))
 						_ = s.Exit(1)
 						return
 					}
-					if err == object.ErrDirectoryNotFound {
-						fc, err := rs.LatestFile(p)
+					p := strings.Join(ps[1:], "/")
+					t, err := rs.Tree(ref, p)
+					if err != nil && err != ggit.ErrRevisionNotExist {
+						_, _ = s.Write([]byte(err.Error()))
+						_ = s.Exit(1)
+						return
+					}
+					if err == ggit.ErrRevisionNotExist {
+						_, _ = s.Write([]byte(git.ErrFileNotFound.Error()))
+						_ = s.Exit(1)
+						return
+					}
+					ents, err := t.Entries()
+					if err != nil {
+						fc, _, err := rs.LatestFile(p)
 						if err != nil {
 							_, _ = s.Write([]byte(err.Error()))
 							_ = s.Exit(1)
@@ -118,20 +113,19 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 						}
 						s.Write([]byte(fc))
 					} else {
-						ents := entries(t.Entries)
-						sort.Sort(ents)
+						ents.Sort()
 						for _, e := range ents {
-							m, _ := e.Mode.ToOSFileMode()
+							m := e.Mode()
 							if m == 0 {
 								s.Write([]byte(strings.Repeat(" ", 10)))
 							} else {
 								s.Write([]byte(filemodeStyle.Render(m.String())))
 							}
 							s.Write([]byte(" "))
-							if e.Mode.IsFile() {
-								s.Write([]byte(filenameStyle.Render(e.Name)))
+							if !e.IsTree() {
+								s.Write([]byte(filenameStyle.Render(e.Name())))
 							} else {
-								s.Write([]byte(dirnameStyle.Render(e.Name)))
+								s.Write([]byte(dirnameStyle.Render(e.Name())))
 							}
 							s.Write([]byte("\n"))
 						}
@@ -177,7 +171,7 @@ func withFormatting(p, c string) (string, error) {
 		Language: lang,
 	}
 	r := strings.Builder{}
-	styles := types.DefaultStyles()
+	styles := common.DefaultStyles()
 	styles.CodeBlock.Margin = &zero
 	rctx := gansi.NewRenderContext(gansi.Options{
 		Styles:       styles,

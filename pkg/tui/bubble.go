@@ -1,15 +1,15 @@
-package git
+package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/about"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/log"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/refs"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/tree"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/tui/about"
+	"github.com/charmbracelet/soft-serve/pkg/tui/common"
+	"github.com/charmbracelet/soft-serve/pkg/tui/log"
+	"github.com/charmbracelet/soft-serve/pkg/tui/refs"
+	"github.com/charmbracelet/soft-serve/pkg/tui/tree"
 )
 
 const (
@@ -27,17 +27,17 @@ const (
 
 type Bubble struct {
 	state        state
-	repo         types.Repo
+	repo         common.GitRepo
 	height       int
 	heightMargin int
 	width        int
 	widthMargin  int
 	style        *style.Styles
 	boxes        []tea.Model
-	ref          *plumbing.Reference
+	ref          *git.Reference
 }
 
-func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int) *Bubble {
+func NewBubble(repo common.GitRepo, styles *style.Styles, width, wm, height, hm int) *Bubble {
 	b := &Bubble{
 		repo:         repo,
 		state:        aboutState,
@@ -47,7 +47,6 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int)
 		heightMargin: hm,
 		style:        styles,
 		boxes:        make([]tea.Model, 4),
-		ref:          repo.GetHEAD(),
 	}
 	heightMargin := hm + lipgloss.Height(b.headerView())
 	b.boxes[aboutState] = about.NewBubble(repo, b.style, b.width, wm, b.height, heightMargin)
@@ -106,20 +105,20 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, tea.Batch(cmds...)
 }
 
-func (b *Bubble) Help() []types.HelpEntry {
-	h := []types.HelpEntry{}
-	h = append(h, b.boxes[b.state].(types.BubbleHelper).Help()...)
+func (b *Bubble) Help() []common.HelpEntry {
+	h := []common.HelpEntry{}
+	h = append(h, b.boxes[b.state].(common.BubbleHelper).Help()...)
 	if b.repo.Name() != "config" {
-		h = append(h, types.HelpEntry{Key: "R", Value: "readme"})
-		h = append(h, types.HelpEntry{Key: "F", Value: "files"})
-		h = append(h, types.HelpEntry{Key: "C", Value: "commits"})
-		h = append(h, types.HelpEntry{Key: "B", Value: "branches"})
+		h = append(h, common.HelpEntry{Key: "R", Value: "readme"})
+		h = append(h, common.HelpEntry{Key: "F", Value: "files"})
+		h = append(h, common.HelpEntry{Key: "C", Value: "commits"})
+		h = append(h, common.HelpEntry{Key: "B", Value: "branches"})
 	}
 	return h
 }
 
-func (b *Bubble) Reference() plumbing.ReferenceName {
-	return b.ref.Name()
+func (b *Bubble) Reference() *git.Reference {
+	return b.ref
 }
 
 func (b *Bubble) headerView() string {
@@ -133,6 +132,11 @@ func (b *Bubble) View() string {
 }
 
 func (b *Bubble) setupCmd() tea.Msg {
+	head, err := b.repo.HEAD()
+	if err != nil {
+		return common.ErrMsg{Err: err}
+	}
+	b.ref = head
 	cmds := make([]tea.Cmd, 0)
 	for _, bx := range b.boxes {
 		if bx != nil {
@@ -140,7 +144,7 @@ func (b *Bubble) setupCmd() tea.Msg {
 			if initCmd != nil {
 				msg := initCmd()
 				switch msg := msg.(type) {
-				case types.ErrMsg:
+				case common.ErrMsg:
 					return msg
 				}
 			}

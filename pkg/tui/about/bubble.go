@@ -3,26 +3,26 @@ package about
 import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/refs"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
-	vp "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/viewport"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/tui/common"
+	"github.com/charmbracelet/soft-serve/pkg/tui/refs"
+	vp "github.com/charmbracelet/soft-serve/pkg/tui/viewport"
 	"github.com/muesli/reflow/wrap"
 )
 
 type Bubble struct {
 	readmeViewport *vp.ViewportBubble
-	repo           types.Repo
+	repo           common.GitRepo
 	styles         *style.Styles
 	height         int
 	heightMargin   int
 	width          int
 	widthMargin    int
-	ref            *plumbing.Reference
+	ref            *git.Reference
 }
 
-func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int) *Bubble {
+func NewBubble(repo common.GitRepo, styles *style.Styles, width, wm, height, hm int) *Bubble {
 	b := &Bubble{
 		readmeViewport: &vp.ViewportBubble{
 			Viewport: &viewport.Model{},
@@ -31,13 +31,12 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, wm, height, hm int)
 		styles:       styles,
 		widthMargin:  wm,
 		heightMargin: hm,
-		ref:          repo.GetHEAD(),
 	}
 	b.SetSize(width, height)
 	return b
 }
 func (b *Bubble) Init() tea.Cmd {
-	return b.setupCmd
+	return b.reset
 }
 
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -56,11 +55,11 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "R":
-			b.GotoTop()
+			return b, b.reset
 		}
 	case refs.RefMsg:
 		b.ref = msg
-		return b, b.setupCmd
+		return b, b.reset
 	}
 	rv, cmd := b.readmeViewport.Update(msg)
 	b.readmeViewport = rv.(*vp.ViewportBubble)
@@ -83,17 +82,17 @@ func (b *Bubble) View() string {
 	return b.readmeViewport.View()
 }
 
-func (b *Bubble) Help() []types.HelpEntry {
+func (b *Bubble) Help() []common.HelpEntry {
 	return nil
 }
 
 func (b *Bubble) glamourize() (string, error) {
 	w := b.width - b.widthMargin - b.styles.RepoBody.GetHorizontalFrameSize()
-	rm := b.repo.GetReadme()
+	rm, rp := b.repo.Readme()
 	if rm == "" {
 		return b.styles.AboutNoReadme.Render("No readme found."), nil
 	}
-	f, err := types.RenderFile(b.repo.GetReadmePath(), rm, w)
+	f, err := common.RenderFile(rp, rm, w)
 	if err != nil {
 		return "", err
 	}
@@ -107,11 +106,16 @@ func (b *Bubble) glamourize() (string, error) {
 	return wrap.String(f, w), nil
 }
 
-func (b *Bubble) setupCmd() tea.Msg {
+func (b *Bubble) reset() tea.Msg {
 	md, err := b.glamourize()
 	if err != nil {
-		return types.ErrMsg{Err: err}
+		return common.ErrMsg{Err: err}
 	}
+	head, err := b.repo.HEAD()
+	if err != nil {
+		return common.ErrMsg{Err: err}
+	}
+	b.ref = head
 	b.readmeViewport.Viewport.SetContent(md)
 	b.GotoTop()
 	return nil

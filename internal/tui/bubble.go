@@ -7,10 +7,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/internal/config"
-	gittypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/repo"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/selection"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
+	"github.com/charmbracelet/soft-serve/pkg/tui/common"
 	"github.com/gliderlabs/ssh"
 )
 
@@ -157,19 +157,19 @@ func (b Bubble) headerView() string {
 
 func (b Bubble) footerView() string {
 	w := &strings.Builder{}
-	var h []gittypes.HelpEntry
+	var h []common.HelpEntry
 	if b.state != errorState {
-		h = []gittypes.HelpEntry{
+		h = []common.HelpEntry{
 			{Key: "tab", Value: "section"},
 		}
-		if box, ok := b.boxes[b.activeBox].(gittypes.BubbleHelper); ok {
+		if box, ok := b.boxes[b.activeBox].(common.BubbleHelper); ok {
 			help := box.Help()
 			for _, he := range help {
 				h = append(h, he)
 			}
 		}
 	}
-	h = append(h, gittypes.HelpEntry{Key: "q", Value: "quit"})
+	h = append(h, common.HelpEntry{Key: "q", Value: "quit"})
 	for i, v := range h {
 		fmt.Fprint(w, helpEntryRender(v, b.styles))
 		if i != len(h)-1 {
@@ -178,13 +178,14 @@ func (b Bubble) footerView() string {
 	}
 	branch := ""
 	if b.state == loadedState {
-		branch = b.boxes[1].(*repo.Bubble).Reference().Short()
+		ref := b.boxes[1].(*repo.Bubble).Reference()
+		branch = ref.Name().Short()
 	}
 	help := w.String()
 	branchMaxWidth := b.width - // bubble width
 		lipgloss.Width(help) - // help width
 		b.styles.App.GetHorizontalFrameSize() // App paddings
-	branch = b.styles.Branch.Render(gittypes.TruncateString(branch, branchMaxWidth-1, "…"))
+	branch = b.styles.Branch.Render(common.TruncateString(branch, branchMaxWidth-1, "…"))
 	gap := lipgloss.NewStyle().
 		Width(b.width -
 			lipgloss.Width(help) -
@@ -228,6 +229,6 @@ func (b Bubble) View() string {
 	return b.styles.App.Render(s.String())
 }
 
-func helpEntryRender(h gittypes.HelpEntry, s *style.Styles) string {
+func helpEntryRender(h common.HelpEntry, s *style.Styles) string {
 	return fmt.Sprintf("%s %s", s.HelpKey.Render(h.Key), s.HelpValue.Render(h.Value))
 }

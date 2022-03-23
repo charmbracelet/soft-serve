@@ -5,9 +5,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	gitypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/repo"
 	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/selection"
+	"github.com/charmbracelet/soft-serve/pkg/tui/common"
 	gm "github.com/charmbracelet/wish/git"
 )
 
@@ -110,7 +110,7 @@ func (b *Bubble) newMenuEntry(name string, rn string) (MenuEntry, error) {
 	initCmd := rb.Init()
 	msg := initCmd()
 	switch msg := msg.(type) {
-	case gitypes.ErrMsg:
+	case common.ErrMsg:
 		return me, fmt.Errorf("missing %s: %s", me.Repo, msg.Err.Error())
 	}
 	me.bubble = rb

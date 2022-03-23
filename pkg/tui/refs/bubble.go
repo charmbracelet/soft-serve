@@ -7,19 +7,19 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/tui/common"
 )
 
-type RefMsg = *plumbing.Reference
+type RefMsg = *git.Reference
 
 type item struct {
-	*plumbing.Reference
+	*git.Reference
 }
 
 func (i item) Short() string {
-	return i.Name().Short()
+	return i.Reference.Name().Short()
 }
 
 func (i item) FilterValue() string { return i.Short() }
@@ -29,7 +29,7 @@ type items []item
 func (cl items) Len() int      { return len(cl) }
 func (cl items) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
 func (cl items) Less(i, j int) bool {
-	return cl[i].Name().Short() < cl[j].Name().Short()
+	return cl[i].Short() < cl[j].Short()
 }
 
 type itemDelegate struct {
@@ -47,7 +47,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	ref := i.Short()
-	if i.Name().IsTag() {
+	if i.Reference.IsTag() {
 		ref = s.RefItemTag.Render(ref)
 	}
 	ref = s.RefItemBranch.Render(ref)
@@ -55,7 +55,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		s.RefItemSelector.GetMarginLeft() -
 		s.RefItemSelector.GetWidth() -
 		s.RefItemInactive.GetMarginLeft()
-	ref = types.TruncateString(ref, refMaxWidth, "…")
+	ref = common.TruncateString(ref, refMaxWidth, "…")
 	if index == m.Index() {
 		fmt.Fprint(w, s.RefItemSelector.Render(">")+
 			s.RefItemActive.Render(ref))
@@ -66,17 +66,21 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type Bubble struct {
-	repo         types.Repo
+	repo         common.GitRepo
 	list         list.Model
 	style        *style.Styles
 	width        int
 	widthMargin  int
 	height       int
 	heightMargin int
-	ref          *plumbing.Reference
+	ref          *git.Reference
 }
 
-func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
+func NewBubble(repo common.GitRepo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
+	head, err := repo.HEAD()
+	if err != nil {
+		return nil
+	}
 	l := list.NewModel([]list.Item{}, itemDelegate{styles}, width-widthMargin, height-heightMargin)
 	l.SetShowFilter(false)
 	l.SetShowHelp(false)
@@ -93,13 +97,13 @@ func NewBubble(repo types.Repo, styles *style.Styles, width, widthMargin, height
 		widthMargin:  widthMargin,
 		heightMargin: heightMargin,
 		list:         l,
-		ref:          repo.GetHEAD(),
+		ref:          head,
 	}
 	b.SetSize(width, height)
 	return b
 }
 
-func (b *Bubble) SetBranch(ref *plumbing.Reference) (tea.Model, tea.Cmd) {
+func (b *Bubble) SetBranch(ref *git.Reference) (tea.Model, tea.Cmd) {
 	b.ref = ref
 	return b, func() tea.Msg {
 		return RefMsg(ref)
@@ -123,21 +127,21 @@ func (b *Bubble) SetSize(width, height int) {
 	b.list.Styles.PaginationStyle = b.style.RefPaginator.Copy().Width(width - b.widthMargin)
 }
 
-func (b *Bubble) Help() []types.HelpEntry {
+func (b *Bubble) Help() []common.HelpEntry {
 	return nil
 }
 
 func (b *Bubble) updateItems() tea.Cmd {
 	its := make(items, 0)
 	tags := make(items, 0)
-	for _, r := range b.repo.GetReferences() {
-		if r.Type() != plumbing.HashReference {
-			continue
-		}
-		n := r.Name()
-		if n.IsTag() {
+	refs, err := b.repo.References()
+	if err != nil {
+		return func() tea.Msg { return common.ErrMsg{Err: err} }
+	}
+	for _, r := range refs {
+		if r.IsTag() {
 			tags = append(tags, item{r})
-		} else if n.IsBranch() {
+		} else if r.IsBranch() {
 			its = append(its, item{r})
 		}
 	}
