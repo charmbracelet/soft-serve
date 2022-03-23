@@ -56,6 +56,9 @@ func (b *Bubble) Init() tea.Cmd {
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		if msg.Width == b.width && msg.Height == b.height {
+			return b, nil
+		}
 		b.width = msg.Width
 		b.height = msg.Height
 	}
