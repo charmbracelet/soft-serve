@@ -91,6 +91,42 @@ type DiffFile struct {
 	Sections []*DiffSection
 }
 
+type DiffFileChange struct {
+	hash string
+	name string
+	mode git.EntryMode
+}
+
+func (f *DiffFileChange) Hash() string {
+	return f.hash
+}
+
+func (f *DiffFileChange) Name() string {
+	return f.name
+}
+
+func (f *DiffFileChange) Mode() git.EntryMode {
+	return f.mode
+}
+
+func (f *DiffFile) Files() (from *DiffFileChange, to *DiffFileChange) {
+	if f.OldIndex != ZeroHash.String() {
+		from = &DiffFileChange{
+			hash: f.OldIndex,
+			name: f.OldName(),
+			mode: f.OldMode,
+		}
+	}
+	if f.Index != ZeroHash.String() {
+		to = &DiffFileChange{
+			hash: f.Index,
+			name: f.Name,
+			mode: f.Mode,
+		}
+	}
+	return
+}
+
 // FileStats
 type FileStats []*DiffFile
 
@@ -197,10 +233,91 @@ func (d *Diff) Stats() FileStats {
 	return d.Files
 }
 
+const (
+	dstPrefix = "b/"
+	srcPrefix = "a/"
+)
+
+func appendPathLines(lines []string, fromPath, toPath string, isBinary bool) []string {
+	if isBinary {
+		return append(lines,
+			fmt.Sprintf("Binary files %s and %s differ", fromPath, toPath),
+		)
+	}
+	return append(lines,
+		fmt.Sprintf("--- %s", fromPath),
+		fmt.Sprintf("+++ %s", toPath),
+	)
+}
+
+func writeFilePatchHeader(sb *strings.Builder, filePatch *DiffFile) {
+	from, to := filePatch.Files()
+	if from == nil && to == nil {
+		return
+	}
+	isBinary := filePatch.IsBinary()
+
+	var lines []string
+	switch {
+	case from != nil && to != nil:
+		hashEquals := from.Hash() == to.Hash()
+		lines = append(lines,
+			fmt.Sprintf("diff --git %s%s %s%s",
+				srcPrefix, from.Name(), dstPrefix, to.Name()),
+		)
+		if from.Mode() != to.Mode() {
+			lines = append(lines,
+				fmt.Sprintf("old mode %o", from.Mode()),
+				fmt.Sprintf("new mode %o", to.Mode()),
+			)
+		}
+		if from.Name() != to.Name() {
+			lines = append(lines,
+				fmt.Sprintf("rename from %s", from.Name()),
+				fmt.Sprintf("rename to %s", to.Name()),
+			)
+		}
+		if from.Mode() != to.Mode() && !hashEquals {
+			lines = append(lines,
+				fmt.Sprintf("index %s..%s", from.Hash(), to.Hash()),
+			)
+		} else if !hashEquals {
+			lines = append(lines,
+				fmt.Sprintf("index %s..%s %o", from.Hash(), to.Hash(), from.Mode()),
+			)
+		}
+		if !hashEquals {
+			lines = appendPathLines(lines, srcPrefix+from.Name(), dstPrefix+to.Name(), isBinary)
+		}
+	case from == nil:
+		lines = append(lines,
+			fmt.Sprintf("diff --git %s %s", srcPrefix+to.Name(), dstPrefix+to.Name()),
+			fmt.Sprintf("new file mode %o", to.Mode()),
+			fmt.Sprintf("index %s..%s", ZeroHash, to.Hash()),
+		)
+		lines = appendPathLines(lines, "/dev/null", dstPrefix+to.Name(), isBinary)
+	case to == nil:
+		lines = append(lines,
+			fmt.Sprintf("diff --git %s %s", srcPrefix+from.Name(), dstPrefix+from.Name()),
+			fmt.Sprintf("deleted file mode %o", from.Mode()),
+			fmt.Sprintf("index %s..%s", from.Hash(), ZeroHash),
+		)
+		lines = appendPathLines(lines, srcPrefix+from.Name(), "/dev/null", isBinary)
+	}
+
+	sb.WriteString(lines[0])
+	for _, line := range lines[1:] {
+		sb.WriteByte('\n')
+		sb.WriteString(line)
+	}
+	sb.WriteByte('\n')
+}
+
 // Patch returns the diff as a patch.
 func (d *Diff) Patch() string {
 	var p strings.Builder
 	for _, f := range d.Files {
+		writeFilePatchHeader(&p, f)
 		for _, s := range f.Sections {
 			for _, l := range s.Lines {
 				p.WriteString(s.diffFor(l))

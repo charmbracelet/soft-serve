@@ -201,6 +201,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		b.SetSize(msg.Width, msg.Height)
+		cmds = append(cmds, b.updateItems())
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -256,8 +257,6 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (b *Bubble) loadPatch(c *git.Commit) error {
 	var patch strings.Builder
 	style := b.style.LogCommit.Copy().Width(b.width - b.widthMargin - b.style.LogCommit.GetHorizontalFrameSize())
-	// ctx, cancel := context.WithTimeout(context.TODO(), types.MaxPatchWait)
-	// defer cancel()
 	p, err := b.repo.Diff(c)
 	if err != nil {
 		return err

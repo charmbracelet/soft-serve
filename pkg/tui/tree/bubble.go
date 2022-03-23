@@ -187,7 +187,8 @@ func (b *Bubble) Help() []utils.HelpEntry {
 }
 
 func (b *Bubble) updateItems() tea.Cmd {
-	its := make(items, 0)
+	files := make([]list.Item, 0)
+	dirs := make([]list.Item, 0)
 	t, err := b.repo.Tree(b.ref, b.path)
 	if err != nil {
 		return func() tea.Msg { return utils.ErrMsg{Err: err} }
@@ -196,17 +197,15 @@ func (b *Bubble) updateItems() tea.Cmd {
 	if err != nil {
 		return func() tea.Msg { return utils.ErrMsg{Err: err} }
 	}
-	for _, e := range ents {
-		its = append(its, item{
-			entry: e,
-		})
-	}
 	ents.Sort()
-	itt := make([]list.Item, len(its))
-	for i, it := range its {
-		itt[i] = it
+	for _, e := range ents {
+		if e.IsTree() {
+			dirs = append(dirs, item{e})
+		} else {
+			files = append(files, item{e})
+		}
 	}
-	cmd := b.list.SetItems(itt)
+	cmd := b.list.SetItems(append(dirs, files...))
 	b.list.Select(0)
 	return cmd
 }

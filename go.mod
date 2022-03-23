@@ -2,6 +2,8 @@ module github.com/charmbracelet/soft-serve
 
 go 1.17
 
+replace github.com/gogs/git-module => github.com/aymanbagabas/git-module v1.4.1-0.20220323174438-3456060463eb
+
 require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/caarlos0/env/v6 v6.9.1
