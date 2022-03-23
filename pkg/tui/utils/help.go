@@ -1,4 +1,4 @@
-package types
+package utils
 
 type BubbleHelper interface {
 	Help() []HelpEntry

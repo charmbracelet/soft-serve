@@ -1,24 +1,15 @@
 package git
 
 import (
-	"context"
 	"errors"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"sort"
 	"sync"
 
-	gitypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
-	"github.com/go-git/go-billy/v5/memfs"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/storer"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/charmbracelet/soft-serve/pkg/git"
 	"github.com/gobwas/glob"
+	"github.com/golang/groupcache/lru"
 )
 
 // ErrMissingRepo indicates that the requested repository could not be found.
@@ -28,14 +19,20 @@ var ErrMissingRepo = errors.New("missing repo")
 type Repo struct {
 	path       string
 	repository *git.Repository
-	Readme     string
-	ReadmePath string
-	refCommits map[plumbing.Hash]gitypes.Commits
-	head       *plumbing.Reference
-	refs       []*plumbing.Reference
-	trees      map[plumbing.Hash]*object.Tree
-	commits    map[plumbing.Hash]*object.Commit
-	patch      map[plumbing.Hash]*object.Patch
+	readme     string
+	readmePath string
+	head       *git.Reference
+	refs       []*git.Reference
+	patchCache *lru.Cache
+}
+
+func (rs *RepoSource) Open(path string) (*git.Repository, error) {
+	return git.Open(path)
+}
+
+// Path returns the path to the repository.
+func (r *Repo) Path() string {
+	return r.path
 }
 
 // GetName returns the name of the repository.
@@ -43,180 +40,85 @@ func (r *Repo) Name() string {
 	return filepath.Base(r.path)
 }
 
-// GetHEAD returns the reference for a repository.
-func (r *Repo) GetHEAD() *plumbing.Reference {
-	return r.head
+func (r *Repo) Readme() (readme string, path string) {
+	return r.readme, r.readmePath
 }
 
-// SetHEAD sets the repository head reference.
-func (r *Repo) SetHEAD(ref *plumbing.Reference) error {
-	r.head = ref
-	return nil
+func (r *Repo) SetReadme(readme, path string) {
+	r.readme = readme
+	r.readmePath = path
+}
+
+// HEAD returns the reference for a repository.
+func (r *Repo) HEAD() (*git.Reference, error) {
+	if r.head != nil {
+		return r.head, nil
+	}
+	h, err := r.repository.HEAD()
+	if err != nil {
+		return nil, err
+	}
+	r.head = h
+	return h, nil
 }
 
 // GetReferences returns the references for a repository.
-func (r *Repo) GetReferences() []*plumbing.Reference {
-	return r.refs
-}
-
-// GetRepository returns the underlying go-git repository object.
-func (r *Repo) Repository() *git.Repository {
-	return r.repository
+func (r *Repo) References() ([]*git.Reference, error) {
+	if r.refs != nil {
+		return r.refs, nil
+	}
+	refs, err := r.repository.References()
+	if err != nil {
+		return nil, err
+	}
+	r.refs = refs
+	return refs, nil
 }
 
 // Tree returns the git tree for a given path.
-func (r *Repo) Tree(ref *plumbing.Reference, path string) (*object.Tree, error) {
-	path = filepath.Clean(path)
-	hash, err := r.targetHash(ref)
-	if err != nil {
-		return nil, err
-	}
-	c, err := r.commitForHash(hash)
-	if err != nil {
-		return nil, err
-	}
-	t, err := r.treeForHash(c.TreeHash)
-	if err != nil {
-		return nil, err
-	}
-	if path == "." {
-		return t, nil
-	}
-	return t.Tree(path)
+func (r *Repo) Tree(ref *git.Reference, path string) (*git.Tree, error) {
+	return r.repository.TreePath(ref, path)
 }
 
-func (r *Repo) treeForHash(treeHash plumbing.Hash) (*object.Tree, error) {
-	var err error
-	t, ok := r.trees[treeHash]
-	if !ok {
-		t, err = r.repository.TreeObject(treeHash)
-		if err != nil {
-			return nil, err
-		}
-		r.trees[treeHash] = t
-	}
-	return t, nil
-}
-
-func (r *Repo) commitForHash(hash plumbing.Hash) (*object.Commit, error) {
-	var err error
-	co, ok := r.commits[hash]
-	if !ok {
-		co, err = r.repository.CommitObject(hash)
-		if err != nil {
-			return nil, err
-		}
-		r.commits[hash] = co
-	}
-	return co, nil
-}
-
-// PatchCtx returns the patch for a given commit.
-func (r *Repo) PatchCtx(ctx context.Context, commit *object.Commit) (*object.Patch, error) {
-	hash := commit.Hash
-	p, ok := r.patch[hash]
-	if !ok {
-		c, err := r.commitForHash(hash)
-		if err != nil {
-			return nil, err
-		}
-		// Using commit trees fixes the issue when generating diff for the first commit
-		// https://github.com/go-git/go-git/issues/281
-		tree, err := r.treeForHash(c.TreeHash)
-		if err != nil {
-			return nil, err
-		}
-		var parent *object.Commit
-		parentTree := &object.Tree{}
-		if c.NumParents() > 0 {
-			parent, err = r.commitForHash(c.ParentHashes[0])
-			if err != nil {
-				return nil, err
-			}
-			parentTree, err = r.treeForHash(parent.TreeHash)
-			if err != nil {
-				return nil, err
-			}
-		}
-		p, err = parentTree.PatchContext(ctx, tree)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return p, nil
-}
-
-// GetCommits returns the commits for a repository.
-func (r *Repo) GetCommits(ref *plumbing.Reference) (gitypes.Commits, error) {
-	hash, err := r.targetHash(ref)
-	if err != nil {
-		return nil, err
-	}
-	// return cached commits if available
-	commits, ok := r.refCommits[hash]
+// Diff returns the diff for a given commit.
+func (r *Repo) Diff(commit *git.Commit) (*git.Diff, error) {
+	hash := commit.Hash.String()
+	c, ok := r.patchCache.Get(hash)
 	if ok {
-		return commits, nil
+		return c.(*git.Diff), nil
 	}
-	commits = gitypes.Commits{}
-	co, err := r.commitForHash(hash)
+	diff, err := r.repository.Diff(commit)
 	if err != nil {
 		return nil, err
 	}
-	// traverse the commit tree to get all commits
-	commits = append(commits, co)
-	for co.NumParents() > 0 {
-		co, err = r.commitForHash(co.ParentHashes[0])
-		if err != nil {
-			return nil, err
-		}
-		commits = append(commits, co)
-	}
+	r.patchCache.Add(hash, diff)
+	return diff, nil
+}
+
+// CountCommits returns the number of commits for a repository.
+func (r *Repo) CountCommits(ref *git.Reference) (int64, error) {
+	tc, err := r.repository.CountCommits(ref)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	sort.Sort(commits)
-	// cache the commits in the repo
-	r.refCommits[hash] = commits
-	return commits, nil
+	return tc, nil
 }
 
-// targetHash returns the target hash for a given reference. If reference is an
-// annotated tag, find the target hash for that tag.
-func (r *Repo) targetHash(ref *plumbing.Reference) (plumbing.Hash, error) {
-	hash := ref.Hash()
-	if ref.Type() != plumbing.HashReference {
-		return plumbing.ZeroHash, plumbing.ErrInvalidType
-	}
-	if ref.Name().IsTag() {
-		to, err := r.repository.TagObject(hash)
-		switch err {
-		case nil:
-			// annotated tag (object has a target hash)
-			hash = to.Target
-		case plumbing.ErrObjectNotFound:
-			// lightweight tag (hash points to a commit)
-		default:
-			return plumbing.ZeroHash, err
-		}
-	}
-	return hash, nil
+// CommitsByPage returns the commits for a repository.
+func (r *Repo) CommitsByPage(ref *git.Reference, page, size int) (git.Commits, error) {
+	return r.repository.CommitsByPage(ref, page, size)
 }
 
-// GetReadme returns the readme for a repository.
-func (r *Repo) GetReadme() string {
-	return r.Readme
-}
-
-// GetReadmePath returns the path to the readme for a repository.
-func (r *Repo) GetReadmePath() string {
-	return r.ReadmePath
+// Push pushes the repository to the remote.
+func (r *Repo) Push(remote, branch string) error {
+	return r.repository.Push(remote, branch)
 }
 
 // RepoSource is a reference to an on-disk repositories.
 type RepoSource struct {
 	Path  string
 	mtx   sync.Mutex
-	repos []*Repo
+	repos map[string]*Repo
 }
 
 // NewRepoSource creates a new RepoSource.
@@ -226,6 +128,7 @@ func NewRepoSource(repoPath string) *RepoSource {
 		log.Fatal(err)
 	}
 	rs := &RepoSource{Path: repoPath}
+	rs.repos = make(map[string]*Repo, 0)
 	return rs
 }
 
@@ -233,19 +136,22 @@ func NewRepoSource(repoPath string) *RepoSource {
 func (rs *RepoSource) AllRepos() []*Repo {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
-	return rs.repos
+	repos := make([]*Repo, 0, len(rs.repos))
+	for _, r := range rs.repos {
+		repos = append(repos, r)
+	}
+	return repos
 }
 
 // GetRepo returns a repository by name.
 func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
-	for _, r := range rs.repos {
-		if filepath.Base(r.path) == name {
-			return r, nil
-		}
+	r, ok := rs.repos[name]
+	if !ok {
+		return nil, ErrMissingRepo
 	}
-	return nil, ErrMissingRepo
+	return r, nil
 }
 
 // InitRepo initializes a new Git repository.
@@ -253,142 +159,108 @@ func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	rp := filepath.Join(rs.Path, name)
-	rg, err := git.PlainInit(rp, bare)
+	_, err := git.Init(rp, bare)
 	if err != nil {
 		return nil, err
 	}
 	if bare {
-		// Clone repo into memory storage
-		ar, err := git.Clone(memory.NewStorage(), memfs.New(), &git.CloneOptions{
-			URL: rp,
-		})
-		if err != nil && err != transport.ErrEmptyRemoteRepository {
+		temp, err := os.MkdirTemp("", name)
+		if err != nil {
 			return nil, err
 		}
-		rg = ar
+		err = git.Clone(rp, temp)
+		if err != nil {
+			return nil, err
+		}
+		rp = temp
+	}
+	rg, err := git.Open(rp)
+	if err != nil {
+		return nil, err
 	}
 	r := &Repo{
 		path:       rp,
 		repository: rg,
 	}
-	rs.repos = append(rs.repos, r)
+	rs.repos[name] = r
 	return r, nil
+}
+
+// LoadRepo loads a repository from disk.
+func (rs *RepoSource) LoadRepo(name string) error {
+	rs.mtx.Lock()
+	defer rs.mtx.Unlock()
+	rp := filepath.Join(rs.Path, name)
+	rg, err := rs.Open(rp)
+	if err != nil {
+		return err
+	}
+	r, err := rs.loadRepo(rp, rg)
+	if err != nil {
+		return err
+	}
+	rs.repos[name] = r
+	return nil
 }
 
 // LoadRepos opens Git repositories.
 func (rs *RepoSource) LoadRepos() error {
-	rs.mtx.Lock()
-	defer rs.mtx.Unlock()
 	rd, err := os.ReadDir(rs.Path)
 	if err != nil {
 		return err
 	}
-	rs.repos = make([]*Repo, 0)
 	for _, de := range rd {
-		rp := filepath.Join(rs.Path, de.Name())
-		rg, err := git.PlainOpen(rp)
+		err = rs.LoadRepo(de.Name())
 		if err != nil {
 			return err
 		}
-		r, err := rs.loadRepo(rp, rg)
-		if err != nil {
-			return err
-		}
-		rs.repos = append(rs.repos, r)
 	}
 	return nil
 }
 
-func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (*Repo, error) {
-	r := &Repo{
+func (rs *RepoSource) loadRepo(path string, rg *git.Repository) (r *Repo, err error) {
+	r = &Repo{
 		path:       path,
 		repository: rg,
-		patch:      make(map[plumbing.Hash]*object.Patch),
+		patchCache: lru.New(1000),
 	}
-	r.commits = make(map[plumbing.Hash]*object.Commit)
-	r.trees = make(map[plumbing.Hash]*object.Tree)
-	r.refCommits = make(map[plumbing.Hash]gitypes.Commits)
-	ref, err := rg.Head()
+	_, err = r.HEAD()
 	if err != nil {
 		return nil, err
 	}
-	r.head = ref
-	l, err := r.repository.Log(&git.LogOptions{All: true})
+	_, err = r.References()
 	if err != nil {
 		return nil, err
 	}
-	err = l.ForEach(func(c *object.Commit) error {
-		r.commits[c.Hash] = c
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	refs := make([]*plumbing.Reference, 0)
-	ri, err := rg.References()
-	if err != nil {
-		return nil, err
-	}
-	ri.ForEach(func(r *plumbing.Reference) error {
-		refs = append(refs, r)
-		return nil
-	})
-	r.refs = refs
-	return r, nil
-}
-
-// FindLatestFile returns the latest file for a given path.
-func (r *Repo) FindLatestFile(pattern string) (*object.File, error) {
-	g, err := glob.Compile(pattern)
-	if err != nil {
-		return nil, err
-	}
-	c, err := r.commitForHash(r.head.Hash())
-	if err != nil {
-		return nil, err
-	}
-	fi, err := c.Files()
-	if err != nil {
-		return nil, err
-	}
-	var f *object.File
-	err = fi.ForEach(func(ff *object.File) error {
-		if g.Match(ff.Name) {
-			f = ff
-			return storer.ErrStop
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if f == nil {
-		return nil, object.ErrFileNotFound
-	}
-	return f, nil
+	return
 }
 
 // LatestFile returns the contents of the latest file at the specified path in the repository.
-func (r *Repo) LatestFile(pattern string) (string, error) {
-	f, err := r.FindLatestFile(pattern)
+func (r *Repo) LatestFile(pattern string) (string, string, error) {
+	g := glob.MustCompile(pattern)
+	dir := filepath.Dir(pattern)
+	t, err := r.repository.TreePath(r.head, dir)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	content, err := f.Contents()
+	ents, err := t.Entries()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return content, nil
-}
-
-// LatestTree returns the latest tree at the specified path in the repository.
-func (r *Repo) LatestTree(path string) (*object.Tree, error) {
-	return r.Tree(r.head, path)
+	for _, e := range ents {
+		fp := filepath.Join(dir, e.Name())
+		if g.Match(fp) {
+			bts, err := e.Contents()
+			if err != nil {
+				return "", "", err
+			}
+			return string(bts), fp, nil
+		}
+	}
+	return "", "", git.ErrFileNotFound
 }
 
 // UpdateServerInfo updates the server info for the repository.
 func (r *Repo) UpdateServerInfo() error {
-	cmd := exec.Command("git", "update-server-info")
-	cmd.Dir = r.path
-	return cmd.Run()
+	return r.repository.UpdateServerInfo()
 }
