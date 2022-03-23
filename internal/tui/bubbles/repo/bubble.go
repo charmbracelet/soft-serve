@@ -6,10 +6,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	gitui "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git"
-	gittypes "github.com/charmbracelet/soft-serve/internal/tui/bubbles/git/types"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	gitui "github.com/charmbracelet/soft-serve/pkg/tui"
+	"github.com/charmbracelet/soft-serve/pkg/tui/common"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/reflow/wrap"
 )
@@ -22,7 +22,7 @@ type Bubble struct {
 	name         string
 	host         string
 	port         int
-	repo         gittypes.Repo
+	repo         common.GitRepo
 	styles       *style.Styles
 	width        int
 	widthMargin  int
@@ -33,7 +33,7 @@ type Bubble struct {
 	Active bool
 }
 
-func NewBubble(repo gittypes.Repo, host string, port int, styles *style.Styles, width, wm, height, hm int) *Bubble {
+func NewBubble(repo common.GitRepo, host string, port int, styles *style.Styles, width, wm, height, hm int) *Bubble {
 	b := &Bubble{
 		name:         repo.Name(),
 		host:         host,
@@ -56,6 +56,9 @@ func (b *Bubble) Init() tea.Cmd {
 func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		if msg.Width == b.width && msg.Height == b.height {
+			return b, nil
+		}
 		b.width = msg.Width
 		b.height = msg.Height
 	}
@@ -64,7 +67,7 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, cmd
 }
 
-func (b *Bubble) Help() []gittypes.HelpEntry {
+func (b *Bubble) Help() []common.HelpEntry {
 	return b.box.Help()
 }
 
@@ -95,7 +98,7 @@ func (b Bubble) headerView() string {
 	note = b.styles.RepoNote.Copy().Width(noteWidth).Render(note)
 
 	// Render borders on name and command
-	height := gittypes.Max(lipgloss.Height(title), lipgloss.Height(note))
+	height := common.Max(lipgloss.Height(title), lipgloss.Height(note))
 	titleBoxStyle := b.styles.RepoTitleBox.Copy().Height(height)
 	noteBoxStyle := b.styles.RepoNoteBox.Copy().Height(height)
 	if b.Active {
@@ -121,7 +124,7 @@ func (b *Bubble) View() string {
 	return header + body
 }
 
-func (b *Bubble) Reference() plumbing.ReferenceName {
+func (b *Bubble) Reference() *git.Reference {
 	return b.box.Reference()
 }
 

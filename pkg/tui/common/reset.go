@@ -1,4 +1,4 @@
-package types
+package common
 
 import tea "github.com/charmbracelet/bubbletea"
 

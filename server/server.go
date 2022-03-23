@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/soft-serve/config"
 	appCfg "github.com/charmbracelet/soft-serve/internal/config"
 	"github.com/charmbracelet/soft-serve/internal/tui"
-
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
 	gm "github.com/charmbracelet/wish/git"

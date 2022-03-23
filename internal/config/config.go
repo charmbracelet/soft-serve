@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"log"
+	"path/filepath"
 	"strings"
 	"sync"
 	"text/template"
@@ -15,8 +16,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/internal/git"
-	gg "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
+	gg "github.com/gogs/git-module"
 )
 
 // Config is the Soft Serve configuration.
@@ -30,7 +30,7 @@ type Config struct {
 	Repos        []Repo `yaml:"repos"`
 	Source       *git.RepoSource
 	Cfg          *config.Config
-	reloadMtx    sync.Mutex
+	mtx          sync.Mutex
 }
 
 // User contains user-level configuration for a repository.
@@ -106,13 +106,17 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = c.Reload()
+	if err != nil {
+		return nil, err
+	}
 	return c, nil
 }
 
 // Reload reloads the configuration.
 func (cfg *Config) Reload() error {
-	cfg.reloadMtx.Lock()
-	defer cfg.reloadMtx.Unlock()
+	cfg.mtx.Lock()
+	defer cfg.mtx.Unlock()
 	err := cfg.Source.LoadRepos()
 	if err != nil {
 		return err
@@ -121,7 +125,7 @@ func (cfg *Config) Reload() error {
 	if err != nil {
 		return err
 	}
-	cs, err := cr.LatestFile("config.yaml")
+	cs, _, err := cr.LatestFile("config.yaml")
 	if err != nil {
 		return err
 	}
@@ -147,18 +151,8 @@ func (cfg *Config) Reload() error {
 			pat = rp
 		}
 		rm := ""
-		f, err := r.FindLatestFile(pat)
-		if err != nil && err != object.ErrFileNotFound {
-			return err
-		}
-		if err == nil {
-			fc, err := f.Contents()
-			if err != nil {
-				return err
-			}
-			rm = fc
-			r.ReadmePath = f.Name
-		}
+		fc, fp, _ := r.LatestFile(pat)
+		rm = fc
 		if name == "config" {
 			md, err := templatize(rm, cfg)
 			if err != nil {
@@ -166,7 +160,7 @@ func (cfg *Config) Reload() error {
 			}
 			rm = md
 		}
-		r.Readme = rm
+		r.SetReadme(rm, fp)
 	}
 	return nil
 }
@@ -187,21 +181,15 @@ func createFile(path string, content string) error {
 func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	cn := "config"
 	rs := cfg.Source
-	err := rs.LoadRepos()
-	if err != nil {
-		return err
-	}
-	_, err = rs.GetRepo(cn)
-	if err == git.ErrMissingRepo {
-		cr, err := rs.InitRepo(cn, true)
+	err := rs.LoadRepo(cn)
+	if os.IsNotExist(err) {
+		repo, err := rs.InitRepo(cn, true)
 		if err != nil {
 			return err
 		}
-		wt, err := cr.Repository().Worktree()
-		if err != nil {
-			return err
-		}
-		rm, err := wt.Filesystem.Create("README.md")
+		wt := repo.Path()
+		defer os.RemoveAll(wt)
+		rm, err := os.Create(filepath.Join(wt, "README.md"))
 		if err != nil {
 			return err
 		}
@@ -209,7 +197,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		cf, err := wt.Filesystem.Create("config.yaml")
+		cf, err := os.Create(filepath.Join(wt, "config.yaml"))
 		if err != nil {
 			return err
 		}
@@ -217,32 +205,25 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		_, err = wt.Add("README.md")
+		err = gg.Add(wt, gg.AddOptions{All: true})
 		if err != nil {
 			return err
 		}
-		_, err = wt.Add("config.yaml")
+		err = gg.CreateCommit(wt, &gg.Signature{
+			Name:  "Soft Serve Server",
+			Email: "vt100@charm.sh",
+		}, "Default init")
 		if err != nil {
 			return err
 		}
-		_, err = wt.Commit("Default init", &gg.CommitOptions{
-			All: true,
-			Author: &object.Signature{
-				Name:  "Soft Serve Server",
-				Email: "vt100@charm.sh",
-			},
-		})
-		if err != nil {
-			return err
-		}
-		err = cr.Repository().Push(&gg.PushOptions{})
+		err = repo.Push("origin", "master")
 		if err != nil {
 			return err
 		}
 	} else if err != nil {
 		return err
 	}
-	return cfg.Reload()
+	return nil
 }
 
 func (cfg *Config) isPrivate(repo string) bool {
