@@ -60,18 +60,19 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 
 	pks := make([]string, 0)
 	for _, k := range cfg.InitialAdminKeys {
-		var pk = strings.TrimSpace(k)
-		if pk != "" {
-			if bts, err := os.ReadFile(k); err == nil {
-				// pk is a file, set its contents as pk
-				pk = string(bts)
-			}
-			// it is a valid ssh key, nothing to do
-			if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pk)); err != nil {
-				return nil, fmt.Errorf("invalid initial admin key %q: %w", k, err)
-			}
-			pks = append(pks, pk)
+		if bts, err := os.ReadFile(k); err == nil {
+			// pk is a file, set its contents as pk
+			k = string(bts)
 		}
+		var pk = strings.TrimSpace(k)
+		if pk == "" {
+			continue
+		}
+		// it is a valid ssh key, nothing to do
+		if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pk)); err != nil {
+			return nil, fmt.Errorf("invalid initial admin key %q: %w", k, err)
+		}
+		pks = append(pks, pk)
 	}
 
 	rs := git.NewRepoSource(cfg.RepoPath)
