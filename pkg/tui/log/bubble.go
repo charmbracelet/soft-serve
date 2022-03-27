@@ -148,7 +148,6 @@ func (b *Bubble) reset() tea.Cmd {
 	b.count = count
 	b.state = logState
 	b.list.Select(0)
-	b.SetSize(b.width, b.height)
 	cmd := b.updateItems()
 	return cmd
 }
@@ -172,6 +171,7 @@ func (b *Bubble) updateItems() tea.Cmd {
 		items[idx] = item{c}
 	}
 	cmd := b.list.SetItems(items)
+	b.SetSize(b.width, b.height)
 	return cmd
 }
 
