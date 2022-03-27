@@ -158,7 +158,6 @@ func (b *Bubble) reset() tea.Cmd {
 	b.state = treeState
 	b.lastSelected = make([]int, 0)
 	cmd := b.updateItems()
-	b.SetSize(b.width, b.height)
 	return cmd
 }
 
@@ -207,6 +206,7 @@ func (b *Bubble) updateItems() tea.Cmd {
 	}
 	cmd := b.list.SetItems(append(dirs, files...))
 	b.list.Select(0)
+	b.SetSize(b.width, b.height)
 	return cmd
 }
 
