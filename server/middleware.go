@@ -47,6 +47,7 @@ func softServeMiddleware(ac *appCfg.Config) wish.Middleware {
 					for _, rp := range ac.Source.AllRepos() {
 						if rp.Name() == repo {
 							repoExists = true
+							break
 						}
 					}
 					if !repoExists {
