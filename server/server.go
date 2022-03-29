@@ -73,3 +73,8 @@ func (srv *Server) Start() error {
 func (srv *Server) Shutdown(ctx context.Context) error {
 	return srv.SSHServer.Shutdown(ctx)
 }
+
+// Close closes the SSH server.
+func (srv *Server) Close() error {
+	return srv.SSHServer.Close()
+}
