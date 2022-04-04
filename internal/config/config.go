@@ -16,7 +16,11 @@ import (
 
 	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/internal/git"
-	gg "github.com/gogs/git-module"
+	"github.com/go-git/go-billy/v5/memfs"
+	ggit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/storage/memory"
 )
 
 // Config is the Soft Serve configuration.
@@ -107,10 +111,6 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = c.Reload()
-	if err != nil {
-		return nil, err
-	}
 	return c, nil
 }
 
@@ -181,16 +181,25 @@ func createFile(path string, content string) error {
 
 func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	cn := "config"
+	rp := filepath.Join(cfg.Cfg.RepoPath, cn)
 	rs := cfg.Source
 	err := rs.LoadRepo(cn)
 	if os.IsNotExist(err) {
-		repo, err := rs.InitRepo(cn, true)
+		repo, err := ggit.PlainInit(rp, true)
 		if err != nil {
 			return err
 		}
-		wt := repo.Path()
-		defer os.RemoveAll(wt)
-		rm, err := os.Create(filepath.Join(wt, "README.md"))
+		repo, err = ggit.Clone(memory.NewStorage(), memfs.New(), &ggit.CloneOptions{
+			URL: rp,
+		})
+		if err != nil && err != transport.ErrEmptyRemoteRepository {
+			return err
+		}
+		wt, err := repo.Worktree()
+		if err != nil {
+			return err
+		}
+		rm, err := wt.Filesystem.Create("README.md")
 		if err != nil {
 			return err
 		}
@@ -198,7 +207,11 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		cf, err := os.Create(filepath.Join(wt, "config.yaml"))
+		_, err = wt.Add("README.md")
+		if err != nil {
+			return err
+		}
+		cf, err := wt.Filesystem.Create("config.yaml")
 		if err != nil {
 			return err
 		}
@@ -206,25 +219,28 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		err = gg.Add(wt, gg.AddOptions{All: true})
+		_, err = wt.Add("config.yaml")
 		if err != nil {
 			return err
 		}
-		err = gg.CreateCommit(wt, &gg.Signature{
-			Name:  "Soft Serve Server",
-			Email: "vt100@charm.sh",
-		}, "Default init")
+		_, err = wt.Commit("Default init", &ggit.CommitOptions{
+			All: true,
+			Author: &object.Signature{
+				Name:  "Soft Serve Server",
+				Email: "vt100@charm.sh",
+			},
+		})
 		if err != nil {
 			return err
 		}
-		err = repo.Push("origin", "master")
+		err = repo.Push(&ggit.PushOptions{})
 		if err != nil {
 			return err
 		}
 	} else if err != nil {
 		return err
 	}
-	return nil
+	return cfg.Reload()
 }
 
 func (cfg *Config) isPrivate(repo string) bool {
