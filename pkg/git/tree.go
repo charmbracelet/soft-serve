@@ -24,7 +24,7 @@ type TreeEntry struct {
 	path string
 }
 
-// Entries is a wrapper around git.Entries
+// Entries is a wrapper around git.Entries.
 type Entries []*TreeEntry
 
 var sorters = []func(t1, t2 *TreeEntry) bool{
@@ -107,6 +107,7 @@ func (t *Tree) Entries() (Entries, error) {
 	return ret, nil
 }
 
+// TreeEntry returns the TreeEntry for the file path.
 func (t *Tree) TreeEntry(path string) (*TreeEntry, error) {
 	entry, err := t.Tree.TreeEntry(path)
 	if err != nil {
