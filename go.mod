@@ -6,24 +6,24 @@ require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/caarlos0/env/v6 v6.9.1
 	github.com/charmbracelet/bubbles v0.10.4-0.20220302223835-88562515cf7b
-	github.com/charmbracelet/bubbletea v0.19.4-0.20220208181305-42cd4c31919c
+	github.com/charmbracelet/bubbletea v0.20.0
 	github.com/charmbracelet/glamour v0.4.0
 	github.com/charmbracelet/lipgloss v0.4.0
-	github.com/charmbracelet/wish v0.2.1-0.20220208182816-534842b53d2a
+	github.com/charmbracelet/wish v0.3.1-0.20220405152319-bea68c3da3b1
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gliderlabs/ssh v0.3.3
 	github.com/go-git/go-billy/v5 v5.3.1
 	github.com/go-git/go-git/v5 v5.4.3-0.20210630082519-b4368b2a2ca4
-	github.com/matryer/is v1.2.0
+	github.com/matryer/is v1.4.0
 	github.com/muesli/reflow v0.3.0
-	github.com/muesli/termenv v0.11.0
+	github.com/muesli/termenv v0.11.1-0.20220212125758-44cd13922739
 	github.com/sergi/go-diff v1.1.0
-	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce
+	golang.org/x/crypto v0.0.0-20220307211146-efcb8507fb70
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
-	github.com/charmbracelet/keygen v0.2.1
+	github.com/charmbracelet/keygen v0.3.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gogs/git-module v1.6.0
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
@@ -38,6 +38,7 @@ require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
+	github.com/caarlos0/sshmarshal v0.0.0-20220308164159-9ddb9f83c6b3 // indirect
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
@@ -51,7 +52,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mcuadros/go-version v0.0.0-20190308113854-92cdf37c5b75 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.17 // indirect
-	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/muesli/ansi v0.0.0-20211031195517-c9f0611b6c70 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect

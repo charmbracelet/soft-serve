@@ -107,9 +107,9 @@ func createKeyPair(t *testing.T) (ssh.PublicKey, string) {
 	is := is.New(t)
 	t.Helper()
 	keyDir := t.TempDir()
-	kp, err := keygen.NewWithWrite(keyDir, "id", nil, keygen.Ed25519)
+	kp, err := keygen.NewWithWrite(filepath.Join(keyDir, "id"), nil, keygen.Ed25519)
 	is.NoErr(err)
-	pubkey, _, _, _, err := ssh.ParseAuthorizedKey(kp.PublicKey)
+	pubkey, _, _, _, err := ssh.ParseAuthorizedKey(kp.PublicKey())
 	is.NoErr(err)
 	return pubkey, filepath.Join(keyDir, "id_ed25519")
 }
