@@ -136,12 +136,14 @@ func (b *Bubble) reset() tea.Cmd {
 	errMsg := func(err error) tea.Cmd {
 		return func() tea.Msg { return common.ErrMsg{Err: err} }
 	}
-	ref, err := b.repo.HEAD()
-	if err != nil {
-		return errMsg(err)
+	if b.ref == nil {
+		ref, err := b.repo.HEAD()
+		if err != nil {
+			return errMsg(err)
+		}
+		b.ref = ref
 	}
-	b.ref = ref
-	count, err := b.repo.CountCommits(ref)
+	count, err := b.repo.CountCommits(b.ref)
 	if err != nil {
 		return errMsg(err)
 	}
