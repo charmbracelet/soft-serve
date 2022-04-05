@@ -222,7 +222,8 @@ func (rs *RepoSource) LoadRepos() error {
 	return nil
 }
 
-// LatestFile returns the contents of the latest file at the specified path in the repository.
+// LatestFile returns the contents of the latest file at the specified path in
+// the repository and its file path.
 func (r *Repo) LatestFile(pattern string) (string, string, error) {
 	g := glob.MustCompile(pattern)
 	dir := filepath.Dir(pattern)
@@ -236,6 +237,9 @@ func (r *Repo) LatestFile(pattern string) (string, string, error) {
 	}
 	for _, e := range ents {
 		fp := filepath.Join(dir, e.Name())
+		if e.IsTree() {
+			continue
+		}
 		if g.Match(fp) {
 			bts, err := e.Contents()
 			if err != nil {
