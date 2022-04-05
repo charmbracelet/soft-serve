@@ -91,24 +91,29 @@ type DiffFile struct {
 	Sections []*DiffSection
 }
 
+// DiffFileChange represents a file diff.
 type DiffFileChange struct {
 	hash string
 	name string
 	mode git.EntryMode
 }
 
+// Hash returns the diff file hash.
 func (f *DiffFileChange) Hash() string {
 	return f.hash
 }
 
+// Name returns the diff name.
 func (f *DiffFileChange) Name() string {
 	return f.name
 }
 
+// Mode returns the diff file mode.
 func (f *DiffFileChange) Mode() git.EntryMode {
 	return f.mode
 }
 
+// Files returns the diff files.
 func (f *DiffFile) Files() (from *DiffFileChange, to *DiffFileChange) {
 	if f.OldIndex != ZeroHash.String() {
 		from = &DiffFileChange{
