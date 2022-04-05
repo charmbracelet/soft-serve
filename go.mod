@@ -23,8 +23,9 @@ require (
 )
 
 require (
+	github.com/charmbracelet/keygen v0.2.1
 	github.com/gobwas/glob v0.2.3
-	github.com/gogs/git-module v1.5.0
+	github.com/gogs/git-module v1.6.0
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/muesli/mango v0.1.0
 	github.com/muesli/roff v0.1.0
@@ -37,7 +38,6 @@ require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/charmbracelet/keygen v0.1.2 // indirect
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
