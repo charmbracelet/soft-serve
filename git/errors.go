@@ -1,6 +1,10 @@
 package git
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/gogs/git-module"
+)
 
 var (
 	// ErrFileNotFound is returned when a file is not found.
@@ -9,4 +13,6 @@ var (
 	ErrDirectoryNotFound = errors.New("directory not found")
 	// ErrReferenceNotFound is returned when a reference is not found.
 	ErrReferenceNotFound = errors.New("reference not found")
+	// ErrRevisionNotExist is returned when a revision is not found.
+	ErrRevisionNotExist = git.ErrRevisionNotExist
 )

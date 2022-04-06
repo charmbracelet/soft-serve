@@ -103,8 +103,9 @@ func (r *Repository) Tree(ref *Reference) (*Tree, error) {
 		return nil, err
 	}
 	return &Tree{
-		Tree: tree,
-		Path: "",
+		Tree:       tree,
+		Path:       "",
+		Repository: r,
 	}, nil
 }
 

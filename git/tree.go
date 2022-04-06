@@ -14,7 +14,8 @@ import (
 // Tree is a wrapper around git.Tree with helper methods.
 type Tree struct {
 	*git.Tree
-	Path string
+	Path       string
+	Repository *Repository
 }
 
 // TreeEntry is a wrapper around git.TreeEntry with helper methods.
@@ -86,8 +87,9 @@ func (t *Tree) SubTree(path string) (*Tree, error) {
 		return nil, err
 	}
 	return &Tree{
-		Tree: tree,
-		Path: path,
+		Tree:       tree,
+		Path:       path,
+		Repository: t.Repository,
 	}, nil
 }
 
