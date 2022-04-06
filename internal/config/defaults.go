@@ -11,8 +11,8 @@ name: Soft Serve
 host: %s
 port: %d
 
-# Access level for anonymous users. Options are: read-write, read-only and
-# no-access.
+# Access level for anonymous users. Options are: admin-access, read-write,
+# read-only, and no-access.
 anon-access: %s
 
 # You can grant read-only access to users without private keys. Any password
