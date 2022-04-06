@@ -16,9 +16,9 @@ var (
 	// ErrFileNotFound is returned when the file is not found.
 	ErrFileNotFound = fmt.Errorf("File not found")
 
-	usageTemplate = `Usage:{{if .Runnable}}
-  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-  {{.UseLine}} [command]{{end}}{{if gt (len .Aliases) 0}}
+	usageTemplate = `Usage:{{if .Runnable}}{{if .HasParent }}
+  {{.Parent.Use}} {{end}}{{.Use}}{{if .HasAvailableFlags }} [flags]{{end}}{{end}}{{if .HasAvailableSubCommands}}
+  {{if .HasParent }}{{.Parent.Use}} {{end}}{{.Use}} [command]{{end}}{{if gt (len .Aliases) 0}}
 
 Aliases:
   {{.NameAndAliases}}{{end}}{{if .HasExample}}
