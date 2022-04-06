@@ -90,8 +90,8 @@ name: Soft Serve
 host: localhost
 port: 23231
 
-# The access level for anonymous users. Options are: read-write, read-only
-# and no-access.
+# Access level for anonymous users. Options are: admin-access, read-write,
+# read-only, and no-access.
 anon-access: read-write
 
 # You can grant read-only access to users without private keys.
@@ -197,32 +197,60 @@ When a repo is highlighted you can use the following keys for navigation:
 * `C` – View the commit log for the repo
 * `B` – View branches and tags for the repo
 
-## Printing files over SSH
+## The Soft Serve SSH CLI
 
-<img src="https://stuff.charm.sh/soft-serve/soft-serve-cat-example.png?1" width="750" alt="Example tree and file output on the CLI">
+```sh
+$ ssh -p 23231 localhost help
+Soft Serve is a self-hostable Git server for the command line.
 
-Soft Serve also has the ability to print files and directories directly from a
-remote repo without the need to clone or use the TUI.
+Usage:
+  ssh -p 23231 localhost [command]
 
-To print a file tree for the project, just use the repo name as the SSH command
-to your Soft Serve server:
+Available Commands:
+  cat         Outputs the contents of the file at path.
+  git         Perform Git operations on a repository.
+  help        Help about any command
+  ls          List file or directory at path.
+  reload      Reloads the configuration
 
+Flags:
+  -h, --help   help for ssh
+
+Use "ssh -p 23231 localhost [command] --help" for more information about a command.
 ```
-ssh git.charm.sh soft-serve
+
+Soft Serve SSH CLI has the ability to print files and list directories, perform
+`git` operations on remote repos, and reload the configuration when necessary.
+
+To print a file tree for the project, just use the `list` command along with the
+repo name as the SSH command to your Soft Serve server:
+
+```sh
+ssh -p 23231 localhost ls soft-serve
 ```
 
-From there you can print individual files:
+From there, you can print individual files using the `cat` command:
 
-```
-ssh git.charm.sh soft-serve/cmd/soft/main.go
+```sh
+ssh -p 23231 localhost cat soft-serve/cmd/soft/main.go
 ```
 
 You can add the `-c` flag to enable syntax coloring and `-l` to print line
 numbers:
 
+```sh
+ssh -p 23231 localhost cat soft-serve/cmd/soft/main.go -c -l
 ```
-ssh git.charm.sh soft-serve/cmd/soft/main.go -c -l
+
+You can also use the `git` command to perform Git operations on a repo such as changing the default branch name for instance:
+
+```sh
+ssh -p 23231 localhost git soft-serve symbolic-ref HEAD refs/heads/taco
 ```
+
+Both `git` and `reload` commands need admin access to the server to work. So
+make sure you have added your key as an admin user, or you’re using `anon-access:
+admin-access` in the configuration.
 
 ### A note about RSA keys
 
@@ -230,7 +258,7 @@ Unfortunately, due to a shortcoming in Go’s `x/crypto/ssh` package, Soft Serve
 does not currently support access via new SSH RSA keys: only the old SHA-1
 ones will work.
 
-Until we sort this out you'll either need an SHA-1 RSA key or a key with
+Until we sort this out you’ll either need an SHA-1 RSA key or a key with
 another algorithm, e.g. Ed25519. Not sure what type of keys you have?
 You can check with the following:
 
