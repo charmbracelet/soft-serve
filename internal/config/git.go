@@ -87,6 +87,8 @@ func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
 		return gm.ReadOnlyAccess
 	case "read-write":
 		return gm.ReadWriteAccess
+	case "admin-access":
+		return gm.AdminAccess
 	default:
 		return gm.NoAccess
 	}
