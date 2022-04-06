@@ -25,15 +25,15 @@ import (
 
 // Config is the Soft Serve configuration.
 type Config struct {
-	Name         string `yaml:"name"`
-	Host         string `yaml:"host"`
-	Port         int    `yaml:"port"`
-	AnonAccess   string `yaml:"anon-access"`
-	AllowKeyless bool   `yaml:"allow-keyless"`
-	Users        []User `yaml:"users"`
-	Repos        []Repo `yaml:"repos"`
-	Source       *git.RepoSource
-	Cfg          *config.Config
+	Name         string          `yaml:"name"`
+	Host         string          `yaml:"host"`
+	Port         int             `yaml:"port"`
+	AnonAccess   string          `yaml:"anon-access"`
+	AllowKeyless bool            `yaml:"allow-keyless"`
+	Users        []User          `yaml:"users"`
+	Repos        []Repo          `yaml:"repos"`
+	Source       *git.RepoSource `yaml:"-"`
+	Cfg          *config.Config  `yaml:"-"`
 	mtx          sync.Mutex
 }
 
