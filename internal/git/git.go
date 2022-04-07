@@ -26,8 +26,8 @@ type Repo struct {
 	patchCache *lru.Cache
 }
 
-// Open opens a Git repository.
-func (rs *RepoSource) Open(path string) (*Repo, error) {
+// open opens a Git repository.
+func (rs *RepoSource) open(path string) (*Repo, error) {
 	rg, err := git.Open(path)
 	if err != nil {
 		return nil, err
@@ -199,8 +199,9 @@ func (rs *RepoSource) LoadRepo(name string) error {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
 	rp := filepath.Join(rs.Path, name)
-	r, err := rs.Open(rp)
+	r, err := rs.open(rp)
 	if err != nil {
+		log.Printf("error opening repository %s: %s", name, err)
 		return err
 	}
 	rs.repos[name] = r
@@ -215,6 +216,9 @@ func (rs *RepoSource) LoadRepos() error {
 	}
 	for _, de := range rd {
 		err = rs.LoadRepo(de.Name())
+		if err == git.ErrNotAGitRepository {
+			continue
+		}
 		if err != nil {
 			return err
 		}
