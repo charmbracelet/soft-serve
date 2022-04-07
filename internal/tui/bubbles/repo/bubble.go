@@ -6,10 +6,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/charmbracelet/soft-serve/pkg/git"
-	gitui "github.com/charmbracelet/soft-serve/pkg/tui"
-	"github.com/charmbracelet/soft-serve/pkg/tui/common"
+	gitui "github.com/charmbracelet/soft-serve/tui"
+	"github.com/charmbracelet/soft-serve/tui/common"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/reflow/wrap"
 )
