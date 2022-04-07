@@ -18,7 +18,8 @@ var (
 // Repository is a wrapper around git.Repository with helper methods.
 type Repository struct {
 	*git.Repository
-	Path string
+	Path   string
+	IsBare bool
 }
 
 // Clone clones a repository.
@@ -35,15 +36,34 @@ func Init(path string, bare bool) (*Repository, error) {
 	return Open(path)
 }
 
+func isInsideWorkTree(r *git.Repository) bool {
+	out, err := r.RevParse("--is-inside-work-tree")
+	return err == nil && out == "true"
+}
+
+func isInsideGitDir(r *git.Repository) bool {
+	out, err := r.RevParse("--is-inside-git-dir")
+	return err == nil && out == "true"
+}
+
+func gitDir(r *git.Repository) (string, error) {
+	return r.RevParse("--git-dir")
+}
+
 // Open opens a git repository at the given path.
 func Open(path string) (*Repository, error) {
 	repo, err := git.Open(path)
 	if err != nil {
 		return nil, err
 	}
+	gp, err := gitDir(repo)
+	if err != nil || (gp != "." && gp != ".git") {
+		return nil, ErrNotAGitRepository
+	}
 	return &Repository{
 		Repository: repo,
 		Path:       path,
+		IsBare:     gp == ".",
 	}, nil
 }
 
