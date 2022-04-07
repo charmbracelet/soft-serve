@@ -15,4 +15,6 @@ var (
 	ErrReferenceNotFound = errors.New("reference not found")
 	// ErrRevisionNotExist is returned when a revision is not found.
 	ErrRevisionNotExist = git.ErrRevisionNotExist
+	// ErrNotAGitRepository is returned when the given path is not a Git repository.
+	ErrNotAGitRepository = errors.New("not a git repository")
 )
