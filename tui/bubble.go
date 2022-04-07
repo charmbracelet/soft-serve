@@ -3,13 +3,13 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/charmbracelet/soft-serve/pkg/git"
-	"github.com/charmbracelet/soft-serve/pkg/tui/about"
-	"github.com/charmbracelet/soft-serve/pkg/tui/common"
-	"github.com/charmbracelet/soft-serve/pkg/tui/log"
-	"github.com/charmbracelet/soft-serve/pkg/tui/refs"
-	"github.com/charmbracelet/soft-serve/pkg/tui/tree"
+	"github.com/charmbracelet/soft-serve/tui/about"
+	"github.com/charmbracelet/soft-serve/tui/common"
+	"github.com/charmbracelet/soft-serve/tui/log"
+	"github.com/charmbracelet/soft-serve/tui/refs"
+	"github.com/charmbracelet/soft-serve/tui/tree"
 )
 
 const (

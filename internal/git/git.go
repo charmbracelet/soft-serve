@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/git"
 	"github.com/gobwas/glob"
 	"github.com/golang/groupcache/lru"
 )

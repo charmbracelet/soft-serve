@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/git"
 )
 
 type GitRepo interface {

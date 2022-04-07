@@ -6,7 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/internal/tui/style"
-	"github.com/charmbracelet/soft-serve/pkg/tui/common"
+	"github.com/charmbracelet/soft-serve/tui/common"
 	"github.com/muesli/reflow/truncate"
 )
 
