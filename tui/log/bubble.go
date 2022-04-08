@@ -26,14 +26,17 @@ var (
 	waitBeforeLoading = time.Millisecond * 300
 )
 
+type itemsMsg struct{}
+
 type commitMsg *git.Commit
+
+type countMsg int64
 
 type sessionState int
 
 const (
 	logState sessionState = iota
 	commitState
-	loadingState
 	errorState
 )
 
@@ -98,6 +101,10 @@ type Bubble struct {
 	heightMargin   int
 	error          common.ErrMsg
 	spinner        spinner.Model
+	loading        bool
+	loadingStart   time.Time
+	selectedCommit *git.Commit
+	nextPage       int
 }
 
 func NewBubble(repo common.GitRepo, styles *style.Styles, width, widthMargin, height, heightMargin int) *Bubble {
@@ -132,49 +139,45 @@ func NewBubble(repo common.GitRepo, styles *style.Styles, width, widthMargin, he
 	return b
 }
 
-func (b *Bubble) reset() tea.Cmd {
-	errMsg := func(err error) tea.Cmd {
-		return func() tea.Msg { return common.ErrMsg{Err: err} }
-	}
+func (b *Bubble) countCommits() tea.Msg {
 	if b.ref == nil {
 		ref, err := b.repo.HEAD()
 		if err != nil {
-			return errMsg(err)
+			return common.ErrMsg{Err: err}
 		}
 		b.ref = ref
 	}
 	count, err := b.repo.CountCommits(b.ref)
 	if err != nil {
-		return errMsg(err)
+		return common.ErrMsg{Err: err}
 	}
-	b.count = count
-	b.state = logState
-	b.list.Select(0)
-	cmd := b.updateItems()
-	return cmd
+	return countMsg(count)
 }
 
-func (b *Bubble) updateItems() tea.Cmd {
+func (b *Bubble) updateItems() tea.Msg {
+	if b.count == 0 {
+		b.count = int64(b.countCommits().(countMsg))
+	}
 	count := b.count
 	items := make([]list.Item, count)
-	b.list.SetItems(items)
-	page := b.list.Paginator.Page
+	page := b.nextPage
 	limit := b.list.Paginator.PerPage
 	skip := page * limit
+	// CommitsByPage pages start at 1
 	cc, err := b.repo.CommitsByPage(b.ref, page+1, limit)
 	if err != nil {
-		return func() tea.Msg { return common.ErrMsg{Err: err} }
+		return common.ErrMsg{Err: err}
 	}
 	for i, c := range cc {
 		idx := i + skip
-		if idx >= int(count) {
+		if int64(idx) >= count {
 			break
 		}
 		items[idx] = item{c}
 	}
-	cmd := b.list.SetItems(items)
+	b.list.SetItems(items)
 	b.SetSize(b.width, b.height)
-	return cmd
+	return itemsMsg{}
 }
 
 func (b *Bubble) Help() []common.HelpEntry {
@@ -203,19 +206,32 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		b.SetSize(msg.Width, msg.Height)
-		cmds = append(cmds, b.updateItems())
+		cmds = append(cmds, b.updateItems)
 
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "C":
-			return b, b.reset()
+			b.count = 0
+			b.loading = true
+			b.loadingStart = time.Now().Add(-waitBeforeLoading) // always show spinner
+			b.list.Select(0)
+			b.nextPage = 0
+			return b, tea.Batch(b.updateItems, b.spinner.Tick)
 		case "enter", "right", "l":
 			if b.state == logState {
-				cmds = append(cmds, b.loadCommit())
+				i := b.list.SelectedItem()
+				if i != nil {
+					c, ok := i.(item)
+					if ok {
+						b.selectedCommit = c.Commit
+					}
+				}
+				cmds = append(cmds, b.loadCommit, b.spinner.Tick)
 			}
 		case "esc", "left", "h":
 			if b.state != logState {
 				b.state = logState
+				b.selectedCommit = nil
 			}
 		}
 		switch b.state {
@@ -224,7 +240,11 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m, cmd := b.list.Update(msg)
 			b.list = m
 			if m.Paginator.Page != curPage {
-				cmds = append(cmds, b.updateItems())
+				b.loading = true
+				b.loadingStart = time.Now()
+				b.list.Paginator.Page = curPage
+				b.nextPage = m.Paginator.Page
+				cmds = append(cmds, b.updateItems, b.spinner.Tick)
 			}
 			cmds = append(cmds, cmd)
 		case commitState:
@@ -233,23 +253,28 @@ func (b *Bubble) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		return b, tea.Batch(cmds...)
+	case itemsMsg:
+		b.loading = false
+		b.list.Paginator.Page = b.nextPage
+		if b.state != commitState {
+			b.state = logState
+		}
+	case countMsg:
+		b.count = int64(msg)
 	case common.ErrMsg:
 		b.error = msg
 		b.state = errorState
+		b.loading = false
 		return b, nil
 	case commitMsg:
-		if b.state == loadingState {
-			cmds = append(cmds, b.spinner.Tick)
-		}
+		b.loading = false
+		b.state = commitState
 	case refs.RefMsg:
 		b.ref = msg
-		count, err := b.repo.CountCommits(msg)
-		if err != nil {
-			b.error = common.ErrMsg{Err: err}
-		}
-		b.count = count
+		b.count = 0
+		cmds = append(cmds, b.countCommits)
 	case spinner.TickMsg:
-		if b.state == loadingState {
+		if b.loading {
 			s, cmd := b.spinner.Update(msg)
 			if cmd != nil {
 				cmds = append(cmds, cmd)
@@ -299,33 +324,14 @@ func (b *Bubble) loadPatch(c *git.Commit) error {
 	return nil
 }
 
-func (b *Bubble) loadCommit() tea.Cmd {
-	var err error
-	done := make(chan struct{}, 1)
-	i := b.list.SelectedItem()
-	if i == nil {
-		return nil
+func (b *Bubble) loadCommit() tea.Msg {
+	b.loading = true
+	b.loadingStart = time.Now()
+	c := b.selectedCommit
+	if err := b.loadPatch(c); err != nil {
+		return common.ErrMsg{Err: err}
 	}
-	c, ok := i.(item)
-	if !ok {
-		return nil
-	}
-	go func() {
-		err = b.loadPatch(c.Commit)
-		done <- struct{}{}
-		b.state = commitState
-	}()
-	return func() tea.Msg {
-		select {
-		case <-done:
-		case <-time.After(waitBeforeLoading):
-			b.state = loadingState
-		}
-		if err != nil {
-			return common.ErrMsg{Err: err}
-		}
-		return commitMsg(c.Commit)
-	}
+	return commitMsg(c)
 }
 
 func (b *Bubble) renderCommit(c *git.Commit) string {
@@ -356,11 +362,17 @@ func (b *Bubble) renderDiff(diff *git.Diff) string {
 }
 
 func (b *Bubble) View() string {
+	if b.loading && b.loadingStart.Add(waitBeforeLoading).Before(time.Now()) {
+		msg := fmt.Sprintf("%s loading commit", b.spinner.View())
+		if b.selectedCommit == nil {
+			msg += "s"
+		}
+		msg += "…"
+		return msg
+	}
 	switch b.state {
 	case logState:
 		return b.list.View()
-	case loadingState:
-		return fmt.Sprintf("%s loading commit…", b.spinner.View())
 	case errorState:
 		return b.error.ViewWithPrefix(b.style, "Error")
 	case commitState:
