@@ -24,11 +24,11 @@ func softMiddleware(ac *appCfg.Config) wish.Middleware {
 				ctx = context.WithValue(ctx, "session", s) //nolint:revive
 
 				use := "ssh"
-				port := ac.Cfg.Port
+				port := ac.Port
 				if port != 22 {
 					use += fmt.Sprintf(" -p%d", port)
 				}
-				use += fmt.Sprintf(" %s", ac.Cfg.Host)
+				use += fmt.Sprintf(" %s", ac.Host)
 				cmd := cmd.RootCommand()
 				cmd.Use = use
 				cmd.SetIn(s)
