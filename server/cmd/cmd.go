@@ -3,9 +3,24 @@ package cmd
 import (
 	"fmt"
 
-	appCfg "github.com/charmbracelet/soft-serve/internal/config"
+	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/gliderlabs/ssh"
 	"github.com/spf13/cobra"
+)
+
+// ContextKey is a type that can be used as a key in a context.
+type ContextKey string
+
+// String returns the string representation of the ContextKey.
+func (c ContextKey) String() string {
+	return "soft-serve cli context key " + string(c)
+}
+
+var (
+	// ConfigCtxKey is the key for the config in the context.
+	ConfigCtxKey = ContextKey("config")
+	// SessionCtxKey is the key for the session in the context.
+	SessionCtxKey = ContextKey("session")
 )
 
 var (
@@ -64,7 +79,7 @@ func RootCommand() *cobra.Command {
 
 func fromContext(cmd *cobra.Command) (*appCfg.Config, ssh.Session) {
 	ctx := cmd.Context()
-	ac := ctx.Value("config").(*appCfg.Config)
-	s := ctx.Value("session").(ssh.Session)
+	ac := ctx.Value(ConfigCtxKey).(*appCfg.Config)
+	s := ctx.Value(SessionCtxKey).(ssh.Session)
 	return ac, s
 }

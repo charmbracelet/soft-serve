@@ -7,8 +7,8 @@ import (
 	"github.com/alecthomas/chroma/lexers"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/internal/git"
-	"github.com/charmbracelet/soft-serve/tui/common"
+	"github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/ui/common"
 	gitwish "github.com/charmbracelet/wish/git"
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
@@ -40,10 +40,10 @@ func CatCommand() *cobra.Command {
 			if auth < gitwish.ReadOnlyAccess {
 				return ErrUnauthorized
 			}
-			var repo *git.Repo
+			var repo *config.Repo
 			repoExists := false
 			for _, rp := range ac.Source.AllRepos() {
-				if rp.Name() == rn {
+				if rp.Repo() == rn {
 					repoExists = true
 					repo = rp
 					break
@@ -109,7 +109,7 @@ func withFormatting(p, c string) (string, error) {
 		Language: lang,
 	}
 	r := strings.Builder{}
-	styles := common.DefaultStyles()
+	styles := common.StyleConfig()
 	styles.CodeBlock.Margin = &zero
 	rctx := gansi.NewRenderContext(gansi.Options{
 		Styles:       styles,

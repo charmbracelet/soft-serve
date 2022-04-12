@@ -4,7 +4,7 @@ import (
 	"io"
 	"os/exec"
 
-	"github.com/charmbracelet/soft-serve/internal/git"
+	"github.com/charmbracelet/soft-serve/config"
 	gitwish "github.com/charmbracelet/wish/git"
 	"github.com/spf13/cobra"
 )
@@ -23,11 +23,11 @@ func GitCommand() *cobra.Command {
 			if len(args) < 1 {
 				return runGit(nil, s, s, "")
 			}
-			var repo *git.Repo
+			var repo *config.Repo
 			rn := args[0]
 			repoExists := false
 			for _, rp := range ac.Source.AllRepos() {
-				if rp.Name() == rn {
+				if rp.Repo() == rn {
 					repoExists = true
 					repo = rp
 					break

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/keygen"
-	"github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/gliderlabs/ssh"
 	"github.com/go-git/go-git/v5"
 	gconfig "github.com/go-git/go-git/v5/config"

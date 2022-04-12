@@ -33,7 +33,7 @@ func ListCommand() *cobra.Command {
 			}
 			if path == "" || path == "." || path == "/" {
 				for _, r := range ac.Source.AllRepos() {
-					fmt.Fprintln(s, r.Name())
+					fmt.Fprintln(s, r.Repo())
 				}
 				return nil
 			}

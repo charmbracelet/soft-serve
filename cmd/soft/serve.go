@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/server"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/spf13/cobra"
 )
 
