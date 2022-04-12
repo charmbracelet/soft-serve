@@ -12,7 +12,7 @@ to mount that directory as a volume in order keep your repositories backed up.
 
 ```sh
 docker run \
-  --name=soft-seve \
+  --name=soft-serve \
   --volume /path/to/data:/soft-serve \
   --publish 23231:23231 \
   --restart unless-stopped \
