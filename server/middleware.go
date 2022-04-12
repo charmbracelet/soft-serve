@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	appCfg "github.com/charmbracelet/soft-serve/internal/config"
+	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/wish"
 	"github.com/gliderlabs/ssh"

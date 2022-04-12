@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	sconfig "github.com/charmbracelet/soft-serve/config"
-	"github.com/charmbracelet/soft-serve/internal/config"
+	"github.com/charmbracelet/soft-serve/config"
+	sconfig "github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/wish/testsession"
 	"github.com/gliderlabs/ssh"
 	"github.com/matryer/is"

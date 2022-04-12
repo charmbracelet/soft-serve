@@ -1,4 +1,4 @@
-package style
+package styles
 
 import (
 	"github.com/charmbracelet/lipgloss"
@@ -7,7 +7,7 @@ import (
 // XXX: For now, this is in its own package so that it can be shared between
 // different packages without incurring an illegal import cycle.
 
-// Styles defines styles for the TUI.
+// Styles defines styles for the UI.
 type Styles struct {
 	ActiveBorderColor   lipgloss.Color
 	InactiveBorderColor lipgloss.Color
@@ -75,7 +75,7 @@ type Styles struct {
 	Spinner lipgloss.Style
 }
 
-// DefaultStyles returns default styles for the TUI.
+// DefaultStyles returns default styles for the UI.
 func DefaultStyles() *Styles {
 	s := new(Styles)
 

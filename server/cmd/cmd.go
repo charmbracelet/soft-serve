@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	appCfg "github.com/charmbracelet/soft-serve/internal/config"
+	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/gliderlabs/ssh"
 	"github.com/spf13/cobra"
 )
