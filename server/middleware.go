@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	appCfg "github.com/charmbracelet/soft-serve/internal/config"
+	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/wish"
 	"github.com/gliderlabs/ssh"
@@ -19,8 +19,8 @@ func softMiddleware(ac *appCfg.Config) wish.Middleware {
 				if active {
 					return
 				}
-				ctx := context.WithValue(s.Context(), "config", ac) //nolint:revive
-				ctx = context.WithValue(ctx, "session", s)          //nolint:revive
+				ctx := context.WithValue(s.Context(), cmd.ConfigCtxKey, ac)
+				ctx = context.WithValue(ctx, cmd.SessionCtxKey, s)
 
 				use := "ssh"
 				port := ac.Port

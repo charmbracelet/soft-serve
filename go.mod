@@ -6,8 +6,8 @@ require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/caarlos0/env/v6 v6.9.1
 	github.com/charmbracelet/bubbles v0.11.0
-	github.com/charmbracelet/bubbletea v0.22.0
-	github.com/charmbracelet/glamour v0.4.0
+	github.com/charmbracelet/bubbletea v0.21.0
+	github.com/charmbracelet/glamour v0.5.0
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/charmbracelet/wish v0.5.0
 	github.com/dustin/go-humanize v1.0.0
@@ -22,6 +22,7 @@ require (
 )
 
 require (
+	github.com/aymanbagabas/go-osc52 v1.0.3
 	github.com/charmbracelet/keygen v0.3.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gogs/git-module v1.6.1
@@ -68,6 +69,6 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

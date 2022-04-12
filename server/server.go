@@ -6,15 +6,15 @@ import (
 	"log"
 	"net"
 
-	"github.com/charmbracelet/soft-serve/config"
-	appCfg "github.com/charmbracelet/soft-serve/internal/config"
-	"github.com/charmbracelet/soft-serve/internal/tui"
+	appCfg "github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
 	gm "github.com/charmbracelet/wish/git"
 	lm "github.com/charmbracelet/wish/logging"
 	rm "github.com/charmbracelet/wish/recover"
 	"github.com/gliderlabs/ssh"
+	"github.com/muesli/termenv"
 )
 
 // Server is the Soft Serve server.
@@ -37,10 +37,10 @@ func NewServer(cfg *config.Config) *Server {
 	mw := []wish.Middleware{
 		rm.MiddlewareWithLogger(
 			cfg.ErrorLog,
-			lm.Middleware(),
 			softMiddleware(ac),
-			bm.Middleware(tui.SessionHandler(ac)),
+			bm.MiddlewareWithProgramHandler(SessionHandler(ac), termenv.ANSI256),
 			gm.Middleware(cfg.RepoPath, ac),
+			lm.Middleware(),
 		),
 	}
 	s, err := wish.NewServer(
