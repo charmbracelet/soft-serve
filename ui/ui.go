@@ -29,6 +29,7 @@ type UI struct {
 	state      sessionState
 	header     *header.Header
 	footer     *footer.Footer
+	error      error
 }
 
 func New(s session.Session, c common.Common, initialRepo string) *UI {
@@ -115,19 +116,16 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, ui.common.Keymap.Quit):
 			return ui, tea.Quit
-		default:
-			m, cmd := ui.pages[ui.activePage].Update(msg)
-			ui.pages[ui.activePage] = m.(common.Page)
-			if cmd != nil {
-				cmds = append(cmds, cmd)
-			}
 		}
-	default:
-		m, cmd := ui.pages[ui.activePage].Update(msg)
-		ui.pages[ui.activePage] = m.(common.Page)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+	case common.ErrorMsg:
+		ui.error = msg
+		ui.state = errorState
+		return ui, nil
+	}
+	m, cmd := ui.pages[ui.activePage].Update(msg)
+	ui.pages[ui.activePage] = m.(common.Page)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
 	}
 	return ui, tea.Batch(cmds...)
 }
@@ -136,9 +134,11 @@ func (ui *UI) View() string {
 	s := strings.Builder{}
 	switch ui.state {
 	case startState:
-		return "Loading..."
+		return "\n Loading..."
 	case errorState:
-		return "Error"
+		err := ui.common.Styles.ErrorTitle.Render("Bummer")
+		err += ui.common.Styles.ErrorBody.Render(ui.error.Error())
+		return err
 	case loadedState:
 		s.WriteString(lipgloss.JoinVertical(
 			lipgloss.Bottom,
@@ -147,7 +147,7 @@ func (ui *UI) View() string {
 			ui.footer.View(),
 		))
 	default:
-		return "Unknown state :/ this is a bug!"
+		return "\n Unknown state :/ this is a bug!"
 	}
 	return ui.common.Styles.App.Render(s.String())
 }

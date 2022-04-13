@@ -85,7 +85,6 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if index == m.Index() {
 		style = d.styles.SelectedMenuItem.Copy()
 	}
-	style.Width(m.Width() - 2) // FIXME figure out where this "2" comes from
 	titleStr := i.Title
 	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.LastUpdate))
 	updated := d.styles.MenuLastUpdate.

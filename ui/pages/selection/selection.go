@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/ui/common"
+	"github.com/charmbracelet/soft-serve/ui/components/code"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/yankable"
 	"github.com/charmbracelet/soft-serve/ui/session"
@@ -18,6 +19,7 @@ import (
 type Selection struct {
 	s        session.Session
 	common   common.Common
+	readme   *code.Code
 	selector *selector.Selector
 }
 
@@ -25,6 +27,7 @@ func New(s session.Session, common common.Common) *Selection {
 	sel := &Selection{
 		s:        s,
 		common:   common,
+		readme:   code.New(common, "", ""),
 		selector: selector.New(common, []list.Item{}),
 	}
 	return sel
@@ -32,6 +35,7 @@ func New(s session.Session, common common.Common) *Selection {
 
 func (s *Selection) SetSize(width, height int) {
 	s.common.SetSize(width, height)
+	s.readme.SetSize(width, height)
 	s.selector.SetSize(width, height)
 }
 
@@ -109,12 +113,17 @@ func (s *Selection) Init() tea.Cmd {
 			})
 		}
 	}
-	return s.selector.SetItems(items)
+	return tea.Batch(
+		s.selector.Init(),
+		s.selector.SetItems(items),
+	)
 }
 
 func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
+	case selector.ActiveMsg:
+		cmds = append(cmds, s.changeActive(msg))
 	default:
 		m, cmd := s.selector.Update(msg)
 		s.selector = m.(*selector.Selector)
@@ -126,7 +135,21 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s *Selection) View() string {
-	return s.selector.View()
+	return lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		s.readme.View(),
+		s.selector.View(),
+	)
+}
+
+func (s *Selection) changeActive(msg selector.ActiveMsg) tea.Cmd {
+	cfg := s.s.Config()
+	r, err := cfg.Source.GetRepo(string(msg))
+	if err != nil {
+		return common.ErrorCmd(err)
+	}
+	rm, rp := r.Readme()
+	return s.readme.SetContent(rm, rp)
 }
 
 func repoUrl(cfg *appCfg.Config, name string) string {

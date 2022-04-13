@@ -19,8 +19,8 @@ func DefaultKeyMap() *KeyMap {
 
 	km.Quit = key.NewBinding(
 		key.WithKeys(
-			"ctrl-c",
 			"q",
+			"ctrl+c",
 		),
 		key.WithHelp(
 			"q",
