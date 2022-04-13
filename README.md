@@ -252,7 +252,21 @@ Both `git` and `reload` commands need admin access to the server to work. So
 make sure you have added your key as an admin user, or you’re using `anon-access:
 admin-access` in the configuration.
 
-### A note about RSA keys
+## Managing Repos
+
+`.repos` and `.ssh` directories are created when you first run `soft` at the paths specified for the `SOFT_SERVE_KEY_PATH` and `SOFT_SERVE_REPO_PATH` environment variables. 
+It's recommended to have a dedicated directory for your soft-serve repos and config.
+
+### Deleting a Repo
+
+To delete a repo from your soft serve server, you'll have to remove the repo from the .repos directory.
+
+### Renaming a Repo
+
+To rename a repo's display name in the menu, change its name in the config.yaml file for your soft serve server.
+By default, the display name will be the repository name. 
+
+## A note about RSA keys
 
 Unfortunately, due to a shortcoming in Go’s `x/crypto/ssh` package, Soft Serve
 does not currently support access via new SSH RSA keys: only the old SHA-1
