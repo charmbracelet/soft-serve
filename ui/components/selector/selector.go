@@ -8,10 +8,10 @@ import (
 
 type Selector struct {
 	list   list.Model
-	common *common.Common
+	common common.Common
 }
 
-func New(common *common.Common, items []list.Item) *Selector {
+func New(common common.Common, items []list.Item) *Selector {
 	l := list.New(items, ItemDelegate{common.Styles}, common.Width, common.Height)
 	l.SetShowTitle(false)
 	l.SetShowHelp(false)
@@ -21,10 +21,16 @@ func New(common *common.Common, items []list.Item) *Selector {
 		list:   l,
 		common: common,
 	}
+	s.SetSize(common.Width, common.Height)
 	return s
 }
 
+func (s *Selector) KeyMap() list.KeyMap {
+	return s.list.KeyMap
+}
+
 func (s *Selector) SetSize(width, height int) {
+	s.common.SetSize(width, height)
 	s.list.SetSize(width, height)
 }
 

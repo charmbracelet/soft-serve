@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/ui/components/yankable"
 	"github.com/charmbracelet/soft-serve/ui/styles"
 	"github.com/dustin/go-humanize"
@@ -80,13 +81,23 @@ func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i := listItem.(Item)
 	s := strings.Builder{}
-	style := d.styles.MenuItem
+	style := d.styles.MenuItem.Copy()
 	if index == m.Index() {
-		style = d.styles.SelectedMenuItem
+		style = d.styles.SelectedMenuItem.Copy()
 	}
-	updated := d.styles.MenuLastUpdate.Render(fmt.Sprintf("Updated %s", humanize.Time(i.LastUpdate)))
+	style.Width(m.Width() - 2) // FIXME figure out where this "2" comes from
+	titleStr := i.Title
+	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.LastUpdate))
+	updated := d.styles.MenuLastUpdate.
+		Copy().
+		Width(m.Width() - style.GetHorizontalFrameSize() - lipgloss.Width(titleStr)).
+		Render(updatedStr)
+	title := lipgloss.NewStyle().
+		Align(lipgloss.Left).
+		Width(m.Width() - style.GetHorizontalFrameSize() - lipgloss.Width(updated)).
+		Render(titleStr)
 
-	s.WriteString(fmt.Sprintf("%s %s", i.Title, updated))
+	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, title, updated))
 	s.WriteString("\n")
 	s.WriteString(i.Description)
 	s.WriteString("\n\n")

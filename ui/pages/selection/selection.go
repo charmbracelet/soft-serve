@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -16,17 +17,57 @@ import (
 
 type Selection struct {
 	s        session.Session
-	common   *common.Common
+	common   common.Common
 	selector *selector.Selector
 }
 
-func New(s session.Session, common *common.Common) *Selection {
+func New(s session.Session, common common.Common) *Selection {
 	sel := &Selection{
 		s:        s,
 		common:   common,
 		selector: selector.New(common, []list.Item{}),
 	}
 	return sel
+}
+
+func (s *Selection) SetSize(width, height int) {
+	s.common.SetSize(width, height)
+	s.selector.SetSize(width, height)
+}
+
+func (s *Selection) ShortHelp() []key.Binding {
+	k := s.selector.KeyMap()
+	return []key.Binding{
+		s.common.Keymap.UpDown,
+		s.common.Keymap.Select,
+		k.Filter,
+		k.ClearFilter,
+	}
+}
+
+func (s *Selection) FullHelp() [][]key.Binding {
+	k := s.selector.KeyMap()
+	return [][]key.Binding{
+		{
+			k.CursorUp,
+			k.CursorDown,
+			k.NextPage,
+			k.PrevPage,
+			k.GoToStart,
+			k.GoToEnd,
+		},
+		{
+			k.Filter,
+			k.ClearFilter,
+			k.CancelWhileFiltering,
+			k.AcceptWhileFiltering,
+			k.ShowFullHelp,
+			k.CloseFullHelp,
+		},
+		// Ignore the following keys:
+		// k.Quit,
+		// k.ForceQuit,
+	}
 }
 
 func (s *Selection) Init() tea.Cmd {

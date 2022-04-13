@@ -87,8 +87,9 @@ func DefaultStyles() *Styles {
 		Margin(1, 2)
 
 	s.Header = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("62")).
+		Foreground(lipgloss.Color("15")).
 		Align(lipgloss.Right).
+		Height(1).
 		Bold(true)
 
 	s.Menu = lipgloss.NewStyle().
@@ -109,7 +110,8 @@ func DefaultStyles() *Styles {
 		BorderForeground(lipgloss.Color("241"))
 
 	s.MenuLastUpdate = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241"))
+		Foreground(lipgloss.Color("241")).
+		Align(lipgloss.Right)
 
 	s.SelectedMenuItem = s.MenuItem.Copy().
 		BorderForeground(s.ActiveBorderColor)
@@ -172,7 +174,7 @@ func DefaultStyles() *Styles {
 		PaddingRight(1)
 
 	s.Footer = lipgloss.NewStyle().
-		MarginTop(1)
+		Height(1)
 
 	s.Branch = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("203")).

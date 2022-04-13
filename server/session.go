@@ -50,7 +50,7 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 		if ac.Cfg.Callbacks != nil {
 			ac.Cfg.Callbacks.Tui("new session")
 		}
-		c := &common.Common{
+		c := common.Common{
 			Styles: styles.DefaultStyles(),
 			Keymap: keymap.DefaultKeyMap(),
 			Width:  pty.Window.Width,
