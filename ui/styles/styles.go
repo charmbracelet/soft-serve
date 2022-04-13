@@ -18,6 +18,7 @@ type Styles struct {
 	Menu             lipgloss.Style
 	MenuCursor       lipgloss.Style
 	MenuItem         lipgloss.Style
+	MenuLastUpdate   lipgloss.Style
 	SelectedMenuItem lipgloss.Style
 
 	RepoTitleBorder lipgloss.Border
@@ -102,11 +103,16 @@ func DefaultStyles() *Styles {
 		SetString(">")
 
 	s.MenuItem = lipgloss.NewStyle().
-		PaddingLeft(2)
+		Padding(1, 2).
+		Height(4).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("241"))
 
-	s.SelectedMenuItem = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("207")).
-		PaddingLeft(1)
+	s.MenuLastUpdate = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("241"))
+
+	s.SelectedMenuItem = s.MenuItem.Copy().
+		BorderForeground(s.ActiveBorderColor)
 
 	s.RepoTitleBorder = lipgloss.Border{
 		Top:         "─",

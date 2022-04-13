@@ -1,23 +1,31 @@
 package yankable
 
 import (
-	"time"
-
-	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type Yankable struct {
-	YankStyle lipgloss.Style
-	Style     lipgloss.Style
-	Text      string
-	timer     timer.Model
+	yankStyle lipgloss.Style
+	style     lipgloss.Style
+	text      string
 	clicked   bool
 }
 
+func New(style, yankStyle lipgloss.Style, text string) *Yankable {
+	return &Yankable{
+		yankStyle: yankStyle,
+		style:     style,
+		text:      text,
+		clicked:   false,
+	}
+}
+
+func (y *Yankable) SetText(text string) {
+	y.text = text
+}
+
 func (y *Yankable) Init() tea.Cmd {
-	y.timer = timer.New(3 * time.Second)
 	return nil
 }
 
@@ -28,9 +36,9 @@ func (y *Yankable) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.MouseRight:
 			y.clicked = true
-			cmds = append(cmds, y.timer.Init())
+			return y, nil
 		}
-	case timer.TimeoutMsg:
+	default:
 		y.clicked = false
 	}
 	return y, tea.Batch(cmds...)
@@ -38,7 +46,7 @@ func (y *Yankable) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (y *Yankable) View() string {
 	if y.clicked {
-		return y.YankStyle.Render(y.Text)
+		return y.yankStyle.String()
 	}
-	return y.Style.Render(y.Text)
+	return y.style.Render(y.text)
 }
