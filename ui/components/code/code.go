@@ -8,19 +8,23 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	gansi "github.com/charmbracelet/glamour/ansi"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	vp "github.com/charmbracelet/soft-serve/ui/components/viewport"
 	"github.com/muesli/reflow/wrap"
 	"github.com/muesli/termenv"
 )
 
+// Code is a code snippet.
 type Code struct {
-	common    common.Common
-	content   string
-	extension string
-	viewport  *vp.ViewportBubble
+	common         common.Common
+	content        string
+	extension      string
+	viewport       *vp.ViewportBubble
+	NoContentStyle lipgloss.Style
 }
 
+// New returns a new Code.
 func New(c common.Common, content, extension string) *Code {
 	r := &Code{
 		common:    c,
@@ -31,28 +35,36 @@ func New(c common.Common, content, extension string) *Code {
 				MouseWheelEnabled: true,
 			},
 		},
+		NoContentStyle: c.Styles.CodeNoContent.Copy(),
 	}
+	r.SetSize(c.Width, c.Height)
 	return r
 }
 
+// SetSize implements common.Component.
 func (r *Code) SetSize(width, height int) {
-	r.common.Width = width
-	r.common.Height = height
+	r.common.SetSize(width, height)
 	r.viewport.SetSize(width, height)
 }
 
+// SetContent sets the content of the Code.
 func (r *Code) SetContent(c, ext string) tea.Cmd {
 	r.content = c
 	r.extension = ext
 	return r.Init()
 }
 
+// GotoTop reset the viewport to the top.
+func (r *Code) GotoTop() {
+	r.viewport.Viewport.GotoTop()
+}
+
+// Init implements tea.Model.
 func (r *Code) Init() tea.Cmd {
 	w := r.common.Width
-	s := r.common.Styles
 	c := r.content
 	if c == "" {
-		c = s.AboutNoReadme.Render("File is empty.")
+		c = r.NoContentStyle.String()
 	}
 	f, err := renderFile(r.extension, c, w)
 	if err != nil {
@@ -63,12 +75,14 @@ func (r *Code) Init() tea.Cmd {
 	return nil
 }
 
+// Update implements tea.Model.
 func (r *Code) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	v, cmd := r.viewport.Update(msg)
 	r.viewport = v.(*vp.ViewportBubble)
 	return r, cmd
 }
 
+// View implements tea.View.
 func (r *Code) View() string {
 	return r.viewport.View()
 }

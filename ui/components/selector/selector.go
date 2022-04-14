@@ -7,18 +7,28 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/common"
 )
 
+// Selector is a list of items that can be selected.
 type Selector struct {
 	list   list.Model
 	common common.Common
 	active int
 }
 
+// IdentifiableItem is an item that can be identified by a string and extends list.Item.
+type IdentifiableItem interface {
+	list.Item
+	ID() string
+}
+
+// SelectMsg is a message that is sent when an item is selected.
 type SelectMsg string
 
+// ActiveMsg is a message that is sent when an item is active but not selected.
 type ActiveMsg string
 
-func New(common common.Common, items []list.Item) *Selector {
-	l := list.New(items, ItemDelegate{common.Styles}, common.Width, common.Height)
+// New creates a new selector.
+func New(common common.Common, items []list.Item, delegate list.ItemDelegate) *Selector {
+	l := list.New(items, delegate, common.Width, common.Height)
 	l.SetShowTitle(false)
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
@@ -31,27 +41,33 @@ func New(common common.Common, items []list.Item) *Selector {
 	return s
 }
 
+// KeyMap returns the underlying list's keymap.
 func (s *Selector) KeyMap() list.KeyMap {
 	return s.list.KeyMap
 }
 
+// SetSize implements common.Component.
 func (s *Selector) SetSize(width, height int) {
 	s.common.SetSize(width, height)
 	s.list.SetSize(width, height)
 }
 
+// SetItems sets the items in the selector.
 func (s *Selector) SetItems(items []list.Item) tea.Cmd {
 	return s.list.SetItems(items)
 }
 
+// Index returns the index of the selected item.
 func (s *Selector) Index() int {
 	return s.list.Index()
 }
 
+// Init implements tea.Model.
 func (s *Selector) Init() tea.Cmd {
 	return s.activeCmd
 }
 
+// Update implements tea.Model.
 func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
@@ -74,18 +90,19 @@ func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, tea.Batch(cmds...)
 }
 
+// View implements tea.Model.
 func (s *Selector) View() string {
 	return s.list.View()
 }
 
 func (s *Selector) selectCmd() tea.Msg {
 	item := s.list.SelectedItem()
-	i := item.(Item)
-	return SelectMsg(i.Name)
+	i := item.(IdentifiableItem)
+	return SelectMsg(i.ID())
 }
 
 func (s *Selector) activeCmd() tea.Msg {
 	item := s.list.SelectedItem()
-	i := item.(Item)
-	return ActiveMsg(i.Name)
+	i := item.(IdentifiableItem)
+	return ActiveMsg(i.ID())
 }

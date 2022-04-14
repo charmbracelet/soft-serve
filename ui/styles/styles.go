@@ -15,11 +15,14 @@ type Styles struct {
 	App    lipgloss.Style
 	Header lipgloss.Style
 
-	Menu             lipgloss.Style
-	MenuCursor       lipgloss.Style
-	MenuItem         lipgloss.Style
-	MenuLastUpdate   lipgloss.Style
-	SelectedMenuItem lipgloss.Style
+	Menu           lipgloss.Style
+	MenuCursor     lipgloss.Style
+	MenuItem       lipgloss.Style
+	MenuLastUpdate lipgloss.Style
+
+	// Selection page styles
+	SelectorBox lipgloss.Style
+	ReadmeBox   lipgloss.Style
 
 	RepoTitleBorder lipgloss.Border
 	RepoNoteBorder  lipgloss.Border
@@ -74,6 +77,8 @@ type Styles struct {
 	TreeNoItems      lipgloss.Style
 
 	Spinner lipgloss.Style
+
+	CodeNoContent lipgloss.Style
 }
 
 // DefaultStyles returns default styles for the UI.
@@ -81,7 +86,7 @@ func DefaultStyles() *Styles {
 	s := new(Styles)
 
 	s.ActiveBorderColor = lipgloss.Color("62")
-	s.InactiveBorderColor = lipgloss.Color("236")
+	s.InactiveBorderColor = lipgloss.Color("241")
 
 	s.App = lipgloss.NewStyle().
 		Margin(1, 2)
@@ -113,8 +118,13 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("241")).
 		Align(lipgloss.Right)
 
-	s.SelectedMenuItem = s.MenuItem.Copy().
-		BorderForeground(s.ActiveBorderColor)
+	s.SelectorBox = lipgloss.NewStyle().
+		Width(64)
+
+	s.ReadmeBox = lipgloss.NewStyle().
+		BorderForeground(s.InactiveBorderColor).
+		Padding(1).
+		MarginRight(1)
 
 	s.RepoTitleBorder = lipgloss.Border{
 		Top:         "─",
@@ -287,6 +297,12 @@ func DefaultStyles() *Styles {
 		MarginTop(1).
 		MarginLeft(2).
 		Foreground(lipgloss.Color("205"))
+
+	s.CodeNoContent = lipgloss.NewStyle().
+		SetString("No Content.").
+		MarginTop(1).
+		MarginLeft(2).
+		Foreground(lipgloss.Color("#626262"))
 
 	return s
 }

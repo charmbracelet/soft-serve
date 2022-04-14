@@ -1,4 +1,4 @@
-package selector
+package selection
 
 import (
 	"fmt"
@@ -14,6 +14,7 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
+// Item represents a single item in the selector.
 type Item struct {
 	Title       string
 	Name        string
@@ -22,35 +23,41 @@ type Item struct {
 	URL         *yankable.Yankable
 }
 
-func (i *Item) Init() tea.Cmd {
-	return nil
+// ID implements selector.IdentifiableItem.
+func (i Item) ID() string {
+	return i.Name
 }
 
-func (i *Item) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return i, nil
-}
-
-func (i *Item) View() string {
-	return ""
-}
-
+// FilterValue implements list.Item.
 func (i Item) FilterValue() string { return i.Title }
 
+// ItemDelegate is the delegate for the item.
 type ItemDelegate struct {
-	styles *styles.Styles
+	styles    *styles.Styles
+	activeBox *box
 }
 
+// Width returns the item width.
 func (d ItemDelegate) Width() int {
 	width := d.styles.MenuItem.GetHorizontalFrameSize() + d.styles.MenuItem.GetWidth()
 	return width
 }
+
+// Height returns the item height. Implements list.ItemDelegate.
 func (d ItemDelegate) Height() int {
 	height := d.styles.MenuItem.GetVerticalFrameSize() + d.styles.MenuItem.GetHeight()
 	return height
 }
+
+// Spacing returns the spacing between items. Implements list.ItemDelegate.
 func (d ItemDelegate) Spacing() int { return 1 }
+
+// Update implements list.ItemDelegate.
 func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
+	if d.activeBox == nil || *d.activeBox != selectorBox {
+		return nil
+	}
 	for i, item := range m.VisibleItems() {
 		itm, ok := item.(Item)
 		if !ok {
@@ -78,12 +85,18 @@ func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	}
 	return tea.Batch(cmds...)
 }
+
+// Render implements list.ItemDelegate.
 func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i := listItem.(Item)
 	s := strings.Builder{}
 	style := d.styles.MenuItem.Copy()
 	if index == m.Index() {
-		style = d.styles.SelectedMenuItem.Copy()
+		style = style.BorderForeground(d.styles.ActiveBorderColor)
+		if d.activeBox != nil && *d.activeBox == readmeBox {
+			// TODO make this into its own color
+			style = style.BorderForeground(lipgloss.Color("15"))
+		}
 	}
 	titleStr := i.Title
 	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.LastUpdate))

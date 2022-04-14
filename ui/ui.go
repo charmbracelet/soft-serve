@@ -21,6 +21,7 @@ const (
 	loadedState
 )
 
+// UI is the main UI model.
 type UI struct {
 	s          session.Session
 	common     common.Common
@@ -32,6 +33,7 @@ type UI struct {
 	error      error
 }
 
+// New returns a new UI model.
 func New(s session.Session, c common.Common, initialRepo string) *UI {
 	h := header.New(c, s.Config().Name)
 	ui := &UI{
@@ -55,6 +57,7 @@ func (ui *UI) getMargins() (wm, hm int) {
 	return
 }
 
+// ShortHelp implements help.KeyMap.
 func (ui *UI) ShortHelp() []key.Binding {
 	b := make([]key.Binding, 0)
 	b = append(b, ui.pages[ui.activePage].ShortHelp()...)
@@ -62,6 +65,7 @@ func (ui *UI) ShortHelp() []key.Binding {
 	return b
 }
 
+// FullHelp implements help.KeyMap.
 func (ui *UI) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
 	b = append(b, ui.pages[ui.activePage].FullHelp()...)
@@ -69,6 +73,7 @@ func (ui *UI) FullHelp() [][]key.Binding {
 	return b
 }
 
+// SetSize implements common.Component.
 func (ui *UI) SetSize(width, height int) {
 	ui.common.SetSize(width, height)
 	wm, hm := ui.getMargins()
@@ -81,6 +86,7 @@ func (ui *UI) SetSize(width, height int) {
 	}
 }
 
+// Init implements tea.Model.
 func (ui *UI) Init() tea.Cmd {
 	ui.pages[0] = selection.New(ui.s, ui.common)
 	ui.pages[1] = selection.New(ui.s, ui.common)
@@ -89,6 +95,7 @@ func (ui *UI) Init() tea.Cmd {
 	return ui.pages[ui.activePage].Init()
 }
 
+// Update implements tea.Model.
 // TODO update help when page change.
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
@@ -130,6 +137,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return ui, tea.Batch(cmds...)
 }
 
+// View implements tea.Model.
 func (ui *UI) View() string {
 	s := strings.Builder{}
 	switch ui.state {

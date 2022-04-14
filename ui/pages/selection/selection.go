@@ -16,39 +16,67 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/session"
 )
 
+type box int
+
+const (
+	readmeBox box = iota
+	selectorBox
+)
+
+// Selection is the model for the selection screen/page.
 type Selection struct {
-	s        session.Session
-	common   common.Common
-	readme   *code.Code
-	selector *selector.Selector
+	s         session.Session
+	common    common.Common
+	readme    *code.Code
+	selector  *selector.Selector
+	activeBox box
 }
 
+// New creates a new selection model.
 func New(s session.Session, common common.Common) *Selection {
 	sel := &Selection{
-		s:        s,
-		common:   common,
-		readme:   code.New(common, "", ""),
-		selector: selector.New(common, []list.Item{}),
+		s:         s,
+		common:    common,
+		activeBox: 1,
 	}
+	readme := code.New(common, "", "")
+	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
+	sel.readme = readme
+	sel.selector = selector.New(common, []list.Item{}, ItemDelegate{common.Styles, &sel.activeBox})
 	return sel
 }
 
+// SetSize implements common.Component.
 func (s *Selection) SetSize(width, height int) {
 	s.common.SetSize(width, height)
-	s.readme.SetSize(width, height)
-	s.selector.SetSize(width, height)
+	sw := s.common.Styles.SelectorBox.GetWidth()
+	wm := sw +
+		s.common.Styles.SelectorBox.GetHorizontalFrameSize() +
+		s.common.Styles.ReadmeBox.GetHorizontalFrameSize()
+	hm := s.common.Styles.ReadmeBox.GetVerticalFrameSize()
+	s.readme.SetSize(width-wm, height-hm)
+	s.selector.SetSize(sw, height)
 }
 
+// ShortHelp implements help.KeyMap.
 func (s *Selection) ShortHelp() []key.Binding {
 	k := s.selector.KeyMap()
-	return []key.Binding{
+	kb := make([]key.Binding, 0)
+	kb = append(kb,
 		s.common.Keymap.UpDown,
 		s.common.Keymap.Select,
-		k.Filter,
-		k.ClearFilter,
+	)
+	if s.activeBox == selectorBox {
+		kb = append(kb,
+			k.Filter,
+			k.ClearFilter,
+		)
 	}
+	return kb
 }
 
+// FullHelp implements help.KeyMap.
+// TODO implement full help on ?
 func (s *Selection) FullHelp() [][]key.Binding {
 	k := s.selector.KeyMap()
 	return [][]key.Binding{
@@ -74,9 +102,11 @@ func (s *Selection) FullHelp() [][]key.Binding {
 	}
 }
 
+// Init implements tea.Model.
 func (s *Selection) Init() tea.Cmd {
 	items := make([]list.Item, 0)
 	cfg := s.s.Config()
+	// TODO fix yankable component
 	yank := func(text string) *yankable.Yankable {
 		return yankable.New(
 			lipgloss.NewStyle().Foreground(lipgloss.Color("168")),
@@ -86,7 +116,7 @@ func (s *Selection) Init() tea.Cmd {
 	}
 	// Put configured repos first
 	for _, r := range cfg.Repos {
-		items = append(items, selector.Item{
+		items = append(items, Item{
 			Title:       r.Name,
 			Name:        r.Repo,
 			Description: r.Note,
@@ -97,14 +127,14 @@ func (s *Selection) Init() tea.Cmd {
 	for _, r := range cfg.Source.AllRepos() {
 		exists := false
 		for _, item := range items {
-			item := item.(selector.Item)
+			item := item.(Item)
 			if item.Name == r.Name() {
 				exists = true
 				break
 			}
 		}
 		if !exists {
-			items = append(items, selector.Item{
+			items = append(items, Item{
 				Title:       r.Name(),
 				Name:        r.Name(),
 				Description: "",
@@ -119,12 +149,39 @@ func (s *Selection) Init() tea.Cmd {
 	)
 }
 
+// Update implements tea.Model.
 func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		r, cmd := s.readme.Update(msg)
+		s.readme = r.(*code.Code)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		m, cmd := s.selector.Update(msg)
+		s.selector = m.(*selector.Selector)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	case selector.ActiveMsg:
 		cmds = append(cmds, s.changeActive(msg))
-	default:
+		// reset readme position
+		s.readme.GotoTop()
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, s.common.Keymap.Section):
+			s.activeBox = (s.activeBox + 1) % 2
+		}
+	}
+	switch s.activeBox {
+	case readmeBox:
+		r, cmd := s.readme.Update(msg)
+		s.readme = r.(*code.Code)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case selectorBox:
 		m, cmd := s.selector.Update(msg)
 		s.selector = m.(*selector.Selector)
 		if cmd != nil {
@@ -134,10 +191,22 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, tea.Batch(cmds...)
 }
 
+// View implements tea.Model.
 func (s *Selection) View() string {
+	wm := s.common.Styles.SelectorBox.GetWidth() +
+		s.common.Styles.SelectorBox.GetHorizontalFrameSize() +
+		s.common.Styles.ReadmeBox.GetHorizontalFrameSize()
+	hm := s.common.Styles.ReadmeBox.GetVerticalFrameSize()
+	rs := s.common.Styles.ReadmeBox.Copy().
+		Width(s.common.Width - wm).
+		Height(s.common.Height - hm)
+	if s.activeBox == readmeBox {
+		rs.BorderForeground(s.common.Styles.ActiveBorderColor)
+	}
+	readme := rs.Render(s.readme.View())
 	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
-		s.readme.View(),
+		readme,
 		s.selector.View(),
 	)
 }
