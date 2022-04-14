@@ -55,9 +55,9 @@ func (d ItemDelegate) Spacing() int { return 1 }
 // Update implements list.ItemDelegate.
 func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
-	if d.activeBox == nil || *d.activeBox != selectorBox {
-		return nil
-	}
+	// if d.activeBox == nil || *d.activeBox != selectorBox {
+	// 	return nil
+	// }
 	for i, item := range m.VisibleItems() {
 		itm, ok := item.(Item)
 		if !ok {
@@ -66,14 +66,14 @@ func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 		// FIXME check if X & Y are within the item box
 		switch msg := msg.(type) {
 		case tea.MouseMsg:
-			x := msg.X
+			// x := msg.X
 			y := msg.Y
-			minX := (i * d.Width())
-			maxX := minX + d.Width()
+			// minX := (i * d.Width())
+			// maxX := minX + d.Width()
 			minY := (i * d.Height())
 			maxY := minY + d.Height()
 			// log.Printf("i: %d, x: %d, y: %d", i, x, y)
-			if y < minY || y > maxY || x < minX || x > maxX {
+			if y < minY || y > maxY {
 				continue
 			}
 		}

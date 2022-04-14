@@ -106,9 +106,10 @@ func (s *Selection) FullHelp() [][]key.Binding {
 func (s *Selection) Init() tea.Cmd {
 	items := make([]list.Item, 0)
 	cfg := s.s.Config()
-	// TODO fix yankable component
+	// TODO clean up this
 	yank := func(text string) *yankable.Yankable {
 		return yankable.New(
+			s.s.Session(),
 			lipgloss.NewStyle().Foreground(lipgloss.Color("168")),
 			lipgloss.NewStyle().Foreground(lipgloss.Color("168")).SetString("Copied!"),
 			text,

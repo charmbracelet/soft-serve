@@ -16,8 +16,8 @@ import (
 type Session struct {
 	tea.Model
 	*tea.Program
-	ssh.Session
-	Cfg *appCfg.Config
+	session ssh.Session
+	Cfg     *appCfg.Config
 }
 
 func (s *Session) Config() *appCfg.Config {
@@ -29,8 +29,13 @@ func (s *Session) Send(msg tea.Msg) {
 }
 
 func (s *Session) PublicKey() ssh.PublicKey {
-	return s.Session.PublicKey()
+	return s.session.PublicKey()
 }
+
+func (s *Session) Session() ssh.Session {
+	return s.session
+}
+
 func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 	return func(s ssh.Session) *tea.Program {
 		pty, _, active := s.Pty()
@@ -39,7 +44,7 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 			return nil
 		}
 		sess := &Session{
-			Session: s,
+			session: s,
 			Cfg:     ac,
 		}
 		cmd := s.Command()

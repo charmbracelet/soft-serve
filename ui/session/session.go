@@ -14,4 +14,5 @@ type Session interface {
 	Config() *appCfg.Config
 	// PublicKey returns the public key of the user.
 	PublicKey() ssh.PublicKey
+	Session() ssh.Session
 }
