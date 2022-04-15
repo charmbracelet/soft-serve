@@ -16,20 +16,26 @@ import (
 
 // Item represents a single item in the selector.
 type Item struct {
-	Title       string
-	Name        string
-	Description string
-	LastUpdate  time.Time
-	URL         *yankable.Yankable
+	name       string
+	repo       string
+	desc       string
+	lastUpdate time.Time
+	url        *yankable.Yankable
 }
 
 // ID implements selector.IdentifiableItem.
 func (i Item) ID() string {
-	return i.Name
+	return i.repo
 }
 
+// Title returns the item title. Implements list.DefaultItem.
+func (i Item) Title() string { return i.name }
+
+// Description returns the item description. Implements list.DefaultItem.
+func (i Item) Description() string { return i.desc }
+
 // FilterValue implements list.Item.
-func (i Item) FilterValue() string { return i.Title }
+func (i Item) FilterValue() string { return i.name }
 
 // ItemDelegate is the delegate for the item.
 type ItemDelegate struct {
@@ -77,8 +83,8 @@ func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 				continue
 			}
 		}
-		y, cmd := itm.URL.Update(msg)
-		itm.URL = y.(*yankable.Yankable)
+		y, cmd := itm.url.Update(msg)
+		itm.url = y.(*yankable.Yankable)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
@@ -90,29 +96,50 @@ func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i := listItem.(Item)
 	s := strings.Builder{}
-	style := d.styles.MenuItem.Copy()
-	if index == m.Index() {
-		style = style.BorderForeground(d.styles.ActiveBorderColor)
+	var matchedRunes []int
+
+	// Conditions
+	var (
+		isSelected = index == m.Index()
+		// emptyFilter = m.FilterState() == list.Filtering && m.FilterValue() == ""
+		isFiltered = m.FilterState() == list.Filtering || m.FilterState() == list.FilterApplied
+	)
+
+	itemStyle := d.styles.MenuItem.Copy()
+	if isSelected {
+		itemStyle = itemStyle.BorderForeground(d.styles.ActiveBorderColor)
 		if d.activeBox != nil && *d.activeBox == readmeBox {
 			// TODO make this into its own color
-			style = style.BorderForeground(lipgloss.Color("15"))
+			itemStyle = itemStyle.BorderForeground(lipgloss.Color("15"))
 		}
 	}
-	titleStr := i.Title
-	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.LastUpdate))
+
+	title := i.name
+	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.lastUpdate))
 	updated := d.styles.MenuLastUpdate.
 		Copy().
-		Width(m.Width() - style.GetHorizontalFrameSize() - lipgloss.Width(titleStr)).
+		Width(m.Width() - itemStyle.GetHorizontalFrameSize() - lipgloss.Width(title)).
 		Render(updatedStr)
-	title := lipgloss.NewStyle().
+	titleStyle := lipgloss.NewStyle().
 		Align(lipgloss.Left).
-		Width(m.Width() - style.GetHorizontalFrameSize() - lipgloss.Width(updated)).
-		Render(titleStr)
+		Width(m.Width() - itemStyle.GetHorizontalFrameSize() - lipgloss.Width(updated))
+
+	if isFiltered && index < len(m.VisibleItems()) {
+		// Get indices of matched characters
+		matchedRunes = m.MatchesForItem(index)
+	}
+
+	if isFiltered {
+		unmatched := lipgloss.NewStyle().Inline(true)
+		matched := unmatched.Copy().Underline(true)
+		title = lipgloss.StyleRunes(title, matchedRunes, matched, unmatched)
+	}
+	title = titleStyle.Render(title)
 
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, title, updated))
 	s.WriteString("\n")
-	s.WriteString(i.Description)
+	s.WriteString(i.desc)
 	s.WriteString("\n\n")
-	s.WriteString(i.URL.View())
-	w.Write([]byte(style.Render(s.String())))
+	s.WriteString(i.url.View())
+	w.Write([]byte(itemStyle.Render(s.String())))
 }

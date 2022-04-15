@@ -140,29 +140,29 @@ func (s *Selection) Init() tea.Cmd {
 	// Put configured repos first
 	for _, r := range cfg.Repos {
 		items = append(items, Item{
-			Title:       r.Name,
-			Name:        r.Repo,
-			Description: r.Note,
-			LastUpdate:  time.Now(),
-			URL:         yank(repoUrl(cfg, r.Repo)),
+			name:       r.Name,
+			repo:       r.Repo,
+			desc:       r.Note,
+			lastUpdate: time.Now(), // TODO get repo last update
+			url:        yank(repoUrl(cfg, r.Repo)),
 		})
 	}
 	for _, r := range cfg.Source.AllRepos() {
 		exists := false
 		for _, item := range items {
 			item := item.(Item)
-			if item.Name == r.Name() {
+			if item.repo == r.Name() {
 				exists = true
 				break
 			}
 		}
 		if !exists {
 			items = append(items, Item{
-				Title:       r.Name(),
-				Name:        r.Name(),
-				Description: "",
-				LastUpdate:  time.Now(),
-				URL:         yank(repoUrl(cfg, r.Name())),
+				name:       r.Name(),
+				repo:       r.Name(),
+				desc:       "",
+				lastUpdate: time.Now(), // TODO get repo last update
+				url:        yank(repoUrl(cfg, r.Name())),
 			})
 		}
 	}

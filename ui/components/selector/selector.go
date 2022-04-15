@@ -17,7 +17,7 @@ type Selector struct {
 
 // IdentifiableItem is an item that can be identified by a string and extends list.Item.
 type IdentifiableItem interface {
-	list.Item
+	list.DefaultItem
 	ID() string
 }
 
