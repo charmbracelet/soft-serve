@@ -54,6 +54,9 @@ brew tap charmbracelet/tap && brew install charmbracelet/tap/soft-serve
 
 # Arch Linux
 pacman -S soft-serve
+
+# Nix
+nix-env -iA nixpkgs.soft-serve
 ```
 
 You can also download a binary from the [releases][releases] page. Packages are
