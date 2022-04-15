@@ -142,11 +142,11 @@ func (ui *UI) View() string {
 	s := strings.Builder{}
 	switch ui.state {
 	case startState:
-		return "\n Loading..."
+		s.WriteString("Loading...")
 	case errorState:
 		err := ui.common.Styles.ErrorTitle.Render("Bummer")
 		err += ui.common.Styles.ErrorBody.Render(ui.error.Error())
-		return err
+		s.WriteString(err)
 	case loadedState:
 		s.WriteString(lipgloss.JoinVertical(
 			lipgloss.Bottom,
@@ -155,7 +155,7 @@ func (ui *UI) View() string {
 			ui.footer.View(),
 		))
 	default:
-		return "\n Unknown state :/ this is a bug!"
+		s.WriteString("Unknown state :/ this is a bug!")
 	}
 	return ui.common.Styles.App.Render(s.String())
 }

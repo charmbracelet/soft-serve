@@ -114,6 +114,7 @@ func (s *Selection) Init() tea.Cmd {
 	session := s.s.Session()
 	environ := session.Environ()
 	termExists := false
+	// Add TERM using pty.Term if it's not already set.
 	for _, env := range environ {
 		if strings.HasPrefix(env, "TERM=") {
 			termExists = true
@@ -188,7 +189,7 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case selector.ActiveMsg:
 		cmds = append(cmds, s.changeActive(msg))
-		// reset readme position
+		// reset readme position when active item change
 		s.readme.GotoTop()
 	case tea.KeyMsg:
 		switch {
