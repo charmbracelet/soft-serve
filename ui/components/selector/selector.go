@@ -9,9 +9,10 @@ import (
 
 // Selector is a list of items that can be selected.
 type Selector struct {
-	list   list.Model
-	common common.Common
-	active int
+	list        list.Model
+	common      common.Common
+	active      int
+	filterState list.FilterState
 }
 
 // IdentifiableItem is an item that can be identified by a string and extends list.Item.
@@ -27,8 +28,12 @@ type SelectMsg string
 type ActiveMsg string
 
 // New creates a new selector.
-func New(common common.Common, items []list.Item, delegate list.ItemDelegate) *Selector {
-	l := list.New(items, delegate, common.Width, common.Height)
+func New(common common.Common, items []IdentifiableItem, delegate list.ItemDelegate) *Selector {
+	itms := make([]list.Item, len(items))
+	for i, item := range items {
+		itms[i] = item
+	}
+	l := list.New(itms, delegate, common.Width, common.Height)
 	l.SetShowTitle(false)
 	l.SetShowHelp(false)
 	l.SetShowStatusBar(false)
@@ -76,12 +81,20 @@ func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, s.common.Keymap.Select):
 			cmds = append(cmds, s.selectCmd)
 		}
+	case list.FilterMatchesMsg:
+		cmds = append(cmds, s.activeFilterCmd)
 	}
 	m, cmd := s.list.Update(msg)
 	s.list = m
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
+	// Track filter state and update active item when filter state changes.
+	filterState := s.list.FilterState()
+	if s.filterState != filterState {
+		cmds = append(cmds, s.activeFilterCmd)
+	}
+	s.filterState = filterState
 	// Send ActiveMsg when index change.
 	if s.active != s.list.Index() {
 		cmds = append(cmds, s.activeCmd)
@@ -97,12 +110,34 @@ func (s *Selector) View() string {
 
 func (s *Selector) selectCmd() tea.Msg {
 	item := s.list.SelectedItem()
-	i := item.(IdentifiableItem)
+	i, ok := item.(IdentifiableItem)
+	if !ok {
+		return SelectMsg("")
+	}
 	return SelectMsg(i.ID())
 }
 
 func (s *Selector) activeCmd() tea.Msg {
 	item := s.list.SelectedItem()
-	i := item.(IdentifiableItem)
+	i, ok := item.(IdentifiableItem)
+	if !ok {
+		return ActiveMsg("")
+	}
+	return ActiveMsg(i.ID())
+}
+
+func (s *Selector) activeFilterCmd() tea.Msg {
+	// Here we use VisibleItems because when list.FilterMatchesMsg is sent,
+	// VisibleItems is the only way to get the list of filtered items. The list
+	// bubble should export something like list.FilterMatchesMsg.Items().
+	items := s.list.VisibleItems()
+	if len(items) == 0 {
+		return nil
+	}
+	item := items[0]
+	i, ok := item.(IdentifiableItem)
+	if !ok {
+		return nil
+	}
 	return ActiveMsg(i.ID())
 }

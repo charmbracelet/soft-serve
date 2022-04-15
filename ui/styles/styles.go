@@ -122,9 +122,7 @@ func DefaultStyles() *Styles {
 		Width(64)
 
 	s.ReadmeBox = lipgloss.NewStyle().
-		BorderForeground(s.InactiveBorderColor).
-		Padding(1).
-		MarginRight(1)
+		Margin(1, 1, 1, 0)
 
 	s.RepoTitleBorder = lipgloss.Border{
 		Top:         "─",

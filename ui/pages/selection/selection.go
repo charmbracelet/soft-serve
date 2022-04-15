@@ -2,6 +2,7 @@ package selection
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -37,12 +38,14 @@ func New(s session.Session, common common.Common) *Selection {
 	sel := &Selection{
 		s:         s,
 		common:    common,
-		activeBox: 1,
+		activeBox: selectorBox, // start with the selector focused
 	}
 	readme := code.New(common, "", "")
 	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
 	sel.readme = readme
-	sel.selector = selector.New(common, []list.Item{}, ItemDelegate{common.Styles, &sel.activeBox})
+	sel.selector = selector.New(common,
+		[]selector.IdentifiableItem{},
+		ItemDelegate{common.Styles, &sel.activeBox})
 	return sel
 }
 
@@ -52,7 +55,11 @@ func (s *Selection) SetSize(width, height int) {
 	sw := s.common.Styles.SelectorBox.GetWidth()
 	wm := sw +
 		s.common.Styles.SelectorBox.GetHorizontalFrameSize() +
-		s.common.Styles.ReadmeBox.GetHorizontalFrameSize()
+		s.common.Styles.ReadmeBox.GetHorizontalFrameSize() +
+		// +1 to get wrapping to work.
+		// This is needed because the readme box width has to be -1 from the
+		// readme style in order for wrapping to not break.
+		1
 	hm := s.common.Styles.ReadmeBox.GetVerticalFrameSize()
 	s.readme.SetSize(width-wm, height-hm)
 	s.selector.SetSize(sw, height)
@@ -104,12 +111,26 @@ func (s *Selection) FullHelp() [][]key.Binding {
 
 // Init implements tea.Model.
 func (s *Selection) Init() tea.Cmd {
+	session := s.s.Session()
+	environ := session.Environ()
+	termExists := false
+	for _, env := range environ {
+		if strings.HasPrefix(env, "TERM=") {
+			termExists = true
+			break
+		}
+	}
+	if !termExists {
+		pty, _, _ := session.Pty()
+		environ = append(environ, fmt.Sprintf("TERM=%s", pty.Term))
+	}
 	items := make([]list.Item, 0)
 	cfg := s.s.Config()
 	// TODO clean up this
 	yank := func(text string) *yankable.Yankable {
 		return yankable.New(
-			s.s.Session(),
+			session,
+			environ,
 			lipgloss.NewStyle().Foreground(lipgloss.Color("168")),
 			lipgloss.NewStyle().Foreground(lipgloss.Color("168")).SetString("Copied!"),
 			text,
@@ -122,7 +143,7 @@ func (s *Selection) Init() tea.Cmd {
 			Name:        r.Repo,
 			Description: r.Note,
 			LastUpdate:  time.Now(),
-			URL:         yank(repoUrl(cfg, r.Name)),
+			URL:         yank(repoUrl(cfg, r.Repo)),
 		})
 	}
 	for _, r := range cfg.Source.AllRepos() {

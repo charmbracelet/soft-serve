@@ -70,6 +70,7 @@ func (r *Code) Init() tea.Cmd {
 	if err != nil {
 		return common.ErrorCmd(err)
 	}
+	// FIXME reset underline and color
 	c = wrap.String(f, w)
 	r.viewport.Viewport.SetContent(c)
 	return nil
