@@ -3,7 +3,6 @@ package selection
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -140,19 +139,28 @@ func (s *Selection) Init() tea.Cmd {
 	// Put configured repos first
 	for _, r := range cfg.Repos {
 		items = append(items, Item{
-			name:       r.Name,
-			repo:       r.Repo,
-			desc:       r.Note,
-			lastUpdate: time.Now(), // TODO get repo last update
-			url:        yank(repoUrl(cfg, r.Repo)),
+			name: r.Name,
+			repo: r.Repo,
+			desc: r.Note,
+			url:  yank(repoUrl(cfg, r.Repo)),
 		})
 	}
 	for _, r := range cfg.Source.AllRepos() {
 		exists := false
+		head, err := r.HEAD()
+		if err != nil {
+			return common.ErrorCmd(err)
+		}
+		lc, err := r.CommitsByPage(head, 1, 1)
+		if err != nil {
+			return common.ErrorCmd(err)
+		}
+		lastUpdate := lc[0].Committer.When
 		for _, item := range items {
 			item := item.(Item)
 			if item.repo == r.Name() {
 				exists = true
+				item.lastUpdate = lastUpdate
 				break
 			}
 		}
@@ -161,7 +169,7 @@ func (s *Selection) Init() tea.Cmd {
 				name:       r.Name(),
 				repo:       r.Name(),
 				desc:       "",
-				lastUpdate: time.Now(), // TODO get repo last update
+				lastUpdate: lastUpdate,
 				url:        yank(repoUrl(cfg, r.Name())),
 			})
 		}

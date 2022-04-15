@@ -22,7 +22,7 @@ require (
 )
 
 require (
-	github.com/aymanbagabas/go-osc52 v1.0.1
+	github.com/aymanbagabas/go-osc52 v1.0.2
 	github.com/charmbracelet/keygen v0.3.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gogs/git-module v1.6.0

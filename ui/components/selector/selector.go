@@ -76,6 +76,13 @@ func (s *Selector) Init() tea.Cmd {
 func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
+	case tea.MouseMsg:
+		switch msg.Type {
+		case tea.MouseWheelUp:
+			s.list.CursorUp()
+		case tea.MouseWheelDown:
+			s.list.CursorDown()
+		}
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, s.common.Keymap.Select):
