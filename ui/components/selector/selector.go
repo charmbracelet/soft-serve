@@ -15,7 +15,7 @@ type Selector struct {
 	filterState list.FilterState
 }
 
-// IdentifiableItem is an item that can be identified by a string and extends list.Item.
+// IdentifiableItem is an item that can be identified by a string. Implements list.DefaultItem.
 type IdentifiableItem interface {
 	list.DefaultItem
 	ID() string

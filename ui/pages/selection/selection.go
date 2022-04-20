@@ -70,10 +70,11 @@ func (s *Selection) ShortHelp() []key.Binding {
 	kb := make([]key.Binding, 0)
 	kb = append(kb,
 		s.common.Keymap.UpDown,
-		s.common.Keymap.Select,
+		s.common.Keymap.Section,
 	)
 	if s.activeBox == selectorBox {
 		kb = append(kb,
+			s.common.Keymap.Select,
 			k.Filter,
 			k.ClearFilter,
 		)

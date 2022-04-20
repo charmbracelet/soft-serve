@@ -70,17 +70,30 @@ func (r *Code) Init() tea.Cmd {
 	if err != nil {
 		return common.ErrorCmd(err)
 	}
-	// FIXME reset underline and color
+	// FIXME: this is a hack to reset formatting at the end of every line.
 	c = wrap.String(f, w)
-	r.viewport.Viewport.SetContent(c)
+	s := strings.Split(c, "\n")
+	for i, l := range s {
+		s[i] = l + "\x1b[0m"
+	}
+	r.viewport.Viewport.SetContent(strings.Join(s, "\n"))
 	return nil
 }
 
 // Update implements tea.Model.
 func (r *Code) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cmds := make([]tea.Cmd, 0)
+	switch msg.(type) {
+	case tea.WindowSizeMsg:
+		// Recalculate content width and line wrap.
+		cmds = append(cmds, r.Init())
+	}
 	v, cmd := r.viewport.Update(msg)
 	r.viewport = v.(*vp.ViewportBubble)
-	return r, cmd
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+	return r, tea.Batch(cmds...)
 }
 
 // View implements tea.View.
