@@ -35,11 +35,11 @@ func New(common common.Common, items []IdentifiableItem, delegate list.ItemDeleg
 		itms[i] = item
 	}
 	l := list.New(itms, delegate, common.Width, common.Height)
-	l.KeyMap = list.DefaultKeyMap()
 	s := &Selector{
 		list:   l,
 		common: common,
 	}
+	s.KeyMap = list.DefaultKeyMap()
 	s.SetSize(common.Width, common.Height)
 	return s
 }
