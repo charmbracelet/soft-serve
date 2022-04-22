@@ -2,8 +2,6 @@ module github.com/charmbracelet/soft-serve
 
 go 1.17
 
-replace github.com/charmbracelet/glamour => ../glamour
-
 require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/caarlos0/env/v6 v6.9.1
