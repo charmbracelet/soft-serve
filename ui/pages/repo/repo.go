@@ -218,7 +218,7 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 		Key:    r.selectedRepo.Name(),
 		Value:  "",
 		Info:   info,
-		Branch: r.ref.Name().Short(),
+		Branch: fmt.Sprintf(" %s", r.ref.Name().Short()),
 	}
 }
 
