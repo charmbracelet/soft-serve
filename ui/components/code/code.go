@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/alecthomas/chroma/lexers"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	gansi "github.com/charmbracelet/glamour/ansi"
@@ -20,21 +19,17 @@ type Code struct {
 	common         common.Common
 	content        string
 	extension      string
-	viewport       *vp.ViewportBubble
+	viewport       *vp.Viewport
 	NoContentStyle lipgloss.Style
 }
 
 // New returns a new Code.
 func New(c common.Common, content, extension string) *Code {
 	r := &Code{
-		common:    c,
-		content:   content,
-		extension: extension,
-		viewport: &vp.ViewportBubble{
-			Viewport: &viewport.Model{
-				MouseWheelEnabled: true,
-			},
-		},
+		common:         c,
+		content:        content,
+		extension:      extension,
+		viewport:       vp.New(),
 		NoContentStyle: c.Styles.CodeNoContent.Copy(),
 	}
 	r.SetSize(c.Width, c.Height)
@@ -89,7 +84,7 @@ func (r *Code) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, r.Init())
 	}
 	v, cmd := r.viewport.Update(msg)
-	r.viewport = v.(*vp.ViewportBubble)
+	r.viewport = v.(*vp.Viewport)
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}

@@ -12,6 +12,7 @@ type KeyMap struct {
 	Arrows    key.Binding
 	Select    key.Binding
 	Section   key.Binding
+	Back      key.Binding
 }
 
 // DefaultKeyMap returns the default key map.
@@ -112,6 +113,16 @@ func DefaultKeyMap() *KeyMap {
 		key.WithHelp(
 			"tab",
 			"section",
+		),
+	)
+
+	km.Back = key.NewBinding(
+		key.WithKeys(
+			"esc",
+		),
+		key.WithHelp(
+			"esc",
+			"back",
 		),
 	)
 

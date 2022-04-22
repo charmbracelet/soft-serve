@@ -79,6 +79,15 @@ type Styles struct {
 	Spinner lipgloss.Style
 
 	CodeNoContent lipgloss.Style
+
+	StatusBarKey    lipgloss.Style
+	StatusBarValue  lipgloss.Style
+	StatusBarInfo   lipgloss.Style
+	StatusBarBranch lipgloss.Style
+
+	Tab          lipgloss.Style
+	TabActive    lipgloss.Style
+	TabSeparator lipgloss.Style
 }
 
 // DefaultStyles returns default styles for the UI.
@@ -176,10 +185,7 @@ func DefaultStyles() *Styles {
 		BorderBottom(true).
 		BorderLeft(false)
 
-	s.RepoBody = lipgloss.NewStyle().
-		BorderStyle(s.RepoBodyBorder).
-		BorderForeground(s.InactiveBorderColor).
-		PaddingRight(1)
+	s.RepoBody = lipgloss.NewStyle()
 
 	s.Footer = lipgloss.NewStyle().
 		Height(1)
@@ -301,6 +307,39 @@ func DefaultStyles() *Styles {
 		MarginTop(1).
 		MarginLeft(2).
 		Foreground(lipgloss.Color("#626262"))
+
+	s.StatusBarKey = lipgloss.NewStyle().
+		Bold(true).
+		Padding(0, 1).
+		Background(lipgloss.Color("#FF5FD2")).
+		Foreground(lipgloss.Color("#FFFF87"))
+
+	s.StatusBarValue = lipgloss.NewStyle().
+		Padding(0, 1).
+		Background(lipgloss.Color("#373737")).
+		Foreground(lipgloss.Color("#F1F1F1"))
+
+	s.StatusBarInfo = lipgloss.NewStyle().
+		Padding(0, 1).
+		Background(lipgloss.Color("#FF8EC7")).
+		Foreground(lipgloss.Color("#F1F1F1"))
+
+	s.StatusBarBranch = lipgloss.NewStyle().
+		Padding(0, 1).
+		Background(lipgloss.Color("#6E6ED8")).
+		Foreground(lipgloss.Color("#F1F1F1"))
+
+	s.Tab = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#F1F1F1"))
+
+	s.TabActive = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#6E6ED8")).
+		Underline(true)
+
+	s.TabSeparator = lipgloss.NewStyle().
+		SetString("│").
+		Padding(0, 1).
+		Foreground(lipgloss.Color("#777777"))
 
 	return s
 }

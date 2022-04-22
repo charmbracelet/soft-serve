@@ -9,6 +9,8 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/ui/components/header"
+	"github.com/charmbracelet/soft-serve/ui/components/selector"
+	"github.com/charmbracelet/soft-serve/ui/pages/repo"
 	"github.com/charmbracelet/soft-serve/ui/pages/selection"
 	"github.com/charmbracelet/soft-serve/ui/session"
 )
@@ -88,11 +90,15 @@ func (ui *UI) SetSize(width, height int) {
 
 // Init implements tea.Model.
 func (ui *UI) Init() tea.Cmd {
+	cfg := ui.s.Config()
 	ui.pages[0] = selection.New(ui.s, ui.common)
-	ui.pages[1] = selection.New(ui.s, ui.common)
+	ui.pages[1] = repo.New(ui.common, &source{cfg.Source})
 	ui.SetSize(ui.common.Width, ui.common.Height)
 	ui.state = loadedState
-	return ui.pages[ui.activePage].Init()
+	return tea.Batch(
+		ui.pages[0].Init(),
+		ui.pages[1].Init(),
+	)
 }
 
 // Update implements tea.Model.
@@ -123,11 +129,15 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, ui.common.Keymap.Quit):
 			return ui, tea.Quit
+		case ui.activePage == 1 && key.Matches(msg, ui.common.Keymap.Back):
+			ui.activePage = 0
 		}
 	case common.ErrorMsg:
 		ui.error = msg
 		ui.state = errorState
 		return ui, nil
+	case selector.SelectMsg:
+		ui.activePage = (ui.activePage + 1) % 2
 	}
 	m, cmd := ui.pages[ui.activePage].Update(msg)
 	ui.pages[ui.activePage] = m.(common.Page)

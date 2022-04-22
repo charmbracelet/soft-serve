@@ -7,7 +7,7 @@ import (
 	"github.com/alecthomas/chroma/lexers"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/internal/git"
+	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/tui/common"
 	gitwish "github.com/charmbracelet/wish/git"
 	"github.com/muesli/termenv"
@@ -40,7 +40,7 @@ func CatCommand() *cobra.Command {
 			if auth < gitwish.ReadOnlyAccess {
 				return ErrUnauthorized
 			}
-			var repo *git.Repo
+			var repo *config.Repo
 			repoExists := false
 			for _, rp := range ac.Source.AllRepos() {
 				if rp.Name() == rn {

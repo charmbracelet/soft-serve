@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/soft-serve/internal/git"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/go-git/go-billy/v5/memfs"
 	ggit "github.com/go-git/go-git/v5"
@@ -28,15 +27,15 @@ import (
 
 // Config is the Soft Serve configuration.
 type Config struct {
-	Name         string          `yaml:"name"`
-	Host         string          `yaml:"host"`
-	Port         int             `yaml:"port"`
-	AnonAccess   string          `yaml:"anon-access"`
-	AllowKeyless bool            `yaml:"allow-keyless"`
-	Users        []User          `yaml:"users"`
-	Repos        []Repo          `yaml:"repos"`
-	Source       *git.RepoSource `yaml:"-"`
-	Cfg          *config.Config  `yaml:"-"`
+	Name         string         `yaml:"name"`
+	Host         string         `yaml:"host"`
+	Port         int            `yaml:"port"`
+	AnonAccess   string         `yaml:"anon-access"`
+	AllowKeyless bool           `yaml:"allow-keyless"`
+	Users        []User         `yaml:"users"`
+	Repos        []MenuRepo     `yaml:"repos"`
+	Source       *RepoSource    `yaml:"-"`
+	Cfg          *config.Config `yaml:"-"`
 	mtx          sync.Mutex
 }
 
@@ -49,7 +48,7 @@ type User struct {
 }
 
 // Repo contains repository configuration information.
-type Repo struct {
+type MenuRepo struct {
 	Name    string `yaml:"name"`
 	Repo    string `yaml:"repo"`
 	Note    string `yaml:"note"`
@@ -82,7 +81,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 		pks = append(pks, pk)
 	}
 
-	rs := git.NewRepoSource(cfg.RepoPath)
+	rs := NewRepoSource(cfg.RepoPath)
 	c := &Config{
 		Cfg: cfg,
 	}
