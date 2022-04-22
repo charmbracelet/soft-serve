@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"log"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -102,8 +103,9 @@ func (ui *UI) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-// TODO update help when page change.
+// TODO show full help
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	log.Printf("%T", msg)
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:

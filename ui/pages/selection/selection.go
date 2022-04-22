@@ -41,10 +41,15 @@ func New(s session.Session, common common.Common) *Selection {
 	}
 	readme := code.New(common, "", "")
 	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
-	sel.readme = readme
-	sel.selector = selector.New(common,
+	selector := selector.New(common,
 		[]selector.IdentifiableItem{},
 		ItemDelegate{common.Styles, &sel.activeBox})
+	selector.SetShowTitle(false)
+	selector.SetShowHelp(false)
+	selector.SetShowStatusBar(false)
+	selector.DisableQuitKeybindings()
+	sel.selector = selector
+	sel.readme = readme
 	return sel
 }
 
@@ -66,7 +71,7 @@ func (s *Selection) SetSize(width, height int) {
 
 // ShortHelp implements help.KeyMap.
 func (s *Selection) ShortHelp() []key.Binding {
-	k := s.selector.KeyMap()
+	k := s.selector.KeyMap
 	kb := make([]key.Binding, 0)
 	kb = append(kb,
 		s.common.Keymap.UpDown,
@@ -85,7 +90,7 @@ func (s *Selection) ShortHelp() []key.Binding {
 // FullHelp implements help.KeyMap.
 // TODO implement full help on ?
 func (s *Selection) FullHelp() [][]key.Binding {
-	k := s.selector.KeyMap()
+	k := s.selector.KeyMap
 	return [][]key.Binding{
 		{
 			k.CursorUp,

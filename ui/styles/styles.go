@@ -28,11 +28,14 @@ type Styles struct {
 	RepoNoteBorder  lipgloss.Border
 	RepoBodyBorder  lipgloss.Border
 
-	RepoTitle    lipgloss.Style
-	RepoTitleBox lipgloss.Style
-	RepoNote     lipgloss.Style
-	RepoNoteBox  lipgloss.Style
-	RepoBody     lipgloss.Style
+	Repo           lipgloss.Style
+	RepoTitle      lipgloss.Style
+	RepoTitleBox   lipgloss.Style
+	RepoNote       lipgloss.Style
+	RepoNoteBox    lipgloss.Style
+	RepoBody       lipgloss.Style
+	RepoHeader     lipgloss.Style
+	RepoHeaderName lipgloss.Style
 
 	Footer      lipgloss.Style
 	Branch      lipgloss.Style
@@ -80,12 +83,14 @@ type Styles struct {
 
 	CodeNoContent lipgloss.Style
 
+	StatusBar       lipgloss.Style
 	StatusBarKey    lipgloss.Style
 	StatusBarValue  lipgloss.Style
 	StatusBarInfo   lipgloss.Style
 	StatusBarBranch lipgloss.Style
 
-	Tab          lipgloss.Style
+	Tabs         lipgloss.Style
+	TabInactive  lipgloss.Style
 	TabActive    lipgloss.Style
 	TabSeparator lipgloss.Style
 }
@@ -166,6 +171,8 @@ func DefaultStyles() *Styles {
 		BottomRight: "╯",
 	}
 
+	s.Repo = lipgloss.NewStyle()
+
 	s.RepoTitle = lipgloss.NewStyle().
 		Padding(0, 2)
 
@@ -185,7 +192,16 @@ func DefaultStyles() *Styles {
 		BorderBottom(true).
 		BorderLeft(false)
 
-	s.RepoBody = lipgloss.NewStyle()
+	s.RepoBody = lipgloss.NewStyle().
+		Margin(1, 0)
+
+	s.RepoHeader = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, false, true, false).
+		BorderForeground(lipgloss.Color("241"))
+
+	s.RepoHeaderName = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("15")).
+		Bold(true)
 
 	s.Footer = lipgloss.NewStyle().
 		Height(1)
@@ -308,6 +324,9 @@ func DefaultStyles() *Styles {
 		MarginLeft(2).
 		Foreground(lipgloss.Color("#626262"))
 
+	s.StatusBar = lipgloss.NewStyle().
+		Height(1)
+
 	s.StatusBarKey = lipgloss.NewStyle().
 		Bold(true).
 		Padding(0, 1).
@@ -329,8 +348,11 @@ func DefaultStyles() *Styles {
 		Background(lipgloss.Color("#6E6ED8")).
 		Foreground(lipgloss.Color("#F1F1F1"))
 
-	s.Tab = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#F1F1F1"))
+	s.Tabs = lipgloss.NewStyle().
+		Height(1)
+
+	s.TabInactive = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("15"))
 
 	s.TabActive = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#6E6ED8")).
@@ -339,7 +361,7 @@ func DefaultStyles() *Styles {
 	s.TabSeparator = lipgloss.NewStyle().
 		SetString("│").
 		Padding(0, 1).
-		Foreground(lipgloss.Color("#777777"))
+		Foreground(lipgloss.Color("241"))
 
 	return s
 }

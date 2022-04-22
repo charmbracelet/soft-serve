@@ -53,7 +53,7 @@ func (t *Tabs) View() string {
 	s := strings.Builder{}
 	sep := t.common.Styles.TabSeparator
 	for i, tab := range t.tabs {
-		style := t.common.Styles.Tab.Copy()
+		style := t.common.Styles.TabInactive.Copy()
 		if i == t.activeTab {
 			style = t.common.Styles.TabActive.Copy()
 		}

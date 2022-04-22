@@ -49,11 +49,6 @@ func (r *Code) SetContent(c, ext string) tea.Cmd {
 	return r.Init()
 }
 
-// GotoTop reset the viewport to the top.
-func (r *Code) GotoTop() {
-	r.viewport.Viewport.GotoTop()
-}
-
 // Init implements tea.Model.
 func (r *Code) Init() tea.Cmd {
 	w := r.common.Width
@@ -94,6 +89,51 @@ func (r *Code) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View implements tea.View.
 func (r *Code) View() string {
 	return r.viewport.View()
+}
+
+// GotoTop moves the viewport to the top of the log.
+func (r *Code) GotoTop() {
+	r.viewport.GotoTop()
+}
+
+// GotoBottom moves the viewport to the bottom of the log.
+func (r *Code) GotoBottom() {
+	r.viewport.GotoBottom()
+}
+
+// HalfViewDown moves the viewport down by half the viewport height.
+func (r *Code) HalfViewDown() {
+	r.viewport.HalfViewDown()
+}
+
+// HalfViewUp moves the viewport up by half the viewport height.
+func (r *Code) HalfViewUp() {
+	r.viewport.HalfViewUp()
+}
+
+// ViewUp moves the viewport up by a page.
+func (r *Code) ViewUp() []string {
+	return r.viewport.ViewUp()
+}
+
+// ViewDown moves the viewport down by a page.
+func (r *Code) ViewDown() []string {
+	return r.viewport.ViewDown()
+}
+
+// LineUp moves the viewport up by the given number of lines.
+func (r *Code) LineUp(n int) []string {
+	return r.viewport.LineUp(n)
+}
+
+// LineDown moves the viewport down by the given number of lines.
+func (r *Code) LineDown(n int) []string {
+	return r.viewport.LineDown(n)
+}
+
+// ScrollPercent returns the viewport's scroll percentage.
+func (r *Code) ScrollPercent() float64 {
+	return r.viewport.ScrollPercent()
 }
 
 func styleConfig() gansi.StyleConfig {

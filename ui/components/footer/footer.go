@@ -17,7 +17,9 @@ type Footer struct {
 func New(c common.Common, keymap help.KeyMap) *Footer {
 	h := help.New()
 	h.Styles.ShortKey = c.Styles.HelpKey
+	h.Styles.ShortDesc = c.Styles.HelpValue
 	h.Styles.FullKey = c.Styles.HelpKey
+	h.Styles.FullDesc = c.Styles.HelpValue
 	f := &Footer{
 		common: c,
 		help:   h,

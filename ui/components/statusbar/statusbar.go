@@ -46,7 +46,10 @@ func (s *StatusBar) View() string {
 	st := s.common.Styles
 	w := lipgloss.Width
 	key := st.StatusBarKey.Render(s.msg.Key)
-	info := st.StatusBarInfo.Render(s.msg.Info)
+	info := ""
+	if s.msg.Info != "" {
+		info = st.StatusBarInfo.Render(s.msg.Info)
+	}
 	branch := st.StatusBarBranch.Render(s.msg.Branch)
 	value := st.StatusBarValue.
 		Width(s.common.Width - w(key) - w(info) - w(branch)).

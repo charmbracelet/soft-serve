@@ -9,6 +9,7 @@ import (
 
 // Selector is a list of items that can be selected.
 type Selector struct {
+	KeyMap      list.KeyMap
 	list        list.Model
 	common      common.Common
 	active      int
@@ -34,10 +35,7 @@ func New(common common.Common, items []IdentifiableItem, delegate list.ItemDeleg
 		itms[i] = item
 	}
 	l := list.New(itms, delegate, common.Width, common.Height)
-	l.SetShowTitle(false)
-	l.SetShowHelp(false)
-	l.SetShowStatusBar(false)
-	l.DisableQuitKeybindings()
+	l.KeyMap = list.DefaultKeyMap()
 	s := &Selector{
 		list:   l,
 		common: common,
@@ -46,9 +44,39 @@ func New(common common.Common, items []IdentifiableItem, delegate list.ItemDeleg
 	return s
 }
 
-// KeyMap returns the underlying list's keymap.
-func (s *Selector) KeyMap() list.KeyMap {
-	return s.list.KeyMap
+// SetShowTitle sets the show title flag.
+func (s *Selector) SetShowTitle(show bool) {
+	s.list.SetShowTitle(show)
+}
+
+// SetShowHelp sets the show help flag.
+func (s *Selector) SetShowHelp(show bool) {
+	s.list.SetShowHelp(show)
+}
+
+// SetShowStatusBar sets the show status bar flag.
+func (s *Selector) SetShowStatusBar(show bool) {
+	s.list.SetShowStatusBar(show)
+}
+
+// DisableQuitKeybindings disables the quit keybindings.
+func (s *Selector) DisableQuitKeybindings() {
+	s.list.DisableQuitKeybindings()
+}
+
+// SetShowFilter sets the show filter flag.
+func (s *Selector) SetShowFilter(show bool) {
+	s.list.SetShowFilter(show)
+}
+
+// SetShowPagination sets the show pagination flag.
+func (s *Selector) SetShowPagination(show bool) {
+	s.list.SetShowPagination(show)
+}
+
+// SetFilteringEnabled sets the filtering enabled flag.
+func (s *Selector) SetFilteringEnabled(enabled bool) {
+	s.list.SetFilteringEnabled(enabled)
 }
 
 // SetSize implements common.Component.

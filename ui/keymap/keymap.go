@@ -13,6 +13,8 @@ type KeyMap struct {
 	Select    key.Binding
 	Section   key.Binding
 	Back      key.Binding
+	PrevPage  key.Binding
+	NextPage  key.Binding
 }
 
 // DefaultKeyMap returns the default key map.
@@ -123,6 +125,30 @@ func DefaultKeyMap() *KeyMap {
 		key.WithHelp(
 			"esc",
 			"back",
+		),
+	)
+
+	km.PrevPage = key.NewBinding(
+		key.WithKeys(
+			"pgup",
+			"b",
+			"u",
+		),
+		key.WithHelp(
+			"pgup",
+			"prev page",
+		),
+	)
+
+	km.NextPage = key.NewBinding(
+		key.WithKeys(
+			"pgdown",
+			"f",
+			"d",
+		),
+		key.WithHelp(
+			"pgdn",
+			"next page",
 		),
 	)
 
