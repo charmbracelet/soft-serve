@@ -57,7 +57,7 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 		}
 		c := common.Common{
 			Styles: styles.DefaultStyles(),
-			Keymap: keymap.DefaultKeyMap(),
+			KeyMap: keymap.DefaultKeyMap(),
 			Width:  pty.Window.Width,
 			Height: pty.Window.Height,
 		}

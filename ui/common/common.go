@@ -8,7 +8,7 @@ import (
 // Common is a struct all components should embed.
 type Common struct {
 	Styles *styles.Styles
-	Keymap *keymap.KeyMap
+	KeyMap *keymap.KeyMap
 	Width  int
 	Height int
 }

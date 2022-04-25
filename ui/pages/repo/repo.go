@@ -9,7 +9,6 @@ import (
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
-	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/statusbar"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
 	"github.com/charmbracelet/soft-serve/ui/git"
@@ -79,9 +78,9 @@ func (r *Repo) SetSize(width, height int) {
 // ShortHelp implements help.KeyMap.
 func (r *Repo) ShortHelp() []key.Binding {
 	b := make([]key.Binding, 0)
-	tab := r.common.Keymap.Section
+	tab := r.common.KeyMap.Section
 	tab.SetHelp("tab", "switch tab")
-	b = append(b, r.common.Keymap.Back)
+	b = append(b, r.common.KeyMap.Back)
 	b = append(b, tab)
 	return b
 }
@@ -101,27 +100,47 @@ func (r *Repo) Init() tea.Cmd {
 func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
-	case selector.SelectMsg:
-		r.activeTab = 0
-		cmds = append(cmds, r.tabs.Init(), r.setRepoCmd(string(msg)))
 	case RepoMsg:
+		r.activeTab = 0
 		r.selectedRepo = git.GitRepo(msg)
 		r.readme.GotoTop()
 		cmds = append(cmds,
+			r.tabs.Init(),
 			r.updateReadmeCmd,
 			r.updateRefCmd,
 		)
+		// Pass msg to log.
+		l, cmd := r.log.Update(msg)
+		r.log = l.(*Log)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	case RefMsg:
 		r.ref = msg
 		cmds = append(cmds,
 			r.updateStatusBarCmd,
 			r.log.Init(),
 		)
+		// Pass msg to log.
+		l, cmd := r.log.Update(msg)
+		r.log = l.(*Log)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	case tabs.ActiveTabMsg:
 		r.activeTab = tab(msg)
+		if r.selectedRepo != nil {
+			cmds = append(cmds, r.updateStatusBarCmd)
+		}
 	case tea.KeyMsg, tea.MouseMsg:
 		if r.selectedRepo != nil {
 			cmds = append(cmds, r.updateStatusBarCmd)
+		}
+	case LogCountMsg, LogItemsMsg:
+		l, cmd := r.log.Update(msg)
+		r.log = l.(*Log)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
 		}
 	}
 	t, cmd := r.tabs.Update(msg)
@@ -213,6 +232,8 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 	switch r.activeTab {
 	case readmeTab:
 		info = fmt.Sprintf("%.f%%", r.readme.ScrollPercent()*100)
+	case commitsTab:
+		info = r.log.StatusBarInfo()
 	}
 	return statusbar.StatusBarMsg{
 		Key:    r.selectedRepo.Name(),

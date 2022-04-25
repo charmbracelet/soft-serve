@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/ui/components/header"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
+	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/charmbracelet/soft-serve/ui/pages/repo"
 	"github.com/charmbracelet/soft-serve/ui/pages/selection"
 	"github.com/charmbracelet/soft-serve/ui/session"
@@ -64,7 +65,7 @@ func (ui *UI) getMargins() (wm, hm int) {
 func (ui *UI) ShortHelp() []key.Binding {
 	b := make([]key.Binding, 0)
 	b = append(b, ui.pages[ui.activePage].ShortHelp()...)
-	b = append(b, ui.common.Keymap.Quit)
+	b = append(b, ui.common.KeyMap.Quit)
 	return b
 }
 
@@ -72,7 +73,7 @@ func (ui *UI) ShortHelp() []key.Binding {
 func (ui *UI) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
 	b = append(b, ui.pages[ui.activePage].FullHelp()...)
-	b = append(b, []key.Binding{ui.common.Keymap.Quit})
+	b = append(b, []key.Binding{ui.common.KeyMap.Quit})
 	return b
 }
 
@@ -129,9 +130,12 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ui.SetSize(msg.Width, msg.Height)
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, ui.common.Keymap.Quit):
+		case key.Matches(msg, ui.common.KeyMap.Back) && ui.error != nil:
+			ui.error = nil
+			ui.state = loadedState
+		case key.Matches(msg, ui.common.KeyMap.Quit):
 			return ui, tea.Quit
-		case ui.activePage == 1 && key.Matches(msg, ui.common.Keymap.Back):
+		case ui.activePage == 1 && key.Matches(msg, ui.common.KeyMap.Back):
 			ui.activePage = 0
 		}
 	case common.ErrorMsg:
@@ -139,7 +143,10 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ui.state = errorState
 		return ui, nil
 	case selector.SelectMsg:
-		ui.activePage = (ui.activePage + 1) % 2
+		if ui.activePage == 0 {
+			ui.activePage = (ui.activePage + 1) % 2
+			cmds = append(cmds, ui.setRepoCmd(string(msg)))
+		}
 	}
 	m, cmd := ui.pages[ui.activePage].Update(msg)
 	ui.pages[ui.activePage] = m.(common.Page)
@@ -170,4 +177,16 @@ func (ui *UI) View() string {
 		s.WriteString("Unknown state :/ this is a bug!")
 	}
 	return ui.common.Styles.App.Render(s.String())
+}
+
+func (ui *UI) setRepoCmd(rn string) tea.Cmd {
+	rs := ui.s.Config().Source
+	return func() tea.Msg {
+		for _, r := range rs.AllRepos() {
+			if r.Name() == rn {
+				return repo.RepoMsg(r)
+			}
+		}
+		return common.ErrorMsg(git.ErrMissingRepo)
+	}
 }

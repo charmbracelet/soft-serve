@@ -74,12 +74,12 @@ func (s *Selection) ShortHelp() []key.Binding {
 	k := s.selector.KeyMap
 	kb := make([]key.Binding, 0)
 	kb = append(kb,
-		s.common.Keymap.UpDown,
-		s.common.Keymap.Section,
+		s.common.KeyMap.UpDown,
+		s.common.KeyMap.Section,
 	)
 	if s.activeBox == selectorBox {
 		kb = append(kb,
-			s.common.Keymap.Select,
+			s.common.KeyMap.Select,
 			k.Filter,
 			k.ClearFilter,
 		)
@@ -205,9 +205,10 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, s.changeActive(msg))
 		// reset readme position when active item change
 		s.readme.GotoTop()
+	case selector.SelectMsg:
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, s.common.Keymap.Section):
+		case key.Matches(msg, s.common.KeyMap.Section):
 			s.activeBox = (s.activeBox + 1) % 2
 		}
 	}
