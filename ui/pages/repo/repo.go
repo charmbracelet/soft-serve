@@ -9,9 +9,11 @@ import (
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
+	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/statusbar"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
 	"github.com/charmbracelet/soft-serve/ui/git"
+	"github.com/charmbracelet/soft-serve/ui/pages/selection"
 )
 
 type tab int
@@ -24,6 +26,8 @@ const (
 	tagsTab
 )
 
+type UpdateStatusBarMsg struct{}
+
 // RepoMsg is a message that contains a git.Repository.
 type RepoMsg git.GitRepo
 
@@ -35,6 +39,7 @@ type Repo struct {
 	common       common.Common
 	rs           git.GitRepoSource
 	selectedRepo git.GitRepo
+	selectedItem selection.Item
 	activeTab    tab
 	tabs         *tabs.Tabs
 	statusbar    *statusbar.StatusBar
@@ -68,7 +73,8 @@ func (r *Repo) SetSize(width, height int) {
 		r.common.Styles.RepoHeader.GetHeight() +
 		r.common.Styles.RepoHeader.GetVerticalFrameSize() +
 		r.common.Styles.StatusBar.GetHeight() +
-		r.common.Styles.Tabs.GetHeight()
+		r.common.Styles.Tabs.GetHeight() +
+		r.common.Styles.Tabs.GetVerticalFrameSize()
 	r.tabs.SetSize(width, height-hm)
 	r.statusbar.SetSize(width, height-hm)
 	r.readme.SetSize(width, height-hm)
@@ -80,8 +86,16 @@ func (r *Repo) ShortHelp() []key.Binding {
 	b := make([]key.Binding, 0)
 	tab := r.common.KeyMap.Section
 	tab.SetHelp("tab", "switch tab")
-	b = append(b, r.common.KeyMap.Back)
+	back := r.common.KeyMap.Back
+	back.SetHelp("esc", "repos")
+	b = append(b, back)
 	b = append(b, tab)
+	switch r.activeTab {
+	case readmeTab:
+		b = append(b, r.common.KeyMap.UpDown)
+	case commitsTab:
+		b = append(b, r.log.ShortHelp()...)
+	}
 	return b
 }
 
@@ -100,6 +114,11 @@ func (r *Repo) Init() tea.Cmd {
 func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
+	case selector.SelectMsg:
+		switch msg.IdentifiableItem.(type) {
+		case selection.Item:
+			r.selectedItem = msg.IdentifiableItem.(selection.Item)
+		}
 	case RepoMsg:
 		r.activeTab = 0
 		r.selectedRepo = git.GitRepo(msg)
@@ -137,6 +156,19 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, r.updateStatusBarCmd)
 		}
 	case LogCountMsg, LogItemsMsg:
+		l, cmd := r.log.Update(msg)
+		r.log = l.(*Log)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case UpdateStatusBarMsg:
+		cmds = append(cmds, r.updateStatusBarCmd)
+	case tea.WindowSizeMsg:
+		b, cmd := r.readme.Update(msg)
+		r.readme = b.(*code.Code)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 		l, cmd := r.log.Update(msg)
 		r.log = l.(*Log)
 		if cmd != nil {
@@ -183,7 +215,8 @@ func (r *Repo) View() string {
 		r.common.Styles.RepoHeader.GetHeight() +
 		r.common.Styles.RepoHeader.GetVerticalFrameSize() +
 		r.common.Styles.StatusBar.GetHeight() +
-		r.common.Styles.Tabs.GetHeight()
+		r.common.Styles.Tabs.GetHeight() +
+		r.common.Styles.Tabs.GetVerticalFrameSize()
 	mainStyle := repoBodyStyle.
 		Height(r.common.Height - hm)
 	main := mainStyle.Render("")
@@ -196,6 +229,7 @@ func (r *Repo) View() string {
 	}
 	view := lipgloss.JoinVertical(lipgloss.Top,
 		r.headerView(),
+		r.tabs.View(),
 		main,
 		r.statusbar.View(),
 	)
@@ -206,12 +240,18 @@ func (r *Repo) headerView() string {
 	if r.selectedRepo == nil {
 		return ""
 	}
-	name := r.common.Styles.RepoHeaderName.Render(r.selectedRepo.Name())
+	name := r.common.Styles.RepoHeaderName.Render(r.selectedItem.Title())
+	// TODO move this into a style.
+	url := lipgloss.NewStyle().MarginLeft(2).Render(r.selectedItem.URL())
+	desc := r.common.Styles.RepoHeaderDesc.Render(r.selectedItem.Description())
 	style := r.common.Styles.RepoHeader.Copy().Width(r.common.Width)
 	return style.Render(
 		lipgloss.JoinVertical(lipgloss.Top,
-			name,
-			r.tabs.View(),
+			lipgloss.JoinHorizontal(lipgloss.Left,
+				name,
+				url,
+			),
+			desc,
 		),
 	)
 }
@@ -257,4 +297,8 @@ func (r *Repo) updateRefCmd() tea.Msg {
 		return common.ErrorMsg(err)
 	}
 	return RefMsg(head)
+}
+
+func updateStatusBarCmd() tea.Msg {
+	return UpdateStatusBarMsg{}
 }

@@ -36,6 +36,7 @@ type Styles struct {
 	RepoBody       lipgloss.Style
 	RepoHeader     lipgloss.Style
 	RepoHeaderName lipgloss.Style
+	RepoHeaderDesc lipgloss.Style
 
 	Footer      lipgloss.Style
 	Branch      lipgloss.Style
@@ -196,12 +197,16 @@ func DefaultStyles() *Styles {
 		Margin(1, 0)
 
 	s.RepoHeader = lipgloss.NewStyle().
+		Height(2).
 		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(lipgloss.Color("241"))
 
 	s.RepoHeaderName = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("15")).
 		Bold(true)
+
+	s.RepoHeaderDesc = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("15"))
 
 	s.Footer = lipgloss.NewStyle().
 		Height(1)
@@ -348,8 +353,7 @@ func DefaultStyles() *Styles {
 		Background(lipgloss.Color("#6E6ED8")).
 		Foreground(lipgloss.Color("#F1F1F1"))
 
-	s.Tabs = lipgloss.NewStyle().
-		Height(1)
+	s.Tabs = lipgloss.NewStyle()
 
 	s.TabInactive = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("15"))

@@ -41,6 +41,11 @@ func (v *Viewport) View() string {
 	return v.Viewport.View()
 }
 
+// SetContent sets the viewport's content.
+func (v *Viewport) SetContent(content string) {
+	v.Viewport.SetContent(content)
+}
+
 // GotoTop moves the viewport to the top of the log.
 func (v *Viewport) GotoTop() {
 	v.Viewport.GotoTop()

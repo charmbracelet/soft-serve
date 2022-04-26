@@ -37,6 +37,10 @@ func (i Item) Description() string { return i.desc }
 // FilterValue implements list.Item.
 func (i Item) FilterValue() string { return i.name }
 
+func (i Item) URL() string {
+	return i.url.View()
+}
+
 // ItemDelegate is the delegate for the item.
 type ItemDelegate struct {
 	styles    *styles.Styles

@@ -2,14 +2,22 @@ package repo
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
+	gansi "github.com/charmbracelet/glamour/ansi"
+	"github.com/charmbracelet/lipgloss"
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/viewport"
 	"github.com/charmbracelet/soft-serve/ui/git"
+	"github.com/muesli/reflow/wrap"
+	"github.com/muesli/termenv"
 )
 
 type view int
@@ -23,15 +31,21 @@ type LogCountMsg int64
 
 type LogItemsMsg []list.Item
 
+type LogCommitMsg *ggit.Commit
+
+type LogDiffMsg *ggit.Diff
+
 type Log struct {
-	common     common.Common
-	selector   *selector.Selector
-	vp         *viewport.Viewport
-	activeView view
-	repo       git.GitRepo
-	ref        *ggit.Reference
-	count      int64
-	nextPage   int
+	common         common.Common
+	selector       *selector.Selector
+	vp             *viewport.Viewport
+	activeView     view
+	repo           git.GitRepo
+	ref            *ggit.Reference
+	count          int64
+	nextPage       int
+	selectedCommit *ggit.Commit
+	currentDiff    *ggit.Diff
 }
 
 func NewLog(common common.Common) *Log {
@@ -60,6 +74,40 @@ func (l *Log) SetSize(width, height int) {
 	l.vp.SetSize(width, height)
 }
 
+func (l *Log) ShortHelp() []key.Binding {
+	switch l.activeView {
+	case logView:
+		return []key.Binding{
+			key.NewBinding(
+				key.WithKeys(
+					"l",
+					"right",
+				),
+				key.WithHelp(
+					"→",
+					"select",
+				),
+			),
+		}
+	case commitView:
+		return []key.Binding{
+			l.common.KeyMap.UpDown,
+			key.NewBinding(
+				key.WithKeys(
+					"h",
+					"left",
+				),
+				key.WithHelp(
+					"←",
+					"back",
+				),
+			),
+		}
+	default:
+		return []key.Binding{}
+	}
+}
+
 func (l *Log) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	cmds = append(cmds, l.updateCommitsCmd)
@@ -73,6 +121,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		l.count = 0
 		l.selector.Select(0)
 		l.nextPage = 0
+		l.activeView = 0
 		l.repo = git.GitRepo(msg)
 	case RefMsg:
 		l.ref = msg
@@ -85,8 +134,16 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		l.selector.SetPage(l.nextPage)
 		l.SetSize(l.common.Width, l.common.Height)
 	case tea.KeyMsg, tea.MouseMsg:
-		// This is a hack for loading commits on demand based on list.Pagination.
-		if l.activeView == logView {
+		switch l.activeView {
+		case logView:
+			switch key := msg.(type) {
+			case tea.KeyMsg:
+				switch key.String() {
+				case "l", "right":
+					cmds = append(cmds, l.selector.SelectItem)
+				}
+			}
+			// This is a hack for loading commits on demand based on list.Pagination.
 			curPage := l.selector.Page()
 			s, cmd := l.selector.Update(msg)
 			m := s.(*selector.Selector)
@@ -97,6 +154,47 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, l.updateCommitsCmd)
 			}
 			cmds = append(cmds, cmd)
+		case commitView:
+			switch key := msg.(type) {
+			case tea.KeyMsg:
+				switch key.String() {
+				case "h", "left":
+					l.activeView = logView
+				}
+			}
+		}
+	case selector.SelectMsg:
+		switch sel := msg.IdentifiableItem.(type) {
+		case LogItem:
+			cmds = append(cmds, l.selectCommitCmd(sel.Commit))
+		}
+	case LogCommitMsg:
+		l.selectedCommit = msg
+		cmds = append(cmds, l.loadDiffCmd)
+	case LogDiffMsg:
+		l.currentDiff = msg
+		l.vp.SetContent(
+			lipgloss.JoinVertical(lipgloss.Top,
+				l.renderCommit(l.selectedCommit),
+				l.renderSummary(msg),
+				l.renderDiff(msg),
+			),
+		)
+		l.vp.GotoTop()
+		l.activeView = commitView
+		cmds = append(cmds, updateStatusBarCmd)
+	case tea.WindowSizeMsg:
+		if l.selectedCommit != nil && l.currentDiff != nil {
+			l.vp.SetContent(
+				lipgloss.JoinVertical(lipgloss.Top,
+					l.renderCommit(l.selectedCommit),
+					l.renderSummary(l.currentDiff),
+					l.renderDiff(l.currentDiff),
+				),
+			)
+		}
+		if l.repo != nil {
+			cmds = append(cmds, l.updateCommitsCmd)
 		}
 	}
 	switch l.activeView {
@@ -127,6 +225,8 @@ func (l *Log) StatusBarInfo() string {
 		// We're using l.nextPage instead of l.selector.Paginator.Page because
 		// of the paginator hack above.
 		return fmt.Sprintf("%d/%d", l.nextPage+1, l.selector.TotalPages())
+	case commitView:
+		return fmt.Sprintf("%.f%%", l.vp.ScrollPercent()*100)
 	default:
 		return ""
 	}
@@ -167,4 +267,78 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 		items[idx] = LogItem{c}
 	}
 	return LogItemsMsg(items)
+}
+
+func (l *Log) selectCommitCmd(commit *ggit.Commit) tea.Cmd {
+	return func() tea.Msg {
+		return LogCommitMsg(commit)
+	}
+}
+
+func (l *Log) loadDiffCmd() tea.Msg {
+	diff, err := l.repo.Diff(l.selectedCommit)
+	if err != nil {
+		return common.ErrorMsg(err)
+	}
+	return LogDiffMsg(diff)
+}
+
+func styleConfig() gansi.StyleConfig {
+	noColor := ""
+	s := glamour.DarkStyleConfig
+	s.Document.StylePrimitive.Color = &noColor
+	s.CodeBlock.Chroma.Text.Color = &noColor
+	s.CodeBlock.Chroma.Name.Color = &noColor
+	return s
+}
+
+func renderCtx() gansi.RenderContext {
+	return gansi.NewRenderContext(gansi.Options{
+		ColorProfile: termenv.TrueColor,
+		Styles:       styleConfig(),
+	})
+}
+
+func (l *Log) renderCommit(c *ggit.Commit) string {
+	s := strings.Builder{}
+	// FIXME: lipgloss prints empty lines when CRLF is used
+	// sanitize commit message from CRLF
+	msg := strings.ReplaceAll(c.Message, "\r\n", "\n")
+	s.WriteString(fmt.Sprintf("%s\n%s\n%s\n%s\n",
+		l.common.Styles.LogCommitHash.Render("commit "+c.ID.String()),
+		l.common.Styles.LogCommitAuthor.Render(fmt.Sprintf("Author: %s <%s>", c.Author.Name, c.Author.Email)),
+		l.common.Styles.LogCommitDate.Render("Date:   "+c.Committer.When.Format(time.UnixDate)),
+		l.common.Styles.LogCommitBody.Render(msg),
+	))
+	return wrap.String(s.String(), l.common.Width-2)
+}
+
+func (l *Log) renderSummary(diff *ggit.Diff) string {
+	stats := strings.Split(diff.Stats().String(), "\n")
+	for i, line := range stats {
+		ch := strings.Split(line, "|")
+		if len(ch) > 1 {
+			adddel := ch[len(ch)-1]
+			adddel = strings.ReplaceAll(adddel, "+", l.common.Styles.LogCommitStatsAdd.Render("+"))
+			adddel = strings.ReplaceAll(adddel, "-", l.common.Styles.LogCommitStatsDel.Render("-"))
+			stats[i] = strings.Join(ch[:len(ch)-1], "|") + "|" + adddel
+		}
+	}
+	return wrap.String(strings.Join(stats, "\n"), l.common.Width-2)
+}
+
+func (l *Log) renderDiff(diff *ggit.Diff) string {
+	var s strings.Builder
+	var pr strings.Builder
+	diffChroma := &gansi.CodeBlockElement{
+		Code:     diff.Patch(),
+		Language: "diff",
+	}
+	err := diffChroma.Render(&pr, renderCtx())
+	if err != nil {
+		s.WriteString(fmt.Sprintf("\n%s", err.Error()))
+	} else {
+		s.WriteString(fmt.Sprintf("\n%s", pr.String()))
+	}
+	return wrap.String(s.String(), l.common.Width-2)
 }

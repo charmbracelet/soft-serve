@@ -106,7 +106,7 @@ func (ui *UI) Init() tea.Cmd {
 // Update implements tea.Model.
 // TODO show full help
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	log.Printf("%T", msg)
+	log.Printf("msg: %T", msg)
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -143,9 +143,12 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ui.state = errorState
 		return ui, nil
 	case selector.SelectMsg:
-		if ui.activePage == 0 {
-			ui.activePage = (ui.activePage + 1) % 2
-			cmds = append(cmds, ui.setRepoCmd(string(msg)))
+		switch msg.IdentifiableItem.(type) {
+		case selection.Item:
+			if ui.activePage == 0 {
+				ui.activePage = 1
+				cmds = append(cmds, ui.setRepoCmd(msg.ID()))
+			}
 		}
 	}
 	m, cmd := ui.pages[ui.activePage].Update(msg)

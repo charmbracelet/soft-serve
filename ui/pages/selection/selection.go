@@ -132,7 +132,7 @@ func (s *Selection) Init() tea.Cmd {
 	}
 	items := make([]list.Item, 0)
 	cfg := s.s.Config()
-	// TODO clean up this
+	// TODO clean up this and move style to its own var.
 	yank := func(text string) *yankable.Yankable {
 		return yankable.New(
 			session,
@@ -205,7 +205,6 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, s.changeActive(msg))
 		// reset readme position when active item change
 		s.readme.GotoTop()
-	case selector.SelectMsg:
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, s.common.KeyMap.Section):
@@ -251,7 +250,7 @@ func (s *Selection) View() string {
 
 func (s *Selection) changeActive(msg selector.ActiveMsg) tea.Cmd {
 	cfg := s.s.Config()
-	r, err := cfg.Source.GetRepo(string(msg))
+	r, err := cfg.Source.GetRepo(msg.ID())
 	if err != nil {
 		return common.ErrorCmd(err)
 	}

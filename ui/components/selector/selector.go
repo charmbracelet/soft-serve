@@ -22,10 +22,10 @@ type IdentifiableItem interface {
 }
 
 // SelectMsg is a message that is sent when an item is selected.
-type SelectMsg string
+type SelectMsg struct{ IdentifiableItem }
 
 // ActiveMsg is a message that is sent when an item is active but not selected.
-type ActiveMsg string
+type ActiveMsg struct{ IdentifiableItem }
 
 // New creates a new selector.
 func New(common common.Common, items []IdentifiableItem, delegate list.ItemDelegate) *Selector {
@@ -166,22 +166,27 @@ func (s *Selector) View() string {
 	return s.Model.View()
 }
 
+// SelectItem is a command that selects the currently active item.
+func (s *Selector) SelectItem() tea.Msg {
+	return s.selectCmd()
+}
+
 func (s *Selector) selectCmd() tea.Msg {
 	item := s.Model.SelectedItem()
 	i, ok := item.(IdentifiableItem)
 	if !ok {
-		return SelectMsg("")
+		return SelectMsg{}
 	}
-	return SelectMsg(i.ID())
+	return SelectMsg{i}
 }
 
 func (s *Selector) activeCmd() tea.Msg {
 	item := s.Model.SelectedItem()
 	i, ok := item.(IdentifiableItem)
 	if !ok {
-		return ActiveMsg("")
+		return ActiveMsg{}
 	}
-	return ActiveMsg(i.ID())
+	return ActiveMsg{i}
 }
 
 func (s *Selector) activeFilterCmd() tea.Msg {
@@ -197,5 +202,5 @@ func (s *Selector) activeFilterCmd() tea.Msg {
 	if !ok {
 		return nil
 	}
-	return ActiveMsg(i.ID())
+	return ActiveMsg{i}
 }
