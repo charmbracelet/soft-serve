@@ -12,14 +12,17 @@ import (
 	"github.com/muesli/reflow/truncate"
 )
 
+// LogItem is a item in the log list that displays a git commit.
 type LogItem struct {
 	*git.Commit
 }
 
+// ID implements selector.IdentifiableItem.
 func (i LogItem) ID() string {
 	return i.Commit.ID.String()
 }
 
+// Title returns the item title. Implements list.DefaultItem.
 func (i LogItem) Title() string {
 	if i.Commit != nil {
 		return strings.Split(i.Commit.Message, "\n")[0]
@@ -27,17 +30,27 @@ func (i LogItem) Title() string {
 	return ""
 }
 
+// Description returns the item description. Implements list.DefaultItem.
 func (i LogItem) Description() string { return "" }
 
+// FilterValue implements list.Item.
 func (i LogItem) FilterValue() string { return i.Title() }
 
+// LogItemDelegate is the delegate for LogItem.
 type LogItemDelegate struct {
 	style *styles.Styles
 }
 
-func (d LogItemDelegate) Height() int                               { return 1 }
-func (d LogItemDelegate) Spacing() int                              { return 0 }
+// Height returns the item height. Implements list.ItemDelegate.
+func (d LogItemDelegate) Height() int { return 1 }
+
+// Spacing returns the item spacing. Implements list.ItemDelegate.
+func (d LogItemDelegate) Spacing() int { return 0 }
+
+// Update updates the item. Implements list.ItemDelegate.
 func (d LogItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
+
+// Render renders the item. Implements list.ItemDelegate.
 func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i, ok := listItem.(LogItem)
 	if !ok {

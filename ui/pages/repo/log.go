@@ -27,14 +27,19 @@ const (
 	commitView
 )
 
+// LogCountMsg is a message that contains the number of commits in a repo.
 type LogCountMsg int64
 
+// LogItemsMsg is a message that contains a slice of LogItem.
 type LogItemsMsg []list.Item
 
+// LogCommitMsg is a message that contains a git commit.
 type LogCommitMsg *ggit.Commit
 
+// LogDiffMsg is a message that contains a git diff.
 type LogDiffMsg *ggit.Diff
 
+// Log is a model that displays a list of commits and their diffs.
 type Log struct {
 	common         common.Common
 	selector       *selector.Selector
@@ -48,6 +53,7 @@ type Log struct {
 	currentDiff    *ggit.Diff
 }
 
+// NewLog creates a new Log model.
 func NewLog(common common.Common) *Log {
 	l := &Log{
 		common:     common,
@@ -68,12 +74,14 @@ func NewLog(common common.Common) *Log {
 	return l
 }
 
+// SetSize implements common.Component.
 func (l *Log) SetSize(width, height int) {
 	l.common.SetSize(width, height)
 	l.selector.SetSize(width, height)
 	l.vp.SetSize(width, height)
 }
 
+// ShortHelp implements key.KeyMap.
 func (l *Log) ShortHelp() []key.Binding {
 	switch l.activeView {
 	case logView:
@@ -108,12 +116,14 @@ func (l *Log) ShortHelp() []key.Binding {
 	}
 }
 
+// Init implements tea.Model.
 func (l *Log) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	cmds = append(cmds, l.updateCommitsCmd)
 	return tea.Batch(cmds...)
 }
 
+// Update implements tea.Model.
 func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
@@ -208,6 +218,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return l, tea.Batch(cmds...)
 }
 
+// View implements tea.Model.
 func (l *Log) View() string {
 	switch l.activeView {
 	case logView:
@@ -219,6 +230,7 @@ func (l *Log) View() string {
 	}
 }
 
+// StatusBarInfo returns the status bar info.
 func (l *Log) StatusBarInfo() string {
 	switch l.activeView {
 	case logView:

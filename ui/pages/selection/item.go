@@ -37,6 +37,7 @@ func (i Item) Description() string { return i.desc }
 // FilterValue implements list.Item.
 func (i Item) FilterValue() string { return i.name }
 
+// URL returns the item URL view.
 func (i Item) URL() string {
 	return i.url.View()
 }
