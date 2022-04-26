@@ -237,8 +237,7 @@ func DefaultStyles() *Styles {
 
 	s.ErrorBody = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("252")).
-		MarginLeft(2).
-		Width(52) // for now
+		MarginLeft(2)
 
 	s.AboutNoReadme = lipgloss.NewStyle().
 		MarginTop(1).

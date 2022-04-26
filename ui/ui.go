@@ -64,7 +64,12 @@ func (ui *UI) getMargins() (wm, hm int) {
 // ShortHelp implements help.KeyMap.
 func (ui *UI) ShortHelp() []key.Binding {
 	b := make([]key.Binding, 0)
-	b = append(b, ui.pages[ui.activePage].ShortHelp()...)
+	switch ui.state {
+	case errorState:
+		b = append(b, ui.common.KeyMap.Back)
+	case loadedState:
+		b = append(b, ui.pages[ui.activePage].ShortHelp()...)
+	}
 	b = append(b, ui.common.KeyMap.Quit)
 	return b
 }
@@ -72,7 +77,12 @@ func (ui *UI) ShortHelp() []key.Binding {
 // FullHelp implements help.KeyMap.
 func (ui *UI) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
-	b = append(b, ui.pages[ui.activePage].FullHelp()...)
+	switch ui.state {
+	case errorState:
+		b = append(b, []key.Binding{ui.common.KeyMap.Back})
+	case loadedState:
+		b = append(b, ui.pages[ui.activePage].FullHelp()...)
+	}
 	b = append(b, []key.Binding{ui.common.KeyMap.Quit})
 	return b
 }
@@ -168,7 +178,20 @@ func (ui *UI) View() string {
 	case errorState:
 		err := ui.common.Styles.ErrorTitle.Render("Bummer")
 		err += ui.common.Styles.ErrorBody.Render(ui.error.Error())
-		s.WriteString(err)
+		view := ui.common.Styles.ErrorBody.Copy().
+			Width(ui.common.Width -
+				ui.common.Styles.App.GetHorizontalFrameSize() -
+				ui.common.Styles.ErrorBody.GetHorizontalFrameSize()).
+			Height(ui.common.Height -
+				ui.common.Styles.App.GetVerticalFrameSize() -
+				ui.common.Styles.Header.GetVerticalFrameSize() - 2).
+			Render(err)
+		s.WriteString(lipgloss.JoinVertical(
+			lipgloss.Bottom,
+			ui.header.View(),
+			view,
+			ui.footer.View(),
+		))
 	case loadedState:
 		s.WriteString(lipgloss.JoinVertical(
 			lipgloss.Bottom,
