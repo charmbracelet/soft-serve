@@ -21,6 +21,11 @@ type IdentifiableItem interface {
 	ID() string
 }
 
+// ItemDelegate is a wrapper around list.ItemDelegate.
+type ItemDelegate interface {
+	list.ItemDelegate
+}
+
 // SelectMsg is a message that is sent when an item is selected.
 type SelectMsg struct{ IdentifiableItem }
 
@@ -28,7 +33,7 @@ type SelectMsg struct{ IdentifiableItem }
 type ActiveMsg struct{ IdentifiableItem }
 
 // New creates a new selector.
-func New(common common.Common, items []IdentifiableItem, delegate list.ItemDelegate) *Selector {
+func New(common common.Common, items []IdentifiableItem, delegate ItemDelegate) *Selector {
 	itms := make([]list.Item, len(items))
 	for i, item := range items {
 		itms[i] = item
@@ -109,8 +114,12 @@ func (s *Selector) SetSize(width, height int) {
 }
 
 // SetItems sets the items in the selector.
-func (s *Selector) SetItems(items []list.Item) tea.Cmd {
-	return s.Model.SetItems(items)
+func (s *Selector) SetItems(items []IdentifiableItem) tea.Cmd {
+	its := make([]list.Item, len(items))
+	for i, item := range items {
+		its[i] = item
+	}
+	return s.Model.SetItems(its)
 }
 
 // Index returns the index of the selected item.

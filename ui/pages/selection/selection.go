@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	appCfg "github.com/charmbracelet/soft-serve/config"
@@ -130,7 +129,7 @@ func (s *Selection) Init() tea.Cmd {
 		pty, _, _ := session.Pty()
 		environ = append(environ, fmt.Sprintf("TERM=%s", pty.Term))
 	}
-	items := make([]list.Item, 0)
+	items := make([]selector.IdentifiableItem, 0)
 	cfg := s.s.Config()
 	// TODO clean up this and move style to its own var.
 	yank := func(text string) *yankable.Yankable {

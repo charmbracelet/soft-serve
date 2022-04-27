@@ -120,6 +120,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		ui.SetSize(msg.Width, msg.Height)
 		h, cmd := ui.header.Update(msg)
 		ui.header = h.(*header.Header)
 		if cmd != nil {
@@ -137,7 +138,6 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 		}
-		ui.SetSize(msg.Width, msg.Height)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, ui.common.KeyMap.Back) && ui.error != nil:
@@ -161,10 +161,12 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-	m, cmd := ui.pages[ui.activePage].Update(msg)
-	ui.pages[ui.activePage] = m.(common.Page)
-	if cmd != nil {
-		cmds = append(cmds, cmd)
+	if ui.state == loadedState {
+		m, cmd := ui.pages[ui.activePage].Update(msg)
+		ui.pages[ui.activePage] = m.(common.Page)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	}
 	return ui, tea.Batch(cmds...)
 }

@@ -45,6 +45,7 @@ type Repo struct {
 	statusbar    *statusbar.StatusBar
 	readme       *code.Code
 	log          *Log
+	files        *Files
 	ref          *ggit.Reference
 }
 
@@ -55,6 +56,7 @@ func New(common common.Common, rs git.GitRepoSource) *Repo {
 	readme := code.New(common, "", "")
 	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
 	log := NewLog(common)
+	files := NewFiles(common)
 	r := &Repo{
 		common:    common,
 		rs:        rs,
@@ -62,6 +64,7 @@ func New(common common.Common, rs git.GitRepoSource) *Repo {
 		statusbar: sb,
 		readme:    readme,
 		log:       log,
+		files:     files,
 	}
 	return r
 }
@@ -79,6 +82,7 @@ func (r *Repo) SetSize(width, height int) {
 	r.statusbar.SetSize(width, height-hm)
 	r.readme.SetSize(width, height-hm)
 	r.log.SetSize(width, height-hm)
+	r.files.SetSize(width, height-hm)
 }
 
 // ShortHelp implements help.KeyMap.
@@ -127,25 +131,16 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.tabs.Init(),
 			r.updateReadmeCmd,
 			r.updateRefCmd,
+			r.updateModels(msg),
 		)
-		// Pass msg to log.
-		l, cmd := r.log.Update(msg)
-		r.log = l.(*Log)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
 	case RefMsg:
 		r.ref = msg
 		cmds = append(cmds,
 			r.updateStatusBarCmd,
 			r.log.Init(),
+			r.files.Init(),
+			r.updateModels(msg),
 		)
-		// Pass msg to log.
-		l, cmd := r.log.Update(msg)
-		r.log = l.(*Log)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
 	case tabs.ActiveTabMsg:
 		r.activeTab = tab(msg)
 		if r.selectedRepo != nil {
@@ -154,6 +149,12 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg, tea.MouseMsg:
 		if r.selectedRepo != nil {
 			cmds = append(cmds, r.updateStatusBarCmd)
+		}
+	case FileItemsMsg:
+		f, cmd := r.files.Update(msg)
+		r.files = f.(*Files)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
 		}
 	case LogCountMsg, LogItemsMsg:
 		l, cmd := r.log.Update(msg)
@@ -169,11 +170,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-		l, cmd := r.log.Update(msg)
-		r.log = l.(*Log)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+		cmds = append(cmds, r.updateModels(msg))
 	}
 	t, cmd := r.tabs.Update(msg)
 	r.tabs = t.(*tabs.Tabs)
@@ -193,6 +190,11 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 	case filesTab:
+		f, cmd := r.files.Update(msg)
+		r.files = f.(*Files)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	case commitsTab:
 		l, cmd := r.log.Update(msg)
 		r.log = l.(*Log)
@@ -219,18 +221,21 @@ func (r *Repo) View() string {
 		r.common.Styles.Tabs.GetVerticalFrameSize()
 	mainStyle := repoBodyStyle.
 		Height(r.common.Height - hm)
-	main := mainStyle.Render("")
+	main := ""
 	switch r.activeTab {
 	case readmeTab:
-		main = mainStyle.Render(r.readme.View())
+		main = r.readme.View()
 	case filesTab:
+		main = r.files.View()
 	case commitsTab:
-		main = mainStyle.Render(r.log.View())
+		main = r.log.View()
+	case branchesTab:
+	case tagsTab:
 	}
 	view := lipgloss.JoinVertical(lipgloss.Top,
 		r.headerView(),
 		r.tabs.View(),
-		main,
+		mainStyle.Render(main),
 		r.statusbar.View(),
 	)
 	return s.Render(view)
@@ -242,7 +247,11 @@ func (r *Repo) headerView() string {
 	}
 	name := r.common.Styles.RepoHeaderName.Render(r.selectedItem.Title())
 	// TODO move this into a style.
-	url := lipgloss.NewStyle().MarginLeft(2).Render(r.selectedItem.URL())
+	url := lipgloss.NewStyle().
+		MarginLeft(1).
+		Width(r.common.Width - lipgloss.Width(name) - 1).
+		Align(lipgloss.Right).
+		Render(r.selectedItem.URL())
 	desc := r.common.Styles.RepoHeaderDesc.Render(r.selectedItem.Description())
 	style := r.common.Styles.RepoHeader.Copy().Width(r.common.Width)
 	return style.Render(
@@ -268,16 +277,21 @@ func (r *Repo) setRepoCmd(repo string) tea.Cmd {
 }
 
 func (r *Repo) updateStatusBarCmd() tea.Msg {
+	value := ""
 	info := ""
 	switch r.activeTab {
 	case readmeTab:
 		info = fmt.Sprintf("%.f%%", r.readme.ScrollPercent()*100)
 	case commitsTab:
+		value = r.log.StatusBarValue()
 		info = r.log.StatusBarInfo()
+	case filesTab:
+		value = r.files.StatusBarValue()
+		info = r.files.StatusBarInfo()
 	}
 	return statusbar.StatusBarMsg{
 		Key:    r.selectedRepo.Name(),
-		Value:  "",
+		Value:  value,
 		Info:   info,
 		Branch: fmt.Sprintf(" %s", r.ref.Name().Short()),
 	}
@@ -297,6 +311,21 @@ func (r *Repo) updateRefCmd() tea.Msg {
 		return common.ErrorMsg(err)
 	}
 	return RefMsg(head)
+}
+
+func (r *Repo) updateModels(msg tea.Msg) tea.Cmd {
+	cmds := make([]tea.Cmd, 0)
+	l, cmd := r.log.Update(msg)
+	r.log = l.(*Log)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+	f, cmd := r.files.Update(msg)
+	r.files = f.(*Files)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+	return tea.Batch(cmds...)
 }
 
 func updateStatusBarCmd() tea.Msg {

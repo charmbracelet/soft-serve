@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	gansi "github.com/charmbracelet/glamour/ansi"
@@ -20,18 +19,18 @@ import (
 	"github.com/muesli/termenv"
 )
 
-type view int
+type logView int
 
 const (
-	logView view = iota
-	commitView
+	logViewCommits logView = iota
+	logViewDiff
 )
 
 // LogCountMsg is a message that contains the number of commits in a repo.
 type LogCountMsg int64
 
 // LogItemsMsg is a message that contains a slice of LogItem.
-type LogItemsMsg []list.Item
+type LogItemsMsg []selector.IdentifiableItem
 
 // LogCommitMsg is a message that contains a git commit.
 type LogCommitMsg *ggit.Commit
@@ -44,11 +43,12 @@ type Log struct {
 	common         common.Common
 	selector       *selector.Selector
 	vp             *viewport.Viewport
-	activeView     view
+	activeView     logView
 	repo           git.GitRepo
 	ref            *ggit.Reference
 	count          int64
 	nextPage       int
+	activeCommit   *ggit.Commit
 	selectedCommit *ggit.Commit
 	currentDiff    *ggit.Diff
 }
@@ -58,7 +58,7 @@ func NewLog(common common.Common) *Log {
 	l := &Log{
 		common:     common,
 		vp:         viewport.New(),
-		activeView: logView,
+		activeView: logViewCommits,
 	}
 	selector := selector.New(common, []selector.IdentifiableItem{}, LogItemDelegate{common.Styles})
 	selector.SetShowFilter(false)
@@ -84,7 +84,7 @@ func (l *Log) SetSize(width, height int) {
 // ShortHelp implements key.KeyMap.
 func (l *Log) ShortHelp() []key.Binding {
 	switch l.activeView {
-	case logView:
+	case logViewCommits:
 		return []key.Binding{
 			key.NewBinding(
 				key.WithKeys(
@@ -97,7 +97,7 @@ func (l *Log) ShortHelp() []key.Binding {
 				),
 			),
 		}
-	case commitView:
+	case logViewDiff:
 		return []key.Binding{
 			l.common.KeyMap.UpDown,
 			key.NewBinding(
@@ -143,9 +143,10 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, l.selector.SetItems(msg))
 		l.selector.SetPage(l.nextPage)
 		l.SetSize(l.common.Width, l.common.Height)
+		l.activeCommit = l.selector.SelectedItem().(LogItem).Commit
 	case tea.KeyMsg, tea.MouseMsg:
 		switch l.activeView {
-		case logView:
+		case logViewCommits:
 			switch key := msg.(type) {
 			case tea.KeyMsg:
 				switch key.String() {
@@ -164,15 +165,21 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, l.updateCommitsCmd)
 			}
 			cmds = append(cmds, cmd)
-		case commitView:
+		case logViewDiff:
 			switch key := msg.(type) {
 			case tea.KeyMsg:
 				switch key.String() {
 				case "h", "left":
-					l.activeView = logView
+					l.activeView = logViewCommits
 				}
 			}
 		}
+	case selector.ActiveMsg:
+		switch sel := msg.IdentifiableItem.(type) {
+		case LogItem:
+			l.activeCommit = sel.Commit
+		}
+		cmds = append(cmds, updateStatusBarCmd)
 	case selector.SelectMsg:
 		switch sel := msg.IdentifiableItem.(type) {
 		case LogItem:
@@ -191,7 +198,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			),
 		)
 		l.vp.GotoTop()
-		l.activeView = commitView
+		l.activeView = logViewDiff
 		cmds = append(cmds, updateStatusBarCmd)
 	case tea.WindowSizeMsg:
 		if l.selectedCommit != nil && l.currentDiff != nil {
@@ -208,7 +215,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	switch l.activeView {
-	case commitView:
+	case logViewDiff:
 		vp, cmd := l.vp.Update(msg)
 		l.vp = vp.(*viewport.Viewport)
 		if cmd != nil {
@@ -221,23 +228,36 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View implements tea.Model.
 func (l *Log) View() string {
 	switch l.activeView {
-	case logView:
+	case logViewCommits:
 		return l.selector.View()
-	case commitView:
+	case logViewDiff:
 		return l.vp.View()
 	default:
 		return ""
 	}
 }
 
+// StatusBarValue returns the status bar value.
+func (l *Log) StatusBarValue() string {
+	c := l.activeCommit
+	if c == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s by %s on %s",
+		c.ID.String()[:7],
+		c.Author.Name,
+		c.Author.When.Format("02 Jan 2006"),
+	)
+}
+
 // StatusBarInfo returns the status bar info.
 func (l *Log) StatusBarInfo() string {
 	switch l.activeView {
-	case logView:
+	case logViewCommits:
 		// We're using l.nextPage instead of l.selector.Paginator.Page because
 		// of the paginator hack above.
 		return fmt.Sprintf("%d/%d", l.nextPage+1, l.selector.TotalPages())
-	case commitView:
+	case logViewDiff:
 		return fmt.Sprintf("%.f%%", l.vp.ScrollPercent()*100)
 	default:
 		return ""
@@ -262,7 +282,7 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 			count = int64(msg)
 		}
 	}
-	items := make([]list.Item, count)
+	items := make([]selector.IdentifiableItem, count)
 	page := l.nextPage
 	limit := l.selector.PerPage()
 	skip := page * limit
