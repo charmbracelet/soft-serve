@@ -116,6 +116,10 @@ func (l *Log) ShortHelp() []key.Binding {
 	}
 }
 
+func (l Log) FullHelp() [][]key.Binding {
+	return [][]key.Binding{}
+}
+
 // Init implements tea.Model.
 func (l *Log) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, 0)

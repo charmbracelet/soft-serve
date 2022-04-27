@@ -18,6 +18,11 @@ type StatusBar struct {
 	msg    StatusBarMsg
 }
 
+type Model interface {
+	StatusBarValue() string
+	StatusBarInfo() string
+}
+
 func New(c common.Common) *StatusBar {
 	s := &StatusBar{
 		common: c,

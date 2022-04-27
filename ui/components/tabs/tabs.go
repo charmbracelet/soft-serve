@@ -7,6 +7,8 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/common"
 )
 
+type SelectTabMsg int
+
 type ActiveTabMsg int
 
 type Tabs struct {
@@ -45,6 +47,8 @@ func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			t.activeTab = (t.activeTab - 1 + len(t.tabs)) % len(t.tabs)
 			cmds = append(cmds, t.activeTabCmd)
 		}
+	case SelectTabMsg:
+		t.activeTab = int(msg)
 	}
 	return t, tea.Batch(cmds...)
 }
@@ -67,4 +71,10 @@ func (t *Tabs) View() string {
 
 func (t *Tabs) activeTabCmd() tea.Msg {
 	return ActiveTabMsg(t.activeTab)
+}
+
+func SelectTabCmd(tab int) tea.Cmd {
+	return func() tea.Msg {
+		return SelectTabMsg(tab)
+	}
 }
