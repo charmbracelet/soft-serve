@@ -41,6 +41,13 @@ func (f *Footer) Init() tea.Cmd {
 
 // Update implements tea.Model.
 func (f *Footer) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "?":
+			f.help.ShowAll = !f.help.ShowAll
+		}
+	}
 	return f, nil
 }
 

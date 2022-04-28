@@ -22,6 +22,7 @@ type Refs struct {
 	selector  *selector.Selector
 	repo      git.GitRepo
 	ref       *ggit.Reference
+	activeRef *ggit.Reference
 	refPrefix string
 }
 
@@ -63,6 +64,13 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, r.Init())
 	case RefItemsMsg:
 		cmds = append(cmds, r.selector.SetItems(msg.items))
+		r.activeRef = r.selector.SelectedItem().(RefItem).Reference
+	case selector.ActiveMsg:
+		switch sel := msg.IdentifiableItem.(type) {
+		case RefItem:
+			r.activeRef = sel.Reference
+		}
+		cmds = append(cmds, updateStatusBarCmd)
 	case selector.SelectMsg:
 		switch i := msg.IdentifiableItem.(type) {
 		case RefItem:
@@ -90,7 +98,10 @@ func (r *Refs) View() string {
 }
 
 func (r *Refs) StatusBarValue() string {
-	return ""
+	if r.activeRef == nil {
+		return ""
+	}
+	return r.activeRef.Name().String()
 }
 
 func (r *Refs) StatusBarInfo() string {

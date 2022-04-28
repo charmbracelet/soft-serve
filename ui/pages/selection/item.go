@@ -61,7 +61,7 @@ func (d ItemDelegate) Height() int {
 }
 
 // Spacing returns the spacing between items. Implements list.ItemDelegate.
-func (d ItemDelegate) Spacing() int { return 1 }
+func (d ItemDelegate) Spacing() int { return 0 }
 
 // Update implements list.ItemDelegate.
 func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {

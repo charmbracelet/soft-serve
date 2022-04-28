@@ -114,23 +114,13 @@ func (ui *UI) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-// TODO show full help
+// TODO show full help.
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	log.Printf("msg: %T", msg)
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		ui.SetSize(msg.Width, msg.Height)
-		h, cmd := ui.header.Update(msg)
-		ui.header = h.(*header.Header)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
-		f, cmd := ui.footer.Update(msg)
-		ui.footer = f.(*footer.Footer)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
 		for i, p := range ui.pages {
 			m, cmd := p.Update(msg)
 			ui.pages[i] = m.(common.Page)
@@ -160,6 +150,16 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, ui.setRepoCmd(msg.ID()))
 			}
 		}
+	}
+	h, cmd := ui.header.Update(msg)
+	ui.header = h.(*header.Header)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+	f, cmd := ui.footer.Update(msg)
+	ui.footer = f.(*footer.Footer)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
 	}
 	if ui.state == loadedState {
 		m, cmd := ui.pages[ui.activePage].Update(msg)

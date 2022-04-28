@@ -62,7 +62,7 @@ func (s *Selection) SetSize(width, height int) {
 		// +1 to get wrapping to work.
 		// This is needed because the readme box width has to be -1 from the
 		// readme style in order for wrapping to not break.
-		1
+		2
 	hm := s.common.Styles.ReadmeBox.GetVerticalFrameSize()
 	s.readme.SetSize(width-wm, height-hm)
 	s.selector.SetSize(sw, height)

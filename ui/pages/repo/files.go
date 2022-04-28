@@ -139,15 +139,19 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case tea.WindowSizeMsg:
-		if f.currentContent.content != "" {
-			m, cmd := f.code.Update(msg)
-			f.code = m.(*code.Code)
-			if cmd != nil {
-				cmds = append(cmds, cmd)
+		switch f.activeView {
+		case filesViewFiles:
+			if f.repo != nil {
+				cmds = append(cmds, f.updateFilesCmd)
 			}
-		}
-		if f.repo != nil {
-			cmds = append(cmds, f.updateFilesCmd)
+		case filesViewContent:
+			if f.currentContent.content != "" {
+				m, cmd := f.code.Update(msg)
+				f.code = m.(*code.Code)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+			}
 		}
 	}
 	switch f.activeView {
