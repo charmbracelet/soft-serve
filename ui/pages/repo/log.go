@@ -57,7 +57,7 @@ type Log struct {
 func NewLog(common common.Common) *Log {
 	l := &Log{
 		common:     common,
-		vp:         viewport.New(),
+		vp:         viewport.New(common),
 		activeView: logViewCommits,
 	}
 	selector := selector.New(common, []selector.IdentifiableItem{}, LogItemDelegate{common.Styles})
@@ -81,43 +81,68 @@ func (l *Log) SetSize(width, height int) {
 	l.vp.SetSize(width, height)
 }
 
-// ShortHelp implements key.KeyMap.
+// ShortHelp implements help.KeyMap.
 func (l *Log) ShortHelp() []key.Binding {
 	switch l.activeView {
 	case logViewCommits:
 		return []key.Binding{
-			key.NewBinding(
-				key.WithKeys(
-					"l",
-					"right",
-				),
-				key.WithHelp(
-					"→",
-					"select",
-				),
-			),
+			l.common.KeyMap.SelectItem,
 		}
 	case logViewDiff:
 		return []key.Binding{
 			l.common.KeyMap.UpDown,
-			key.NewBinding(
-				key.WithKeys(
-					"h",
-					"left",
-				),
-				key.WithHelp(
-					"←",
-					"back",
-				),
-			),
+			l.common.KeyMap.BackItem,
 		}
 	default:
 		return []key.Binding{}
 	}
 }
 
-func (l Log) FullHelp() [][]key.Binding {
-	return [][]key.Binding{}
+// FullHelp implements help.KeyMap.
+func (l *Log) FullHelp() [][]key.Binding {
+	k := l.selector.KeyMap
+	b := make([][]key.Binding, 0)
+	switch l.activeView {
+	case logViewCommits:
+		b = append(b, []key.Binding{
+			l.common.KeyMap.SelectItem,
+			l.common.KeyMap.BackItem,
+		})
+		b = append(b, [][]key.Binding{
+			{
+				k.CursorUp,
+				k.CursorDown,
+			},
+			{
+				k.NextPage,
+				k.PrevPage,
+			},
+			{
+				k.GoToStart,
+				k.GoToEnd,
+			},
+		}...)
+	case logViewDiff:
+		k := l.vp.KeyMap
+		b = append(b, []key.Binding{
+			l.common.KeyMap.BackItem,
+		})
+		b = append(b, [][]key.Binding{
+			{
+				k.PageDown,
+				k.PageUp,
+			},
+			{
+				k.HalfPageDown,
+				k.HalfPageUp,
+			},
+			{
+				k.Down,
+				k.Up,
+			},
+		}...)
+	}
+	return b
 }
 
 // Init implements tea.Model.
@@ -147,7 +172,10 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, l.selector.SetItems(msg))
 		l.selector.SetPage(l.nextPage)
 		l.SetSize(l.common.Width, l.common.Height)
-		l.activeCommit = l.selector.SelectedItem().(LogItem).Commit
+		i := l.selector.SelectedItem()
+		if i != nil {
+			l.activeCommit = i.(LogItem).Commit
+		}
 	case tea.KeyMsg, tea.MouseMsg:
 		switch l.activeView {
 		case logViewCommits:

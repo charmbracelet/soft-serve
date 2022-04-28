@@ -62,7 +62,7 @@ func (s *Selection) SetSize(width, height int) {
 		// +1 to get wrapping to work.
 		// This is needed because the readme box width has to be -1 from the
 		// readme style in order for wrapping to not break.
-		2
+		1
 	hm := s.common.Styles.ReadmeBox.GetVerticalFrameSize()
 	s.readme.SetSize(width-wm, height-hm)
 	s.selector.SetSize(sw, height)
@@ -87,30 +87,51 @@ func (s *Selection) ShortHelp() []key.Binding {
 }
 
 // FullHelp implements help.KeyMap.
-// TODO implement full help on ?
 func (s *Selection) FullHelp() [][]key.Binding {
-	k := s.selector.KeyMap
-	return [][]key.Binding{
-		{
-			k.CursorUp,
-			k.CursorDown,
-			k.NextPage,
-			k.PrevPage,
-			k.GoToStart,
-			k.GoToEnd,
-		},
-		{
-			k.Filter,
-			k.ClearFilter,
-			k.CancelWhileFiltering,
-			k.AcceptWhileFiltering,
-			k.ShowFullHelp,
-			k.CloseFullHelp,
-		},
-		// Ignore the following keys:
-		// k.Quit,
-		// k.ForceQuit,
+	switch s.activeBox {
+	case readmeBox:
+		k := s.readme.KeyMap
+		return [][]key.Binding{
+			{
+				k.PageDown,
+				k.PageUp,
+			},
+			{
+				k.HalfPageDown,
+				k.HalfPageUp,
+			},
+			{
+				k.Down,
+				k.Up,
+			},
+		}
+	case selectorBox:
+		k := s.selector.KeyMap
+		return [][]key.Binding{
+			{
+				s.common.KeyMap.Select,
+			},
+			{
+				k.CursorUp,
+				k.CursorDown,
+			},
+			{
+				k.NextPage,
+				k.PrevPage,
+			},
+			{
+				k.GoToStart,
+				k.GoToEnd,
+			},
+			{
+				k.Filter,
+				k.ClearFilter,
+				k.CancelWhileFiltering,
+				k.AcceptWhileFiltering,
+			},
+		}
 	}
+	return [][]key.Binding{}
 }
 
 // Init implements tea.Model.

@@ -15,6 +15,10 @@ type KeyMap struct {
 	Back      key.Binding
 	PrevPage  key.Binding
 	NextPage  key.Binding
+	Help      key.Binding
+
+	SelectItem key.Binding
+	BackItem   key.Binding
 }
 
 // DefaultKeyMap returns the default key map.
@@ -149,6 +153,38 @@ func DefaultKeyMap() *KeyMap {
 		key.WithHelp(
 			"pgdn",
 			"next page",
+		),
+	)
+
+	km.Help = key.NewBinding(
+		key.WithKeys(
+			"?",
+		),
+		key.WithHelp(
+			"?",
+			"toggle help",
+		),
+	)
+
+	km.SelectItem = key.NewBinding(
+		key.WithKeys(
+			"l",
+			"right",
+		),
+		key.WithHelp(
+			"→",
+			"select",
+		),
+	)
+
+	km.BackItem = key.NewBinding(
+		key.WithKeys(
+			"h",
+			"left",
+		),
+		key.WithHelp(
+			"←",
+			"back",
 		),
 	)
 

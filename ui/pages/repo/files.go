@@ -6,6 +6,7 @@ import (
 	"log"
 	"path/filepath"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
@@ -78,6 +79,75 @@ func (f *Files) SetSize(width, height int) {
 	f.common.SetSize(width, height)
 	f.selector.SetSize(width, height)
 	f.code.SetSize(width, height)
+}
+
+// ShortHelp implements help.KeyMap.
+func (f *Files) ShortHelp() []key.Binding {
+	k := f.selector.KeyMap
+	switch f.activeView {
+	case filesViewFiles:
+		return []key.Binding{
+			f.common.KeyMap.SelectItem,
+			f.common.KeyMap.BackItem,
+			k.CursorUp,
+			k.CursorDown,
+		}
+	case filesViewContent:
+		return []key.Binding{
+			f.common.KeyMap.UpDown,
+			f.common.KeyMap.BackItem,
+		}
+	default:
+		return []key.Binding{}
+	}
+}
+
+// FullHelp implements help.KeyMap.
+func (f *Files) FullHelp() [][]key.Binding {
+	b := make([][]key.Binding, 0)
+	switch f.activeView {
+	case filesViewFiles:
+		k := f.selector.KeyMap
+		b = append(b, []key.Binding{
+			f.common.KeyMap.SelectItem,
+			f.common.KeyMap.BackItem,
+		})
+		b = append(b, [][]key.Binding{
+			{},
+			{
+				k.CursorUp,
+				k.CursorDown,
+			},
+			{
+				k.NextPage,
+				k.PrevPage,
+			},
+			{
+				k.GoToStart,
+				k.GoToEnd,
+			},
+		}...)
+	case filesViewContent:
+		k := f.code.KeyMap
+		b = append(b, []key.Binding{
+			f.common.KeyMap.BackItem,
+		})
+		b = append(b, [][]key.Binding{
+			{
+				k.PageDown,
+				k.PageUp,
+			},
+			{
+				k.HalfPageDown,
+				k.HalfPageUp,
+			},
+			{
+				k.Down,
+				k.Up,
+			},
+		}...)
+	}
+	return b
 }
 
 // Init implements tea.Model.

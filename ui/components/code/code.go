@@ -16,10 +16,10 @@ import (
 
 // Code is a code snippet.
 type Code struct {
+	*vp.Viewport
 	common         common.Common
 	content        string
 	extension      string
-	viewport       *vp.Viewport
 	NoContentStyle lipgloss.Style
 }
 
@@ -29,7 +29,7 @@ func New(c common.Common, content, extension string) *Code {
 		common:         c,
 		content:        content,
 		extension:      extension,
-		viewport:       vp.New(),
+		Viewport:       vp.New(c),
 		NoContentStyle: c.Styles.CodeNoContent.Copy(),
 	}
 	r.SetSize(c.Width, c.Height)
@@ -39,7 +39,7 @@ func New(c common.Common, content, extension string) *Code {
 // SetSize implements common.Component.
 func (r *Code) SetSize(width, height int) {
 	r.common.SetSize(width, height)
-	r.viewport.SetSize(width, height)
+	r.Viewport.SetSize(width, height)
 }
 
 // SetContent sets the content of the Code.
@@ -66,7 +66,7 @@ func (r *Code) Init() tea.Cmd {
 	for i, l := range s {
 		s[i] = l + "\x1b[0m"
 	}
-	r.viewport.Viewport.SetContent(strings.Join(s, "\n"))
+	r.Viewport.Model.SetContent(strings.Join(s, "\n"))
 	return nil
 }
 
@@ -78,8 +78,8 @@ func (r *Code) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Recalculate content width and line wrap.
 		cmds = append(cmds, r.Init())
 	}
-	v, cmd := r.viewport.Update(msg)
-	r.viewport = v.(*vp.Viewport)
+	v, cmd := r.Viewport.Update(msg)
+	r.Viewport = v.(*vp.Viewport)
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
@@ -88,52 +88,52 @@ func (r *Code) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.View.
 func (r *Code) View() string {
-	return r.viewport.View()
+	return r.Viewport.View()
 }
 
 // GotoTop moves the viewport to the top of the log.
 func (r *Code) GotoTop() {
-	r.viewport.GotoTop()
+	r.Viewport.GotoTop()
 }
 
 // GotoBottom moves the viewport to the bottom of the log.
 func (r *Code) GotoBottom() {
-	r.viewport.GotoBottom()
+	r.Viewport.GotoBottom()
 }
 
 // HalfViewDown moves the viewport down by half the viewport height.
 func (r *Code) HalfViewDown() {
-	r.viewport.HalfViewDown()
+	r.Viewport.HalfViewDown()
 }
 
 // HalfViewUp moves the viewport up by half the viewport height.
 func (r *Code) HalfViewUp() {
-	r.viewport.HalfViewUp()
+	r.Viewport.HalfViewUp()
 }
 
 // ViewUp moves the viewport up by a page.
 func (r *Code) ViewUp() []string {
-	return r.viewport.ViewUp()
+	return r.Viewport.ViewUp()
 }
 
 // ViewDown moves the viewport down by a page.
 func (r *Code) ViewDown() []string {
-	return r.viewport.ViewDown()
+	return r.Viewport.ViewDown()
 }
 
 // LineUp moves the viewport up by the given number of lines.
 func (r *Code) LineUp(n int) []string {
-	return r.viewport.LineUp(n)
+	return r.Viewport.LineUp(n)
 }
 
 // LineDown moves the viewport down by the given number of lines.
 func (r *Code) LineDown(n int) []string {
-	return r.viewport.LineDown(n)
+	return r.Viewport.LineDown(n)
 }
 
 // ScrollPercent returns the viewport's scroll percentage.
 func (r *Code) ScrollPercent() float64 {
-	return r.viewport.ScrollPercent()
+	return r.Viewport.ScrollPercent()
 }
 
 func styleConfig() gansi.StyleConfig {

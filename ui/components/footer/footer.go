@@ -1,7 +1,10 @@
 package footer
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/ui/common"
 )
@@ -25,13 +28,14 @@ func New(c common.Common, keymap help.KeyMap) *Footer {
 		help:   h,
 		keymap: keymap,
 	}
+	f.SetSize(c.Width, c.Height)
 	return f
 }
 
 // SetSize implements common.Component.
 func (f *Footer) SetSize(width, height int) {
-	f.common.Width = width
-	f.common.Height = height
+	f.common.SetSize(width, height)
+	f.help.Width = width
 }
 
 // Init implements tea.Model.
@@ -41,13 +45,6 @@ func (f *Footer) Init() tea.Cmd {
 
 // Update implements tea.Model.
 func (f *Footer) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "?":
-			f.help.ShowAll = !f.help.ShowAll
-		}
-	}
 	return f, nil
 }
 
@@ -57,5 +54,31 @@ func (f *Footer) View() string {
 		return ""
 	}
 	s := f.common.Styles.Footer.Copy().Width(f.common.Width)
-	return s.Render(f.help.View(f.keymap))
+	helpView := f.help.View(f.keymap)
+	return s.Render(helpView)
+}
+
+// ShortHelp returns the short help key bindings.
+func (f *Footer) ShortHelp() []key.Binding {
+	return f.keymap.ShortHelp()
+}
+
+// FullHelp returns the full help key bindings.
+func (f *Footer) FullHelp() [][]key.Binding {
+	return f.keymap.FullHelp()
+}
+
+// ShowAll returns whether the full help is shown.
+func (f *Footer) ShowAll() bool {
+	return f.help.ShowAll
+}
+
+// SetShowAll sets whether the full help is shown.
+func (f *Footer) SetShowAll(show bool) {
+	f.help.ShowAll = show
+}
+
+// Height returns the height of the footer.
+func (f *Footer) Height() int {
+	return len(strings.Split(f.View(), "\n"))
 }

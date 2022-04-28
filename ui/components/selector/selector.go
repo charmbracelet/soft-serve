@@ -144,9 +144,16 @@ func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.Model.CursorDown()
 		}
 	case tea.KeyMsg:
+		filterState := s.Model.FilterState()
 		switch {
+		case key.Matches(msg, s.common.KeyMap.Help):
+			if filterState == list.Filtering {
+				return s, tea.Batch(cmds...)
+			}
 		case key.Matches(msg, s.common.KeyMap.Select):
-			cmds = append(cmds, s.selectCmd)
+			if filterState != list.Filtering {
+				cmds = append(cmds, s.selectCmd)
+			}
 		}
 	case list.FilterMatchesMsg:
 		cmds = append(cmds, s.activeFilterCmd)

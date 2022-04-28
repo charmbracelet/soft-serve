@@ -92,19 +92,24 @@ func (r *Repo) SetSize(width, height int) {
 	}
 }
 
-// ShortHelp implements help.KeyMap.
-func (r *Repo) ShortHelp() []key.Binding {
+func (r *Repo) commonHelp() []key.Binding {
 	b := make([]key.Binding, 0)
+	back := r.common.KeyMap.Back
+	back.SetHelp("esc", "back to menu")
 	tab := r.common.KeyMap.Section
 	tab.SetHelp("tab", "switch tab")
-	back := r.common.KeyMap.Back
-	back.SetHelp("esc", "repos")
 	b = append(b, back)
 	b = append(b, tab)
+	return b
+}
+
+// ShortHelp implements help.KeyMap.
+func (r *Repo) ShortHelp() []key.Binding {
+	b := r.commonHelp()
 	switch r.activeTab {
 	case readmeTab:
 		b = append(b, r.common.KeyMap.UpDown)
-	case commitsTab:
+	default:
 		b = append(b, r.boxes[commitsTab].(help.KeyMap).ShortHelp()...)
 	}
 	return b
@@ -113,6 +118,27 @@ func (r *Repo) ShortHelp() []key.Binding {
 // FullHelp implements help.KeyMap.
 func (r *Repo) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
+	b = append(b, r.commonHelp())
+	switch r.activeTab {
+	case readmeTab:
+		k := r.boxes[readmeTab].(*code.Code).KeyMap
+		b = append(b, [][]key.Binding{
+			{
+				k.PageDown,
+				k.PageUp,
+			},
+			{
+				k.HalfPageDown,
+				k.HalfPageUp,
+			},
+			{
+				k.Down,
+				k.Up,
+			},
+		}...)
+	default:
+		b = append(b, r.boxes[r.activeTab].(help.KeyMap).FullHelp()...)
+	}
 	return b
 }
 

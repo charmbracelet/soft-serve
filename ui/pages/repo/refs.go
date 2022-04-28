@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
@@ -12,11 +13,13 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/git"
 )
 
+// RefItemsMsg is a message that contains a list of RefItem.
 type RefItemsMsg struct {
 	prefix string
 	items  []selector.IdentifiableItem
 }
 
+// Refs is a component that displays a list of references.
 type Refs struct {
 	common    common.Common
 	selector  *selector.Selector
@@ -26,6 +29,7 @@ type Refs struct {
 	refPrefix string
 }
 
+// NewRefs creates a new Refs component.
 func NewRefs(common common.Common, refPrefix string) *Refs {
 	r := &Refs{
 		common:    common,
@@ -43,15 +47,48 @@ func NewRefs(common common.Common, refPrefix string) *Refs {
 	return r
 }
 
+// SetSize implements common.Component.
 func (r *Refs) SetSize(width, height int) {
 	r.common.SetSize(width, height)
 	r.selector.SetSize(width, height)
 }
 
+// ShortHelp implements help.KeyMap.
+func (r *Refs) ShortHelp() []key.Binding {
+	k := r.selector.KeyMap
+	return []key.Binding{
+		r.common.KeyMap.SelectItem,
+		k.CursorUp,
+		k.CursorDown,
+	}
+}
+
+// FullHelp implements help.KeyMap.
+func (r *Refs) FullHelp() [][]key.Binding {
+	k := r.selector.KeyMap
+	return [][]key.Binding{
+		{r.common.KeyMap.SelectItem},
+		{
+			k.CursorUp,
+			k.CursorDown,
+		},
+		{
+			k.NextPage,
+			k.PrevPage,
+		},
+		{
+			k.GoToStart,
+			k.GoToEnd,
+		},
+	}
+}
+
+// Init implements tea.Model.
 func (r *Refs) Init() tea.Cmd {
 	return r.updateItemsCmd
 }
 
+// Update implements tea.Model.
 func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
@@ -64,7 +101,10 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, r.Init())
 	case RefItemsMsg:
 		cmds = append(cmds, r.selector.SetItems(msg.items))
-		r.activeRef = r.selector.SelectedItem().(RefItem).Reference
+		i := r.selector.SelectedItem()
+		if i != nil {
+			r.activeRef = i.(RefItem).Reference
+		}
 	case selector.ActiveMsg:
 		switch sel := msg.IdentifiableItem.(type) {
 		case RefItem:
@@ -93,10 +133,12 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return r, tea.Batch(cmds...)
 }
 
+// View implements tea.Model.
 func (r *Refs) View() string {
 	return r.selector.View()
 }
 
+// StausBarValue implements statusbar.StatusBar.
 func (r *Refs) StatusBarValue() string {
 	if r.activeRef == nil {
 		return ""
@@ -104,6 +146,7 @@ func (r *Refs) StatusBarValue() string {
 	return r.activeRef.Name().String()
 }
 
+// StatusBarInfo implements statusbar.StatusBar.
 func (r *Refs) StatusBarInfo() string {
 	return ""
 }

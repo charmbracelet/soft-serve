@@ -2,7 +2,6 @@ package ui
 
 import (
 	"log"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -57,7 +56,7 @@ func (ui *UI) getMargins() (wm, hm int) {
 	wm = ui.common.Styles.App.GetHorizontalFrameSize()
 	hm = ui.common.Styles.App.GetVerticalFrameSize() +
 		ui.common.Styles.Header.GetHeight() +
-		ui.common.Styles.Footer.GetHeight()
+		ui.footer.Height()
 	return
 }
 
@@ -70,7 +69,10 @@ func (ui *UI) ShortHelp() []key.Binding {
 	case loadedState:
 		b = append(b, ui.pages[ui.activePage].ShortHelp()...)
 	}
-	b = append(b, ui.common.KeyMap.Quit)
+	b = append(b,
+		ui.common.KeyMap.Quit,
+		ui.common.KeyMap.Help,
+	)
 	return b
 }
 
@@ -83,7 +85,10 @@ func (ui *UI) FullHelp() [][]key.Binding {
 	case loadedState:
 		b = append(b, ui.pages[ui.activePage].FullHelp()...)
 	}
-	b = append(b, []key.Binding{ui.common.KeyMap.Quit})
+	b = append(b, []key.Binding{
+		ui.common.KeyMap.Quit,
+		ui.common.KeyMap.Help,
+	})
 	return b
 }
 
@@ -114,7 +119,6 @@ func (ui *UI) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-// TODO show full help.
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	log.Printf("msg: %T", msg)
 	cmds := make([]tea.Cmd, 0)
@@ -128,15 +132,20 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 		}
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, ui.common.KeyMap.Back) && ui.error != nil:
-			ui.error = nil
-			ui.state = loadedState
-		case key.Matches(msg, ui.common.KeyMap.Quit):
-			return ui, tea.Quit
-		case ui.activePage == 1 && key.Matches(msg, ui.common.KeyMap.Back):
-			ui.activePage = 0
+	case tea.KeyMsg, tea.MouseMsg:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, ui.common.KeyMap.Back) && ui.error != nil:
+				ui.error = nil
+				ui.state = loadedState
+			case key.Matches(msg, ui.common.KeyMap.Help):
+				ui.footer.SetShowAll(!ui.footer.ShowAll())
+			case key.Matches(msg, ui.common.KeyMap.Quit):
+				return ui, tea.Quit
+			case ui.activePage == 1 && key.Matches(msg, ui.common.KeyMap.Back):
+				ui.activePage = 0
+			}
 		}
 	case common.ErrorMsg:
 		ui.error = msg
@@ -168,43 +177,45 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 	}
+	// This fixes determining the height margin of the footer.
+	ui.SetSize(ui.common.Width, ui.common.Height)
 	return ui, tea.Batch(cmds...)
 }
 
 // View implements tea.Model.
 func (ui *UI) View() string {
-	s := strings.Builder{}
+	var view string
+	footer := ui.footer.View()
+	style := ui.common.Styles.App.Copy()
 	switch ui.state {
 	case startState:
-		s.WriteString("Loading...")
+		view = "Loading..."
 	case errorState:
 		err := ui.common.Styles.ErrorTitle.Render("Bummer")
 		err += ui.common.Styles.ErrorBody.Render(ui.error.Error())
-		view := ui.common.Styles.ErrorBody.Copy().
+		view = ui.common.Styles.ErrorBody.Copy().
 			Width(ui.common.Width -
-				ui.common.Styles.App.GetHorizontalFrameSize() -
+				style.GetWidth() -
+				style.GetHorizontalFrameSize() -
 				ui.common.Styles.ErrorBody.GetHorizontalFrameSize()).
 			Height(ui.common.Height -
-				ui.common.Styles.App.GetVerticalFrameSize() -
+				style.GetHeight() -
+				style.GetVerticalFrameSize() -
 				ui.common.Styles.Header.GetVerticalFrameSize() - 2).
 			Render(err)
-		s.WriteString(lipgloss.JoinVertical(
+	case loadedState:
+		view = ui.pages[ui.activePage].View()
+	default:
+		view = "Unknown state :/ this is a bug!"
+	}
+	return style.Render(
+		lipgloss.JoinVertical(
 			lipgloss.Bottom,
 			ui.header.View(),
 			view,
-			ui.footer.View(),
-		))
-	case loadedState:
-		s.WriteString(lipgloss.JoinVertical(
-			lipgloss.Bottom,
-			ui.header.View(),
-			ui.pages[ui.activePage].View(),
-			ui.footer.View(),
-		))
-	default:
-		s.WriteString("Unknown state :/ this is a bug!")
-	}
-	return ui.common.Styles.App.Render(s.String())
+			footer,
+		),
+	)
 }
 
 func (ui *UI) setRepoCmd(rn string) tea.Cmd {
