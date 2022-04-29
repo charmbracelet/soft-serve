@@ -274,10 +274,9 @@ func (l *Log) StatusBarValue() string {
 	if c == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s by %s on %s",
-		c.ID.String()[:7],
-		c.Author.Name,
-		c.Author.When.Format("02 Jan 2006"),
+	return fmt.Sprintf("%s by %s",
+		c.ID.String(),
+		fmt.Sprintf("%s <%s>", c.Author.Name, c.Author.Email),
 	)
 }
 

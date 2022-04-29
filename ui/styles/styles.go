@@ -50,10 +50,12 @@ type Styles struct {
 
 	AboutNoReadme lipgloss.Style
 
+	LogItem           lipgloss.Style
 	LogItemSelector   lipgloss.Style
 	LogItemActive     lipgloss.Style
 	LogItemInactive   lipgloss.Style
 	LogItemHash       lipgloss.Style
+	LogItemTitle      lipgloss.Style
 	LogCommit         lipgloss.Style
 	LogCommitHash     lipgloss.Style
 	LogCommitAuthor   lipgloss.Style
@@ -245,25 +247,32 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("#626262"))
 
 	s.LogItemInactive = lipgloss.NewStyle().
-		MarginLeft(1)
+		Border(lipgloss.Border{
+			Left: " ",
+		}, false, false, false, true).
+		PaddingLeft(1)
+
+	s.LogItemActive = s.LogItemInactive.Copy().
+		Border(lipgloss.Border{
+			Left: "│",
+		}, false, false, false, true).
+		BorderForeground(lipgloss.Color("#B083EA"))
 
 	s.LogItemSelector = s.LogItemInactive.Copy().
 		Width(1).
 		Foreground(lipgloss.Color("#B083EA"))
 
-	s.LogItemActive = s.LogItemInactive.Copy().
-		Bold(true)
-
 	s.LogItemHash = s.LogItemInactive.Copy().
-		Width(7).
 		Foreground(lipgloss.Color("#A3A322"))
+
+	s.LogItemTitle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#B083EA"))
 
 	s.LogCommit = lipgloss.NewStyle().
 		Margin(0, 2)
 
-	s.LogCommitHash = s.LogItemHash.Copy().
-		UnsetMarginLeft().
-		UnsetWidth().
+	s.LogCommitHash = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#A3A322")).
 		Bold(true)
 
 	s.LogCommitBody = lipgloss.NewStyle().
@@ -282,11 +291,11 @@ func DefaultStyles() *Styles {
 		Margin(0).
 		Align(lipgloss.Center)
 
-	s.RefItemSelector = s.LogItemSelector.Copy()
+	s.RefItemSelector = s.TreeItemSelector.Copy()
 
-	s.RefItemActive = s.LogItemActive.Copy()
+	s.RefItemActive = s.TreeItemActive.Copy()
 
-	s.RefItemInactive = s.LogItemInactive.Copy()
+	s.RefItemInactive = s.TreeItemInactive.Copy()
 
 	s.RefItemBranch = lipgloss.NewStyle()
 
@@ -295,20 +304,24 @@ func DefaultStyles() *Styles {
 
 	s.RefPaginator = s.LogPaginator.Copy()
 
-	s.TreeItemSelector = s.LogItemSelector.Copy()
+	s.TreeItemSelector = s.TreeItemInactive.Copy().
+		Width(1).
+		Foreground(lipgloss.Color("#B083EA"))
 
-	s.TreeItemActive = s.LogItemActive.Copy()
+	s.TreeItemInactive = lipgloss.NewStyle().
+		MarginLeft(1)
 
-	s.TreeItemInactive = s.LogItemInactive.Copy()
+	s.TreeItemActive = s.TreeItemInactive.Copy().
+		Bold(true)
 
 	s.TreeFileDir = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#00AAFF"))
 
-	s.TreeFileMode = s.LogItemInactive.Copy().
+	s.TreeFileMode = s.TreeItemInactive.Copy().
 		Width(10).
 		Foreground(lipgloss.Color("#777777"))
 
-	s.TreeFileSize = s.LogItemInactive.Copy().
+	s.TreeFileSize = s.TreeItemInactive.Copy().
 		Foreground(lipgloss.Color("252"))
 
 	s.TreeFileContent = lipgloss.NewStyle()

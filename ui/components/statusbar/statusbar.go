@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/ui/common"
+	"github.com/muesli/reflow/truncate"
 )
 
 type StatusBarMsg struct {
@@ -56,9 +57,11 @@ func (s *StatusBar) View() string {
 		info = st.StatusBarInfo.Render(s.msg.Info)
 	}
 	branch := st.StatusBarBranch.Render(s.msg.Branch)
+	maxWidth := s.common.Width - w(key) - w(info) - w(branch)
+	v := truncate.StringWithTail(s.msg.Value, uint(maxWidth-st.StatusBarValue.GetHorizontalFrameSize()), "…")
 	value := st.StatusBarValue.
-		Width(s.common.Width - w(key) - w(info) - w(branch)).
-		Render(s.msg.Value)
+		Width(maxWidth).
+		Render(v)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		key,
