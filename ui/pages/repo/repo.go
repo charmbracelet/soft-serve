@@ -146,7 +146,12 @@ func (r *Repo) FullHelp() [][]key.Binding {
 
 // Init implements tea.View.
 func (r *Repo) Init() tea.Cmd {
-	return nil
+	cmds := make([]tea.Cmd, 0)
+	cmds = append(cmds,
+		r.tabs.Init(),
+		r.statusbar.Init(),
+	)
+	return tea.Batch(cmds...)
 }
 
 // Update implements tea.Model.

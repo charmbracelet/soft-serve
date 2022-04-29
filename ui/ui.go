@@ -118,11 +118,24 @@ func (ui *UI) Init() tea.Cmd {
 	ui.pages[selectionPage] = selection.New(ui.s, ui.common)
 	ui.pages[repoPage] = repo.New(ui.common, &source{cfg.Source})
 	ui.SetSize(ui.common.Width, ui.common.Height)
-	ui.state = loadedState
-	return tea.Batch(
+	cmd := tea.Batch(
 		ui.pages[selectionPage].Init(),
 		ui.pages[repoPage].Init(),
 	)
+	var msg tea.Msg
+	if cmd != nil {
+		msg = cmd()
+		switch msg := msg.(type) {
+		case common.ErrorMsg:
+			ui.state = errorState
+			return common.ErrorCmd(msg)
+		}
+	}
+	ui.state = loadedState
+	if msg != nil {
+		return func() tea.Msg { return msg }
+	}
+	return nil
 }
 
 // Update implements tea.Model.
