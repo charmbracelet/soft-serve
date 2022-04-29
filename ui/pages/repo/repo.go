@@ -10,11 +10,10 @@ import (
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
-	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/statusbar"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
 	"github.com/charmbracelet/soft-serve/ui/git"
-	"github.com/charmbracelet/soft-serve/ui/pages/selection"
+	"github.com/charmbracelet/soft-serve/ui/session"
 )
 
 type tab int
@@ -38,10 +37,10 @@ type RefMsg *ggit.Reference
 
 // Repo is a view for a git repository.
 type Repo struct {
+	s            session.Session
 	common       common.Common
 	rs           git.GitRepoSource
 	selectedRepo git.GitRepo
-	selectedItem selection.Item
 	activeTab    tab
 	tabs         *tabs.Tabs
 	statusbar    *statusbar.StatusBar
@@ -50,7 +49,7 @@ type Repo struct {
 }
 
 // New returns a new Repo.
-func New(c common.Common, rs git.GitRepoSource) *Repo {
+func New(s session.Session, c common.Common) *Repo {
 	sb := statusbar.New(c)
 	// Tabs must match the order of tab constants above.
 	tb := tabs.New(c, []string{"Readme", "Files", "Commits", "Branches", "Tags"})
@@ -69,8 +68,9 @@ func New(c common.Common, rs git.GitRepoSource) *Repo {
 		tags,
 	}
 	r := &Repo{
+		s:         s,
 		common:    c,
-		rs:        rs,
+		rs:        s.Source(),
 		tabs:      tb,
 		statusbar: sb,
 		boxes:     boxes,
@@ -146,23 +146,16 @@ func (r *Repo) FullHelp() [][]key.Binding {
 
 // Init implements tea.View.
 func (r *Repo) Init() tea.Cmd {
-	cmds := make([]tea.Cmd, 0)
-	cmds = append(cmds,
+	return tea.Batch(
 		r.tabs.Init(),
 		r.statusbar.Init(),
 	)
-	return tea.Batch(cmds...)
 }
 
 // Update implements tea.Model.
 func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
-	case selector.SelectMsg:
-		switch msg.IdentifiableItem.(type) {
-		case selection.Item:
-			r.selectedItem = msg.IdentifiableItem.(selection.Item)
-		}
 	case RepoMsg:
 		r.activeTab = 0
 		r.selectedRepo = git.GitRepo(msg)
@@ -281,14 +274,16 @@ func (r *Repo) headerView() string {
 	if r.selectedRepo == nil {
 		return ""
 	}
-	name := r.common.Styles.RepoHeaderName.Render(r.selectedItem.Title())
+	cfg := r.s.Config()
+	name := r.common.Styles.RepoHeaderName.Render(r.selectedRepo.Name())
+	url := git.RepoURL(cfg.Host, cfg.Port, r.selectedRepo.Repo())
 	// TODO move this into a style.
-	url := lipgloss.NewStyle().
+	url = lipgloss.NewStyle().
 		MarginLeft(1).
 		Width(r.common.Width - lipgloss.Width(name) - 1).
 		Align(lipgloss.Right).
-		Render(r.selectedItem.URL())
-	desc := r.common.Styles.RepoHeaderDesc.Render(r.selectedItem.Description())
+		Render(url)
+	desc := r.common.Styles.RepoHeaderDesc.Render(r.selectedRepo.Description())
 	style := r.common.Styles.RepoHeader.Copy().Width(r.common.Width)
 	return style.Render(
 		lipgloss.JoinVertical(lipgloss.Top,
@@ -299,17 +294,6 @@ func (r *Repo) headerView() string {
 			desc,
 		),
 	)
-}
-
-func (r *Repo) setRepoCmd(repo string) tea.Cmd {
-	return func() tea.Msg {
-		for _, r := range r.rs.AllRepos() {
-			if r.Name() == repo {
-				return RepoMsg(r)
-			}
-		}
-		return common.ErrorMsg(git.ErrMissingRepo)
-	}
 }
 
 func (r *Repo) updateStatusBarCmd() tea.Msg {

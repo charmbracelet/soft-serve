@@ -3,6 +3,7 @@ package session
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	appCfg "github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/gliderlabs/ssh"
 )
 
@@ -15,4 +16,5 @@ type Session interface {
 	// PublicKey returns the public key of the user.
 	PublicKey() ssh.PublicKey
 	Session() ssh.Session
+	Source() git.GitRepoSource
 }

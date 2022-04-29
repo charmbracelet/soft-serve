@@ -33,26 +33,28 @@ const (
 
 // UI is the main UI model.
 type UI struct {
-	s          session.Session
-	common     common.Common
-	pages      []common.Page
-	activePage page
-	state      sessionState
-	header     *header.Header
-	footer     *footer.Footer
-	error      error
+	s           session.Session
+	initialRepo string
+	common      common.Common
+	pages       []common.Page
+	activePage  page
+	state       sessionState
+	header      *header.Header
+	footer      *footer.Footer
+	error       error
 }
 
 // New returns a new UI model.
 func New(s session.Session, c common.Common, initialRepo string) *UI {
 	h := header.New(c, s.Config().Name)
 	ui := &UI{
-		s:          s,
-		common:     c,
-		pages:      make([]common.Page, 2), // selection & repo
-		activePage: selectionPage,
-		state:      startState,
-		header:     h,
+		s:           s,
+		common:      c,
+		pages:       make([]common.Page, 2), // selection & repo
+		activePage:  selectionPage,
+		state:       startState,
+		header:      h,
+		initialRepo: initialRepo,
 	}
 	ui.footer = footer.New(c, ui)
 	ui.SetSize(c.Width, c.Height)
@@ -114,28 +116,19 @@ func (ui *UI) SetSize(width, height int) {
 
 // Init implements tea.Model.
 func (ui *UI) Init() tea.Cmd {
-	cfg := ui.s.Config()
 	ui.pages[selectionPage] = selection.New(ui.s, ui.common)
-	ui.pages[repoPage] = repo.New(ui.common, &source{cfg.Source})
+	ui.pages[repoPage] = repo.New(ui.s, ui.common)
 	ui.SetSize(ui.common.Width, ui.common.Height)
-	cmd := tea.Batch(
+	cmds := make([]tea.Cmd, 0)
+	cmds = append(cmds,
 		ui.pages[selectionPage].Init(),
 		ui.pages[repoPage].Init(),
 	)
-	var msg tea.Msg
-	if cmd != nil {
-		msg = cmd()
-		switch msg := msg.(type) {
-		case common.ErrorMsg:
-			ui.state = errorState
-			return common.ErrorCmd(msg)
-		}
+	if ui.initialRepo != "" {
+		cmds = append(cmds, ui.initialRepoCmd(ui.initialRepo))
 	}
 	ui.state = loadedState
-	if msg != nil {
-		return func() tea.Msg { return msg }
-	}
-	return nil
+	return tea.Batch(cmds...)
 }
 
 // Update implements tea.Model.
@@ -175,7 +168,6 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.IdentifiableItem.(type) {
 		case selection.Item:
 			if ui.activePage == selectionPage {
-				ui.activePage = repoPage
 				cmds = append(cmds, ui.setRepoCmd(msg.ID()))
 			}
 		}
@@ -237,13 +229,27 @@ func (ui *UI) View() string {
 }
 
 func (ui *UI) setRepoCmd(rn string) tea.Cmd {
-	rs := ui.s.Config().Source
+	rs := ui.s.Source()
 	return func() tea.Msg {
 		for _, r := range rs.AllRepos() {
 			if r.Name() == rn {
+				ui.activePage = repoPage
 				return repo.RepoMsg(r)
 			}
 		}
 		return common.ErrorMsg(git.ErrMissingRepo)
+	}
+}
+
+func (ui *UI) initialRepoCmd(rn string) tea.Cmd {
+	rs := ui.s.Source()
+	return func() tea.Msg {
+		for _, r := range rs.AllRepos() {
+			if r.Name() == rn {
+				ui.activePage = repoPage
+				return repo.RepoMsg(r)
+			}
+		}
+		return nil
 	}
 }

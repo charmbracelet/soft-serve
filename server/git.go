@@ -1,4 +1,4 @@
-package ui
+package server
 
 import (
 	"github.com/charmbracelet/soft-serve/config"

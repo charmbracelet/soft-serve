@@ -17,13 +17,15 @@ var ErrMissingRepo = errors.New("missing repo")
 
 // Repo represents a Git repository.
 type Repo struct {
-	path       string
-	repository *git.Repository
-	readme     string
-	readmePath string
-	head       *git.Reference
-	refs       []*git.Reference
-	patchCache *lru.Cache
+	name        string
+	description string
+	path        string
+	repository  *git.Repository
+	readme      string
+	readmePath  string
+	head        *git.Reference
+	refs        []*git.Reference
+	patchCache  *lru.Cache
 }
 
 // open opens a Git repository.
@@ -53,9 +55,22 @@ func (r *Repo) Path() string {
 	return r.path
 }
 
-// GetName returns the name of the repository.
-func (r *Repo) Name() string {
+// Repo returns the repository directory name.
+func (r *Repo) Repo() string {
 	return filepath.Base(r.path)
+}
+
+// Name returns the name of the repository.
+func (r *Repo) Name() string {
+	if r.name == "" {
+		return r.Repo()
+	}
+	return r.name
+}
+
+// Description returns the description for a repository.
+func (r *Repo) Description() string {
+	return r.description
 }
 
 // Readme returns the readme and its path for the repository.

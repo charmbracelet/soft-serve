@@ -10,32 +10,31 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/ui/components/yankable"
+	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/charmbracelet/soft-serve/ui/styles"
 	"github.com/dustin/go-humanize"
 )
 
 // Item represents a single item in the selector.
 type Item struct {
-	name       string
-	repo       string
-	desc       string
+	repo       git.GitRepo
 	lastUpdate time.Time
 	url        *yankable.Yankable
 }
 
 // ID implements selector.IdentifiableItem.
 func (i Item) ID() string {
-	return i.repo
+	return i.repo.Repo()
 }
 
 // Title returns the item title. Implements list.DefaultItem.
-func (i Item) Title() string { return i.name }
+func (i Item) Title() string { return i.repo.Name() }
 
 // Description returns the item description. Implements list.DefaultItem.
-func (i Item) Description() string { return i.desc }
+func (i Item) Description() string { return i.repo.Description() }
 
 // FilterValue implements list.Item.
-func (i Item) FilterValue() string { return i.name }
+func (i Item) FilterValue() string { return i.Title() }
 
 // URL returns the item URL view.
 func (i Item) URL() string {
@@ -119,7 +118,7 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		}
 	}
 
-	title := i.name
+	title := i.Title()
 	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.lastUpdate))
 	updated := d.styles.MenuLastUpdate.
 		Copy().
@@ -143,7 +142,7 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, title, updated))
 	s.WriteString("\n")
-	s.WriteString(i.desc)
+	s.WriteString(i.Description())
 	s.WriteString("\n\n")
 	s.WriteString(i.url.View())
 	w.Write([]byte(itemStyle.Render(s.String())))

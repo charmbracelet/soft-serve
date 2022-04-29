@@ -152,6 +152,8 @@ func (cfg *Config) Reload() error {
 		for _, rr := range cfg.Repos {
 			if name == rr.Repo {
 				rp = rr.Readme
+				r.name = rr.Name
+				r.description = rr.Note
 				break
 			}
 		}

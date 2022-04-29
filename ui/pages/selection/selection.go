@@ -1,18 +1,17 @@
 package selection
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/yankable"
+	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/charmbracelet/soft-serve/ui/session"
 )
 
@@ -165,11 +164,13 @@ func (s *Selection) Init() tea.Cmd {
 	}
 	// Put configured repos first
 	for _, r := range cfg.Repos {
+		repo, err := cfg.Source.GetRepo(r.Repo)
+		if err != nil {
+			continue
+		}
 		items = append(items, Item{
-			name: r.Name,
-			repo: r.Repo,
-			desc: r.Note,
-			url:  yank(repoUrl(cfg, r.Repo)),
+			repo: repo,
+			url:  yank(git.RepoURL(cfg.Host, cfg.Port, r.Repo)),
 		})
 	}
 	for _, r := range cfg.Source.AllRepos() {
@@ -185,7 +186,7 @@ func (s *Selection) Init() tea.Cmd {
 		lastUpdate := lc[0].Committer.When
 		for _, item := range items {
 			item := item.(Item)
-			if item.repo == r.Name() {
+			if item.repo.Repo() == r.Repo() {
 				exists = true
 				item.lastUpdate = lastUpdate
 				break
@@ -193,11 +194,9 @@ func (s *Selection) Init() tea.Cmd {
 		}
 		if !exists {
 			items = append(items, Item{
-				name:       r.Name(),
-				repo:       r.Name(),
-				desc:       "",
+				repo:       r,
 				lastUpdate: lastUpdate,
-				url:        yank(repoUrl(cfg, r.Name())),
+				url:        yank(git.RepoURL(cfg.Host, cfg.Port, r.Name())),
 			})
 		}
 	}
@@ -230,8 +229,9 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, s.common.KeyMap.Section):
 			s.activeBox = (s.activeBox + 1) % 2
-		case msg.String() == "a":
-			cmds = append(cmds, common.ErrorCmd(errors.New("not implemented")))
+		case key.Matches(msg, s.common.KeyMap.Back):
+			s.selector.Select(0)
+			cmds = append(cmds, s.selector.Init())
 		}
 	}
 	switch s.activeBox {
@@ -279,12 +279,4 @@ func (s *Selection) changeActive(msg selector.ActiveMsg) tea.Cmd {
 	}
 	rm, rp := r.Readme()
 	return s.readme.SetContent(rm, rp)
-}
-
-func repoUrl(cfg *appCfg.Config, name string) string {
-	port := ""
-	if cfg.Port != 22 {
-		port += fmt.Sprintf(":%d", cfg.Port)
-	}
-	return fmt.Sprintf("git clone ssh://%s/%s", cfg.Host+port, name)
 }

@@ -7,6 +7,7 @@ import (
 	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/ui"
 	"github.com/charmbracelet/soft-serve/ui/common"
+	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/charmbracelet/soft-serve/ui/keymap"
 	"github.com/charmbracelet/soft-serve/ui/styles"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -34,6 +35,10 @@ func (s *Session) PublicKey() ssh.PublicKey {
 
 func (s *Session) Session() ssh.Session {
 	return s.session
+}
+
+func (s *Session) Source() git.GitRepoSource {
+	return &source{s.Cfg.Source}
 }
 
 func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
