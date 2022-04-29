@@ -52,6 +52,7 @@ type Repo struct {
 // New returns a new Repo.
 func New(c common.Common, rs git.GitRepoSource) *Repo {
 	sb := statusbar.New(c)
+	// Tabs must match the order of tab constants above.
 	tb := tabs.New(c, []string{"Readme", "Files", "Commits", "Branches", "Tags"})
 	readme := code.New(c, "", "")
 	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
@@ -59,6 +60,7 @@ func New(c common.Common, rs git.GitRepoSource) *Repo {
 	files := NewFiles(c)
 	branches := NewRefs(c, ggit.RefsHeads)
 	tags := NewRefs(c, ggit.RefsTags)
+	// Make sure the order matches the order of tab constants above.
 	boxes := []common.Component{
 		readme,
 		files,
