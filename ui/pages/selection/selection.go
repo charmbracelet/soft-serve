@@ -230,7 +230,6 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, s.common.KeyMap.Section):
 			s.activeBox = (s.activeBox + 1) % 2
 		case key.Matches(msg, s.common.KeyMap.Back):
-			s.selector.Select(0)
 			cmds = append(cmds, s.selector.Init())
 		}
 	}

@@ -280,6 +280,7 @@ func (r *Repo) headerView() string {
 	// TODO move this into a style.
 	url = lipgloss.NewStyle().
 		MarginLeft(1).
+		Foreground(lipgloss.Color("168")).
 		Width(r.common.Width - lipgloss.Width(name) - 1).
 		Align(lipgloss.Right).
 		Render(url)
