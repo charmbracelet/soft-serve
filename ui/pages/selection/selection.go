@@ -1,6 +1,7 @@
 package selection
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -229,6 +230,8 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, s.common.KeyMap.Section):
 			s.activeBox = (s.activeBox + 1) % 2
+		case msg.String() == "a":
+			cmds = append(cmds, common.ErrorCmd(errors.New("not implemented")))
 		}
 	}
 	switch s.activeBox {

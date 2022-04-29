@@ -11,43 +11,63 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/styles"
 )
 
+// RefItem is a git reference item.
 type RefItem struct {
 	*git.Reference
 }
 
+// ID implements selector.IdentifiableItem.
 func (i RefItem) ID() string {
 	return i.Reference.Name().String()
 }
 
+// Title implements list.DefaultItem.
 func (i RefItem) Title() string {
 	return i.Reference.Name().Short()
 }
 
+// Description implements list.DefaultItem.
 func (i RefItem) Description() string {
 	return ""
 }
 
+// Short returns the short name of the reference.
 func (i RefItem) Short() string {
 	return i.Reference.Name().Short()
 }
 
+// FilterValue implements list.Item.
 func (i RefItem) FilterValue() string { return i.Short() }
 
+// RefItems is a list of git references.
 type RefItems []RefItem
 
-func (cl RefItems) Len() int      { return len(cl) }
+// Len implements sort.Interface.
+func (cl RefItems) Len() int { return len(cl) }
+
+// Swap implements sort.Interface.
 func (cl RefItems) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
+
+// Less implements sort.Interface.
 func (cl RefItems) Less(i, j int) bool {
 	return cl[i].Short() < cl[j].Short()
 }
 
+// RefItemDelegate is the delegate for the ref item.
 type RefItemDelegate struct {
 	style *styles.Styles
 }
 
-func (d RefItemDelegate) Height() int                               { return 1 }
-func (d RefItemDelegate) Spacing() int                              { return 0 }
+// Height implements list.ItemDelegate.
+func (d RefItemDelegate) Height() int { return 1 }
+
+// Spacing implements list.ItemDelegate.
+func (d RefItemDelegate) Spacing() int { return 0 }
+
+// Update implements list.ItemDelegate.
 func (d RefItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
+
+// Render implements list.ItemDelegate.
 func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	s := d.style
 	i, ok := listItem.(RefItem)

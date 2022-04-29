@@ -227,7 +227,7 @@ func DefaultStyles() *Styles {
 		SetString(" • ")
 
 	s.Error = lipgloss.NewStyle().
-		Padding(1)
+		MarginTop(2)
 
 	s.ErrorTitle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("230")).

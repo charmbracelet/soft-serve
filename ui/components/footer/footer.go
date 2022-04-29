@@ -1,11 +1,10 @@
 package footer
 
 import (
-	"strings"
-
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/ui/common"
 )
 
@@ -80,5 +79,5 @@ func (f *Footer) SetShowAll(show bool) {
 
 // Height returns the height of the footer.
 func (f *Footer) Height() int {
-	return len(strings.Split(f.View(), "\n"))
+	return lipgloss.Height(f.View())
 }

@@ -147,9 +147,12 @@ func (l *Log) FullHelp() [][]key.Binding {
 
 // Init implements tea.Model.
 func (l *Log) Init() tea.Cmd {
-	cmds := make([]tea.Cmd, 0)
-	cmds = append(cmds, l.updateCommitsCmd)
-	return tea.Batch(cmds...)
+	l.activeView = logViewCommits
+	l.nextPage = 0
+	l.count = 0
+	l.activeCommit = nil
+	l.selector.Select(0)
+	return l.updateCommitsCmd
 }
 
 // Update implements tea.Model.
@@ -157,15 +160,11 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case RepoMsg:
-		l.count = 0
-		l.selector.Select(0)
-		l.nextPage = 0
-		l.activeView = 0
 		l.repo = git.GitRepo(msg)
+		cmds = append(cmds, l.Init())
 	case RefMsg:
 		l.ref = msg
-		l.count = 0
-		cmds = append(cmds, l.countCommitsCmd)
+		cmds = append(cmds, l.Init())
 	case LogCountMsg:
 		l.count = int64(msg)
 	case LogItemsMsg:

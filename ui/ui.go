@@ -16,6 +16,13 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/session"
 )
 
+type page int
+
+const (
+	selectionPage page = iota
+	repoPage
+)
+
 type sessionState int
 
 const (
@@ -29,7 +36,7 @@ type UI struct {
 	s          session.Session
 	common     common.Common
 	pages      []common.Page
-	activePage int
+	activePage page
 	state      sessionState
 	header     *header.Header
 	footer     *footer.Footer
@@ -43,7 +50,7 @@ func New(s session.Session, c common.Common, initialRepo string) *UI {
 		s:          s,
 		common:     c,
 		pages:      make([]common.Page, 2), // selection & repo
-		activePage: 0,
+		activePage: selectionPage,
 		state:      startState,
 		header:     h,
 	}
@@ -108,13 +115,13 @@ func (ui *UI) SetSize(width, height int) {
 // Init implements tea.Model.
 func (ui *UI) Init() tea.Cmd {
 	cfg := ui.s.Config()
-	ui.pages[0] = selection.New(ui.s, ui.common)
-	ui.pages[1] = repo.New(ui.common, &source{cfg.Source})
+	ui.pages[selectionPage] = selection.New(ui.s, ui.common)
+	ui.pages[repoPage] = repo.New(ui.common, &source{cfg.Source})
 	ui.SetSize(ui.common.Width, ui.common.Height)
 	ui.state = loadedState
 	return tea.Batch(
-		ui.pages[0].Init(),
-		ui.pages[1].Init(),
+		ui.pages[selectionPage].Init(),
+		ui.pages[repoPage].Init(),
 	)
 }
 
@@ -143,8 +150,8 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				ui.footer.SetShowAll(!ui.footer.ShowAll())
 			case key.Matches(msg, ui.common.KeyMap.Quit):
 				return ui, tea.Quit
-			case ui.activePage == 1 && key.Matches(msg, ui.common.KeyMap.Back):
-				ui.activePage = 0
+			case ui.activePage == repoPage && key.Matches(msg, ui.common.KeyMap.Back):
+				ui.activePage = selectionPage
 			}
 		}
 	case common.ErrorMsg:
@@ -154,8 +161,8 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case selector.SelectMsg:
 		switch msg.IdentifiableItem.(type) {
 		case selection.Item:
-			if ui.activePage == 0 {
-				ui.activePage = 1
+			if ui.activePage == selectionPage {
+				ui.activePage = repoPage
 				cmds = append(cmds, ui.setRepoCmd(msg.ID()))
 			}
 		}
@@ -185,6 +192,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View implements tea.Model.
 func (ui *UI) View() string {
 	var view string
+	wm, hm := ui.getMargins()
 	footer := ui.footer.View()
 	style := ui.common.Styles.App.Copy()
 	switch ui.state {
@@ -193,15 +201,13 @@ func (ui *UI) View() string {
 	case errorState:
 		err := ui.common.Styles.ErrorTitle.Render("Bummer")
 		err += ui.common.Styles.ErrorBody.Render(ui.error.Error())
-		view = ui.common.Styles.ErrorBody.Copy().
+		view = ui.common.Styles.Error.Copy().
 			Width(ui.common.Width -
-				style.GetWidth() -
-				style.GetHorizontalFrameSize() -
+				wm -
 				ui.common.Styles.ErrorBody.GetHorizontalFrameSize()).
 			Height(ui.common.Height -
-				style.GetHeight() -
-				style.GetVerticalFrameSize() -
-				ui.common.Styles.Header.GetVerticalFrameSize() - 2).
+				hm -
+				ui.common.Styles.Error.GetVerticalFrameSize()).
 			Render(err)
 	case loadedState:
 		view = ui.pages[ui.activePage].View()
@@ -209,8 +215,7 @@ func (ui *UI) View() string {
 		view = "Unknown state :/ this is a bug!"
 	}
 	return style.Render(
-		lipgloss.JoinVertical(
-			lipgloss.Bottom,
+		lipgloss.JoinVertical(lipgloss.Bottom,
 			ui.header.View(),
 			view,
 			footer,

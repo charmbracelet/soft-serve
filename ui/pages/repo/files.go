@@ -156,6 +156,7 @@ func (f *Files) Init() tea.Cmd {
 	f.currentItem = nil
 	f.activeView = filesViewFiles
 	f.lastSelected = make([]int, 0)
+	f.selector.Select(0)
 	return f.updateFilesCmd
 }
 
@@ -164,7 +165,6 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case RepoMsg:
-		f.selector.Select(0)
 		f.repo = git.GitRepo(msg)
 		cmds = append(cmds, f.Init())
 	case RefMsg:
