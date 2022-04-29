@@ -232,7 +232,7 @@ func (ui *UI) setRepoCmd(rn string) tea.Cmd {
 	rs := ui.s.Source()
 	return func() tea.Msg {
 		for _, r := range rs.AllRepos() {
-			if r.Name() == rn {
+			if r.Repo() == rn {
 				ui.activePage = repoPage
 				return repo.RepoMsg(r)
 			}
@@ -245,7 +245,7 @@ func (ui *UI) initialRepoCmd(rn string) tea.Cmd {
 	rs := ui.s.Source()
 	return func() tea.Msg {
 		for _, r := range rs.AllRepos() {
-			if r.Name() == rn {
+			if r.Repo() == rn {
 				ui.activePage = repoPage
 				return repo.RepoMsg(r)
 			}
