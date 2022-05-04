@@ -65,6 +65,8 @@ func (ui *UI) getMargins() (wm, hm int) {
 	wm = ui.common.Styles.App.GetHorizontalFrameSize()
 	hm = ui.common.Styles.App.GetVerticalFrameSize() +
 		ui.common.Styles.Header.GetHeight() +
+		ui.common.Styles.Header.GetVerticalFrameSize() +
+		ui.common.Styles.Footer.GetVerticalFrameSize() +
 		ui.footer.Height()
 	return
 }

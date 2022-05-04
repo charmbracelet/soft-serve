@@ -24,8 +24,7 @@ func New(c common.Common, text string) *Header {
 
 // SetSize implements common.Component.
 func (h *Header) SetSize(width, height int) {
-	h.common.Width = width
-	h.common.Height = height
+	h.common.SetSize(width, height)
 }
 
 // Init implements tea.Model.

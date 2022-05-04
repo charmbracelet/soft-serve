@@ -8,7 +8,7 @@ import (
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/config"
-	"github.com/charmbracelet/soft-serve/tui/common"
+	"github.com/charmbracelet/soft-serve/ui/common"
 	gitwish "github.com/charmbracelet/wish/git"
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
@@ -109,7 +109,7 @@ func withFormatting(p, c string) (string, error) {
 		Language: lang,
 	}
 	r := strings.Builder{}
-	styles := common.DefaultStyles()
+	styles := common.StyleConfig()
 	styles.CodeBlock.Margin = &zero
 	rctx := gansi.NewRenderContext(gansi.Options{
 		Styles:       styles,

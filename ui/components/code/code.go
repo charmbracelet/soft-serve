@@ -36,7 +36,7 @@ func New(c common.Common, content, extension string) *Code {
 		Viewport:       vp.New(c),
 		NoContentStyle: c.Styles.CodeNoContent.Copy(),
 	}
-	st := styleConfig()
+	st := common.StyleConfig()
 	r.styleConfig = st
 	r.renderContext = gansi.NewRenderContext(gansi.Options{
 		ColorProfile: termenv.TrueColor,
@@ -195,15 +195,4 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 		return "", err
 	}
 	return s.String(), nil
-}
-
-func styleConfig() gansi.StyleConfig {
-	noColor := ""
-	s := glamour.DarkStyleConfig
-	// This fixes an issue with the default style config. For example
-	// highlighting empty spaces with red in Dockerfile type.
-	s.Document.StylePrimitive.Color = &noColor
-	s.CodeBlock.Chroma.Text.Color = &noColor
-	s.CodeBlock.Chroma.Name.Color = &noColor
-	return s
 }

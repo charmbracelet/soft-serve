@@ -1,6 +1,8 @@
 package footer
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -54,7 +56,7 @@ func (f *Footer) View() string {
 	}
 	s := f.common.Styles.Footer.Copy().Width(f.common.Width)
 	helpView := f.help.View(f.keymap)
-	return s.Render(helpView)
+	return s.Render(strings.TrimSpace(helpView))
 }
 
 // ShortHelp returns the short help key bindings.
