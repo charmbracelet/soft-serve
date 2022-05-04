@@ -3,7 +3,6 @@ package repo
 import (
 	"errors"
 	"fmt"
-	"log"
 	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -60,7 +59,7 @@ func NewFiles(common common.Common) *Files {
 		activeView:   filesViewFiles,
 		lastSelected: make([]int, 0),
 	}
-	selector := selector.New(common, []selector.IdentifiableItem{}, FileItemDelegate{common.Styles})
+	selector := selector.New(common, []selector.IdentifiableItem{}, FileItemDelegate{&common})
 	selector.SetShowFilter(false)
 	selector.SetShowHelp(false)
 	selector.SetShowPagination(false)
@@ -86,16 +85,22 @@ func (f *Files) ShortHelp() []key.Binding {
 	k := f.selector.KeyMap
 	switch f.activeView {
 	case filesViewFiles:
+		copyKey := f.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy name")
 		return []key.Binding{
 			f.common.KeyMap.SelectItem,
 			f.common.KeyMap.BackItem,
 			k.CursorUp,
 			k.CursorDown,
+			copyKey,
 		}
 	case filesViewContent:
+		copyKey := f.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy content")
 		return []key.Binding{
 			f.common.KeyMap.UpDown,
 			f.common.KeyMap.BackItem,
+			copyKey,
 		}
 	default:
 		return []key.Binding{}
@@ -107,13 +112,14 @@ func (f *Files) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
 	switch f.activeView {
 	case filesViewFiles:
+		copyKey := f.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy name")
 		k := f.selector.KeyMap
 		b = append(b, []key.Binding{
 			f.common.KeyMap.SelectItem,
 			f.common.KeyMap.BackItem,
 		})
 		b = append(b, [][]key.Binding{
-			{},
 			{
 				k.CursorUp,
 				k.CursorDown,
@@ -126,8 +132,13 @@ func (f *Files) FullHelp() [][]key.Binding {
 				k.GoToStart,
 				k.GoToEnd,
 			},
+			{
+				copyKey,
+			},
 		}...)
 	case filesViewContent:
+		copyKey := f.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy content")
 		k := f.code.KeyMap
 		b = append(b, []key.Binding{
 			f.common.KeyMap.BackItem,
@@ -144,6 +155,9 @@ func (f *Files) FullHelp() [][]key.Binding {
 			{
 				k.Down,
 				k.Up,
+			},
+			{
+				copyKey,
 			},
 		}...)
 	}
@@ -186,7 +200,6 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case FileItem:
 			f.currentItem = &sel
 			f.path = filepath.Join(f.path, sel.entry.Name())
-			log.Printf("selected index %d", f.selector.Index())
 			if sel.entry.IsTree() {
 				cmds = append(cmds, f.selectTreeCmd)
 			} else {
@@ -203,9 +216,12 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, f.deselectItemCmd)
 			}
 		case filesViewContent:
-			switch msg.String() {
-			case "h", "left":
+			keyStr := msg.String()
+			switch {
+			case keyStr == "h", keyStr == "left":
 				cmds = append(cmds, f.deselectItemCmd)
+			case key.Matches(msg, f.common.KeyMap.Copy):
+				f.common.Copy.Copy(f.currentContent.content)
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -288,9 +304,9 @@ func (f *Files) updateFilesCmd() tea.Msg {
 	ents.Sort()
 	for _, e := range ents {
 		if e.IsTree() {
-			dirs = append(dirs, FileItem{e})
+			dirs = append(dirs, FileItem{entry: e})
 		} else {
-			files = append(files, FileItem{e})
+			files = append(files, FileItem{entry: e})
 		}
 	}
 	return FileItemsMsg(append(dirs, files...))
@@ -341,7 +357,6 @@ func (f *Files) deselectItemCmd() tea.Msg {
 		index = f.lastSelected[len(f.lastSelected)-1]
 		f.lastSelected = f.lastSelected[:len(f.lastSelected)-1]
 	}
-	log.Printf("deselect %d", index)
 	f.selector.Select(index)
 	return msg
 }

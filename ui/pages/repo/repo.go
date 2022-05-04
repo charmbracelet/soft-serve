@@ -112,7 +112,7 @@ func (r *Repo) ShortHelp() []key.Binding {
 	case readmeTab:
 		b = append(b, r.common.KeyMap.UpDown)
 	default:
-		b = append(b, r.boxes[commitsTab].(help.KeyMap).ShortHelp()...)
+		b = append(b, r.boxes[r.activeTab].(help.KeyMap).ShortHelp()...)
 	}
 	return b
 }

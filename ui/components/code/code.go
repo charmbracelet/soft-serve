@@ -2,6 +2,7 @@ package code
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/alecthomas/chroma/lexers"
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,6 +21,9 @@ type Code struct {
 	common         common.Common
 	content        string
 	extension      string
+	renderContext  gansi.RenderContext
+	renderMutex    sync.Mutex
+	styleConfig    gansi.StyleConfig
 	NoContentStyle lipgloss.Style
 }
 
@@ -32,6 +36,12 @@ func New(c common.Common, content, extension string) *Code {
 		Viewport:       vp.New(c),
 		NoContentStyle: c.Styles.CodeNoContent.Copy(),
 	}
+	st := styleConfig()
+	r.styleConfig = st
+	r.renderContext = gansi.NewRenderContext(gansi.Options{
+		ColorProfile: termenv.TrueColor,
+		Styles:       st,
+	})
 	r.SetSize(c.Width, c.Height)
 	return r
 }
@@ -56,7 +66,7 @@ func (r *Code) Init() tea.Cmd {
 	if c == "" {
 		c = r.NoContentStyle.String()
 	}
-	f, err := renderFile(r.extension, c, w)
+	f, err := r.renderFile(r.extension, c, w)
 	if err != nil {
 		return common.ErrorCmd(err)
 	}
@@ -136,30 +146,14 @@ func (r *Code) ScrollPercent() float64 {
 	return r.Viewport.ScrollPercent()
 }
 
-func styleConfig() gansi.StyleConfig {
-	noColor := ""
-	s := glamour.DarkStyleConfig
-	// This fixes an issue with the default style config. For example
-	// highlighting empty spaces with red in Dockerfile type.
-	s.Document.StylePrimitive.Color = &noColor
-	s.CodeBlock.Chroma.Text.Color = &noColor
-	s.CodeBlock.Chroma.Name.Color = &noColor
-	return s
-}
-
-func renderCtx() gansi.RenderContext {
-	return gansi.NewRenderContext(gansi.Options{
-		ColorProfile: termenv.TrueColor,
-		Styles:       styleConfig(),
-	})
-}
-
-func glamourize(w int, md string) (string, error) {
+func (r *Code) glamourize(w int, md string) (string, error) {
+	r.renderMutex.Lock()
+	defer r.renderMutex.Unlock()
 	if w > 120 {
 		w = 120
 	}
 	tr, err := glamour.NewTermRenderer(
-		glamour.WithStyles(styleConfig()),
+		glamour.WithStyles(r.styleConfig),
 		glamour.WithWordWrap(w),
 	)
 
@@ -173,7 +167,7 @@ func glamourize(w int, md string) (string, error) {
 	return mdt, nil
 }
 
-func renderFile(path, content string, width int) (string, error) {
+func (r *Code) renderFile(path, content string, width int) (string, error) {
 	lexer := lexers.Fallback
 	if path == "" {
 		lexer = lexers.Analyse(content)
@@ -185,7 +179,7 @@ func renderFile(path, content string, width int) (string, error) {
 		lang = lexer.Config().Name
 	}
 	if lang == "markdown" {
-		md, err := glamourize(width, content)
+		md, err := r.glamourize(width, content)
 		if err != nil {
 			return "", err
 		}
@@ -195,10 +189,21 @@ func renderFile(path, content string, width int) (string, error) {
 		Code:     content,
 		Language: lang,
 	}
-	r := strings.Builder{}
-	err := formatter.Render(&r, renderCtx())
+	s := strings.Builder{}
+	err := formatter.Render(&s, r.renderContext)
 	if err != nil {
 		return "", err
 	}
-	return r.String(), nil
+	return s.String(), nil
+}
+
+func styleConfig() gansi.StyleConfig {
+	noColor := ""
+	s := glamour.DarkStyleConfig
+	// This fixes an issue with the default style config. For example
+	// highlighting empty spaces with red in Dockerfile type.
+	s.Document.StylePrimitive.Color = &noColor
+	s.CodeBlock.Chroma.Text.Color = &noColor
+	s.CodeBlock.Chroma.Name.Color = &noColor
+	return s
 }

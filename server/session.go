@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 
+	"github.com/aymanbagabas/go-osc52"
 	tea "github.com/charmbracelet/bubbletea"
 	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/ui"
@@ -60,7 +61,11 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 		if ac.Cfg.Callbacks != nil {
 			ac.Cfg.Callbacks.Tui("new session")
 		}
+		envs := s.Environ()
+		envs = append(envs, fmt.Sprintf("TERM=%s", pty.Term))
+		output := osc52.NewOutput(s, envs)
 		c := common.Common{
+			Copy:   output,
 			Styles: styles.DefaultStyles(),
 			KeyMap: keymap.DefaultKeyMap(),
 			Width:  pty.Window.Width,

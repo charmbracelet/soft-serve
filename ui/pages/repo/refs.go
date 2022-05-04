@@ -35,7 +35,7 @@ func NewRefs(common common.Common, refPrefix string) *Refs {
 		common:    common,
 		refPrefix: refPrefix,
 	}
-	s := selector.New(common, []selector.IdentifiableItem{}, RefItemDelegate{common.Styles})
+	s := selector.New(common, []selector.IdentifiableItem{}, RefItemDelegate{&common})
 	s.SetShowFilter(false)
 	s.SetShowHelp(false)
 	s.SetShowPagination(true)
@@ -55,16 +55,21 @@ func (r *Refs) SetSize(width, height int) {
 
 // ShortHelp implements help.KeyMap.
 func (r *Refs) ShortHelp() []key.Binding {
+	copyKey := r.common.KeyMap.Copy
+	copyKey.SetHelp("c", "copy ref")
 	k := r.selector.KeyMap
 	return []key.Binding{
 		r.common.KeyMap.SelectItem,
 		k.CursorUp,
 		k.CursorDown,
+		copyKey,
 	}
 }
 
 // FullHelp implements help.KeyMap.
 func (r *Refs) FullHelp() [][]key.Binding {
+	copyKey := r.common.KeyMap.Copy
+	copyKey.SetHelp("c", "copy ref")
 	k := r.selector.KeyMap
 	return [][]key.Binding{
 		{r.common.KeyMap.SelectItem},
@@ -79,6 +84,9 @@ func (r *Refs) FullHelp() [][]key.Binding {
 		{
 			k.GoToStart,
 			k.GoToEnd,
+		},
+		{
+			copyKey,
 		},
 	}
 }
@@ -159,7 +167,7 @@ func (r *Refs) updateItemsCmd() tea.Msg {
 	}
 	for _, ref := range refs {
 		if strings.HasPrefix(ref.Name().String(), r.refPrefix) {
-			its = append(its, RefItem{ref})
+			its = append(its, RefItem{Reference: ref})
 		}
 	}
 	sort.Sort(its)

@@ -31,7 +31,7 @@ type Styles struct {
 	Repo           lipgloss.Style
 	RepoTitle      lipgloss.Style
 	RepoTitleBox   lipgloss.Style
-	RepoNote       lipgloss.Style
+	RepoCommand    lipgloss.Style
 	RepoNoteBox    lipgloss.Style
 	RepoBody       lipgloss.Style
 	RepoHeader     lipgloss.Style
@@ -183,8 +183,7 @@ func DefaultStyles() *Styles {
 		BorderStyle(s.RepoTitleBorder).
 		BorderForeground(s.InactiveBorderColor)
 
-	s.RepoNote = lipgloss.NewStyle().
-		Padding(0, 2).
+	s.RepoCommand = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("168"))
 
 	s.RepoNoteBox = lipgloss.NewStyle().
@@ -291,11 +290,15 @@ func DefaultStyles() *Styles {
 		Margin(0).
 		Align(lipgloss.Center)
 
-	s.RefItemSelector = s.TreeItemSelector.Copy()
+	s.RefItemInactive = lipgloss.NewStyle().
+		MarginLeft(1)
 
-	s.RefItemActive = s.TreeItemActive.Copy()
+	s.RefItemSelector = lipgloss.NewStyle().
+		Width(1).
+		Foreground(lipgloss.Color("#B083EA"))
 
-	s.RefItemInactive = s.TreeItemInactive.Copy()
+	s.RefItemActive = s.RefItemInactive.Copy().
+		Bold(true)
 
 	s.RefItemBranch = lipgloss.NewStyle()
 

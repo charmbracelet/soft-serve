@@ -19,6 +19,8 @@ type KeyMap struct {
 
 	SelectItem key.Binding
 	BackItem   key.Binding
+
+	Copy key.Binding
 }
 
 // DefaultKeyMap returns the default key map.
@@ -185,6 +187,17 @@ func DefaultKeyMap() *KeyMap {
 		key.WithHelp(
 			"←",
 			"back",
+		),
+	)
+
+	km.Copy = key.NewBinding(
+		key.WithKeys(
+			"c",
+			"ctrl+c",
+		),
+		key.WithHelp(
+			"c",
+			"copy text",
 		),
 	)
 

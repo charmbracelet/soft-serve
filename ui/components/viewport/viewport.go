@@ -1,7 +1,6 @@
 package viewport
 
 import (
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/ui/common"
@@ -17,32 +16,6 @@ type Viewport struct {
 func New(c common.Common) *Viewport {
 	vp := viewport.New(c.Width, c.Height)
 	vp.MouseWheelEnabled = true
-	vp.KeyMap = viewport.KeyMap{
-		PageDown: key.NewBinding(
-			key.WithKeys("pgdown", " ", "f"),
-			key.WithHelp("f/pgdn", "page down"),
-		),
-		PageUp: key.NewBinding(
-			key.WithKeys("pgup", "b"),
-			key.WithHelp("b/pgup", "page up"),
-		),
-		HalfPageUp: key.NewBinding(
-			key.WithKeys("u", "ctrl+u"),
-			key.WithHelp("ctrl+u/u", "half page up"),
-		),
-		HalfPageDown: key.NewBinding(
-			key.WithKeys("d", "ctrl+d"),
-			key.WithHelp("ctrl+d/d", "half page down"),
-		),
-		Up: key.NewBinding(
-			key.WithKeys("up", "k"),
-			key.WithHelp("↑/k", "up"),
-		),
-		Down: key.NewBinding(
-			key.WithKeys("down", "j"),
-			key.WithHelp("↓/j", "down"),
-		),
-	}
 	return &Viewport{
 		common: c,
 		Model:  &vp,

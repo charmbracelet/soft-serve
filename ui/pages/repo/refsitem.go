@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/tui/common"
-	"github.com/charmbracelet/soft-serve/ui/styles"
+	"github.com/charmbracelet/soft-serve/ui/common"
 )
 
 // RefItem is a git reference item.
@@ -55,7 +55,7 @@ func (cl RefItems) Less(i, j int) bool {
 
 // RefItemDelegate is the delegate for the ref item.
 type RefItemDelegate struct {
-	style *styles.Styles
+	common *common.Common
 }
 
 // Height implements list.ItemDelegate.
@@ -65,11 +65,26 @@ func (d RefItemDelegate) Height() int { return 1 }
 func (d RefItemDelegate) Spacing() int { return 0 }
 
 // Update implements list.ItemDelegate.
-func (d RefItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
+func (d RefItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+	idx := m.Index()
+	item, ok := m.SelectedItem().(RefItem)
+	if !ok {
+		return nil
+	}
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, d.common.KeyMap.Copy):
+			d.common.Copy.Copy(item.Title())
+			return m.SetItem(idx, item)
+		}
+	}
+	return nil
+}
 
 // Render implements list.ItemDelegate.
 func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	s := d.style
+	s := d.common.Styles
 	i, ok := listItem.(RefItem)
 	if !ok {
 		return
@@ -84,12 +99,12 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		s.RefItemSelector.GetMarginLeft() -
 		s.RefItemSelector.GetWidth() -
 		s.RefItemInactive.GetMarginLeft()
-	ref = common.TruncateString(ref, refMaxWidth, "…")
+	ref = truncateString(ref, refMaxWidth, "…")
 	if index == m.Index() {
 		fmt.Fprint(w, s.RefItemSelector.Render(">")+
 			s.RefItemActive.Render(ref))
 	} else {
-		fmt.Fprint(w, s.LogItemSelector.Render(" ")+
+		fmt.Fprint(w, s.RefItemSelector.Render(" ")+
 			s.RefItemInactive.Render(ref))
 	}
 }

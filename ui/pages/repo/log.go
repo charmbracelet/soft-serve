@@ -60,7 +60,7 @@ func NewLog(common common.Common) *Log {
 		vp:         viewport.New(common),
 		activeView: logViewCommits,
 	}
-	selector := selector.New(common, []selector.IdentifiableItem{}, LogItemDelegate{common.Styles})
+	selector := selector.New(common, []selector.IdentifiableItem{}, LogItemDelegate{&common})
 	selector.SetShowFilter(false)
 	selector.SetShowHelp(false)
 	selector.SetShowPagination(false)
@@ -85,8 +85,11 @@ func (l *Log) SetSize(width, height int) {
 func (l *Log) ShortHelp() []key.Binding {
 	switch l.activeView {
 	case logViewCommits:
+		copyKey := l.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy hash")
 		return []key.Binding{
 			l.common.KeyMap.SelectItem,
+			copyKey,
 		}
 	case logViewDiff:
 		return []key.Binding{
@@ -104,11 +107,16 @@ func (l *Log) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
 	switch l.activeView {
 	case logViewCommits:
+		copyKey := l.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy hash")
 		b = append(b, []key.Binding{
 			l.common.KeyMap.SelectItem,
 			l.common.KeyMap.BackItem,
 		})
 		b = append(b, [][]key.Binding{
+			{
+				copyKey,
+			},
 			{
 				k.CursorUp,
 				k.CursorDown,
@@ -326,7 +334,7 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 		if int64(idx) >= count {
 			break
 		}
-		items[idx] = LogItem{c}
+		items[idx] = LogItem{Commit: c}
 	}
 	return LogItemsMsg(items)
 }

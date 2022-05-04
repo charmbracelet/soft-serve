@@ -5,11 +5,12 @@ import (
 	"io"
 	"io/fs"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/ui/styles"
+	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/dustin/go-humanize"
 )
 
@@ -65,7 +66,7 @@ func (cl FileItems) Less(i, j int) bool {
 
 // FileItemDelegate is the delegate for the file item list.
 type FileItemDelegate struct {
-	style *styles.Styles
+	common *common.Common
 }
 
 // Height returns the height of the file item list. Implements list.ItemDelegate.
@@ -75,11 +76,26 @@ func (d FileItemDelegate) Height() int { return 1 }
 func (d FileItemDelegate) Spacing() int { return 0 }
 
 // Update implements list.ItemDelegate.
-func (d FileItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
+func (d FileItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+	idx := m.Index()
+	item, ok := m.SelectedItem().(FileItem)
+	if !ok {
+		return nil
+	}
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, d.common.KeyMap.Copy):
+			d.common.Copy.Copy(item.Title())
+			return m.SetItem(idx, item)
+		}
+	}
+	return nil
+}
 
 // Render implements list.ItemDelegate.
 func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	s := d.style
+	s := d.common.Styles
 	i, ok := listItem.(FileItem)
 	if !ok {
 		return

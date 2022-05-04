@@ -1,16 +1,12 @@
 package selection
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
-	"github.com/charmbracelet/soft-serve/ui/components/yankable"
 	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/charmbracelet/soft-serve/ui/session"
 )
@@ -42,7 +38,7 @@ func New(s session.Session, common common.Common) *Selection {
 	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
 	selector := selector.New(common,
 		[]selector.IdentifiableItem{},
-		ItemDelegate{common.Styles, &sel.activeBox})
+		ItemDelegate{&common, &sel.activeBox})
 	selector.SetShowTitle(false)
 	selector.SetShowHelp(false)
 	selector.SetShowStatusBar(false)
@@ -77,10 +73,13 @@ func (s *Selection) ShortHelp() []key.Binding {
 		s.common.KeyMap.Section,
 	)
 	if s.activeBox == selectorBox {
+		copyKey := s.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy command")
 		kb = append(kb,
 			s.common.KeyMap.Select,
 			k.Filter,
 			k.ClearFilter,
+			copyKey,
 		)
 	}
 	return kb
@@ -106,10 +105,13 @@ func (s *Selection) FullHelp() [][]key.Binding {
 			},
 		}
 	case selectorBox:
+		copyKey := s.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy command")
 		k := s.selector.KeyMap
 		return [][]key.Binding{
 			{
 				s.common.KeyMap.Select,
+				copyKey,
 			},
 			{
 				k.CursorUp,
@@ -136,32 +138,8 @@ func (s *Selection) FullHelp() [][]key.Binding {
 
 // Init implements tea.Model.
 func (s *Selection) Init() tea.Cmd {
-	session := s.s.Session()
-	environ := session.Environ()
-	termExists := false
-	// Add TERM using pty.Term if it's not already set.
-	for _, env := range environ {
-		if strings.HasPrefix(env, "TERM=") {
-			termExists = true
-			break
-		}
-	}
-	if !termExists {
-		pty, _, _ := session.Pty()
-		environ = append(environ, fmt.Sprintf("TERM=%s", pty.Term))
-	}
 	items := make([]selector.IdentifiableItem, 0)
 	cfg := s.s.Config()
-	// TODO clean up this and move style to its own var.
-	yank := func(text string) *yankable.Yankable {
-		return yankable.New(
-			session,
-			environ,
-			lipgloss.NewStyle().Foreground(lipgloss.Color("168")),
-			lipgloss.NewStyle().Foreground(lipgloss.Color("168")).SetString("Copied!"),
-			text,
-		)
-	}
 	// Put configured repos first
 	for _, r := range cfg.Repos {
 		repo, err := cfg.Source.GetRepo(r.Repo)
@@ -170,7 +148,7 @@ func (s *Selection) Init() tea.Cmd {
 		}
 		items = append(items, Item{
 			repo: repo,
-			url:  yank(git.RepoURL(cfg.Host, cfg.Port, r.Repo)),
+			cmd:  git.RepoURL(cfg.Host, cfg.Port, r.Repo),
 		})
 	}
 	for _, r := range cfg.Source.AllRepos() {
@@ -196,7 +174,7 @@ func (s *Selection) Init() tea.Cmd {
 			items = append(items, Item{
 				repo:       r,
 				lastUpdate: lastUpdate,
-				url:        yank(git.RepoURL(cfg.Host, cfg.Port, r.Name())),
+				cmd:        git.RepoURL(cfg.Host, cfg.Port, r.Name()),
 			})
 		}
 	}

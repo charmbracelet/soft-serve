@@ -1,12 +1,14 @@
 package common
 
 import (
+	"github.com/aymanbagabas/go-osc52"
 	"github.com/charmbracelet/soft-serve/ui/keymap"
 	"github.com/charmbracelet/soft-serve/ui/styles"
 )
 
 // Common is a struct all components should embed.
 type Common struct {
+	Copy   *osc52.Output
 	Styles *styles.Styles
 	KeyMap *keymap.KeyMap
 	Width  int
