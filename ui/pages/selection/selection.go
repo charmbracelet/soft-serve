@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/charmbracelet/soft-serve/ui/session"
+	wgit "github.com/charmbracelet/wish/git"
 )
 
 type box int
@@ -140,8 +141,12 @@ func (s *Selection) FullHelp() [][]key.Binding {
 func (s *Selection) Init() tea.Cmd {
 	items := make([]selector.IdentifiableItem, 0)
 	cfg := s.s.Config()
+	pk := s.s.PublicKey()
 	// Put configured repos first
 	for _, r := range cfg.Repos {
+		if r.Private && cfg.AuthRepo(r.Repo, pk) < wgit.AdminAccess {
+			continue
+		}
 		repo, err := cfg.Source.GetRepo(r.Repo)
 		if err != nil {
 			continue
@@ -152,6 +157,9 @@ func (s *Selection) Init() tea.Cmd {
 		})
 	}
 	for _, r := range cfg.Source.AllRepos() {
+		if r.IsPrivate() && cfg.AuthRepo(r.Repo(), pk) < wgit.AdminAccess {
+			continue
+		}
 		exists := false
 		head, err := r.HEAD()
 		if err != nil {
