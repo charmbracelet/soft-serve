@@ -26,6 +26,7 @@ type Repo struct {
 	head        *git.Reference
 	refs        []*git.Reference
 	patchCache  *lru.Cache
+	private     bool
 }
 
 // open opens a Git repository.
@@ -48,6 +49,11 @@ func (rs *RepoSource) open(path string) (*Repo, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+// IsPrivate returns true if the repository is private.
+func (r *Repo) IsPrivate() bool {
+	return r.private
 }
 
 // Path returns the path to the repository.

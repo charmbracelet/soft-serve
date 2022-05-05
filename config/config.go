@@ -154,6 +154,7 @@ func (cfg *Config) Reload() error {
 				rp = rr.Readme
 				r.name = rr.Name
 				r.description = rr.Note
+				r.private = rr.Private
 				break
 			}
 		}
@@ -232,14 +233,15 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
-		author := &object.Signature{
+		author := object.Signature{
 			Name:  "Soft Serve Server",
 			Email: "vt100@charm.sh",
 			When:  time.Now(),
 		}
 		_, err = wt.Commit("Default init", &ggit.CommitOptions{
-			All:    true,
-			Author: author,
+			All:       true,
+			Author:    &author,
+			Committer: &author,
 		})
 		if err != nil {
 			return err
