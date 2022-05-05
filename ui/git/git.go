@@ -22,6 +22,7 @@ type GitRepo interface {
 	Diff(*git.Commit) (*git.Diff, error)
 	References() ([]*git.Reference, error)
 	Tree(*git.Reference, string) (*git.Tree, error)
+	IsPrivate() bool
 }
 
 // GitRepoSource is an interface for Git repository factory.

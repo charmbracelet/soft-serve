@@ -105,6 +105,9 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	title := i.Title()
+	if i.repo.IsPrivate() {
+		title += " 🔒"
+	}
 	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.lastUpdate))
 	updated := styles.MenuLastUpdate.
 		Copy().
