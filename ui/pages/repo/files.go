@@ -28,6 +28,13 @@ var (
 	errInvalidFile    = errors.New("invalid file")
 )
 
+var (
+	lineNo = key.NewBinding(
+		key.WithKeys("l"),
+		key.WithHelp("l", "toggle line numbers"),
+	)
+)
+
 // FileItemsMsg is a message that contains a list of files.
 type FileItemsMsg []selector.IdentifiableItem
 
@@ -49,6 +56,7 @@ type Files struct {
 	currentItem    *FileItem
 	currentContent FileContentMsg
 	lastSelected   []int
+	lineNumber     bool
 }
 
 // NewFiles creates a new files model.
@@ -58,6 +66,7 @@ func NewFiles(common common.Common) *Files {
 		code:         code.New(common, "", ""),
 		activeView:   filesViewFiles,
 		lastSelected: make([]int, 0),
+		lineNumber:   true,
 	}
 	selector := selector.New(common, []selector.IdentifiableItem{}, FileItemDelegate{&common})
 	selector.SetShowFilter(false)
@@ -70,6 +79,7 @@ func NewFiles(common common.Common) *Files {
 	selector.KeyMap.NextPage = common.KeyMap.NextPage
 	selector.KeyMap.PrevPage = common.KeyMap.PrevPage
 	f.selector = selector
+	f.code.SetShowLineNumber(f.lineNumber)
 	return f
 }
 
@@ -101,6 +111,7 @@ func (f *Files) ShortHelp() []key.Binding {
 			f.common.KeyMap.UpDown,
 			f.common.KeyMap.BackItem,
 			copyKey,
+			lineNo,
 		}
 	default:
 		return []key.Binding{}
@@ -158,6 +169,7 @@ func (f *Files) FullHelp() [][]key.Binding {
 			},
 			{
 				copyKey,
+				lineNo,
 			},
 		}...)
 	}
@@ -222,6 +234,10 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, f.deselectItemCmd)
 			case key.Matches(msg, f.common.KeyMap.Copy):
 				f.common.Copy.Copy(f.currentContent.content)
+			case key.Matches(msg, lineNo):
+				f.lineNumber = !f.lineNumber
+				f.code.SetShowLineNumber(f.lineNumber)
+				cmds = append(cmds, f.code.SetContent(f.currentContent.content, f.currentContent.ext))
 			}
 		}
 	case tea.WindowSizeMsg:
