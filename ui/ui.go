@@ -64,10 +64,14 @@ func New(s session.Session, c common.Common, initialRepo string) *UI {
 func (ui *UI) getMargins() (wm, hm int) {
 	wm = ui.common.Styles.App.GetHorizontalFrameSize()
 	hm = ui.common.Styles.App.GetVerticalFrameSize() +
-		ui.common.Styles.Header.GetHeight() +
-		ui.common.Styles.Header.GetVerticalFrameSize() +
 		ui.common.Styles.Footer.GetVerticalFrameSize() +
 		ui.footer.Height()
+	switch ui.activePage {
+	case selectionPage:
+		hm += ui.common.Styles.Header.GetHeight() +
+			ui.common.Styles.Header.GetVerticalFrameSize()
+	case repoPage:
+	}
 	return
 }
 
@@ -221,9 +225,16 @@ func (ui *UI) View() string {
 	default:
 		view = "Unknown state :/ this is a bug!"
 	}
+	switch ui.activePage {
+	case selectionPage:
+		view = lipgloss.JoinVertical(lipgloss.Bottom,
+			ui.header.View(),
+			view,
+		)
+	case repoPage:
+	}
 	return style.Render(
 		lipgloss.JoinVertical(lipgloss.Bottom,
-			ui.header.View(),
 			view,
 			footer,
 		),
