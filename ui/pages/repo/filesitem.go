@@ -129,6 +129,9 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 			s.TreeFileSize.GetMarginLeft() -
 			lipgloss.Width(name)).
 		Align(lipgloss.Right)
+	if index == m.Index() {
+		sizeStyle = sizeStyle.Bold(true)
+	}
 	fmt.Fprint(w, s.TreeFileMode.Render(mode.String())+
 		cs.Render(name)+
 		sizeStyle.Render(size))
