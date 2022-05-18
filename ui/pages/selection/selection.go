@@ -170,11 +170,15 @@ func (s *Selection) Init() tea.Cmd {
 			return common.ErrorCmd(err)
 		}
 		lastUpdate := lc[0].Committer.When
-		for _, item := range items {
+		if lastUpdate.IsZero() {
+			lastUpdate = lc[0].Author.When
+		}
+		for i, item := range items {
 			item := item.(Item)
 			if item.repo.Repo() == r.Repo() {
 				exists = true
 				item.lastUpdate = lastUpdate
+				items[i] = item
 				break
 			}
 		}
