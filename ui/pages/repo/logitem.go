@@ -74,6 +74,10 @@ func (d LogItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
 }
 
+var (
+	highlight = lipgloss.NewStyle().Foreground(lipgloss.Color("#F1F1F1"))
+)
+
 // Render renders the item. Implements list.ItemDelegate.
 func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	styles := d.common.Styles
@@ -99,16 +103,19 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	title := titleStyle.Render(
 		truncateString(i.Title(), m.Width()-style.GetHorizontalFrameSize()-width(hash)-2, "…"),
 	)
-	hash = styles.LogItemHash.Copy().
+	hashStyle := styles.LogItemHash.Copy().
 		Align(lipgloss.Right).
 		Width(m.Width() -
 			style.GetHorizontalFrameSize() -
 			width(title) -
 			// FIXME where this "1" is coming from?
-			1).
-		Render(hash)
-	author := i.Author.Name
-	commiter := i.Committer.Name
+			1)
+	if index == m.Index() {
+		hashStyle = hashStyle.Bold(true)
+	}
+	hash = hashStyle.Render(hash)
+	author := highlight.Render(i.Author.Name)
+	commiter := highlight.Render(i.Committer.Name)
 	who := ""
 	if author != "" && commiter != "" {
 		who = fmt.Sprintf("%s committed", commiter)
