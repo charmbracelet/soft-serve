@@ -294,9 +294,9 @@ func (l *Log) StatusBarInfo() string {
 	case logViewCommits:
 		// We're using l.nextPage instead of l.selector.Paginator.Page because
 		// of the paginator hack above.
-		return fmt.Sprintf("%d/%d", l.nextPage+1, l.selector.TotalPages())
+		return fmt.Sprintf("p. %d/%d", l.nextPage+1, l.selector.TotalPages())
 	case logViewDiff:
-		return fmt.Sprintf("%.f%%", l.vp.ScrollPercent()*100)
+		return fmt.Sprintf("☰ %.f%%", l.vp.ScrollPercent()*100)
 	default:
 		return ""
 	}

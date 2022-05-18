@@ -301,7 +301,7 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 	var info, value string
 	switch r.activeTab {
 	case readmeTab:
-		info = fmt.Sprintf("%.f%%", r.boxes[readmeTab].(*code.Code).ScrollPercent()*100)
+		info = fmt.Sprintf("☰ %.f%%", r.boxes[readmeTab].(*code.Code).ScrollPercent()*100)
 	default:
 		value = r.boxes[r.activeTab].(statusbar.Model).StatusBarValue()
 		info = r.boxes[r.activeTab].(statusbar.Model).StatusBarInfo()
