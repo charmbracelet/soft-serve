@@ -34,13 +34,13 @@ Just run `ssh git.charm.sh` for an example. You can also try some of the followi
 ssh git.charm.sh -t soft-serve
 
 # Print out a directory tree for a repo
-ssh git.charm.sh soft-serve
+ssh git.charm.sh ls soft-serve
 
 # Print a specific file
-ssh git.charm.sh soft-serve/cmd/soft/main.go
+ssh git.charm.sh cat soft-serve/cmd/soft/main.go
 
 # Print a file with syntax highlighting and line numbers
-ssh git.charm.sh soft-serve/cmd/soft/main.go -c -l
+ssh git.charm.sh cat soft-serve/cmd/soft/main.go -c -l
 ```
 
 ## Installation
