@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 
 	"github.com/charmbracelet/soft-serve/config"
 	appCfg "github.com/charmbracelet/soft-serve/internal/config"
@@ -67,6 +68,11 @@ func (srv *Server) Reload() error {
 // Start starts the SSH server.
 func (srv *Server) Start() error {
 	return srv.SSHServer.ListenAndServe()
+}
+
+// Serve serves the SSH server using the provided listener.
+func (srv *Server) Serve(l net.Listener) error {
+	return srv.SSHServer.Serve(l)
 }
 
 // Shutdown lets the server gracefully shutdown.
