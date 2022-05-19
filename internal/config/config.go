@@ -97,7 +97,12 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	} else {
 		displayHost = host
 	}
-	yamlConfig := fmt.Sprintf(defaultConfig, displayHost, port, anonAccess)
+	yamlConfig := fmt.Sprintf(defaultConfig,
+		displayHost,
+		port,
+		anonAccess,
+		len(pks) == 0,
+	)
 	if len(pks) == 0 {
 		yamlUsers = defaultUserConfig
 	} else {
@@ -186,6 +191,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	rs := cfg.Source
 	err := rs.LoadRepo(cn)
 	if os.IsNotExist(err) {
+		log.Printf("creating default config repo %s", cn)
 		repo, err := ggit.PlainInit(rp, true)
 		if err != nil {
 			return err

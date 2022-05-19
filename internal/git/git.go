@@ -201,7 +201,6 @@ func (rs *RepoSource) LoadRepo(name string) error {
 	rp := filepath.Join(rs.Path, name)
 	r, err := rs.open(rp)
 	if err != nil {
-		log.Printf("error opening repository %s: %s", name, err)
 		return err
 	}
 	rs.repos[name] = r
