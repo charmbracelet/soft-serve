@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
@@ -223,12 +224,14 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		if err != nil {
 			return err
 		}
+		author := &object.Signature{
+			Name:  "Soft Serve Server",
+			Email: "vt100@charm.sh",
+			When:  time.Now(),
+		}
 		_, err = wt.Commit("Default init", &ggit.CommitOptions{
-			All: true,
-			Author: &object.Signature{
-				Name:  "Soft Serve Server",
-				Email: "vt100@charm.sh",
-			},
+			All:    true,
+			Author: author,
 		})
 		if err != nil {
 			return err
