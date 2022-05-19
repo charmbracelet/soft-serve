@@ -17,7 +17,7 @@ anon-access: %s
 
 # You can grant read-only access to users without private keys. Any password
 # will be accepted.
-allow-keyless: false
+allow-keyless: %t
 
 # Customize repo display in the menu.
 repos:
