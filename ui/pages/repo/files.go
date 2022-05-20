@@ -134,16 +134,12 @@ func (f *Files) FullHelp() [][]key.Binding {
 			{
 				k.CursorUp,
 				k.CursorDown,
-			},
-			{
 				k.NextPage,
 				k.PrevPage,
 			},
 			{
 				k.GoToStart,
 				k.GoToEnd,
-			},
-			{
 				copyKey,
 			},
 		}...)
@@ -158,16 +154,12 @@ func (f *Files) FullHelp() [][]key.Binding {
 			{
 				k.PageDown,
 				k.PageUp,
-			},
-			{
 				k.HalfPageDown,
 				k.HalfPageUp,
 			},
 			{
 				k.Down,
 				k.Up,
-			},
-			{
 				copyKey,
 				lineNo,
 			},

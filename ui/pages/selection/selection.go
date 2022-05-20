@@ -113,16 +113,12 @@ func (s *Selection) FullHelp() [][]key.Binding {
 			{
 				s.common.KeyMap.Select,
 				copyKey,
-			},
-			{
 				k.CursorUp,
 				k.CursorDown,
 			},
 			{
 				k.NextPage,
 				k.PrevPage,
-			},
-			{
 				k.GoToStart,
 				k.GoToEnd,
 			},

@@ -128,8 +128,6 @@ func (r *Repo) FullHelp() [][]key.Binding {
 			{
 				k.PageDown,
 				k.PageUp,
-			},
-			{
 				k.HalfPageDown,
 				k.HalfPageUp,
 			},

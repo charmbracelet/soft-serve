@@ -77,16 +77,12 @@ func (r *Refs) FullHelp() [][]key.Binding {
 		{
 			k.CursorUp,
 			k.CursorDown,
-		},
-		{
 			k.NextPage,
 			k.PrevPage,
 		},
 		{
 			k.GoToStart,
 			k.GoToEnd,
-		},
-		{
 			copyKey,
 		},
 	}

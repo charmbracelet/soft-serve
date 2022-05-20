@@ -116,16 +116,12 @@ func (l *Log) FullHelp() [][]key.Binding {
 		b = append(b, [][]key.Binding{
 			{
 				copyKey,
-			},
-			{
 				k.CursorUp,
 				k.CursorDown,
 			},
 			{
 				k.NextPage,
 				k.PrevPage,
-			},
-			{
 				k.GoToStart,
 				k.GoToEnd,
 			},
@@ -139,8 +135,6 @@ func (l *Log) FullHelp() [][]key.Binding {
 			{
 				k.PageDown,
 				k.PageUp,
-			},
-			{
 				k.HalfPageDown,
 				k.HalfPageUp,
 			},
