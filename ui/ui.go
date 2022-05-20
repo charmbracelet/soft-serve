@@ -57,7 +57,6 @@ func New(s session.Session, c common.Common, initialRepo string) *UI {
 		initialRepo: initialRepo,
 	}
 	ui.footer = footer.New(c, ui)
-	ui.SetSize(c.Width, c.Height)
 	return ui
 }
 
@@ -134,6 +133,7 @@ func (ui *UI) Init() tea.Cmd {
 		cmds = append(cmds, ui.initialRepoCmd(ui.initialRepo))
 	}
 	ui.state = loadedState
+	ui.SetSize(ui.common.Width, ui.common.Height)
 	return tea.Batch(cmds...)
 }
 
