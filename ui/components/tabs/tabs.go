@@ -7,16 +7,20 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/common"
 )
 
+// SelectTabMsg is a message that contains the index of the tab to select.
 type SelectTabMsg int
 
+// ActiveTabMsg is a message that contains the index of the current active tab.
 type ActiveTabMsg int
 
+// Tabs is bubbletea component that displays a list of tabs.
 type Tabs struct {
 	common    common.Common
 	tabs      []string
 	activeTab int
 }
 
+// New creates a new Tabs component.
 func New(c common.Common, tabs []string) *Tabs {
 	r := &Tabs{
 		common:    c,
@@ -26,15 +30,18 @@ func New(c common.Common, tabs []string) *Tabs {
 	return r
 }
 
+// SetSize implements common.Component.
 func (t *Tabs) SetSize(width, height int) {
 	t.common.SetSize(width, height)
 }
 
+// Init implements tea.Model.
 func (t *Tabs) Init() tea.Cmd {
 	t.activeTab = 0
 	return nil
 }
 
+// Update implements tea.Model.
 func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
@@ -48,11 +55,15 @@ func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, t.activeTabCmd)
 		}
 	case SelectTabMsg:
-		t.activeTab = int(msg)
+		tab := int(msg)
+		if tab >= 0 && tab < len(t.tabs) {
+			t.activeTab = int(msg)
+		}
 	}
 	return t, tea.Batch(cmds...)
 }
 
+// View implements tea.Model.
 func (t *Tabs) View() string {
 	s := strings.Builder{}
 	sep := t.common.Styles.TabSeparator
@@ -73,6 +84,7 @@ func (t *Tabs) activeTabCmd() tea.Msg {
 	return ActiveTabMsg(t.activeTab)
 }
 
+// SelectTabCmd is a bubbletea command that selects the tab at the given index.
 func SelectTabCmd(tab int) tea.Cmd {
 	return func() tea.Msg {
 		return SelectTabMsg(tab)
