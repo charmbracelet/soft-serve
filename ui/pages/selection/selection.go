@@ -261,7 +261,11 @@ func (s *Selection) View() string {
 }
 
 func (s *Selection) changeActive(msg selector.ActiveMsg) tea.Cmd {
-	r := msg.IdentifiableItem.(Item).repo
+	item, ok := msg.IdentifiableItem.(Item)
+	if !ok {
+		return nil
+	}
+	r := item.repo
 	rm, rp := r.Readme()
 	return s.readme.SetContent(rm, rp)
 }
