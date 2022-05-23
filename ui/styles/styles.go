@@ -208,10 +208,11 @@ func DefaultStyles() *Styles {
 		Bold(true)
 
 	s.RepoHeaderDesc = lipgloss.NewStyle().
+		Faint(true).
 		Foreground(lipgloss.Color("15"))
 
 	s.Footer = lipgloss.NewStyle().
-		PaddingLeft(1).
+		Padding(0, 1).
 		Height(1)
 
 	s.Branch = lipgloss.NewStyle().

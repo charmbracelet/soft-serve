@@ -34,7 +34,8 @@ func New(c common.Common, keymap help.KeyMap) *Footer {
 // SetSize implements common.Component.
 func (f *Footer) SetSize(width, height int) {
 	f.common.SetSize(width, height)
-	f.help.Width = width
+	f.help.Width = width -
+		f.common.Styles.Footer.GetHorizontalFrameSize()
 }
 
 // Init implements tea.Model.
@@ -52,7 +53,8 @@ func (f *Footer) View() string {
 	if f.keymap == nil {
 		return ""
 	}
-	s := f.common.Styles.Footer.Copy().Width(f.common.Width)
+	s := f.common.Styles.Footer.Copy().
+		Width(f.common.Width)
 	helpView := f.help.View(f.keymap)
 	return s.Render(helpView)
 }

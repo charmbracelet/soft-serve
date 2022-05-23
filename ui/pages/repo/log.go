@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	ggit "github.com/charmbracelet/soft-serve/git"
@@ -277,10 +276,15 @@ func (l *Log) StatusBarValue() string {
 	if c == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s by %s",
-		c.ID.String(),
-		fmt.Sprintf("%s <%s>", c.Author.Name, c.Author.Email),
-	)
+	who := c.Author.Name
+	if email := c.Author.Email; email != "" {
+		who += " <" + email + ">"
+	}
+	value := c.ID.String()
+	if who != "" {
+		value += " by " + who
+	}
+	return value
 }
 
 // StatusBarInfo returns the status bar info.
@@ -348,19 +352,10 @@ func (l *Log) loadDiffCmd() tea.Msg {
 	return LogDiffMsg(diff)
 }
 
-func styleConfig() gansi.StyleConfig {
-	noColor := ""
-	s := glamour.DarkStyleConfig
-	s.Document.StylePrimitive.Color = &noColor
-	s.CodeBlock.Chroma.Text.Color = &noColor
-	s.CodeBlock.Chroma.Name.Color = &noColor
-	return s
-}
-
 func renderCtx() gansi.RenderContext {
 	return gansi.NewRenderContext(gansi.Options{
 		ColorProfile: termenv.TrueColor,
-		Styles:       styleConfig(),
+		Styles:       common.StyleConfig(),
 	})
 }
 
