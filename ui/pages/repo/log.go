@@ -88,6 +88,7 @@ func (l *Log) ShortHelp() []key.Binding {
 		copyKey := l.common.KeyMap.Copy
 		copyKey.SetHelp("c", "copy hash")
 		return []key.Binding{
+			l.common.KeyMap.UpDown,
 			l.common.KeyMap.SelectItem,
 			copyKey,
 		}

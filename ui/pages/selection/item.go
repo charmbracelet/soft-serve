@@ -61,7 +61,7 @@ func (d ItemDelegate) Height() int {
 }
 
 // Spacing returns the spacing between items. Implements list.ItemDelegate.
-func (d ItemDelegate) Spacing() int { return 0 }
+func (d ItemDelegate) Spacing() int { return 1 }
 
 // Update implements list.ItemDelegate.
 func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
@@ -97,10 +97,13 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 	itemStyle := styles.MenuItem.Copy()
 	if isSelected {
-		itemStyle = itemStyle.BorderForeground(styles.ActiveBorderColor)
+		itemStyle = itemStyle.Copy().
+			BorderStyle(lipgloss.Border{
+				Left: "┃",
+			}).
+			BorderForeground(styles.ActiveBorderColor)
 		if d.activeBox != nil && *d.activeBox == readmeBox {
-			// TODO make this into its own color
-			itemStyle = itemStyle.BorderForeground(lipgloss.Color("15"))
+			itemStyle = itemStyle.BorderForeground(styles.InactiveBorderColor)
 		}
 	}
 
@@ -108,14 +111,17 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if i.repo.IsPrivate() {
 		title += " 🔒"
 	}
+	if isSelected {
+		title += " "
+	}
 	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.lastUpdate))
-	updated := styles.MenuLastUpdate.
-		Copy().
-		Width(m.Width() - itemStyle.GetHorizontalFrameSize() - lipgloss.Width(title)).
-		Render(updatedStr)
-	titleStyle := lipgloss.NewStyle().
-		Align(lipgloss.Left).
-		Width(m.Width() - itemStyle.GetHorizontalFrameSize() - lipgloss.Width(updated))
+	updatedStyle := styles.MenuLastUpdate.Copy().
+		Align(lipgloss.Right).
+		Width(m.Width() - itemStyle.GetHorizontalFrameSize() - lipgloss.Width(title))
+	if isSelected {
+		updatedStyle = updatedStyle.Bold(true)
+	}
+	updated := updatedStyle.Render(updatedStr)
 
 	if isFiltered && index < len(m.VisibleItems()) {
 		// Get indices of matched characters
@@ -125,19 +131,30 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if isFiltered {
 		unmatched := lipgloss.NewStyle().Inline(true)
 		matched := unmatched.Copy().Underline(true)
+		if isSelected {
+			unmatched = unmatched.Bold(true)
+			matched = matched.Bold(true)
+		}
 		title = lipgloss.StyleRunes(title, matchedRunes, matched, unmatched)
 	}
+	titleStyle := lipgloss.NewStyle()
+	if isSelected {
+		titleStyle = titleStyle.Bold(true)
+	}
 	title = titleStyle.Render(title)
+	desc := lipgloss.NewStyle().
+		Faint(true).
+		Render(i.Description())
 
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, title, updated))
 	s.WriteString("\n")
-	s.WriteString(i.Description())
-	s.WriteString("\n\n")
+	s.WriteString(desc)
+	s.WriteString("\n")
 	cmdStyle := styles.RepoCommand.Copy()
 	cmd := cmdStyle.Render(i.Command())
 	if !i.copied.IsZero() && i.copied.Add(time.Second).After(time.Now()) {
 		cmd = cmdStyle.Render("Copied!")
 	}
 	s.WriteString(cmd)
-	w.Write([]byte(itemStyle.Render(s.String())))
+	fmt.Fprint(w, itemStyle.Render(s.String()))
 }

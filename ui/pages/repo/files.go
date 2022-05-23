@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/alecthomas/chroma/lexers"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	ggit "github.com/charmbracelet/soft-serve/git"
@@ -107,12 +108,20 @@ func (f *Files) ShortHelp() []key.Binding {
 	case filesViewContent:
 		copyKey := f.common.KeyMap.Copy
 		copyKey.SetHelp("c", "copy content")
-		return []key.Binding{
+		b := []key.Binding{
 			f.common.KeyMap.UpDown,
 			f.common.KeyMap.BackItem,
 			copyKey,
-			lineNo,
 		}
+		lexer := lexers.Match(f.currentContent.ext)
+		lang := ""
+		if lexer != nil && lexer.Config() != nil {
+			lang = lexer.Config().Name
+		}
+		if lang != "markdown" {
+			b = append(b, lineNo)
+		}
+		return b
 	default:
 		return []key.Binding{}
 	}
@@ -157,13 +166,21 @@ func (f *Files) FullHelp() [][]key.Binding {
 				k.HalfPageDown,
 				k.HalfPageUp,
 			},
-			{
-				k.Down,
-				k.Up,
-				copyKey,
-				lineNo,
-			},
 		}...)
+		lc := []key.Binding{
+			k.Down,
+			k.Up,
+			copyKey,
+		}
+		lexer := lexers.Match(f.currentContent.ext)
+		lang := ""
+		if lexer != nil && lexer.Config() != nil {
+			lang = lexer.Config().Name
+		}
+		if lang != "markdown" {
+			lc = append(lc, lineNo)
+		}
+		b = append(b, lc)
 	}
 	return b
 }

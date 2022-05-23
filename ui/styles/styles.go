@@ -126,10 +126,11 @@ func DefaultStyles() *Styles {
 		SetString(">")
 
 	s.MenuItem = lipgloss.NewStyle().
-		Padding(1, 2).
-		Height(4).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("241"))
+		PaddingLeft(1).
+		Border(lipgloss.Border{
+			Left: " ",
+		}, false, false, false, true).
+		Height(3)
 
 	s.MenuLastUpdate = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("241")).
@@ -253,7 +254,7 @@ func DefaultStyles() *Styles {
 
 	s.LogItemActive = s.LogItemInactive.Copy().
 		Border(lipgloss.Border{
-			Left: "│",
+			Left: "┃",
 		}, false, false, false, true).
 		BorderForeground(lipgloss.Color("#B083EA"))
 

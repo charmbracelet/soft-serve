@@ -88,16 +88,7 @@ func (r *Code) Init() tea.Cmd {
 	if err != nil {
 		return common.ErrorCmd(err)
 	}
-	if r.showLineNumber {
-		f = withLineNumber(f)
-	}
-	// FIXME: this is a hack to reset formatting at the end of every line.
-	c = wrap.String(f, w)
-	s := strings.Split(c, "\n")
-	for i, l := range s {
-		s[i] = l + "\x1b[0m"
-	}
-	r.Viewport.Model.SetContent(strings.Join(s, "\n"))
+	r.Viewport.Model.SetContent(f)
 	return nil
 }
 
@@ -170,9 +161,6 @@ func (r *Code) ScrollPercent() float64 {
 func (r *Code) glamourize(w int, md string) (string, error) {
 	r.renderMutex.Lock()
 	defer r.renderMutex.Unlock()
-	if w > 120 {
-		w = 120
-	}
 	tr, err := glamour.NewTermRenderer(
 		glamour.WithStyles(r.styleConfig),
 		glamour.WithWordWrap(w),
@@ -215,7 +203,17 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return s.String(), nil
+	c := s.String()
+	if r.showLineNumber {
+		c = withLineNumber(c)
+	}
+	// FIXME: this is a hack to reset formatting at the end of every line.
+	c = wrap.String(c, width)
+	f := strings.Split(c, "\n")
+	for i, l := range f {
+		f[i] = l + "\x1b[0m"
+	}
+	return strings.Join(f, "\n"), nil
 }
 
 func withLineNumber(s string) string {

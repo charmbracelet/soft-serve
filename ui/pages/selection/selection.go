@@ -1,6 +1,8 @@
 package selection
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -21,11 +23,12 @@ const (
 
 // Selection is the model for the selection screen/page.
 type Selection struct {
-	s         session.Session
-	common    common.Common
-	readme    *code.Code
-	selector  *selector.Selector
-	activeBox box
+	s            session.Session
+	common       common.Common
+	readme       *code.Code
+	readmeHeight int
+	selector     *selector.Selector
+	activeBox    box
 }
 
 // New creates a new selection model.
@@ -49,20 +52,31 @@ func New(s session.Session, common common.Common) *Selection {
 	return sel
 }
 
+func (s *Selection) getReadmeHeight() int {
+	rh := s.readmeHeight
+	if rh > s.common.Height/3 {
+		rh = s.common.Height / 3
+	}
+	return rh
+}
+
+func (s *Selection) getMargins() (wm, hm int) {
+	wm = 0
+	hm = s.common.Styles.SelectorBox.GetVerticalFrameSize() +
+		s.common.Styles.SelectorBox.GetHeight()
+	if rh := s.getReadmeHeight(); rh > 0 {
+		hm += s.common.Styles.ReadmeBox.GetVerticalFrameSize() +
+			rh
+	}
+	return
+}
+
 // SetSize implements common.Component.
 func (s *Selection) SetSize(width, height int) {
 	s.common.SetSize(width, height)
-	sw := s.common.Styles.SelectorBox.GetWidth()
-	wm := sw +
-		s.common.Styles.SelectorBox.GetHorizontalFrameSize() +
-		s.common.Styles.ReadmeBox.GetHorizontalFrameSize() +
-		// +1 to get wrapping to work.
-		// This is needed because the readme box width has to be -1 from the
-		// readme style in order for wrapping to not break.
-		1
-	hm := s.common.Styles.ReadmeBox.GetVerticalFrameSize()
-	s.readme.SetSize(width-wm, height-hm)
-	s.selector.SetSize(sw, height)
+	wm, hm := s.getMargins()
+	s.readme.SetSize(width-wm, s.getReadmeHeight())
+	s.selector.SetSize(width-wm, height-hm)
 }
 
 // ShortHelp implements help.KeyMap.
@@ -135,6 +149,7 @@ func (s *Selection) FullHelp() [][]key.Binding {
 
 // Init implements tea.Model.
 func (s *Selection) Init() tea.Cmd {
+	var readmeCmd tea.Cmd
 	items := make([]selector.IdentifiableItem, 0)
 	cfg := s.s.Config()
 	pk := s.s.PublicKey()
@@ -153,6 +168,11 @@ func (s *Selection) Init() tea.Cmd {
 		})
 	}
 	for _, r := range cfg.Source.AllRepos() {
+		if r.Repo() == "config" {
+			rm, rp := r.Readme()
+			s.readmeHeight = strings.Count(rm, "\n")
+			readmeCmd = s.readme.SetContent(rm, rp)
+		}
 		if r.IsPrivate() && cfg.AuthRepo(r.Repo(), pk) < wgit.AdminAccess {
 			continue
 		}
@@ -189,6 +209,7 @@ func (s *Selection) Init() tea.Cmd {
 	return tea.Batch(
 		s.selector.Init(),
 		s.selector.SetItems(items),
+		readmeCmd,
 	)
 }
 
@@ -207,10 +228,6 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-	case selector.ActiveMsg:
-		cmds = append(cmds, s.changeActive(msg))
-		// reset readme position when active item change
-		s.readme.GotoTop()
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, s.common.KeyMap.Section):
@@ -238,30 +255,20 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (s *Selection) View() string {
-	wm := s.common.Styles.SelectorBox.GetWidth() +
-		s.common.Styles.SelectorBox.GetHorizontalFrameSize() +
-		s.common.Styles.ReadmeBox.GetHorizontalFrameSize()
-	hm := s.common.Styles.ReadmeBox.GetVerticalFrameSize()
+	rh := s.getReadmeHeight()
 	rs := s.common.Styles.ReadmeBox.Copy().
-		Width(s.common.Width - wm).
-		Height(s.common.Height - hm)
+		Width(s.common.Width).
+		Height(rh)
 	if s.activeBox == readmeBox {
 		rs.BorderForeground(s.common.Styles.ActiveBorderColor)
 	}
-	readme := rs.Render(s.readme.View())
-	return lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		readme,
-		s.selector.View(),
-	)
-}
-
-func (s *Selection) changeActive(msg selector.ActiveMsg) tea.Cmd {
-	item, ok := msg.IdentifiableItem.(Item)
-	if !ok {
-		return nil
+	view := s.selector.View()
+	if rh > 0 {
+		readme := rs.Render(s.readme.View())
+		view = lipgloss.JoinVertical(lipgloss.Top,
+			readme,
+			view,
+		)
 	}
-	r := item.repo
-	rm, rp := r.Readme()
-	return s.readme.SetContent(rm, rp)
+	return view
 }
