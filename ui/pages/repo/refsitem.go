@@ -99,7 +99,7 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		s.RefItemSelector.GetMarginLeft() -
 		s.RefItemSelector.GetWidth() -
 		s.RefItemInactive.GetMarginLeft()
-	ref = truncateString(ref, refMaxWidth, "…")
+	ref = common.TruncateString(ref, refMaxWidth)
 	if index == m.Index() {
 		fmt.Fprint(w, s.RefItemSelector.Render(">")+
 			s.RefItemActive.Render(ref))

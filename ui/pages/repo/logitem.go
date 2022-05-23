@@ -12,7 +12,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
-	"github.com/muesli/reflow/truncate"
 )
 
 // LogItem is a item in the log list that displays a git commit.
@@ -101,7 +100,7 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		hash = "copied"
 	}
 	title := titleStyle.Render(
-		truncateString(i.Title(), m.Width()-style.GetHorizontalFrameSize()-width(hash)-2, "…"),
+		common.TruncateString(i.Title(), m.Width()-style.GetHorizontalFrameSize()-width(hash)-2),
 	)
 	hashStyle := styles.LogItemHash.Copy().
 		Align(lipgloss.Right).
@@ -129,7 +128,7 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		date += fmt.Sprintf(" %d", i.Committer.When.Year())
 	}
 	who += date
-	who = truncateString(who, m.Width()-style.GetHorizontalFrameSize(), "…")
+	who = common.TruncateString(who, m.Width()-style.GetHorizontalFrameSize())
 	fmt.Fprint(w,
 		style.Render(
 			lipgloss.JoinVertical(lipgloss.Top,
@@ -141,11 +140,4 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 			),
 		),
 	)
-}
-
-func truncateString(s string, max int, tail string) string {
-	if max < 0 {
-		max = 0
-	}
-	return truncate.StringWithTail(s, uint(max), tail)
 }

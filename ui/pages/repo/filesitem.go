@@ -122,7 +122,7 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		s.TreeFileMode.GetWidth() +
 		cs.GetMarginLeft()
 	rightMargin := s.TreeFileSize.GetMarginLeft() + lipgloss.Width(size)
-	name = truncateString(name, m.Width()-leftMargin-rightMargin, "…")
+	name = common.TruncateString(name, m.Width()-leftMargin-rightMargin)
 	sizeStyle := s.TreeFileSize.Copy().
 		Width(m.Width() -
 			leftMargin -

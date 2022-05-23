@@ -108,6 +108,7 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	title := i.Title()
+	title = common.TruncateString(title, m.Width()-itemStyle.GetHorizontalFrameSize())
 	if i.repo.IsPrivate() {
 		title += " 🔒"
 	}
@@ -115,6 +116,9 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		title += " "
 	}
 	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.lastUpdate))
+	if m.Width()-itemStyle.GetHorizontalFrameSize()-lipgloss.Width(updatedStr)-lipgloss.Width(title) <= 0 {
+		updatedStr = ""
+	}
 	updatedStyle := styles.MenuLastUpdate.Copy().
 		Align(lipgloss.Right).
 		Width(m.Width() - itemStyle.GetHorizontalFrameSize() - lipgloss.Width(title))
@@ -142,9 +146,11 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		titleStyle = titleStyle.Bold(true)
 	}
 	title = titleStyle.Render(title)
-	desc := lipgloss.NewStyle().
+	desc := i.Description()
+	desc = common.TruncateString(desc, m.Width()-itemStyle.GetHorizontalFrameSize())
+	desc = lipgloss.NewStyle().
 		Faint(true).
-		Render(i.Description())
+		Render(desc)
 
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, title, updated))
 	s.WriteString("\n")
