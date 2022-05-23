@@ -105,10 +105,12 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.ref = msg
 		cmds = append(cmds, r.Init())
 	case RefItemsMsg:
-		cmds = append(cmds, r.selector.SetItems(msg.items))
-		i := r.selector.SelectedItem()
-		if i != nil {
-			r.activeRef = i.(RefItem).Reference
+		if r.refPrefix == msg.prefix {
+			cmds = append(cmds, r.selector.SetItems(msg.items))
+			i := r.selector.SelectedItem()
+			if i != nil {
+				r.activeRef = i.(RefItem).Reference
+			}
 		}
 	case selector.ActiveMsg:
 		switch sel := msg.IdentifiableItem.(type) {
@@ -119,11 +121,12 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case selector.SelectMsg:
 		switch i := msg.IdentifiableItem.(type) {
 		case RefItem:
-			cmds = append(cmds,
-				switchRefCmd(i.Reference),
-				tabs.SelectTabCmd(int(filesTab)),
-			)
+			cmds = append(cmds, switchRefCmd(i.Reference))
 		}
+	// FileItemsMsg indicates that the Files model has updated the items and
+	// it's time to switch tabs.
+	case FileItemsMsg:
+		cmds = append(cmds, tabs.SelectTabCmd(int(filesTab)))
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "l", "right":

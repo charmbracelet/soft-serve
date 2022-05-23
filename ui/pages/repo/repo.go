@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
-	"github.com/charmbracelet/soft-serve/ui/components/code"
 	"github.com/charmbracelet/soft-serve/ui/components/statusbar"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
 	"github.com/charmbracelet/soft-serve/ui/git"
@@ -53,8 +52,7 @@ func New(s session.Session, c common.Common) *Repo {
 	sb := statusbar.New(c)
 	// Tabs must match the order of tab constants above.
 	tb := tabs.New(c, []string{"Readme", "Files", "Commits", "Branches", "Tags"})
-	readme := code.New(c, "", "")
-	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
+	readme := NewReadme(c)
 	log := NewLog(c)
 	files := NewFiles(c)
 	branches := NewRefs(c, ggit.RefsHeads)
@@ -108,12 +106,7 @@ func (r *Repo) commonHelp() []key.Binding {
 // ShortHelp implements help.KeyMap.
 func (r *Repo) ShortHelp() []key.Binding {
 	b := r.commonHelp()
-	switch r.activeTab {
-	case readmeTab:
-		b = append(b, r.common.KeyMap.UpDown)
-	default:
-		b = append(b, r.boxes[r.activeTab].(help.KeyMap).ShortHelp()...)
-	}
+	b = append(b, r.boxes[r.activeTab].(help.KeyMap).ShortHelp()...)
 	return b
 }
 
@@ -121,24 +114,7 @@ func (r *Repo) ShortHelp() []key.Binding {
 func (r *Repo) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
 	b = append(b, r.commonHelp())
-	switch r.activeTab {
-	case readmeTab:
-		k := r.boxes[readmeTab].(*code.Code).KeyMap
-		b = append(b, [][]key.Binding{
-			{
-				k.PageDown,
-				k.PageUp,
-				k.HalfPageDown,
-				k.HalfPageUp,
-			},
-			{
-				k.Down,
-				k.Up,
-			},
-		}...)
-	default:
-		b = append(b, r.boxes[r.activeTab].(help.KeyMap).FullHelp()...)
-	}
+	b = append(b, r.boxes[r.activeTab].(help.KeyMap).FullHelp()...)
 	return b
 }
 
@@ -157,10 +133,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RepoMsg:
 		r.activeTab = 0
 		r.selectedRepo = git.GitRepo(msg)
-		r.boxes[readmeTab].(*code.Code).GotoTop()
 		cmds = append(cmds,
 			r.tabs.Init(),
-			r.updateReadmeCmd,
 			r.updateRefCmd,
 			r.updateModels(msg),
 		)
@@ -224,11 +198,6 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UpdateStatusBarMsg:
 		cmds = append(cmds, r.updateStatusBarCmd)
 	case tea.WindowSizeMsg:
-		b, cmd := r.boxes[readmeTab].Update(msg)
-		r.boxes[readmeTab] = b.(*code.Code)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
 		cmds = append(cmds, r.updateModels(msg))
 	}
 	s, cmd := r.statusbar.Update(msg)
@@ -296,28 +265,14 @@ func (r *Repo) headerView() string {
 }
 
 func (r *Repo) updateStatusBarCmd() tea.Msg {
-	var info, value string
-	switch r.activeTab {
-	case readmeTab:
-		info = fmt.Sprintf("☰ %.f%%", r.boxes[readmeTab].(*code.Code).ScrollPercent()*100)
-	default:
-		value = r.boxes[r.activeTab].(statusbar.Model).StatusBarValue()
-		info = r.boxes[r.activeTab].(statusbar.Model).StatusBarInfo()
-	}
+	value := r.boxes[r.activeTab].(statusbar.Model).StatusBarValue()
+	info := r.boxes[r.activeTab].(statusbar.Model).StatusBarInfo()
 	return statusbar.StatusBarMsg{
 		Key:    r.selectedRepo.Name(),
 		Value:  value,
 		Info:   info,
 		Branch: fmt.Sprintf(" %s", r.ref.Name().Short()),
 	}
-}
-
-func (r *Repo) updateReadmeCmd() tea.Msg {
-	if r.selectedRepo == nil {
-		return common.ErrorCmd(git.ErrMissingRepo)
-	}
-	rm, rp := r.selectedRepo.Readme()
-	return r.boxes[readmeTab].(*code.Code).SetContent(rm, rp)
 }
 
 func (r *Repo) updateRefCmd() tea.Msg {
