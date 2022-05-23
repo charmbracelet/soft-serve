@@ -43,7 +43,8 @@ func New(s session.Session, common common.Common) *Selection {
 	selector := selector.New(common,
 		[]selector.IdentifiableItem{},
 		ItemDelegate{&common, &sel.activeBox})
-	selector.SetShowTitle(false)
+	selector.SetShowTitle(true)
+	selector.Title = "Repositories"
 	selector.SetShowHelp(false)
 	selector.SetShowStatusBar(false)
 	selector.DisableQuitKeybindings()

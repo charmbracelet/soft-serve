@@ -74,7 +74,7 @@ func (d LogItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 }
 
 var (
-	highlight = lipgloss.NewStyle().Foreground(lipgloss.Color("#F1F1F1"))
+	faint = func(s string) string { return lipgloss.NewStyle().Faint(true).Render(s) }
 )
 
 // Render renders the item. Implements list.ItemDelegate.
@@ -113,17 +113,18 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		hashStyle = hashStyle.Bold(true)
 	}
 	hash = hashStyle.Render(hash)
-	author := highlight.Render(i.Author.Name)
-	commiter := highlight.Render(i.Committer.Name)
+	author := i.Author.Name
+	commiter := i.Committer.Name
 	who := ""
 	if author != "" && commiter != "" {
-		who = fmt.Sprintf("%s committed", commiter)
+		who = commiter + faint(" committed")
 		if author != commiter {
-			who = fmt.Sprintf("%s authored and %s", author, who)
+			who = author + faint(" authored and ") + who
 		}
 		who += " "
 	}
 	date := fmt.Sprintf("on %s", i.Committer.When.Format("Feb 02"))
+	date = faint(date)
 	if i.Committer.When.Year() != time.Now().Year() {
 		date += fmt.Sprintf(" %d", i.Committer.When.Year())
 	}

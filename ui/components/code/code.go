@@ -199,7 +199,17 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 		Language: lang,
 	}
 	s := strings.Builder{}
-	err := formatter.Render(&s, r.renderContext)
+	rc := r.renderContext
+	if r.showLineNumber {
+		st := common.StyleConfig()
+		var m uint = 0
+		st.CodeBlock.Margin = &m
+		rc = gansi.NewRenderContext(gansi.Options{
+			ColorProfile: termenv.TrueColor,
+			Styles:       st,
+		})
+	}
+	err := formatter.Render(&s, rc)
 	if err != nil {
 		return "", err
 	}
