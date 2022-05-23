@@ -211,6 +211,7 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("15"))
 
 	s.Footer = lipgloss.NewStyle().
+		PaddingLeft(1).
 		Height(1)
 
 	s.Branch = lipgloss.NewStyle().
