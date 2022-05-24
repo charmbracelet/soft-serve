@@ -7,12 +7,12 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/config"
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/statusbar"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
 	"github.com/charmbracelet/soft-serve/ui/git"
-	"github.com/charmbracelet/soft-serve/ui/session"
 )
 
 type tab int
@@ -36,8 +36,8 @@ type RefMsg *ggit.Reference
 
 // Repo is a view for a git repository.
 type Repo struct {
-	s            session.Session
 	common       common.Common
+	cfg          *config.Config
 	rs           git.GitRepoSource
 	selectedRepo git.GitRepo
 	activeTab    tab
@@ -48,7 +48,7 @@ type Repo struct {
 }
 
 // New returns a new Repo.
-func New(s session.Session, c common.Common) *Repo {
+func New(cfg *config.Config, rs git.GitRepoSource, c common.Common) *Repo {
 	sb := statusbar.New(c)
 	// Tabs must match the order of tab constants above.
 	tb := tabs.New(c, []string{"Readme", "Files", "Commits", "Branches", "Tags"})
@@ -66,9 +66,9 @@ func New(s session.Session, c common.Common) *Repo {
 		tags,
 	}
 	r := &Repo{
-		s:         s,
+		cfg:       cfg,
 		common:    c,
-		rs:        s.Source(),
+		rs:        rs,
 		tabs:      tb,
 		statusbar: sb,
 		boxes:     boxes,
@@ -241,7 +241,7 @@ func (r *Repo) headerView() string {
 	if r.selectedRepo == nil {
 		return ""
 	}
-	cfg := r.s.Config()
+	cfg := r.cfg
 	name := r.common.Styles.RepoHeaderName.Render(r.selectedRepo.Name())
 	url := git.RepoURL(cfg.Host, cfg.Port, r.selectedRepo.Repo())
 	// TODO move this into a style.

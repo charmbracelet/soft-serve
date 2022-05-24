@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/ui/components/header"
@@ -14,7 +15,7 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/charmbracelet/soft-serve/ui/pages/repo"
 	"github.com/charmbracelet/soft-serve/ui/pages/selection"
-	"github.com/charmbracelet/soft-serve/ui/session"
+	"github.com/gliderlabs/ssh"
 )
 
 type page int
@@ -34,7 +35,9 @@ const (
 
 // UI is the main UI model.
 type UI struct {
-	s           session.Session
+	cfg         *config.Config
+	session     ssh.Session
+	rs          git.GitRepoSource
 	initialRepo string
 	common      common.Common
 	pages       []common.Page
@@ -46,10 +49,13 @@ type UI struct {
 }
 
 // New returns a new UI model.
-func New(s session.Session, c common.Common, initialRepo string) *UI {
-	h := header.New(c, s.Config().Name)
+func New(cfg *config.Config, s ssh.Session, c common.Common, initialRepo string) *UI {
+	src := &source{cfg.Source}
+	h := header.New(c, cfg.Name)
 	ui := &UI{
-		s:           s,
+		cfg:         cfg,
+		session:     s,
+		rs:          src,
 		common:      c,
 		pages:       make([]common.Page, 2), // selection & repo
 		activePage:  selectionPage,
@@ -122,8 +128,16 @@ func (ui *UI) SetSize(width, height int) {
 
 // Init implements tea.Model.
 func (ui *UI) Init() tea.Cmd {
-	ui.pages[selectionPage] = selection.New(ui.s, ui.common)
-	ui.pages[repoPage] = repo.New(ui.s, ui.common)
+	ui.pages[selectionPage] = selection.New(
+		ui.cfg,
+		ui.session.PublicKey(),
+		ui.common,
+	)
+	ui.pages[repoPage] = repo.New(
+		ui.cfg,
+		ui.rs,
+		ui.common,
+	)
 	ui.SetSize(ui.common.Width, ui.common.Height)
 	cmds := make([]tea.Cmd, 0)
 	cmds = append(cmds,
@@ -245,9 +259,8 @@ func (ui *UI) View() string {
 }
 
 func (ui *UI) setRepoCmd(rn string) tea.Cmd {
-	rs := ui.s.Source()
 	return func() tea.Msg {
-		for _, r := range rs.AllRepos() {
+		for _, r := range ui.rs.AllRepos() {
 			if r.Repo() == rn {
 				ui.activePage = repoPage
 				return repo.RepoMsg(r)
@@ -258,9 +271,8 @@ func (ui *UI) setRepoCmd(rn string) tea.Cmd {
 }
 
 func (ui *UI) initialRepoCmd(rn string) tea.Cmd {
-	rs := ui.s.Source()
 	return func() tea.Msg {
-		for _, r := range rs.AllRepos() {
+		for _, r := range ui.rs.AllRepos() {
 			if r.Repo() == rn {
 				ui.activePage = repoPage
 				return repo.RepoMsg(r)

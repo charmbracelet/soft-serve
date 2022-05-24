@@ -6,12 +6,13 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/git"
-	"github.com/charmbracelet/soft-serve/ui/session"
 	wgit "github.com/charmbracelet/wish/git"
+	"github.com/gliderlabs/ssh"
 )
 
 type box int
@@ -23,7 +24,8 @@ const (
 
 // Selection is the model for the selection screen/page.
 type Selection struct {
-	s            session.Session
+	cfg          *config.Config
+	pk           ssh.PublicKey
 	common       common.Common
 	readme       *code.Code
 	readmeHeight int
@@ -32,9 +34,10 @@ type Selection struct {
 }
 
 // New creates a new selection model.
-func New(s session.Session, common common.Common) *Selection {
+func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection {
 	sel := &Selection{
-		s:         s,
+		cfg:       cfg,
+		pk:        pk,
 		common:    common,
 		activeBox: selectorBox, // start with the selector focused
 	}
@@ -152,8 +155,8 @@ func (s *Selection) FullHelp() [][]key.Binding {
 func (s *Selection) Init() tea.Cmd {
 	var readmeCmd tea.Cmd
 	items := make([]selector.IdentifiableItem, 0)
-	cfg := s.s.Config()
-	pk := s.s.PublicKey()
+	cfg := s.cfg
+	pk := s.pk
 	// Put configured repos first
 	for _, r := range cfg.Repos {
 		if r.Private && cfg.AuthRepo(r.Repo, pk) < wgit.AdminAccess {
