@@ -136,11 +136,9 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("241")).
 		Align(lipgloss.Right)
 
-	s.SelectorBox = lipgloss.NewStyle().
-		Width(64)
+	s.SelectorBox = lipgloss.NewStyle()
 
-	s.ReadmeBox = lipgloss.NewStyle().
-		Margin(1, 1, 1, 0)
+	s.ReadmeBox = lipgloss.NewStyle()
 
 	s.RepoTitleBorder = lipgloss.Border{
 		Top:         "─",

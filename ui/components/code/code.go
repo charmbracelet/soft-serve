@@ -161,6 +161,10 @@ func (r *Code) ScrollPercent() float64 {
 func (r *Code) glamourize(w int, md string) (string, error) {
 	r.renderMutex.Lock()
 	defer r.renderMutex.Unlock()
+	// This fixes a bug with markdown text wrapping being off by one.
+	if w > 0 {
+		w--
+	}
 	tr, err := glamour.NewTermRenderer(
 		glamour.WithStyles(r.styleConfig),
 		glamour.WithWordWrap(w),
@@ -202,7 +206,7 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 	rc := r.renderContext
 	if r.showLineNumber {
 		st := common.StyleConfig()
-		var m uint = 0
+		m := uint(0)
 		st.CodeBlock.Margin = &m
 		rc = gansi.NewRenderContext(gansi.Options{
 			ColorProfile: termenv.TrueColor,

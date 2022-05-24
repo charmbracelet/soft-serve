@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/ui/common"
 )
 
@@ -15,17 +16,23 @@ type ActiveTabMsg int
 
 // Tabs is bubbletea component that displays a list of tabs.
 type Tabs struct {
-	common    common.Common
-	tabs      []string
-	activeTab int
+	common       common.Common
+	tabs         []string
+	activeTab    int
+	TabSeparator lipgloss.Style
+	TabInactive  lipgloss.Style
+	TabActive    lipgloss.Style
 }
 
 // New creates a new Tabs component.
 func New(c common.Common, tabs []string) *Tabs {
 	r := &Tabs{
-		common:    c,
-		tabs:      tabs,
-		activeTab: 0,
+		common:       c,
+		tabs:         tabs,
+		activeTab:    0,
+		TabSeparator: c.Styles.TabSeparator,
+		TabInactive:  c.Styles.TabInactive,
+		TabActive:    c.Styles.TabActive,
 	}
 	return r
 }
@@ -66,11 +73,11 @@ func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View implements tea.Model.
 func (t *Tabs) View() string {
 	s := strings.Builder{}
-	sep := t.common.Styles.TabSeparator
+	sep := t.TabSeparator
 	for i, tab := range t.tabs {
-		style := t.common.Styles.TabInactive.Copy()
+		style := t.TabInactive.Copy()
 		if i == t.activeTab {
-			style = t.common.Styles.TabActive.Copy()
+			style = t.TabActive.Copy()
 		}
 		s.WriteString(style.Render(tab))
 		if i != len(t.tabs)-1 {

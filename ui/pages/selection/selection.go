@@ -1,6 +1,7 @@
 package selection
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -10,6 +11,7 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
+	"github.com/charmbracelet/soft-serve/ui/components/tabs"
 	"github.com/charmbracelet/soft-serve/ui/git"
 	wgit "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
@@ -31,23 +33,34 @@ type Selection struct {
 	readmeHeight int
 	selector     *selector.Selector
 	activeBox    box
+	tabs         *tabs.Tabs
 }
 
 // New creates a new selection model.
 func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection {
+	t := tabs.New(common, []string{"About", "Repositories"})
+	t.TabSeparator = lipgloss.NewStyle()
+	t.TabInactive = lipgloss.NewStyle().
+		Bold(true).
+		UnsetBackground().
+		Foreground(common.Styles.InactiveBorderColor).
+		Padding(0, 1)
+	t.TabActive = t.TabInactive.Copy().
+		Background(lipgloss.Color("62")).
+		Foreground(lipgloss.Color("230"))
 	sel := &Selection{
 		cfg:       cfg,
 		pk:        pk,
 		common:    common,
-		activeBox: selectorBox, // start with the selector focused
+		activeBox: readmeBox, // start with the selector focused
+		tabs:      t,
 	}
 	readme := code.New(common, "", "")
 	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
 	selector := selector.New(common,
 		[]selector.IdentifiableItem{},
 		ItemDelegate{&common, &sel.activeBox})
-	selector.SetShowTitle(true)
-	selector.Title = "Repositories"
+	selector.SetShowTitle(false)
 	selector.SetShowHelp(false)
 	selector.SetShowStatusBar(false)
 	selector.DisableQuitKeybindings()
@@ -56,21 +69,19 @@ func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection 
 	return sel
 }
 
-func (s *Selection) getReadmeHeight() int {
-	rh := s.readmeHeight
-	if rh > s.common.Height/3 {
-		rh = s.common.Height / 3
-	}
-	return rh
-}
-
 func (s *Selection) getMargins() (wm, hm int) {
 	wm = 0
-	hm = s.common.Styles.SelectorBox.GetVerticalFrameSize() +
-		s.common.Styles.SelectorBox.GetHeight()
-	if rh := s.getReadmeHeight(); rh > 0 {
+	hm = s.common.Styles.Tabs.GetVerticalFrameSize() +
+		s.common.Styles.Tabs.GetHeight() +
+		2 // tabs margin see View()
+	switch s.activeBox {
+	case selectorBox:
+		hm += s.common.Styles.SelectorBox.GetVerticalFrameSize() +
+			s.common.Styles.SelectorBox.GetHeight()
+	case readmeBox:
 		hm += s.common.Styles.ReadmeBox.GetVerticalFrameSize() +
-			rh
+			s.common.Styles.ReadmeBox.GetHeight() +
+			1 // readme statusbar
 	}
 	return
 }
@@ -79,8 +90,9 @@ func (s *Selection) getMargins() (wm, hm int) {
 func (s *Selection) SetSize(width, height int) {
 	s.common.SetSize(width, height)
 	wm, hm := s.getMargins()
-	s.readme.SetSize(width-wm, s.getReadmeHeight())
+	s.tabs.SetSize(width, height-hm)
 	s.selector.SetSize(width-wm, height-hm)
+	s.readme.SetSize(width-wm, height-hm)
 }
 
 // ShortHelp implements help.KeyMap.
@@ -232,13 +244,21 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, s.common.KeyMap.Section):
-			s.activeBox = (s.activeBox + 1) % 2
-		case key.Matches(msg, s.common.KeyMap.Back):
-			cmds = append(cmds, s.selector.Init())
+	case tea.KeyMsg, tea.MouseMsg:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, s.common.KeyMap.Back):
+				cmds = append(cmds, s.selector.Init())
+			}
 		}
+		t, cmd := s.tabs.Update(msg)
+		s.tabs = t.(*tabs.Tabs)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case tabs.ActiveTabMsg:
+		s.activeBox = box(msg)
 	}
 	switch s.activeBox {
 	case readmeBox:
@@ -259,20 +279,32 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (s *Selection) View() string {
-	rh := s.getReadmeHeight()
-	rs := s.common.Styles.ReadmeBox.Copy().
-		Width(s.common.Width).
-		Height(rh)
-	if s.activeBox == readmeBox {
-		rs.BorderForeground(s.common.Styles.ActiveBorderColor)
+	var view string
+	wm, hm := s.getMargins()
+	hm++ // tabs margin
+	switch s.activeBox {
+	case selectorBox:
+		ss := s.common.Styles.SelectorBox.Copy().
+			Height(s.common.Height - hm)
+		view = ss.Render(s.selector.View())
+	case readmeBox:
+		rs := s.common.Styles.ReadmeBox.Copy().
+			Height(s.common.Height - hm)
+		status := fmt.Sprintf("☰ %.f%%", s.readme.ScrollPercent()*100)
+		readmeStatus := lipgloss.NewStyle().
+			Align(lipgloss.Right).
+			Width(s.common.Width - wm).
+			Foreground(s.common.Styles.InactiveBorderColor).
+			Render(status)
+		view = rs.Render(lipgloss.JoinVertical(lipgloss.Top,
+			s.readme.View(),
+			readmeStatus,
+		))
 	}
-	view := s.selector.View()
-	if rh > 0 {
-		readme := rs.Render(s.readme.View())
-		view = lipgloss.JoinVertical(lipgloss.Top,
-			readme,
-			view,
-		)
-	}
-	return view
+	ts := s.common.Styles.Tabs.Copy().
+		MarginBottom(1)
+	return lipgloss.JoinVertical(lipgloss.Top,
+		ts.Render(s.tabs.View()),
+		view,
+	)
 }
