@@ -8,50 +8,18 @@ import (
 	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/ui"
 	"github.com/charmbracelet/soft-serve/ui/common"
-	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/charmbracelet/soft-serve/ui/keymap"
 	"github.com/charmbracelet/soft-serve/ui/styles"
 	bm "github.com/charmbracelet/wish/bubbletea"
 	"github.com/gliderlabs/ssh"
 )
 
-type Session struct {
-	tea.Model
-	*tea.Program
-	session ssh.Session
-	Cfg     *appCfg.Config
-}
-
-func (s *Session) Config() *appCfg.Config {
-	return s.Cfg
-}
-
-func (s *Session) Send(msg tea.Msg) {
-	s.Program.Send(msg)
-}
-
-func (s *Session) PublicKey() ssh.PublicKey {
-	return s.session.PublicKey()
-}
-
-func (s *Session) Session() ssh.Session {
-	return s.session
-}
-
-func (s *Session) Source() git.GitRepoSource {
-	return &source{s.Cfg.Source}
-}
-
+// SessionHandler is the soft-serve bubbletea ssh session handler.
 func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 	return func(s ssh.Session) *tea.Program {
 		pty, _, active := s.Pty()
 		if !active {
-			fmt.Println("not active")
 			return nil
-		}
-		sess := &Session{
-			session: s,
-			Cfg:     ac,
 		}
 		cmd := s.Command()
 		initialRepo := ""
@@ -72,7 +40,8 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 			Height: pty.Window.Height,
 		}
 		m := ui.New(
-			sess,
+			ac,
+			s,
 			c,
 			initialRepo,
 		)
@@ -83,8 +52,6 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 			tea.WithoutCatchPanics(),
 			tea.WithMouseCellMotion(),
 		)
-		sess.Model = m
-		sess.Program = p
 		return p
 	}
 }

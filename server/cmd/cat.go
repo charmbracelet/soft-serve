@@ -43,7 +43,7 @@ func CatCommand() *cobra.Command {
 			var repo *config.Repo
 			repoExists := false
 			for _, rp := range ac.Source.AllRepos() {
-				if rp.Name() == rn {
+				if rp.Repo() == rn {
 					repoExists = true
 					repo = rp
 					break

@@ -27,7 +27,7 @@ func GitCommand() *cobra.Command {
 			rn := args[0]
 			repoExists := false
 			for _, rp := range ac.Source.AllRepos() {
-				if rp.Name() == rn {
+				if rp.Repo() == rn {
 					repoExists = true
 					repo = rp
 					break
