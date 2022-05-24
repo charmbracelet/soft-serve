@@ -302,6 +302,9 @@ func (l *Log) StatusBarInfo() string {
 }
 
 func (l *Log) countCommitsCmd() tea.Msg {
+	if l.ref == nil {
+		return common.ErrorMsg(errNoRef)
+	}
 	count, err := l.repo.CountCommits(l.ref)
 	if err != nil {
 		return common.ErrorMsg(err)
@@ -318,6 +321,9 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 		case LogCountMsg:
 			count = int64(msg)
 		}
+	}
+	if l.ref == nil {
+		return common.ErrorMsg(errNoRef)
 	}
 	items := make([]selector.IdentifiableItem, count)
 	page := l.nextPage

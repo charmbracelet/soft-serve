@@ -318,6 +318,9 @@ func (f *Files) StatusBarInfo() string {
 func (f *Files) updateFilesCmd() tea.Msg {
 	files := make([]selector.IdentifiableItem, 0)
 	dirs := make([]selector.IdentifiableItem, 0)
+	if f.ref == nil {
+		return common.ErrorMsg(errNoRef)
+	}
 	t, err := f.repo.Tree(f.ref, f.path)
 	if err != nil {
 		return common.ErrorMsg(err)

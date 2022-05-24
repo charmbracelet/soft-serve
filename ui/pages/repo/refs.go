@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -12,6 +13,10 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
 	"github.com/charmbracelet/soft-serve/ui/git"
+)
+
+var (
+	errNoRef = errors.New("no reference specified")
 )
 
 // RefItemsMsg is a message that contains a list of RefItem.
@@ -146,7 +151,7 @@ func (r *Refs) View() string {
 	return r.selector.View()
 }
 
-// StausBarValue implements statusbar.StatusBar.
+// StatusBarValue implements statusbar.StatusBar.
 func (r *Refs) StatusBarValue() string {
 	if r.activeRef == nil {
 		return ""

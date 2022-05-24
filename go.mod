@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/caarlos0/env/v6 v6.9.1
-	github.com/charmbracelet/bubbles v0.10.4-0.20220429162018-2a8d463bd11f
+	github.com/charmbracelet/bubbles v0.10.4-0.20220524120539-e1871db6d35e
 	github.com/charmbracelet/bubbletea v0.20.0
 	github.com/charmbracelet/glamour v0.4.0
 	github.com/charmbracelet/lipgloss v0.4.0
