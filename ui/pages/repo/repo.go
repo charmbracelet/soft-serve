@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/config"
@@ -174,7 +175,10 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-	case LogCountMsg, LogItemsMsg:
+	// The Log bubble is the only bubble that uses a spinner, so this is fine
+	// for now. We need to pass the TickMsg to the Log bubble when the Log is
+	// loading but not the current selected tab so that the spinner works.
+	case LogCountMsg, LogItemsMsg, spinner.TickMsg:
 		l, cmd := r.boxes[commitsTab].Update(msg)
 		r.boxes[commitsTab] = l.(*Log)
 		if cmd != nil {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
@@ -16,6 +17,10 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/muesli/reflow/wrap"
 	"github.com/muesli/termenv"
+)
+
+var (
+	waitBeforeLoading = time.Millisecond * 200
 )
 
 type logView int
@@ -50,6 +55,9 @@ type Log struct {
 	activeCommit   *ggit.Commit
 	selectedCommit *ggit.Commit
 	currentDiff    *ggit.Diff
+	loadingTime    time.Time
+	loading        bool
+	spinner        spinner.Model
 }
 
 // NewLog creates a new Log model.
@@ -70,6 +78,10 @@ func NewLog(common common.Common) *Log {
 	selector.KeyMap.NextPage = common.KeyMap.NextPage
 	selector.KeyMap.PrevPage = common.KeyMap.PrevPage
 	l.selector = selector
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = common.Styles.Spinner
+	l.spinner = s
 	return l
 }
 
@@ -147,6 +159,16 @@ func (l *Log) FullHelp() [][]key.Binding {
 	return b
 }
 
+func (l *Log) startLoading() tea.Msg {
+	l.loadingTime = time.Now()
+	l.loading = true
+	return l.spinner.Tick()
+}
+
+func (l *Log) stopLoading() {
+	l.loading = false
+}
+
 // Init implements tea.Model.
 func (l *Log) Init() tea.Cmd {
 	l.activeView = logViewCommits
@@ -154,7 +176,11 @@ func (l *Log) Init() tea.Cmd {
 	l.count = 0
 	l.activeCommit = nil
 	l.selector.Select(0)
-	return l.updateCommitsCmd
+	return tea.Batch(
+		l.updateCommitsCmd,
+		// start loading on init
+		l.startLoading,
+	)
 }
 
 // Update implements tea.Model.
@@ -177,6 +203,8 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if i != nil {
 			l.activeCommit = i.(LogItem).Commit
 		}
+		// stop loading after receiving items
+		l.stopLoading()
 	case tea.KeyMsg, tea.MouseMsg:
 		switch l.activeView {
 		case logViewCommits:
@@ -195,7 +223,10 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Page() != curPage {
 				l.nextPage = m.Page()
 				l.selector.SetPage(curPage)
-				cmds = append(cmds, l.updateCommitsCmd)
+				cmds = append(cmds,
+					l.updateCommitsCmd,
+					l.startLoading,
+				)
 			}
 			cmds = append(cmds, cmd)
 		case logViewDiff:
@@ -216,7 +247,10 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case selector.SelectMsg:
 		switch sel := msg.IdentifiableItem.(type) {
 		case LogItem:
-			cmds = append(cmds, l.selectCommitCmd(sel.Commit))
+			cmds = append(cmds,
+				l.selectCommitCmd(sel.Commit),
+				l.startLoading,
+			)
 		}
 	case LogCommitMsg:
 		l.selectedCommit = msg
@@ -233,6 +267,8 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		l.vp.GotoTop()
 		l.activeView = logViewDiff
 		cmds = append(cmds, updateStatusBarCmd)
+		// stop loading after setting the viewport content
+		l.stopLoading()
 	case tea.WindowSizeMsg:
 		if l.selectedCommit != nil && l.currentDiff != nil {
 			l.vp.SetContent(
@@ -244,8 +280,20 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		}
 		if l.repo != nil {
-			cmds = append(cmds, l.updateCommitsCmd)
+			cmds = append(cmds,
+				l.updateCommitsCmd,
+				// start loading on resize since the number of commits per page
+				// might change and we'd need to load more commits.
+				l.startLoading,
+			)
 		}
+	}
+	if l.loading {
+		s, cmd := l.spinner.Update(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		l.spinner = s
 	}
 	switch l.activeView {
 	case logViewDiff:
@@ -260,6 +308,14 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (l *Log) View() string {
+	if l.loading && l.loadingTime.Add(waitBeforeLoading).Before(time.Now()) {
+		msg := fmt.Sprintf("%s loading commit", l.spinner.View())
+		if l.selectedCommit == nil {
+			msg += "s"
+		}
+		msg += "…"
+		return msg
+	}
 	switch l.activeView {
 	case logViewCommits:
 		return l.selector.View()
