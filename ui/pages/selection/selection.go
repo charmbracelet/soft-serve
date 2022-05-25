@@ -297,6 +297,7 @@ func (s *Selection) View() string {
 	switch s.activeBox {
 	case selectorBox:
 		ss := s.common.Styles.SelectorBox.Copy().
+			Width(s.common.Width - wm).
 			Height(s.common.Height - hm)
 		view = ss.Render(s.selector.View())
 	case readmeBox:
