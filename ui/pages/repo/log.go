@@ -159,14 +159,15 @@ func (l *Log) FullHelp() [][]key.Binding {
 	return b
 }
 
-func (l *Log) startLoading() tea.Msg {
+func (l *Log) startLoading() tea.Cmd {
 	l.loadingTime = time.Now()
 	l.loading = true
-	return l.spinner.Tick()
+	return l.spinner.Tick
 }
 
-func (l *Log) stopLoading() {
+func (l *Log) stopLoading() tea.Cmd {
 	l.loading = false
+	return updateStatusBarCmd
 }
 
 // Init implements tea.Model.
@@ -179,7 +180,7 @@ func (l *Log) Init() tea.Cmd {
 	return tea.Batch(
 		l.updateCommitsCmd,
 		// start loading on init
-		l.startLoading,
+		l.startLoading(),
 	)
 }
 
@@ -196,15 +197,17 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case LogCountMsg:
 		l.count = int64(msg)
 	case LogItemsMsg:
-		cmds = append(cmds, l.selector.SetItems(msg))
+		cmds = append(cmds,
+			l.selector.SetItems(msg),
+			// stop loading after receiving items
+			l.stopLoading(),
+		)
 		l.selector.SetPage(l.nextPage)
 		l.SetSize(l.common.Width, l.common.Height)
 		i := l.selector.SelectedItem()
 		if i != nil {
 			l.activeCommit = i.(LogItem).Commit
 		}
-		// stop loading after receiving items
-		l.stopLoading()
 	case tea.KeyMsg, tea.MouseMsg:
 		switch l.activeView {
 		case logViewCommits:
@@ -225,7 +228,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				l.selector.SetPage(curPage)
 				cmds = append(cmds,
 					l.updateCommitsCmd,
-					l.startLoading,
+					l.startLoading(),
 				)
 			}
 			cmds = append(cmds, cmd)
@@ -249,7 +252,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case LogItem:
 			cmds = append(cmds,
 				l.selectCommitCmd(sel.Commit),
-				l.startLoading,
+				l.startLoading(),
 			)
 		}
 	case LogCommitMsg:
@@ -266,9 +269,11 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 		l.vp.GotoTop()
 		l.activeView = logViewDiff
-		cmds = append(cmds, updateStatusBarCmd)
-		// stop loading after setting the viewport content
-		l.stopLoading()
+		cmds = append(cmds,
+			updateStatusBarCmd,
+			// stop loading after setting the viewport content
+			l.stopLoading(),
+		)
 	case tea.WindowSizeMsg:
 		if l.selectedCommit != nil && l.currentDiff != nil {
 			l.vp.SetContent(
@@ -284,7 +289,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				l.updateCommitsCmd,
 				// start loading on resize since the number of commits per page
 				// might change and we'd need to load more commits.
-				l.startLoading,
+				l.startLoading(),
 			)
 		}
 	}
@@ -328,6 +333,9 @@ func (l *Log) View() string {
 
 // StatusBarValue returns the status bar value.
 func (l *Log) StatusBarValue() string {
+	if l.loading {
+		return ""
+	}
 	c := l.activeCommit
 	if c == nil {
 		return ""
