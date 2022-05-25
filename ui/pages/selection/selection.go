@@ -20,9 +20,17 @@ import (
 type box int
 
 const (
-	readmeBox box = iota
-	selectorBox
+	selectorBox box = iota
+	readmeBox
+	lastBox
 )
+
+func (b box) String() string {
+	return []string{
+		"Repositories",
+		"About",
+	}[b]
+}
 
 // Selection is the model for the selection screen/page.
 type Selection struct {
@@ -38,7 +46,11 @@ type Selection struct {
 
 // New creates a new selection model.
 func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection {
-	t := tabs.New(common, []string{"About", "Repositories"})
+	ts := make([]string, lastBox)
+	for i, b := range []box{selectorBox, readmeBox} {
+		ts[i] = b.String()
+	}
+	t := tabs.New(common, ts)
 	t.TabSeparator = lipgloss.NewStyle()
 	t.TabInactive = lipgloss.NewStyle().
 		Bold(true).
@@ -52,7 +64,7 @@ func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection 
 		cfg:       cfg,
 		pk:        pk,
 		common:    common,
-		activeBox: readmeBox, // start with the selector focused
+		activeBox: selectorBox, // start with the selector focused
 		tabs:      t,
 	}
 	readme := code.New(common, "", "")

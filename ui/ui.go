@@ -40,7 +40,7 @@ type UI struct {
 	rs          git.GitRepoSource
 	initialRepo string
 	common      common.Common
-	pages       []common.Page
+	pages       []common.Component
 	activePage  page
 	state       sessionState
 	header      *header.Header
@@ -57,7 +57,7 @@ func New(cfg *config.Config, s ssh.Session, c common.Common, initialRepo string)
 		session:     s,
 		rs:          src,
 		common:      c,
-		pages:       make([]common.Page, 2), // selection & repo
+		pages:       make([]common.Component, 2), // selection & repo
 		activePage:  selectionPage,
 		state:       startState,
 		header:      h,
@@ -163,7 +163,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ui.SetSize(msg.Width, msg.Height)
 		for i, p := range ui.pages {
 			m, cmd := p.Update(msg)
-			ui.pages[i] = m.(common.Page)
+			ui.pages[i] = m.(common.Component)
 			if cmd != nil {
 				cmds = append(cmds, cmd)
 			}
@@ -183,6 +183,8 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				ui.activePage = selectionPage
 			}
 		}
+	case repo.RepoMsg:
+		ui.activePage = repoPage
 	case common.ErrorMsg:
 		ui.error = msg
 		ui.state = errorState
@@ -207,7 +209,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if ui.state == loadedState {
 		m, cmd := ui.pages[ui.activePage].Update(msg)
-		ui.pages[ui.activePage] = m.(common.Page)
+		ui.pages[ui.activePage] = m.(common.Component)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
@@ -262,7 +264,6 @@ func (ui *UI) setRepoCmd(rn string) tea.Cmd {
 	return func() tea.Msg {
 		for _, r := range ui.rs.AllRepos() {
 			if r.Repo() == rn {
-				ui.activePage = repoPage
 				return repo.RepoMsg(r)
 			}
 		}
@@ -274,7 +275,6 @@ func (ui *UI) initialRepoCmd(rn string) tea.Cmd {
 	return func() tea.Msg {
 		for _, r := range ui.rs.AllRepos() {
 			if r.Repo() == rn {
-				ui.activePage = repoPage
 				return repo.RepoMsg(r)
 			}
 		}

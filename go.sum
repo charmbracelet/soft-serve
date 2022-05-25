@@ -25,8 +25,6 @@ github.com/caarlos0/env/v6 v6.9.1 h1:zOkkjM0F6ltnQ5eBX6IPI41UP/KDGEK7rRPwGCNos8k
 github.com/caarlos0/env/v6 v6.9.1/go.mod h1:hvp/ryKXKipEkcuYjs9mI4bBCg+UI0Yhgm5Zu0ddvwc=
 github.com/caarlos0/sshmarshal v0.0.0-20220308164159-9ddb9f83c6b3 h1:w2ANoiT4ubmh4Nssa3/QW1M7lj3FZkma8f8V5aBDxXM=
 github.com/caarlos0/sshmarshal v0.0.0-20220308164159-9ddb9f83c6b3/go.mod h1:7Pd/0mmq9x/JCzKauogNjSQEhivBclCQHfr9dlpDIyA=
-github.com/charmbracelet/bubbles v0.10.4-0.20220429162018-2a8d463bd11f h1:5mbyuBNzjF1S1pJOGubmjMBNUVO3NmjNsaZPIsFwPUQ=
-github.com/charmbracelet/bubbles v0.10.4-0.20220429162018-2a8d463bd11f/go.mod h1:jOA+DUF1rjZm7gZHcNyIVW+YrBPALKfpGVdJu8UiJsA=
 github.com/charmbracelet/bubbles v0.10.4-0.20220524120539-e1871db6d35e h1:B+COqRjrl6G/X6v7salT4LDoSl+2Kz3g4OuDaoZCMwA=
 github.com/charmbracelet/bubbles v0.10.4-0.20220524120539-e1871db6d35e/go.mod h1:jOA+DUF1rjZm7gZHcNyIVW+YrBPALKfpGVdJu8UiJsA=
 github.com/charmbracelet/bubbletea v0.19.3/go.mod h1:VuXF2pToRxDUHcBUcPmCRUHRvFATM4Ckb/ql1rBl3KA=

@@ -24,7 +24,18 @@ const (
 	commitsTab
 	branchesTab
 	tagsTab
+	lastTab
 )
+
+func (t tab) String() string {
+	return []string{
+		"Readme",
+		"Files",
+		"Commits",
+		"Branches",
+		"Tags",
+	}[t]
+}
 
 // UpdateStatusBarMsg updates the status bar.
 type UpdateStatusBarMsg struct{}
@@ -51,8 +62,12 @@ type Repo struct {
 // New returns a new Repo.
 func New(cfg *config.Config, rs git.GitRepoSource, c common.Common) *Repo {
 	sb := statusbar.New(c)
+	ts := make([]string, lastTab)
 	// Tabs must match the order of tab constants above.
-	tb := tabs.New(c, []string{"Readme", "Files", "Commits", "Branches", "Tags"})
+	for i, t := range []tab{readmeTab, filesTab, commitsTab, branchesTab, tagsTab} {
+		ts[i] = t.String()
+	}
+	tb := tabs.New(c, ts)
 	readme := NewReadme(c)
 	log := NewLog(c)
 	files := NewFiles(c)
