@@ -16,6 +16,10 @@ import (
 	"github.com/muesli/termenv"
 )
 
+const (
+	tabWidth = 4
+)
+
 var (
 	lineDigitStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("239"))
 	lineBarStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("236"))
@@ -181,6 +185,10 @@ func (r *Code) glamourize(w int, md string) (string, error) {
 }
 
 func (r *Code) renderFile(path, content string, width int) (string, error) {
+	// FIXME chroma & glamour might break wrapping when using tabs since tab
+	// width depends on the terminal. This is a workaround to replace tabs with
+	// 4-spaces.
+	content = strings.ReplaceAll(content, "\t", strings.Repeat(" ", tabWidth))
 	lexer := lexers.Fallback
 	if path == "" {
 		lexer = lexers.Analyse(content)
