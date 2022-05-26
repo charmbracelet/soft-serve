@@ -284,10 +284,13 @@ func (r *Repo) headerView() string {
 }
 
 func (r *Repo) updateStatusBarCmd() tea.Msg {
+	if r.selectedRepo == nil {
+		return nil
+	}
 	value := r.boxes[r.activeTab].(statusbar.Model).StatusBarValue()
 	info := r.boxes[r.activeTab].(statusbar.Model).StatusBarInfo()
 	return statusbar.StatusBarMsg{
-		Key:    r.selectedRepo.Name(),
+		Key:    r.selectedRepo.Repo(),
 		Value:  value,
 		Info:   info,
 		Branch: fmt.Sprintf(" %s", r.ref.Name().Short()),
@@ -295,6 +298,9 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 }
 
 func (r *Repo) updateRefCmd() tea.Msg {
+	if r.selectedRepo == nil {
+		return nil
+	}
 	head, err := r.selectedRepo.HEAD()
 	if err != nil {
 		return common.ErrorMsg(err)

@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	waitBeforeLoading = time.Millisecond * 200
+	waitBeforeLoading = time.Millisecond * 100
 )
 
 type logView int
