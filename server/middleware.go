@@ -33,7 +33,7 @@ func softMiddleware(ac *appCfg.Config) wish.Middleware {
 				cmd.Use = use
 				cmd.SetIn(s)
 				cmd.SetOut(s)
-				cmd.SetErr(s)
+				cmd.SetErr(s.Stderr())
 				cmd.SetArgs(s.Command())
 				err := cmd.ExecuteContext(ctx)
 				if err != nil {
