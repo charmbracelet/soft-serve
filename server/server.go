@@ -36,10 +36,10 @@ func NewServer(cfg *config.Config) *Server {
 	mw := []wish.Middleware{
 		rm.MiddlewareWithLogger(
 			cfg.ErrorLog,
+			lm.Middleware(),
 			softMiddleware(ac),
 			bm.Middleware(tui.SessionHandler(ac)),
 			gm.Middleware(cfg.RepoPath, ac),
-			lm.Middleware(),
 		),
 	}
 	s, err := wish.NewServer(
