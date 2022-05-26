@@ -9,7 +9,7 @@ import (
 	"text/template"
 
 	"golang.org/x/crypto/ssh"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"fmt"
 	"os"

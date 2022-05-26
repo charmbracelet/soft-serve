@@ -35,8 +35,6 @@ github.com/charmbracelet/keygen v0.3.0 h1:mXpsQcH7DDlST5TddmXNXjS0L7ECk4/kLQYyBc
 github.com/charmbracelet/keygen v0.3.0/go.mod h1:1ukgO8806O25lUZ5s0IrNur+RlwTBERlezdgW71F5rM=
 github.com/charmbracelet/lipgloss v0.4.0 h1:768h64EFkGUr8V5yAKV7/Ta0NiVceiPaV+PphaW1K9g=
 github.com/charmbracelet/lipgloss v0.4.0/go.mod h1:vmdkHvce7UzX6xkyf4cca8WlwdQ5RQr8fzta+xl7BOM=
-github.com/charmbracelet/wish v0.3.1-0.20220405152319-bea68c3da3b1 h1:OmXSQNyZ/I5Nr+dEiqkeuaAAFfyJzp2wesZFuxxI4s4=
-github.com/charmbracelet/wish v0.3.1-0.20220405152319-bea68c3da3b1/go.mod h1:+EgtczC00Oocx5Y237jSGpD/rOcSdq97Intl0ITHwos=
 github.com/charmbracelet/wish v0.3.1 h1:B3GZop29tFf/Jh8oMyeTX+iSP3X2bR8AQduf/h4OdRQ=
 github.com/charmbracelet/wish v0.3.1/go.mod h1:+EgtczC00Oocx5Y237jSGpD/rOcSdq97Intl0ITHwos=
 github.com/containerd/console v1.0.2/go.mod h1:ytZPjGgY2oeTkAONYafi2kSj0aYggsf8acV1PGKCbzQ=
