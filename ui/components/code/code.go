@@ -12,7 +12,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	vp "github.com/charmbracelet/soft-serve/ui/components/viewport"
-	"github.com/muesli/reflow/wrap"
 	"github.com/muesli/termenv"
 )
 
@@ -227,18 +226,15 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 	}
 	c := s.String()
 	if r.showLineNumber {
-		c = withLineNumber(c)
+		var ml int
+		c, ml = withLineNumber(c)
+		width -= ml
 	}
-	// FIXME: this is a hack to reset formatting at the end of every line.
-	c = wrap.String(c, width)
-	f := strings.Split(c, "\n")
-	for i, l := range f {
-		f[i] = l + "\x1b[0m"
-	}
-	return strings.Join(f, "\n"), nil
+	// fix styling when after line breaks.
+	return lipgloss.NewStyle().Width(width).Render(c), nil
 }
 
-func withLineNumber(s string) string {
+func withLineNumber(s string) (string, int) {
 	lines := strings.Split(s, "\n")
 	// NB: len() is not a particularly safe way to count string width (because
 	// it's counting bytes instead of runes) but in this case it's okay
@@ -255,5 +251,5 @@ func withLineNumber(s string) string {
 			lines[i] = fmt.Sprintf(" %s %s %s", digit, bar, l)
 		}
 	}
-	return strings.Join(lines, "\n")
+	return strings.Join(lines, "\n"), mll
 }
