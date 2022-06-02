@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -103,8 +104,9 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 
 	name := i.Title()
 	size := humanize.Bytes(uint64(i.entry.Size()))
+	sizeLen := lipgloss.Width(size)
 	if i.entry.IsTree() {
-		size = ""
+		size = strings.Repeat(" ", sizeLen)
 		name = s.TreeFileDir.Render(name)
 	}
 	var cs lipgloss.Style
@@ -116,23 +118,20 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		cs = s.TreeItemInactive
 		fmt.Fprint(w, s.TreeItemSelector.Render(" "))
 	}
+	sizeStyle := s.TreeFileSize.Copy().
+		Width(8).
+		Align(lipgloss.Right).
+		MarginLeft(1)
 	leftMargin := s.TreeItemSelector.GetMarginLeft() +
 		s.TreeItemSelector.GetWidth() +
 		s.TreeFileMode.GetMarginLeft() +
 		s.TreeFileMode.GetWidth() +
-		cs.GetMarginLeft()
-	rightMargin := s.TreeFileSize.GetMarginLeft() + lipgloss.Width(size)
-	name = common.TruncateString(name, m.Width()-leftMargin-rightMargin)
-	sizeStyle := s.TreeFileSize.Copy().
-		Width(m.Width() -
-			leftMargin -
-			s.TreeFileSize.GetMarginLeft() -
-			lipgloss.Width(name)).
-		Align(lipgloss.Right)
-	if index == m.Index() {
-		sizeStyle = sizeStyle.Bold(true)
-	}
-	fmt.Fprint(w, s.TreeFileMode.Render(mode.String())+
-		cs.Render(name)+
-		sizeStyle.Render(size))
+		cs.GetMarginLeft() +
+		sizeStyle.GetHorizontalFrameSize()
+	name = common.TruncateString(name, m.Width()-leftMargin)
+	fmt.Fprint(w,
+		s.TreeFileMode.Render(mode.String()),
+		sizeStyle.Render(size),
+		cs.Render(name),
+	)
 }

@@ -45,6 +45,7 @@ type UI struct {
 	state       sessionState
 	header      *header.Header
 	footer      *footer.Footer
+	showFooter  bool
 	error       error
 }
 
@@ -62,21 +63,27 @@ func New(cfg *config.Config, s ssh.Session, c common.Common, initialRepo string)
 		state:       startState,
 		header:      h,
 		initialRepo: initialRepo,
+		showFooter:  true,
 	}
 	ui.footer = footer.New(c, ui)
 	return ui
 }
 
 func (ui *UI) getMargins() (wm, hm int) {
-	wm = ui.common.Styles.App.GetHorizontalFrameSize()
-	hm = ui.common.Styles.App.GetVerticalFrameSize() +
-		ui.common.Styles.Footer.GetVerticalFrameSize() +
-		ui.footer.Height()
+	style := ui.common.Styles.App.Copy()
 	switch ui.activePage {
 	case selectionPage:
 		hm += ui.common.Styles.Header.GetHeight() +
 			ui.common.Styles.Header.GetVerticalFrameSize()
 	case repoPage:
+	}
+	wm += style.GetHorizontalFrameSize()
+	hm += style.GetVerticalFrameSize()
+	if ui.showFooter {
+		// NOTE: we don't use the footer's style to determine the margins
+		// because footer.Height() is the height of the footer after applying
+		// the styles.
+		hm += ui.footer.Height()
 	}
 	return
 }
@@ -175,16 +182,26 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, ui.common.KeyMap.Back) && ui.error != nil:
 				ui.error = nil
 				ui.state = loadedState
+				// Always show the footer on error.
+				ui.showFooter = true
 			case key.Matches(msg, ui.common.KeyMap.Help):
 				ui.footer.SetShowAll(!ui.footer.ShowAll())
+				// Show the footer when on repo page and shot all help.
+				if ui.activePage == repoPage {
+					ui.showFooter = !ui.showFooter
+				}
 			case key.Matches(msg, ui.common.KeyMap.Quit):
 				return ui, tea.Quit
 			case ui.activePage == repoPage && key.Matches(msg, ui.common.KeyMap.Back):
 				ui.activePage = selectionPage
+				// Always show the footer on selection page.
+				ui.showFooter = true
 			}
 		}
 	case repo.RepoMsg:
 		ui.activePage = repoPage
+		// Show the footer on repo page if show all is set.
+		ui.showFooter = ui.footer.ShowAll()
 	case common.ErrorMsg:
 		ui.error = msg
 		ui.state = errorState
@@ -223,7 +240,6 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (ui *UI) View() string {
 	var view string
 	wm, hm := ui.getMargins()
-	footer := ui.footer.View()
 	style := ui.common.Styles.App.Copy()
 	switch ui.state {
 	case startState:
@@ -252,11 +268,14 @@ func (ui *UI) View() string {
 		)
 	case repoPage:
 	}
-	return style.Render(
-		lipgloss.JoinVertical(lipgloss.Bottom,
+	if ui.showFooter {
+		view = lipgloss.JoinVertical(lipgloss.Bottom,
 			view,
-			footer,
-		),
+			ui.footer.View(),
+		)
+	}
+	return style.Render(
+		view,
 	)
 }
 

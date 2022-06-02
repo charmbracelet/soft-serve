@@ -51,13 +51,14 @@ func (s *StatusBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (s *StatusBar) View() string {
 	st := s.common.Styles
 	w := lipgloss.Width
+	help := st.StatusBarHelp.Render("? Help")
 	key := st.StatusBarKey.Render(s.msg.Key)
 	info := ""
 	if s.msg.Info != "" {
 		info = st.StatusBarInfo.Render(s.msg.Info)
 	}
 	branch := st.StatusBarBranch.Render(s.msg.Branch)
-	maxWidth := s.common.Width - w(key) - w(info) - w(branch)
+	maxWidth := s.common.Width - w(key) - w(info) - w(branch) - w(help)
 	v := truncate.StringWithTail(s.msg.Value, uint(maxWidth-st.StatusBarValue.GetHorizontalFrameSize()), "…")
 	value := st.StatusBarValue.
 		Width(maxWidth).
@@ -68,5 +69,6 @@ func (s *StatusBar) View() string {
 		value,
 		info,
 		branch,
+		help,
 	)
 }

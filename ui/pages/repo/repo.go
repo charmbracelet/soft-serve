@@ -289,11 +289,15 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 	}
 	value := r.boxes[r.activeTab].(statusbar.Model).StatusBarValue()
 	info := r.boxes[r.activeTab].(statusbar.Model).StatusBarInfo()
+	ref := ""
+	if r.ref != nil {
+		ref = r.ref.Name().Short()
+	}
 	return statusbar.StatusBarMsg{
 		Key:    r.selectedRepo.Repo(),
 		Value:  value,
 		Info:   info,
-		Branch: fmt.Sprintf(" %s", r.ref.Name().Short()),
+		Branch: fmt.Sprintf(" %s", ref),
 	}
 }
 
