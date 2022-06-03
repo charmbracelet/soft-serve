@@ -147,10 +147,13 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 	title = titleStyle.Render(title)
 	desc := i.Description()
+	descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+	if desc == "" {
+		desc = "No description"
+		descStyle = descStyle.Faint(true)
+	}
 	desc = common.TruncateString(desc, m.Width()-itemStyle.GetHorizontalFrameSize())
-	desc = lipgloss.NewStyle().
-		Faint(true).
-		Render(desc)
+	desc = descStyle.Render(desc)
 
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, title, updated))
 	s.WriteString("\n")
