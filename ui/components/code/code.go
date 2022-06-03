@@ -198,39 +198,44 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 	if lexer != nil && lexer.Config() != nil {
 		lang = lexer.Config().Name
 	}
+	var c string
 	if lang == "markdown" {
 		md, err := r.glamourize(width, content)
 		if err != nil {
 			return "", err
 		}
-		return md, nil
+		c = md
+	} else {
+		formatter := &gansi.CodeBlockElement{
+			Code:     content,
+			Language: lang,
+		}
+		s := strings.Builder{}
+		rc := r.renderContext
+		if r.showLineNumber {
+			st := common.StyleConfig()
+			m := uint(0)
+			st.CodeBlock.Margin = &m
+			rc = gansi.NewRenderContext(gansi.Options{
+				ColorProfile: termenv.TrueColor,
+				Styles:       st,
+			})
+		}
+		err := formatter.Render(&s, rc)
+		if err != nil {
+			return "", err
+		}
+		c = s.String()
+		if r.showLineNumber {
+			var ml int
+			c, ml = withLineNumber(c)
+			width -= ml
+		}
 	}
-	formatter := &gansi.CodeBlockElement{
-		Code:     content,
-		Language: lang,
-	}
-	s := strings.Builder{}
-	rc := r.renderContext
-	if r.showLineNumber {
-		st := common.StyleConfig()
-		m := uint(0)
-		st.CodeBlock.Margin = &m
-		rc = gansi.NewRenderContext(gansi.Options{
-			ColorProfile: termenv.TrueColor,
-			Styles:       st,
-		})
-	}
-	err := formatter.Render(&s, rc)
-	if err != nil {
-		return "", err
-	}
-	c := s.String()
-	if r.showLineNumber {
-		var ml int
-		c, ml = withLineNumber(c)
-		width -= ml
-	}
-	// fix styling when after line breaks.
+	// Fix styling when after line breaks.
+	// https://github.com/muesli/reflow/issues/43
+	//
+	// TODO: solve this upstream in Glamour/Reflow.
 	return lipgloss.NewStyle().Width(width).Render(c), nil
 }
 
