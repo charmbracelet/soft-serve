@@ -2,6 +2,8 @@ package config
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"log"
 	"path/filepath"
 	"strings"
@@ -190,7 +192,7 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	rp := filepath.Join(cfg.Cfg.RepoPath, cn)
 	rs := cfg.Source
 	err := rs.LoadRepo(cn)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		log.Printf("creating default config repo %s", cn)
 		repo, err := ggit.PlainInit(rp, true)
 		if err != nil {
