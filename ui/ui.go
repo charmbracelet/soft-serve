@@ -183,11 +183,11 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				ui.error = nil
 				ui.state = loadedState
 				// Always show the footer on error.
-				ui.showFooter = true
+				ui.showFooter = ui.footer.ShowAll()
 			case key.Matches(msg, ui.common.KeyMap.Help):
 				ui.footer.SetShowAll(!ui.footer.ShowAll())
 				// Show the footer when on repo page and shot all help.
-				if ui.activePage == repoPage {
+				if ui.error == nil && ui.activePage == repoPage {
 					ui.showFooter = !ui.showFooter
 				}
 			case key.Matches(msg, ui.common.KeyMap.Quit):
@@ -205,6 +205,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case common.ErrorMsg:
 		ui.error = msg
 		ui.state = errorState
+		ui.showFooter = true
 		return ui, nil
 	case selector.SelectMsg:
 		switch msg.IdentifiableItem.(type) {
