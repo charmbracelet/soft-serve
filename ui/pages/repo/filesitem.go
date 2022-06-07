@@ -129,9 +129,17 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		cs.GetMarginLeft() +
 		sizeStyle.GetHorizontalFrameSize()
 	name = common.TruncateString(name, m.Width()-leftMargin)
+	name = cs.Render(name)
+	size = sizeStyle.Render(size)
+	modeStr := s.TreeFileMode.Render(mode.String())
+	truncate := lipgloss.NewStyle().MaxWidth(m.Width() -
+		s.TreeItemSelector.GetHorizontalFrameSize() -
+		s.TreeItemSelector.GetWidth())
 	fmt.Fprint(w,
-		s.TreeFileMode.Render(mode.String()),
-		sizeStyle.Render(size),
-		cs.Render(name),
+		truncate.Render(fmt.Sprintf("%s%s%s",
+			modeStr,
+			size,
+			name,
+		)),
 	)
 }

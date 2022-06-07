@@ -91,20 +91,21 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	}
 
 	ref := i.Short()
+	ref = s.RefItemBranch.Render(ref)
 	if i.Reference.IsTag() {
 		ref = s.RefItemTag.Render(ref)
 	}
-	ref = s.RefItemBranch.Render(ref)
 	refMaxWidth := m.Width() -
 		s.RefItemSelector.GetMarginLeft() -
 		s.RefItemSelector.GetWidth() -
 		s.RefItemInactive.GetMarginLeft()
 	ref = common.TruncateString(ref, refMaxWidth)
+	refStyle := s.RefItemInactive
+	selector := s.RefItemSelector.Render(" ")
 	if index == m.Index() {
-		fmt.Fprint(w, s.RefItemSelector.Render(">")+
-			s.RefItemActive.Render(ref))
-	} else {
-		fmt.Fprint(w, s.RefItemSelector.Render(" ")+
-			s.RefItemInactive.Render(ref))
+		selector = s.RefItemSelector.Render(">")
+		refStyle = s.RefItemActive
 	}
+	ref = refStyle.Render(ref)
+	fmt.Fprint(w, selector, ref)
 }

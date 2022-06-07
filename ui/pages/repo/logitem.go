@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
+	"github.com/muesli/reflow/truncate"
 )
 
 // LogItem is a item in the log list that displays a git commit.
@@ -88,31 +89,41 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		return
 	}
 
-	width := lipgloss.Width
 	titleStyle := styles.LogItemTitle.Copy()
 	style := styles.LogItemInactive
 	if index == m.Index() {
 		titleStyle.Bold(true)
 		style = styles.LogItemActive
 	}
-	hash := " " + i.Commit.ID.String()[:7]
+	hash := i.Commit.ID.String()[:7]
 	if !i.copied.IsZero() && i.copied.Add(time.Second).After(time.Now()) {
 		hash = "copied"
 	}
 	title := titleStyle.Render(
-		common.TruncateString(i.Title(), m.Width()-style.GetHorizontalFrameSize()-width(hash)-2),
+		common.TruncateString(i.Title(),
+			m.Width()-
+				style.GetHorizontalFrameSize()-
+				// 9 is the length of the hash (7) + the left padding (1) + the
+				// title truncation symbol (1)
+				9),
 	)
 	hashStyle := styles.LogItemHash.Copy().
 		Align(lipgloss.Right).
+		PaddingLeft(1).
 		Width(m.Width() -
 			style.GetHorizontalFrameSize() -
-			width(title) -
-			// FIXME where this "1" is coming from?
-			1)
+			lipgloss.Width(title) - 1) // 1 is for the left padding
 	if index == m.Index() {
 		hashStyle = hashStyle.Bold(true)
 	}
 	hash = hashStyle.Render(hash)
+	if m.Width()-style.GetHorizontalFrameSize()-hashStyle.GetHorizontalFrameSize()-hashStyle.GetWidth() <= 0 {
+		hash = ""
+		title = titleStyle.Render(
+			common.TruncateString(i.Title(),
+				m.Width()-style.GetHorizontalFrameSize()),
+		)
+	}
 	author := i.Author.Name
 	commiter := i.Committer.Name
 	who := ""
@@ -133,10 +144,10 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	fmt.Fprint(w,
 		style.Render(
 			lipgloss.JoinVertical(lipgloss.Top,
-				lipgloss.JoinHorizontal(lipgloss.Left,
+				truncate.String(fmt.Sprintf("%s%s",
 					title,
 					hash,
-				),
+				), uint(m.Width()-style.GetHorizontalFrameSize())),
 				who,
 			),
 		),

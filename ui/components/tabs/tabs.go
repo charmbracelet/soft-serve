@@ -84,7 +84,9 @@ func (t *Tabs) View() string {
 			s.WriteString(sep.String())
 		}
 	}
-	return s.String()
+	return lipgloss.NewStyle().
+		MaxWidth(t.common.Width).
+		Render(s.String())
 }
 
 func (t *Tabs) activeTabCmd() tea.Msg {

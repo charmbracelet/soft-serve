@@ -173,7 +173,9 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tabs.ActiveTabMsg:
 		r.activeTab = tab(msg)
 		if r.selectedRepo != nil {
-			cmds = append(cmds, r.updateStatusBarCmd)
+			cmds = append(cmds,
+				r.updateStatusBarCmd,
+			)
 		}
 	case tea.KeyMsg, tea.MouseMsg:
 		t, cmd := r.tabs.Update(msg)
@@ -261,6 +263,7 @@ func (r *Repo) headerView() string {
 		return ""
 	}
 	cfg := r.cfg
+	truncate := lipgloss.NewStyle().MaxWidth(r.common.Width)
 	name := r.common.Styles.RepoHeaderName.Render(r.selectedRepo.Name())
 	desc := r.selectedRepo.Description()
 	if desc == "" {
@@ -279,11 +282,11 @@ func (r *Repo) headerView() string {
 	style := r.common.Styles.RepoHeader.Copy().Width(r.common.Width)
 	return style.Render(
 		lipgloss.JoinVertical(lipgloss.Top,
-			name,
-			lipgloss.JoinHorizontal(lipgloss.Left,
+			truncate.Render(name),
+			truncate.Render(lipgloss.JoinHorizontal(lipgloss.Left,
 				desc,
 				url,
-			),
+			)),
 		),
 	)
 }

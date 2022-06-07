@@ -470,5 +470,5 @@ func (l *Log) renderDiff(diff *ggit.Diff) string {
 	} else {
 		s.WriteString(fmt.Sprintf("\n%s", pr.String()))
 	}
-	return wrap.String(s.String(), l.common.Width-2)
+	return wrap.String(s.String(), l.common.Width)
 }

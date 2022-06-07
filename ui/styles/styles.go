@@ -301,7 +301,8 @@ func DefaultStyles() *Styles {
 		Width(1).
 		Foreground(lipgloss.Color("#B083EA"))
 
-	s.RefItemActive = s.RefItemInactive.Copy().
+	s.RefItemActive = lipgloss.NewStyle().
+		MarginLeft(1).
 		Bold(true)
 
 	s.RefItemBranch = lipgloss.NewStyle()

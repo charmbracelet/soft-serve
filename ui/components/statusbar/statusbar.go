@@ -7,6 +7,7 @@ import (
 	"github.com/muesli/reflow/truncate"
 )
 
+// StatusBarMsg is a message sent to the status bar.
 type StatusBarMsg struct {
 	Key    string
 	Value  string
@@ -14,16 +15,19 @@ type StatusBarMsg struct {
 	Branch string
 }
 
+// StatusBar is a status bar model.
 type StatusBar struct {
 	common common.Common
 	msg    StatusBarMsg
 }
 
+// Model is an interface that supports setting the status bar information.
 type Model interface {
 	StatusBarValue() string
 	StatusBarInfo() string
 }
 
+// New creates a new status bar component.
 func New(c common.Common) *StatusBar {
 	s := &StatusBar{
 		common: c,
@@ -31,15 +35,18 @@ func New(c common.Common) *StatusBar {
 	return s
 }
 
+// SetSize implements common.Component.
 func (s *StatusBar) SetSize(width, height int) {
 	s.common.Width = width
 	s.common.Height = height
 }
 
+// Init implements tea.Model.
 func (s *StatusBar) Init() tea.Cmd {
 	return nil
 }
 
+// Update implements tea.Model.
 func (s *StatusBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case StatusBarMsg:
@@ -48,6 +55,7 @@ func (s *StatusBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, nil
 }
 
+// View implements tea.Model.
 func (s *StatusBar) View() string {
 	st := s.common.Styles
 	w := lipgloss.Width
@@ -64,11 +72,14 @@ func (s *StatusBar) View() string {
 		Width(maxWidth).
 		Render(v)
 
-	return lipgloss.JoinHorizontal(lipgloss.Top,
-		key,
-		value,
-		info,
-		branch,
-		help,
-	)
+	return lipgloss.NewStyle().MaxWidth(s.common.Width).
+		Render(
+			lipgloss.JoinHorizontal(lipgloss.Top,
+				key,
+				value,
+				info,
+				branch,
+				help,
+			),
+		)
 }
