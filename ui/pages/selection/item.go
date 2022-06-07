@@ -160,7 +160,8 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	s.WriteString(desc)
 	s.WriteString("\n")
 	cmdStyle := styles.RepoCommand.Copy()
-	cmd := cmdStyle.Render(i.Command())
+	cmd := common.TruncateString(i.Command(), m.Width()-itemStyle.GetHorizontalFrameSize())
+	cmd = cmdStyle.Render(cmd)
 	if !i.copied.IsZero() && i.copied.Add(time.Second).After(time.Now()) {
 		cmd = cmdStyle.Render("Copied!")
 	}
