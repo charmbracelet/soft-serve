@@ -16,13 +16,6 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/git"
 )
 
-type state int
-
-const (
-	loadingState state = iota
-	loadedState
-)
-
 type tab int
 
 const (
@@ -63,6 +56,8 @@ type Repo struct {
 	statusbar    *statusbar.StatusBar
 	boxes        []common.Component
 	ref          *ggit.Reference
+	BackKey      key.Binding
+	TabKey       key.Binding
 }
 
 // New returns a new Repo.
@@ -87,12 +82,18 @@ func New(cfg *config.Config, c common.Common) *Repo {
 		branches,
 		tags,
 	}
+	back := c.KeyMap.Back
+	back.SetHelp("esc", "back to menu")
+	tab := c.KeyMap.Section
+	tab.SetHelp("tab", "switch tab")
 	r := &Repo{
 		cfg:       cfg,
 		common:    c,
 		tabs:      tb,
 		statusbar: sb,
 		boxes:     boxes,
+		BackKey:   back,
+		TabKey:    tab,
 	}
 	return r
 }
@@ -115,12 +116,8 @@ func (r *Repo) SetSize(width, height int) {
 
 func (r *Repo) commonHelp() []key.Binding {
 	b := make([]key.Binding, 0)
-	back := r.common.KeyMap.Back
-	back.SetHelp("esc", "back to menu")
-	tab := r.common.KeyMap.Section
-	tab.SetHelp("tab", "switch tab")
-	b = append(b, back)
-	b = append(b, tab)
+	b = append(b, r.BackKey)
+	b = append(b, r.TabKey)
 	return b
 }
 
@@ -268,7 +265,6 @@ func (r *Repo) headerView() string {
 	if r.selectedRepo == nil {
 		return ""
 	}
-	cfg := r.cfg
 	truncate := lipgloss.NewStyle().MaxWidth(r.common.Width)
 	name := r.common.Styles.RepoHeaderName.Render(r.selectedRepo.Name())
 	desc := r.selectedRepo.Description()
@@ -278,23 +274,26 @@ func (r *Repo) headerView() string {
 	} else {
 		desc = r.common.Styles.RepoHeaderDesc.Render(desc)
 	}
-	// TODO move this into a style.
-	urlStyle := lipgloss.NewStyle().
-		MarginLeft(1).
-		Foreground(lipgloss.Color("168")).
-		Width(r.common.Width - lipgloss.Width(desc) - 1).
-		Align(lipgloss.Right)
-	url := git.RepoURL(cfg.Host, cfg.Port, r.selectedRepo.Repo())
-	url = common.TruncateString(url, r.common.Width-lipgloss.Width(desc)-1)
-	url = urlStyle.Render(url)
+	if cfg := r.cfg; cfg != nil {
+		// TODO move this into a style.
+		urlStyle := lipgloss.NewStyle().
+			MarginLeft(1).
+			Foreground(lipgloss.Color("168")).
+			Width(r.common.Width - lipgloss.Width(desc) - 1).
+			Align(lipgloss.Right)
+		url := git.RepoURL(cfg.Host, cfg.Port, r.selectedRepo.Repo())
+		url = common.TruncateString(url, r.common.Width-lipgloss.Width(desc)-1)
+		url = urlStyle.Render(url)
+		desc = lipgloss.JoinHorizontal(lipgloss.Left,
+			desc,
+			url,
+		)
+	}
 	style := r.common.Styles.RepoHeader.Copy().Width(r.common.Width)
 	return style.Render(
 		lipgloss.JoinVertical(lipgloss.Top,
 			truncate.Render(name),
-			truncate.Render(lipgloss.JoinHorizontal(lipgloss.Left,
-				desc,
-				url,
-			)),
+			truncate.Render(desc),
 		),
 	)
 }

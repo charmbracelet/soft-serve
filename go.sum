@@ -121,6 +121,10 @@ github.com/muesli/ansi v0.0.0-20211031195517-c9f0611b6c70 h1:kMlmsLSbjkikxQJ1IPw
 github.com/muesli/ansi v0.0.0-20211031195517-c9f0611b6c70/go.mod h1:fQuZ0gauxyBcmsdE3ZT4NasjaRdxmbCS0jRHsrWu3Ho=
 github.com/muesli/mango v0.1.0 h1:DZQK45d2gGbql1arsYA4vfg4d7I9Hfx5rX/GCmzsAvI=
 github.com/muesli/mango v0.1.0/go.mod h1:5XFpbC8jY5UUv89YQciiXNlbi+iJgt29VDC5xbzrLL4=
+github.com/muesli/mango-cobra v1.1.0 h1:j/mM5omhC2Vw8pim716aMJVElIRln089XZJ2JY7Xjzc=
+github.com/muesli/mango-cobra v1.1.0/go.mod h1:lotV+49eKrAV0tTw/ONhLsiyKwM5uW5QP2OkYw4xlNc=
+github.com/muesli/mango-pflag v0.1.0 h1:UADqbYgpUyRoBja3g6LUL+3LErjpsOwaC9ywvBWe7Sg=
+github.com/muesli/mango-pflag v0.1.0/go.mod h1:YEQomTxaCUp8PrbhFh10UfbhbQrM/xJ4i2PB8VTLLW0=
 github.com/muesli/reflow v0.2.1-0.20210115123740-9e1d0d53df68/go.mod h1:Xk+z4oIWdQqJzsxyjgl3P22oYZnHdZ8FFTHAQQt5BMQ=
 github.com/muesli/reflow v0.3.0 h1:IFsN6K9NfGtjeggFP+68I4chLZV2yIKsXJFNZ+eWh6s=
 github.com/muesli/reflow v0.3.0/go.mod h1:pbwTDkVPibjO2kyvBQRBxTWEEGDGq0FlB1BIKtnHY/8=
