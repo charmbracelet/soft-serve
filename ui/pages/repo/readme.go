@@ -10,6 +10,8 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/git"
 )
 
+type ReadmeMsg struct{}
+
 // Readme is the readme component page.
 type Readme struct {
 	common common.Common
@@ -67,7 +69,10 @@ func (r *Readme) Init() tea.Cmd {
 	}
 	rm, rp := r.repo.Readme()
 	r.code.GotoTop()
-	return r.code.SetContent(rm, rp)
+	return tea.Batch(
+		r.code.SetContent(rm, rp),
+		r.updateReadmeCmd,
+	)
 }
 
 // Update implements tea.Model.
@@ -94,7 +99,7 @@ func (r *Readme) View() string {
 	return r.code.View()
 }
 
-// StausBarValue implements statusbar.StatusBar.
+// StatusBarValue implements statusbar.StatusBar.
 func (r *Readme) StatusBarValue() string {
 	return ""
 }
@@ -102,4 +107,8 @@ func (r *Readme) StatusBarValue() string {
 // StatusBarInfo implements statusbar.StatusBar.
 func (r *Readme) StatusBarInfo() string {
 	return fmt.Sprintf("☰ %.f%%", r.code.ScrollPercent()*100)
+}
+
+func (r *Readme) updateReadmeCmd() tea.Msg {
+	return ReadmeMsg{}
 }

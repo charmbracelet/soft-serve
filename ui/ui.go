@@ -142,7 +142,6 @@ func (ui *UI) Init() tea.Cmd {
 	)
 	ui.pages[repoPage] = repo.New(
 		ui.cfg,
-		ui.rs,
 		ui.common,
 	)
 	ui.SetSize(ui.common.Width, ui.common.Height)

@@ -16,6 +16,13 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/git"
 )
 
+type state int
+
+const (
+	loadingState state = iota
+	loadedState
+)
+
 type tab int
 
 const (
@@ -50,7 +57,6 @@ type RefMsg *ggit.Reference
 type Repo struct {
 	common       common.Common
 	cfg          *config.Config
-	rs           git.GitRepoSource
 	selectedRepo git.GitRepo
 	activeTab    tab
 	tabs         *tabs.Tabs
@@ -60,7 +66,7 @@ type Repo struct {
 }
 
 // New returns a new Repo.
-func New(cfg *config.Config, rs git.GitRepoSource, c common.Common) *Repo {
+func New(cfg *config.Config, c common.Common) *Repo {
 	sb := statusbar.New(c)
 	ts := make([]string, lastTab)
 	// Tabs must match the order of tab constants above.
@@ -84,7 +90,6 @@ func New(cfg *config.Config, rs git.GitRepoSource, c common.Common) *Repo {
 	r := &Repo{
 		cfg:       cfg,
 		common:    c,
-		rs:        rs,
 		tabs:      tb,
 		statusbar: sb,
 		boxes:     boxes,
@@ -186,6 +191,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if r.selectedRepo != nil {
 			cmds = append(cmds, r.updateStatusBarCmd)
 		}
+	case ReadmeMsg:
 	case FileItemsMsg:
 		f, cmd := r.boxes[filesTab].Update(msg)
 		r.boxes[filesTab] = f.(*Files)
