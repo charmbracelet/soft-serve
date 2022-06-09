@@ -273,9 +273,12 @@ func (r *Repo) headerView() string {
 	name := r.common.Styles.RepoHeaderName.Render(r.selectedRepo.Name())
 	desc := r.selectedRepo.Description()
 	if desc == "" {
-		desc = "No description"
+		desc = name
+		name = ""
+	} else {
+		desc = r.common.Styles.RepoHeaderDesc.Render(desc)
 	}
-	desc = r.common.Styles.RepoHeaderDesc.Render(desc)
+	// TODO move this into a style.
 	urlStyle := lipgloss.NewStyle().
 		MarginLeft(1).
 		Foreground(lipgloss.Color("168")).
@@ -283,7 +286,6 @@ func (r *Repo) headerView() string {
 		Align(lipgloss.Right)
 	url := git.RepoURL(cfg.Host, cfg.Port, r.selectedRepo.Repo())
 	url = common.TruncateString(url, r.common.Width-lipgloss.Width(desc)-1)
-	// TODO move this into a style.
 	url = urlStyle.Render(url)
 	style := r.common.Styles.RepoHeader.Copy().Width(r.common.Width)
 	return style.Render(

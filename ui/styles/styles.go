@@ -113,6 +113,7 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("15")).
 		Align(lipgloss.Left).
 		Height(1).
+		PaddingLeft(1).
 		MarginBottom(1).
 		Bold(true)
 
