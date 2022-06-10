@@ -24,15 +24,9 @@ type Styles struct {
 	SelectorBox lipgloss.Style
 	ReadmeBox   lipgloss.Style
 
-	RepoTitleBorder lipgloss.Border
-	RepoNoteBorder  lipgloss.Border
-	RepoBodyBorder  lipgloss.Border
-
 	Repo           lipgloss.Style
 	RepoTitle      lipgloss.Style
-	RepoTitleBox   lipgloss.Style
 	RepoCommand    lipgloss.Style
-	RepoNoteBox    lipgloss.Style
 	RepoBody       lipgloss.Style
 	RepoHeader     lipgloss.Style
 	RepoHeaderName lipgloss.Style
@@ -143,58 +137,13 @@ func DefaultStyles() *Styles {
 
 	s.ReadmeBox = lipgloss.NewStyle()
 
-	s.RepoTitleBorder = lipgloss.Border{
-		Top:         "─",
-		Bottom:      "─",
-		Left:        "│",
-		Right:       "│",
-		TopLeft:     "╭",
-		TopRight:    "┬",
-		BottomLeft:  "├",
-		BottomRight: "┴",
-	}
-
-	s.RepoNoteBorder = lipgloss.Border{
-		Top:         "─",
-		Bottom:      "─",
-		Left:        "│",
-		Right:       "│",
-		TopLeft:     "┬",
-		TopRight:    "╮",
-		BottomLeft:  "┴",
-		BottomRight: "┤",
-	}
-
-	s.RepoBodyBorder = lipgloss.Border{
-		Top:         "",
-		Bottom:      "─",
-		Left:        "│",
-		Right:       "│",
-		TopLeft:     "",
-		TopRight:    "",
-		BottomLeft:  "╰",
-		BottomRight: "╯",
-	}
-
 	s.Repo = lipgloss.NewStyle()
 
 	s.RepoTitle = lipgloss.NewStyle().
 		Padding(0, 2)
 
-	s.RepoTitleBox = lipgloss.NewStyle().
-		BorderStyle(s.RepoTitleBorder).
-		BorderForeground(s.InactiveBorderColor)
-
 	s.RepoCommand = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("168"))
-
-	s.RepoNoteBox = lipgloss.NewStyle().
-		BorderStyle(s.RepoNoteBorder).
-		BorderForeground(s.InactiveBorderColor).
-		BorderTop(true).
-		BorderRight(true).
-		BorderBottom(true).
-		BorderLeft(false)
 
 	s.RepoBody = lipgloss.NewStyle().
 		Margin(1, 0)
