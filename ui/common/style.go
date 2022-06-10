@@ -11,8 +11,6 @@ func StyleConfig() gansi.StyleConfig {
 	s := glamour.DarkStyleConfig
 	// This fixes an issue with the default style config. For example
 	// highlighting empty spaces with red in Dockerfile type.
-	s.Document.StylePrimitive.Color = &noColor
-	s.CodeBlock.Chroma.Text.Color = &noColor
-	s.CodeBlock.Chroma.Name.Color = &noColor
+	s.CodeBlock.Chroma.Error.BackgroundColor = &noColor
 	return s
 }
