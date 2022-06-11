@@ -101,6 +101,7 @@ type Styles struct {
 func DefaultStyles() *Styles {
 	highlightColor := lipgloss.Color("210")
 	highlightColorDim := lipgloss.Color("174")
+	selectorColor := lipgloss.Color("204")
 
 	s := new(Styles)
 
@@ -251,7 +252,7 @@ func DefaultStyles() *Styles {
 	s.RefItemInactive = lipgloss.NewStyle()
 
 	s.RefItemSelector = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#B083EA")).
+		Foreground(selectorColor).
 		SetString("> ")
 
 	s.RefItemActive = s.RefItemActive.Copy().
@@ -274,7 +275,7 @@ func DefaultStyles() *Styles {
 
 	s.TreeItemSelector = s.TreeItemInactive.Copy().
 		Width(1).
-		Foreground(lipgloss.Color("#B083EA"))
+		Foreground(selectorColor)
 
 	s.TreeItemInactive = lipgloss.NewStyle().
 		MarginLeft(1)
