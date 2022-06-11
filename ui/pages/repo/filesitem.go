@@ -110,29 +110,33 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		size = strings.Repeat(" ", sizeLen)
 		name = s.TreeFileDir.Render(name)
 	}
-	var cs lipgloss.Style
+	var nameStyle, sizeStyle, modeStyle lipgloss.Style
 	mode := i.Mode()
 	if index == m.Index() {
-		cs = s.TreeItemActive
+		nameStyle = s.TreeItemActive
+		sizeStyle = s.TreeFileSizeActive
+		modeStyle = s.TreeFileModeActive
 		fmt.Fprint(w, s.TreeItemSelector.Render(">"))
 	} else {
-		cs = s.TreeItemInactive
+		nameStyle = s.TreeItemInactive
+		sizeStyle = s.TreeFileSizeInactive
+		modeStyle = s.TreeFileModeInactive
 		fmt.Fprint(w, s.TreeItemSelector.Render(" "))
 	}
-	sizeStyle := s.TreeFileSize.Copy().
+	sizeStyle = sizeStyle.Copy().
 		Width(8).
 		Align(lipgloss.Right).
 		MarginLeft(1)
 	leftMargin := s.TreeItemSelector.GetMarginLeft() +
 		s.TreeItemSelector.GetWidth() +
-		s.TreeFileMode.GetMarginLeft() +
-		s.TreeFileMode.GetWidth() +
-		cs.GetMarginLeft() +
+		s.TreeFileModeInactive.GetMarginLeft() +
+		s.TreeFileModeInactive.GetWidth() +
+		nameStyle.GetMarginLeft() +
 		sizeStyle.GetHorizontalFrameSize()
 	name = common.TruncateString(name, m.Width()-leftMargin)
-	name = cs.Render(name)
+	name = nameStyle.Render(name)
 	size = sizeStyle.Render(size)
-	modeStr := s.TreeFileMode.Render(mode.String())
+	modeStr := modeStyle.Render(mode.String())
 	truncate := lipgloss.NewStyle().MaxWidth(m.Width() -
 		s.TreeItemSelector.GetHorizontalFrameSize() -
 		s.TreeItemSelector.GetWidth())
