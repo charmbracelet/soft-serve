@@ -69,7 +69,8 @@ type Styles struct {
 	TreeItemSelector     lipgloss.Style
 	TreeItemActive       lipgloss.Style
 	TreeItemInactive     lipgloss.Style
-	TreeFileDir          lipgloss.Style
+	TreeFileDirInactive  lipgloss.Style
+	TreeFileDirActive    lipgloss.Style
 	TreeFileModeInactive lipgloss.Style
 	TreeFileModeActive   lipgloss.Style
 	TreeFileSizeInactive lipgloss.Style
@@ -97,6 +98,9 @@ type Styles struct {
 
 // DefaultStyles returns default styles for the UI.
 func DefaultStyles() *Styles {
+	highlightColor := lipgloss.Color("210")
+	highlightColorDim := lipgloss.Color("174")
+
 	s := new(Styles)
 
 	s.ActiveBorderColor = lipgloss.Color("62")
@@ -270,23 +274,26 @@ func DefaultStyles() *Styles {
 
 	s.TreeItemActive = s.TreeItemInactive.Copy().
 		Bold(true).
-		Foreground(lipgloss.Color("210"))
+		Foreground(highlightColor)
 
-	s.TreeFileDir = lipgloss.NewStyle().
+	s.TreeFileDirInactive = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("39"))
+
+	s.TreeFileDirActive = lipgloss.NewStyle().
+		Foreground(highlightColor)
 
 	s.TreeFileModeInactive = s.TreeItemInactive.Copy().
 		Width(10).
 		Foreground(lipgloss.Color("243"))
 
 	s.TreeFileModeActive = s.TreeFileModeInactive.Copy().
-		Foreground(lipgloss.Color("174"))
+		Foreground(highlightColorDim)
 
 	s.TreeFileSizeInactive = s.TreeItemInactive.Copy().
 		Foreground(lipgloss.Color("243"))
 
 	s.TreeFileSizeActive = s.TreeItemInactive.Copy().
-		Foreground(lipgloss.Color("174"))
+		Foreground(highlightColorDim)
 
 	s.TreeFileContent = lipgloss.NewStyle()
 
