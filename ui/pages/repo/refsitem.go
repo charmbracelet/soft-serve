@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
 )
@@ -90,22 +91,35 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		return
 	}
 
+	var st lipgloss.Style
+	var selector string
+
+	isTag := i.Reference.IsTag()
+	isActive := index == m.Index()
+
+	if isTag && isActive {
+		st = s.RefItemTagActive
+	} else if isTag {
+		st = s.RefItemTagInactive
+	} else if isActive {
+		st = s.RefItemActive
+	} else {
+		st = s.RefItemInactive
+	}
+
+	if isActive {
+		selector = s.RefItemSelector.String()
+	} else {
+		selector = "  "
+	}
+
 	ref := i.Short()
 	ref = s.RefItemBranch.Render(ref)
-	if i.Reference.IsTag() {
-		ref = s.RefItemTag.Render(ref)
-	}
 	refMaxWidth := m.Width() -
 		s.RefItemSelector.GetMarginLeft() -
 		s.RefItemSelector.GetWidth() -
 		s.RefItemInactive.GetMarginLeft()
 	ref = common.TruncateString(ref, refMaxWidth)
-	refStyle := s.RefItemInactive
-	selector := s.RefItemSelector.Render(" ")
-	if index == m.Index() {
-		selector = s.RefItemSelector.Render(">")
-		refStyle = s.RefItemActive
-	}
-	ref = refStyle.Render(ref)
+	ref = st.Render(ref)
 	fmt.Fprint(w, selector, ref)
 }
