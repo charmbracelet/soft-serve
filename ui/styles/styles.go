@@ -59,12 +59,13 @@ type Styles struct {
 	LogCommitStatsDel lipgloss.Style
 	LogPaginator      lipgloss.Style
 
-	RefItemSelector lipgloss.Style
-	RefItemActive   lipgloss.Style
-	RefItemInactive lipgloss.Style
-	RefItemBranch   lipgloss.Style
-	RefItemTag      lipgloss.Style
-	RefPaginator    lipgloss.Style
+	RefItemSelector    lipgloss.Style
+	RefItemActive      lipgloss.Style
+	RefItemInactive    lipgloss.Style
+	RefItemBranch      lipgloss.Style
+	RefItemTagInactive lipgloss.Style
+	RefItemTagActive   lipgloss.Style
+	RefPaginator       lipgloss.Style
 
 	TreeItemSelector     lipgloss.Style
 	TreeItemActive       lipgloss.Style
@@ -247,21 +248,27 @@ func DefaultStyles() *Styles {
 		Margin(0).
 		Align(lipgloss.Center)
 
-	s.RefItemInactive = lipgloss.NewStyle().
-		MarginLeft(1)
+	s.RefItemInactive = lipgloss.NewStyle()
 
 	s.RefItemSelector = lipgloss.NewStyle().
-		Width(1).
-		Foreground(lipgloss.Color("#B083EA"))
+		Foreground(lipgloss.Color("#B083EA")).
+		SetString("> ")
 
-	s.RefItemActive = lipgloss.NewStyle().
-		MarginLeft(1).
-		Bold(true)
+	s.RefItemActive = s.RefItemActive.Copy().
+		Foreground(highlightColorDim)
 
 	s.RefItemBranch = lipgloss.NewStyle()
 
-	s.RefItemTag = lipgloss.NewStyle().
+	s.RefItemTagInactive = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#A3A322"))
+
+	s.RefItemTagActive = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(highlightColor)
+
+	s.RefItemActive = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(highlightColor)
 
 	s.RefPaginator = s.LogPaginator.Copy()
 
