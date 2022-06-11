@@ -66,15 +66,17 @@ type Styles struct {
 	RefItemTag      lipgloss.Style
 	RefPaginator    lipgloss.Style
 
-	TreeItemSelector lipgloss.Style
-	TreeItemActive   lipgloss.Style
-	TreeItemInactive lipgloss.Style
-	TreeFileDir      lipgloss.Style
-	TreeFileMode     lipgloss.Style
-	TreeFileSize     lipgloss.Style
-	TreeFileContent  lipgloss.Style
-	TreePaginator    lipgloss.Style
-	TreeNoItems      lipgloss.Style
+	TreeItemSelector     lipgloss.Style
+	TreeItemActive       lipgloss.Style
+	TreeItemInactive     lipgloss.Style
+	TreeFileDir          lipgloss.Style
+	TreeFileModeInactive lipgloss.Style
+	TreeFileModeActive   lipgloss.Style
+	TreeFileSizeInactive lipgloss.Style
+	TreeFileSizeActive   lipgloss.Style
+	TreeFileContent      lipgloss.Style
+	TreePaginator        lipgloss.Style
+	TreeNoItems          lipgloss.Style
 
 	Spinner lipgloss.Style
 
@@ -267,17 +269,24 @@ func DefaultStyles() *Styles {
 		MarginLeft(1)
 
 	s.TreeItemActive = s.TreeItemInactive.Copy().
-		Bold(true)
+		Bold(true).
+		Foreground(lipgloss.Color("210"))
 
 	s.TreeFileDir = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("39"))
 
-	s.TreeFileMode = s.TreeItemInactive.Copy().
+	s.TreeFileModeInactive = s.TreeItemInactive.Copy().
 		Width(10).
 		Foreground(lipgloss.Color("243"))
 
-	s.TreeFileSize = s.TreeItemInactive.Copy().
+	s.TreeFileModeActive = s.TreeFileModeInactive.Copy().
+		Foreground(lipgloss.Color("174"))
+
+	s.TreeFileSizeInactive = s.TreeItemInactive.Copy().
 		Foreground(lipgloss.Color("243"))
+
+	s.TreeFileSizeActive = s.TreeItemInactive.Copy().
+		Foreground(lipgloss.Color("174"))
 
 	s.TreeFileContent = lipgloss.NewStyle()
 
@@ -330,7 +339,7 @@ func DefaultStyles() *Styles {
 	s.TabInactive = lipgloss.NewStyle()
 
 	s.TabActive = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6E6ED8")).
+		Foreground(lipgloss.Color("63")).
 		Underline(true)
 
 	s.TabSeparator = lipgloss.NewStyle().
