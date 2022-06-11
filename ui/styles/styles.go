@@ -270,14 +270,14 @@ func DefaultStyles() *Styles {
 		Bold(true)
 
 	s.TreeFileDir = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#00AAFF"))
+		Foreground(lipgloss.Color("39"))
 
 	s.TreeFileMode = s.TreeItemInactive.Copy().
 		Width(10).
-		Foreground(lipgloss.Color("#777777"))
+		Foreground(lipgloss.Color("243"))
 
 	s.TreeFileSize = s.TreeItemInactive.Copy().
-		Foreground(lipgloss.Color("252"))
+		Foreground(lipgloss.Color("243"))
 
 	s.TreeFileContent = lipgloss.NewStyle()
 
