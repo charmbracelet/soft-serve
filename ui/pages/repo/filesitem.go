@@ -108,7 +108,11 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	sizeLen := lipgloss.Width(size)
 	if i.entry.IsTree() {
 		size = strings.Repeat(" ", sizeLen)
-		name = s.TreeFileDir.Render(name)
+		if index == m.Index() {
+			name = s.TreeFileDirActive.Render(name)
+		} else {
+			name = s.TreeFileDirInactive.Render(name)
+		}
 	}
 	var nameStyle, sizeStyle, modeStyle lipgloss.Style
 	mode := i.Mode()
