@@ -313,7 +313,7 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 		Key:    r.selectedRepo.Repo(),
 		Value:  value,
 		Info:   info,
-		Branch: fmt.Sprintf(" %s", ref),
+		Branch: fmt.Sprintf("* %s", ref),
 	}
 }
 
