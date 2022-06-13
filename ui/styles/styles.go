@@ -110,7 +110,6 @@ func DefaultStyles() *Styles {
 		Margin(1, 2)
 
 	s.Header = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("15")).
 		Align(lipgloss.Left).
 		Height(1).
 		PaddingLeft(1).
@@ -205,12 +204,10 @@ func DefaultStyles() *Styles {
 		BorderForeground(lipgloss.Color("238"))
 
 	s.RepoHeaderName = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("15")).
 		Bold(true)
 
 	s.RepoHeaderDesc = lipgloss.NewStyle().
-		Faint(true).
-		Foreground(lipgloss.Color("15"))
+		Faint(true)
 
 	s.Footer = lipgloss.NewStyle().
 		MarginTop(1).
@@ -381,8 +378,7 @@ func DefaultStyles() *Styles {
 
 	s.Tabs = lipgloss.NewStyle()
 
-	s.TabInactive = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("15"))
+	s.TabInactive = lipgloss.NewStyle()
 
 	s.TabActive = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#6E6ED8")).
