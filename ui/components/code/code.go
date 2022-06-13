@@ -213,7 +213,7 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 		rc := r.renderContext
 		if r.showLineNumber {
 			st := common.StyleConfig()
-			m := uint(0)
+			var m uint
 			st.CodeBlock.Margin = &m
 			rc = gansi.NewRenderContext(gansi.Options{
 				ColorProfile: termenv.TrueColor,
