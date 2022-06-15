@@ -19,9 +19,8 @@ func softMiddleware(ac *appCfg.Config) wish.Middleware {
 				if active {
 					return
 				}
-				ctx := s.Context()
-				ctx = context.WithValue(ctx, "config", ac) //nolint:revive
-				ctx = context.WithValue(ctx, "session", s) //nolint:revive
+				ctx := context.WithValue(s.Context(), "config", ac) //nolint:revive
+				ctx = context.WithValue(ctx, "session", s)          //nolint:revive
 
 				use := "ssh"
 				port := ac.Port

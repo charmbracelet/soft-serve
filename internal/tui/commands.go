@@ -65,6 +65,9 @@ func (b *Bubble) menuEntriesFromSource() ([]MenuEntry, error) {
 		if acc == gm.NoAccess && cr.Repo != "config" {
 			continue
 		}
+		if cr.Private && acc < gm.ReadOnlyAccess {
+			continue
+		}
 		me, err := b.newMenuEntry(cr.Name, cr.Repo)
 		if err != nil {
 			return nil, err
