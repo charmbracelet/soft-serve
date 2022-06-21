@@ -24,12 +24,12 @@ require (
 require (
 	github.com/charmbracelet/keygen v0.3.0
 	github.com/gobwas/glob v0.2.3
-	github.com/gogs/git-module v1.6.0
+	github.com/gogs/git-module v1.6.1
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/muesli/mango v0.1.0
 	github.com/muesli/roff v0.1.0
 	github.com/spf13/cobra v1.4.0
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
