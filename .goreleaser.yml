@@ -1,12 +1,12 @@
 includes:
   - from_url:
-      url: charmbracelet/meta/main/goreleaser.yaml
+      url: charmbracelet/meta/main/goreleaser-full.yaml
 
 variables:
   main: "./cmd/soft"
   binary_name: soft
   description: "A tasty, self-hostable Git server for the command line🍦"
   github_url: "https://github.com/charmbracelet/soft-serve"
-  maintainer: "Christian Rocha <christian@charm.sh>"
-  brew_commit_author_name: "Christian Rocha"
-  brew_commit_author_email: "christian@charm.sh"
+  maintainer: "Ayman Bagabas <ayman@charm.sh>"
+  brew_commit_author_name: "Ayman Bagabas"
+  brew_commit_author_email: "ayman@charm.sh"
