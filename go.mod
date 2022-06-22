@@ -5,10 +5,10 @@ go 1.17
 require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/caarlos0/env/v6 v6.9.1
-	github.com/charmbracelet/bubbles v0.10.4-0.20220302223835-88562515cf7b
-	github.com/charmbracelet/bubbletea v0.20.0
+	github.com/charmbracelet/bubbles v0.11.0
+	github.com/charmbracelet/bubbletea v0.22.0
 	github.com/charmbracelet/glamour v0.4.0
-	github.com/charmbracelet/lipgloss v0.4.0
+	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/charmbracelet/wish v0.5.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gliderlabs/ssh v0.3.4
@@ -16,7 +16,7 @@ require (
 	github.com/go-git/go-git/v5 v5.4.3-0.20210630082519-b4368b2a2ca4
 	github.com/matryer/is v1.4.0
 	github.com/muesli/reflow v0.3.0
-	github.com/muesli/termenv v0.11.1-0.20220212125758-44cd13922739
+	github.com/muesli/termenv v0.12.0
 	github.com/sergi/go-diff v1.1.0
 	golang.org/x/crypto v0.0.0-20220307211146-efcb8507fb70
 )
@@ -56,6 +56,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.17 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/muesli/ansi v0.0.0-20211031195517-c9f0611b6c70 // indirect
+	github.com/muesli/cancelreader v0.2.1 // indirect
 	github.com/muesli/mango v0.1.0 // indirect
 	github.com/muesli/mango-pflag v0.1.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
@@ -66,7 +67,7 @@ require (
 	github.com/yuin/goldmark v1.4.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
-	golang.org/x/sys v0.0.0-20220111092808-5a964db01320 // indirect
+	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

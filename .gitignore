@@ -3,3 +3,5 @@ cmd/soft/soft
 .repos
 dist
 testdata
+completions/
+manpages/
