@@ -19,4 +19,4 @@ ENV SOFT_SERVE_REPO_PATH "/soft-serve/repos"
 EXPOSE 23231/tcp
 
 # Set the default command
-ENTRYPOINT [ "/usr/local/bin/soft" ]
+ENTRYPOINT [ "/usr/local/bin/soft", "serve" ]
