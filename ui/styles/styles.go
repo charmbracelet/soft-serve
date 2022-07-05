@@ -44,25 +44,27 @@ type Styles struct {
 
 	AboutNoReadme lipgloss.Style
 
-	LogItem                lipgloss.Style
-	LogItemSelector        lipgloss.Style
-	LogItemActive          lipgloss.Style
-	LogItemInactive        lipgloss.Style
-	LogItemHash            lipgloss.Style
-	LogItemTitleInactive   lipgloss.Style
-	LogItemTitleActive     lipgloss.Style
-	LogItemDescInactive    lipgloss.Style
-	LogItemDescActive      lipgloss.Style
-	LogItemKeywordActive   lipgloss.Style
-	LogItemKeywordInactive lipgloss.Style
-	LogCommit              lipgloss.Style
-	LogCommitHash          lipgloss.Style
-	LogCommitAuthor        lipgloss.Style
-	LogCommitDate          lipgloss.Style
-	LogCommitBody          lipgloss.Style
-	LogCommitStatsAdd      lipgloss.Style
-	LogCommitStatsDel      lipgloss.Style
-	LogPaginator           lipgloss.Style
+	Log struct {
+		Item                lipgloss.Style
+		ItemSelector        lipgloss.Style
+		ItemActive          lipgloss.Style
+		ItemInactive        lipgloss.Style
+		ItemHash            lipgloss.Style
+		ItemTitleInactive   lipgloss.Style
+		ItemTitleActive     lipgloss.Style
+		ItemDescInactive    lipgloss.Style
+		ItemDescActive      lipgloss.Style
+		ItemKeywordActive   lipgloss.Style
+		ItemKeywordInactive lipgloss.Style
+		Commit              lipgloss.Style
+		CommitHash          lipgloss.Style
+		CommitAuthor        lipgloss.Style
+		CommitDate          lipgloss.Style
+		CommitBody          lipgloss.Style
+		CommitStatsAdd      lipgloss.Style
+		CommitStatsDel      lipgloss.Style
+		Paginator           lipgloss.Style
+	}
 
 	RefItemSelector    lipgloss.Style
 	RefItemActive      lipgloss.Style
@@ -209,60 +211,61 @@ func DefaultStyles() *Styles {
 		MarginLeft(2).
 		Foreground(lipgloss.Color("#626262"))
 
-	s.LogItemInactive = lipgloss.NewStyle().
+	s.Log.ItemInactive = lipgloss.NewStyle().
 		Border(lipgloss.Border{
 			Left: " ",
 		}, false, false, false, true).
 		PaddingLeft(1)
 
-	s.LogItemActive = s.LogItemInactive.Copy().
+	s.Log.ItemActive = s.Log.ItemInactive.Copy().
 		Border(lipgloss.Border{
 			Left: "┃",
 		}, false, false, false, true).
 		BorderForeground(selectorColor)
 
-	s.LogItemSelector = s.LogItemInactive.Copy().
+	s.Log.ItemSelector = s.Log.ItemInactive.Copy().
 		Width(1).
 		Foreground(lipgloss.Color("#B083EA"))
 
-	s.LogItemHash = s.LogItemInactive.Copy().
+	s.Log.ItemHash = s.Log.ItemInactive.Copy().
 		Foreground(lipgloss.Color("#A3A322"))
 
-	s.LogItemTitleInactive = lipgloss.NewStyle().
+	s.Log.ItemTitleInactive = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#B083EA"))
 
-	s.LogItemTitleActive = lipgloss.NewStyle().
+	s.Log.ItemTitleActive = lipgloss.NewStyle().
 		Foreground(highlightColor).
 		Bold(true)
 
-	s.LogItemDescInactive = lipgloss.NewStyle()
+	s.Log.ItemDescInactive = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("246"))
 
-	s.LogItemDescActive = lipgloss.NewStyle().
+	s.Log.ItemDescActive = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("95"))
 
-	s.LogItemKeywordActive = s.LogItemDescActive.Copy().
+	s.Log.ItemKeywordActive = s.Log.ItemDescActive.Copy().
 		Foreground(highlightColorDim)
 
-	s.LogCommit = lipgloss.NewStyle().
+	s.Log.Commit = lipgloss.NewStyle().
 		Margin(0, 2)
 
-	s.LogCommitHash = lipgloss.NewStyle().
+	s.Log.CommitHash = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#A3A322")).
 		Bold(true)
 
-	s.LogCommitBody = lipgloss.NewStyle().
+	s.Log.CommitBody = lipgloss.NewStyle().
 		MarginTop(1).
 		MarginLeft(2)
 
-	s.LogCommitStatsAdd = lipgloss.NewStyle().
+	s.Log.CommitStatsAdd = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#00D787")).
 		Bold(true)
 
-	s.LogCommitStatsDel = lipgloss.NewStyle().
+	s.Log.CommitStatsDel = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#FD5B5B")).
 		Bold(true)
 
-	s.LogPaginator = lipgloss.NewStyle().
+	s.Log.Paginator = lipgloss.NewStyle().
 		Margin(0).
 		Align(lipgloss.Center)
 
@@ -288,7 +291,7 @@ func DefaultStyles() *Styles {
 		Bold(true).
 		Foreground(highlightColor)
 
-	s.RefPaginator = s.LogPaginator.Copy()
+	s.RefPaginator = s.Log.Paginator.Copy()
 
 	s.TreeItemSelector = s.TreeItemInactive.Copy().
 		Width(1).
@@ -322,7 +325,7 @@ func DefaultStyles() *Styles {
 
 	s.TreeFileContent = lipgloss.NewStyle()
 
-	s.TreePaginator = s.LogPaginator.Copy()
+	s.TreePaginator = s.Log.Paginator.Copy()
 
 	s.TreeNoItems = s.AboutNoReadme.Copy()
 
