@@ -19,9 +19,7 @@ import (
 	"github.com/muesli/termenv"
 )
 
-var (
-	waitBeforeLoading = time.Millisecond * 100
-)
+var waitBeforeLoading = time.Millisecond * 100
 
 type logView int
 
@@ -437,10 +435,10 @@ func (l *Log) renderCommit(c *ggit.Commit) string {
 	// sanitize commit message from CRLF
 	msg := strings.ReplaceAll(c.Message, "\r\n", "\n")
 	s.WriteString(fmt.Sprintf("%s\n%s\n%s\n%s\n",
-		l.common.Styles.LogCommitHash.Render("commit "+c.ID.String()),
-		l.common.Styles.LogCommitAuthor.Render(fmt.Sprintf("Author: %s <%s>", c.Author.Name, c.Author.Email)),
-		l.common.Styles.LogCommitDate.Render("Date:   "+c.Committer.When.Format(time.UnixDate)),
-		l.common.Styles.LogCommitBody.Render(msg),
+		l.common.Styles.Log.CommitHash.Render("commit "+c.ID.String()),
+		l.common.Styles.Log.CommitAuthor.Render(fmt.Sprintf("Author: %s <%s>", c.Author.Name, c.Author.Email)),
+		l.common.Styles.Log.CommitDate.Render("Date:   "+c.Committer.When.Format(time.UnixDate)),
+		l.common.Styles.Log.CommitBody.Render(msg),
 	))
 	return wrap.String(s.String(), l.common.Width-2)
 }
@@ -451,8 +449,8 @@ func (l *Log) renderSummary(diff *ggit.Diff) string {
 		ch := strings.Split(line, "|")
 		if len(ch) > 1 {
 			adddel := ch[len(ch)-1]
-			adddel = strings.ReplaceAll(adddel, "+", l.common.Styles.LogCommitStatsAdd.Render("+"))
-			adddel = strings.ReplaceAll(adddel, "-", l.common.Styles.LogCommitStatsDel.Render("-"))
+			adddel = strings.ReplaceAll(adddel, "+", l.common.Styles.Log.CommitStatsAdd.Render("+"))
+			adddel = strings.ReplaceAll(adddel, "-", l.common.Styles.Log.CommitStatsDel.Render("-"))
 			stats[i] = strings.Join(ch[:len(ch)-1], "|") + "|" + adddel
 		}
 	}

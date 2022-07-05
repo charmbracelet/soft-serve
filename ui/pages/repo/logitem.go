@@ -76,7 +76,7 @@ func (d LogItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 
 // Render renders the item. Implements list.ItemDelegate.
 func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	styles := d.common.Styles
+	styles := d.common.Styles.Log
 	i, ok := listItem.(LogItem)
 	if !ok {
 		return
@@ -88,17 +88,17 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	var titleStyler,
 		descStyler,
 		keywordStyler func(string) string
-	style := styles.LogItemInactive
+	style := styles.ItemInactive
 
 	if index == m.Index() {
-		titleStyler = styles.LogItemTitleActive.Render
-		descStyler = styles.LogItemDescActive.Render
-		keywordStyler = styles.LogItemKeywordActive.Render
-		style = styles.LogItemActive
+		titleStyler = styles.ItemTitleActive.Render
+		descStyler = styles.ItemDescActive.Render
+		keywordStyler = styles.ItemKeywordActive.Render
+		style = styles.ItemActive
 	} else {
-		titleStyler = styles.LogItemTitleInactive.Render
-		descStyler = styles.LogItemDescInactive.Render
-		keywordStyler = styles.LogItemKeywordInactive.Render
+		titleStyler = styles.ItemTitleInactive.Render
+		descStyler = styles.ItemDescInactive.Render
+		keywordStyler = styles.ItemKeywordInactive.Render
 	}
 
 	hash := i.Commit.ID.String()[:7]
@@ -113,7 +113,7 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 				// title truncation symbol (1)
 				9),
 	)
-	hashStyle := styles.LogItemHash.Copy().
+	hashStyle := styles.ItemHash.Copy().
 		Align(lipgloss.Right).
 		PaddingLeft(1).
 		Width(m.Width() -
