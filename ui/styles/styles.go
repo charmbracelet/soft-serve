@@ -44,20 +44,25 @@ type Styles struct {
 
 	AboutNoReadme lipgloss.Style
 
-	LogItem           lipgloss.Style
-	LogItemSelector   lipgloss.Style
-	LogItemActive     lipgloss.Style
-	LogItemInactive   lipgloss.Style
-	LogItemHash       lipgloss.Style
-	LogItemTitle      lipgloss.Style
-	LogCommit         lipgloss.Style
-	LogCommitHash     lipgloss.Style
-	LogCommitAuthor   lipgloss.Style
-	LogCommitDate     lipgloss.Style
-	LogCommitBody     lipgloss.Style
-	LogCommitStatsAdd lipgloss.Style
-	LogCommitStatsDel lipgloss.Style
-	LogPaginator      lipgloss.Style
+	LogItem                lipgloss.Style
+	LogItemSelector        lipgloss.Style
+	LogItemActive          lipgloss.Style
+	LogItemInactive        lipgloss.Style
+	LogItemHash            lipgloss.Style
+	LogItemTitleInactive   lipgloss.Style
+	LogItemTitleActive     lipgloss.Style
+	LogItemDescInactive    lipgloss.Style
+	LogItemDescActive      lipgloss.Style
+	LogItemKeywordActive   lipgloss.Style
+	LogItemKeywordInactive lipgloss.Style
+	LogCommit              lipgloss.Style
+	LogCommitHash          lipgloss.Style
+	LogCommitAuthor        lipgloss.Style
+	LogCommitDate          lipgloss.Style
+	LogCommitBody          lipgloss.Style
+	LogCommitStatsAdd      lipgloss.Style
+	LogCommitStatsDel      lipgloss.Style
+	LogPaginator           lipgloss.Style
 
 	RefItemSelector    lipgloss.Style
 	RefItemActive      lipgloss.Style
@@ -101,7 +106,7 @@ type Styles struct {
 func DefaultStyles() *Styles {
 	highlightColor := lipgloss.Color("210")
 	highlightColorDim := lipgloss.Color("174")
-	selectorColor := lipgloss.Color("204")
+	selectorColor := lipgloss.Color("167")
 
 	s := new(Styles)
 
@@ -214,7 +219,7 @@ func DefaultStyles() *Styles {
 		Border(lipgloss.Border{
 			Left: "┃",
 		}, false, false, false, true).
-		BorderForeground(lipgloss.Color("#B083EA"))
+		BorderForeground(selectorColor)
 
 	s.LogItemSelector = s.LogItemInactive.Copy().
 		Width(1).
@@ -223,8 +228,20 @@ func DefaultStyles() *Styles {
 	s.LogItemHash = s.LogItemInactive.Copy().
 		Foreground(lipgloss.Color("#A3A322"))
 
-	s.LogItemTitle = lipgloss.NewStyle().
+	s.LogItemTitleInactive = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#B083EA"))
+
+	s.LogItemTitleActive = lipgloss.NewStyle().
+		Foreground(highlightColor).
+		Bold(true)
+
+	s.LogItemDescInactive = lipgloss.NewStyle()
+
+	s.LogItemDescActive = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("95"))
+
+	s.LogItemKeywordActive = s.LogItemDescActive.Copy().
+		Foreground(highlightColorDim)
 
 	s.LogCommit = lipgloss.NewStyle().
 		Margin(0, 2)

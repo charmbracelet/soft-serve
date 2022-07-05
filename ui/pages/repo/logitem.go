@@ -74,10 +74,6 @@ func (d LogItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
 }
 
-var (
-	faint = func(s string) string { return lipgloss.NewStyle().Faint(true).Render(s) }
-)
-
 // Render renders the item. Implements list.ItemDelegate.
 func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	styles := d.common.Styles
@@ -89,17 +85,27 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		return
 	}
 
-	titleStyle := styles.LogItemTitle.Copy()
+	var titleStyler,
+		descStyler,
+		keywordStyler func(string) string
 	style := styles.LogItemInactive
+
 	if index == m.Index() {
-		titleStyle.Bold(true)
+		titleStyler = styles.LogItemTitleActive.Render
+		descStyler = styles.LogItemDescActive.Render
+		keywordStyler = styles.LogItemKeywordActive.Render
 		style = styles.LogItemActive
+	} else {
+		titleStyler = styles.LogItemTitleInactive.Render
+		descStyler = styles.LogItemDescInactive.Render
+		keywordStyler = styles.LogItemKeywordInactive.Render
 	}
+
 	hash := i.Commit.ID.String()[:7]
 	if !i.copied.IsZero() && i.copied.Add(time.Second).After(time.Now()) {
 		hash = "copied"
 	}
-	title := titleStyle.Render(
+	title := titleStyler(
 		common.TruncateString(i.Title(),
 			m.Width()-
 				style.GetHorizontalFrameSize()-
@@ -119,27 +125,26 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	hash = hashStyle.Render(hash)
 	if m.Width()-style.GetHorizontalFrameSize()-hashStyle.GetHorizontalFrameSize()-hashStyle.GetWidth() <= 0 {
 		hash = ""
-		title = titleStyle.Render(
+		title = titleStyler(
 			common.TruncateString(i.Title(),
 				m.Width()-style.GetHorizontalFrameSize()),
 		)
 	}
 	author := i.Author.Name
-	commiter := i.Committer.Name
+	committer := i.Committer.Name
 	who := ""
-	if author != "" && commiter != "" {
-		who = commiter + faint(" committed")
-		if author != commiter {
-			who = author + faint(" authored and ") + who
+	if author != "" && committer != "" {
+		who = keywordStyler(committer) + descStyler(" committed")
+		if author != committer {
+			who = keywordStyler(author) + descStyler(" authored and ") + who
 		}
 		who += " "
 	}
-	date := fmt.Sprintf("on %s", i.Committer.When.Format("Feb 02"))
-	date = faint(date)
+	date := i.Committer.When.Format("Feb 02")
 	if i.Committer.When.Year() != time.Now().Year() {
 		date += fmt.Sprintf(" %d", i.Committer.When.Year())
 	}
-	who += date
+	who += descStyler("on ") + keywordStyler(date)
 	who = common.TruncateString(who, m.Width()-style.GetHorizontalFrameSize())
 	fmt.Fprint(w,
 		style.Render(
