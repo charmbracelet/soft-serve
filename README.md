@@ -130,7 +130,7 @@ users:
       - ssh-ed25519 AAAA...   # redacted
 ```
 
-When `soft` is run for the first time, it creates a configuration repo
+When `soft serve` is run for the first time, it creates a configuration repo
 containing the main README displayed in the TUI as well as a config file for
 user access control.
 
