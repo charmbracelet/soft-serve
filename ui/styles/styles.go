@@ -75,13 +75,17 @@ type Styles struct {
 	}
 
 	Ref struct {
-		ItemSelector    lipgloss.Style
-		ItemActive      lipgloss.Style
-		ItemInactive    lipgloss.Style
-		ItemBranch      lipgloss.Style
-		ItemTagInactive lipgloss.Style
-		ItemTagActive   lipgloss.Style
-		Paginator       lipgloss.Style
+		Normal struct {
+			Item    lipgloss.Style
+			ItemTag lipgloss.Style
+		}
+		Active struct {
+			Item    lipgloss.Style
+			ItemTag lipgloss.Style
+		}
+		ItemSelector lipgloss.Style
+		ItemBranch   lipgloss.Style
+		Paginator    lipgloss.Style
 	}
 
 	Tree struct {
@@ -292,25 +296,25 @@ func DefaultStyles() *Styles {
 		Margin(0).
 		Align(lipgloss.Center)
 
-	s.Ref.ItemInactive = lipgloss.NewStyle()
+	s.Ref.Normal.Item = lipgloss.NewStyle()
 
 	s.Ref.ItemSelector = lipgloss.NewStyle().
 		Foreground(selectorColor).
 		SetString("> ")
 
-	s.Ref.ItemActive = s.Ref.ItemActive.Copy().
+	s.Ref.Active.Item = lipgloss.NewStyle().
 		Foreground(highlightColorDim)
 
 	s.Ref.ItemBranch = lipgloss.NewStyle()
 
-	s.Ref.ItemTagInactive = lipgloss.NewStyle().
+	s.Ref.Normal.ItemTag = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("185"))
 
-	s.Ref.ItemTagActive = lipgloss.NewStyle().
+	s.Ref.Active.ItemTag = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(highlightColor)
 
-	s.Ref.ItemActive = lipgloss.NewStyle().
+	s.Ref.Active.Item = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(highlightColor)
 
