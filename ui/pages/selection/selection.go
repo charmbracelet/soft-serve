@@ -88,12 +88,8 @@ func (s *Selection) getMargins() (wm, hm int) {
 		2 // tabs margin see View()
 	switch s.activeBox {
 	case selectorBox:
-		hm += s.common.Styles.SelectorBox.GetVerticalFrameSize() +
-			s.common.Styles.SelectorBox.GetHeight()
 	case readmeBox:
-		hm += s.common.Styles.ReadmeBox.GetVerticalFrameSize() +
-			s.common.Styles.ReadmeBox.GetHeight() +
-			1 // readme statusbar
+		hm += 1 // readme statusbar
 	}
 	return
 }
@@ -294,12 +290,12 @@ func (s *Selection) View() string {
 	hm++ // tabs margin
 	switch s.activeBox {
 	case selectorBox:
-		ss := s.common.Styles.SelectorBox.Copy().
+		ss := lipgloss.NewStyle().
 			Width(s.common.Width - wm).
 			Height(s.common.Height - hm)
 		view = ss.Render(s.selector.View())
 	case readmeBox:
-		rs := s.common.Styles.ReadmeBox.Copy().
+		rs := lipgloss.NewStyle().
 			Height(s.common.Height - hm)
 		status := fmt.Sprintf("☰ %.f%%", s.readme.ScrollPercent()*100)
 		readmeStatus := lipgloss.NewStyle().
