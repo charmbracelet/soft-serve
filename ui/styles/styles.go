@@ -215,7 +215,7 @@ func DefaultStyles() *Styles {
 	s.AboutNoReadme = lipgloss.NewStyle().
 		MarginTop(1).
 		MarginLeft(2).
-		Foreground(lipgloss.Color("#626262"))
+		Foreground(lipgloss.Color("242"))
 
 	s.Log.ItemInactive = lipgloss.NewStyle().
 		Border(lipgloss.Border{
@@ -231,13 +231,13 @@ func DefaultStyles() *Styles {
 
 	s.Log.ItemSelector = s.Log.ItemInactive.Copy().
 		Width(1).
-		Foreground(lipgloss.Color("#B083EA"))
+		Foreground(lipgloss.Color("62"))
 
 	s.Log.ItemHash = s.Log.ItemInactive.Copy().
-		Foreground(lipgloss.Color("#A3A322"))
+		Foreground(lipgloss.Color("184"))
 
 	s.Log.ItemTitleInactive = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#B083EA"))
+		Foreground(lipgloss.Color("105"))
 
 	s.Log.ItemTitleActive = lipgloss.NewStyle().
 		Foreground(highlightColor).
@@ -256,7 +256,7 @@ func DefaultStyles() *Styles {
 		Margin(0, 2)
 
 	s.Log.CommitHash = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#A3A322")).
+		Foreground(lipgloss.Color("184")).
 		Bold(true)
 
 	s.Log.CommitBody = lipgloss.NewStyle().
@@ -264,11 +264,11 @@ func DefaultStyles() *Styles {
 		MarginLeft(2)
 
 	s.Log.CommitStatsAdd = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#00D787")).
+		Foreground(lipgloss.Color("42")).
 		Bold(true)
 
 	s.Log.CommitStatsDel = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FD5B5B")).
+		Foreground(lipgloss.Color("203")).
 		Bold(true)
 
 	s.Log.Paginator = lipgloss.NewStyle().
@@ -287,7 +287,7 @@ func DefaultStyles() *Styles {
 	s.Ref.ItemBranch = lipgloss.NewStyle()
 
 	s.Ref.ItemTagInactive = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#A3A322"))
+		Foreground(lipgloss.Color("185"))
 
 	s.Ref.ItemTagActive = lipgloss.NewStyle().
 		Bold(true).
@@ -344,7 +344,7 @@ func DefaultStyles() *Styles {
 		SetString("No Content.").
 		MarginTop(1).
 		MarginLeft(2).
-		Foreground(lipgloss.Color("#626262"))
+		Foreground(lipgloss.Color("242"))
 
 	s.StatusBar = lipgloss.NewStyle().
 		Height(1)
@@ -352,8 +352,8 @@ func DefaultStyles() *Styles {
 	s.StatusBarKey = lipgloss.NewStyle().
 		Bold(true).
 		Padding(0, 1).
-		Background(lipgloss.Color("#FF5FD2")).
-		Foreground(lipgloss.Color("#FFFF87"))
+		Background(lipgloss.Color("206")).
+		Foreground(lipgloss.Color("228"))
 
 	s.StatusBarValue = lipgloss.NewStyle().
 		Padding(0, 1).
@@ -362,13 +362,13 @@ func DefaultStyles() *Styles {
 
 	s.StatusBarInfo = lipgloss.NewStyle().
 		Padding(0, 1).
-		Background(lipgloss.Color("#FF8EC7")).
-		Foreground(lipgloss.Color("#F1F1F1"))
+		Background(lipgloss.Color("212")).
+		Foreground(lipgloss.Color("230"))
 
 	s.StatusBarBranch = lipgloss.NewStyle().
 		Padding(0, 1).
-		Background(lipgloss.Color("#6E6ED8")).
-		Foreground(lipgloss.Color("#F1F1F1"))
+		Background(lipgloss.Color("62")).
+		Foreground(lipgloss.Color("230"))
 
 	s.StatusBarHelp = lipgloss.NewStyle().
 		Padding(0, 1).
