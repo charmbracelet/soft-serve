@@ -96,11 +96,12 @@ func (d FileItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 
 // Render implements list.ItemDelegate.
 func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	s := d.common.Styles.Tree
 	i, ok := listItem.(FileItem)
 	if !ok {
 		return
 	}
+
+	s := d.common.Styles.Tree
 
 	name := i.Title()
 	size := humanize.Bytes(uint64(i.entry.Size()))
@@ -109,32 +110,32 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	if i.entry.IsTree() {
 		size = strings.Repeat(" ", sizeLen)
 		if index == m.Index() {
-			name = s.FileDirActive.Render(name)
+			name = s.Active.FileDir.Render(name)
 		} else {
-			name = s.FileDirInactive.Render(name)
+			name = s.Normal.FileDir.Render(name)
 		}
 	}
 	var nameStyle, sizeStyle, modeStyle lipgloss.Style
 	mode := i.Mode()
 	if index == m.Index() {
-		nameStyle = s.ItemActive
-		sizeStyle = s.FileSizeActive
-		modeStyle = s.FileModeActive
-		fmt.Fprint(w, s.ItemSelector.Render(">"))
+		nameStyle = s.Active.FileName
+		sizeStyle = s.Active.FileSize
+		modeStyle = s.Active.FileMode
+		fmt.Fprint(w, s.Selector.Render(">"))
 	} else {
-		nameStyle = s.ItemInactive
-		sizeStyle = s.FileSizeInactive
-		modeStyle = s.FileModeInactive
-		fmt.Fprint(w, s.ItemSelector.Render(" "))
+		nameStyle = s.Normal.FileName
+		sizeStyle = s.Normal.FileSize
+		modeStyle = s.Normal.FileMode
+		fmt.Fprint(w, s.Selector.Render(" "))
 	}
 	sizeStyle = sizeStyle.Copy().
 		Width(8).
 		Align(lipgloss.Right).
 		MarginLeft(1)
-	leftMargin := s.ItemSelector.GetMarginLeft() +
-		s.ItemSelector.GetWidth() +
-		s.FileModeInactive.GetMarginLeft() +
-		s.FileModeInactive.GetWidth() +
+	leftMargin := s.Selector.GetMarginLeft() +
+		s.Selector.GetWidth() +
+		s.Normal.FileMode.GetMarginLeft() +
+		s.Normal.FileMode.GetWidth() +
 		nameStyle.GetMarginLeft() +
 		sizeStyle.GetHorizontalFrameSize()
 	name = common.TruncateString(name, m.Width()-leftMargin)
@@ -142,8 +143,8 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	size = sizeStyle.Render(size)
 	modeStr := modeStyle.Render(mode.String())
 	truncate := lipgloss.NewStyle().MaxWidth(m.Width() -
-		s.ItemSelector.GetHorizontalFrameSize() -
-		s.ItemSelector.GetWidth())
+		s.Selector.GetHorizontalFrameSize() -
+		s.Selector.GetWidth())
 	fmt.Fprint(w,
 		truncate.Render(fmt.Sprintf("%s%s%s",
 			modeStr,
