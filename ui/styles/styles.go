@@ -24,13 +24,15 @@ type Styles struct {
 	SelectorBox lipgloss.Style
 	ReadmeBox   lipgloss.Style
 
-	Repo           lipgloss.Style
-	RepoTitle      lipgloss.Style
-	RepoCommand    lipgloss.Style
-	RepoBody       lipgloss.Style
-	RepoHeader     lipgloss.Style
-	RepoHeaderName lipgloss.Style
-	RepoHeaderDesc lipgloss.Style
+	Repo struct {
+		Base       lipgloss.Style
+		Title      lipgloss.Style
+		Command    lipgloss.Style
+		Body       lipgloss.Style
+		Header     lipgloss.Style
+		HeaderName lipgloss.Style
+		HeaderDesc lipgloss.Style
+	}
 
 	Footer      lipgloss.Style
 	Branch      lipgloss.Style
@@ -66,26 +68,30 @@ type Styles struct {
 		Paginator           lipgloss.Style
 	}
 
-	RefItemSelector    lipgloss.Style
-	RefItemActive      lipgloss.Style
-	RefItemInactive    lipgloss.Style
-	RefItemBranch      lipgloss.Style
-	RefItemTagInactive lipgloss.Style
-	RefItemTagActive   lipgloss.Style
-	RefPaginator       lipgloss.Style
+	Ref struct {
+		ItemSelector    lipgloss.Style
+		ItemActive      lipgloss.Style
+		ItemInactive    lipgloss.Style
+		ItemBranch      lipgloss.Style
+		ItemTagInactive lipgloss.Style
+		ItemTagActive   lipgloss.Style
+		Paginator       lipgloss.Style
+	}
 
-	TreeItemSelector     lipgloss.Style
-	TreeItemActive       lipgloss.Style
-	TreeItemInactive     lipgloss.Style
-	TreeFileDirInactive  lipgloss.Style
-	TreeFileDirActive    lipgloss.Style
-	TreeFileModeInactive lipgloss.Style
-	TreeFileModeActive   lipgloss.Style
-	TreeFileSizeInactive lipgloss.Style
-	TreeFileSizeActive   lipgloss.Style
-	TreeFileContent      lipgloss.Style
-	TreePaginator        lipgloss.Style
-	TreeNoItems          lipgloss.Style
+	Tree struct {
+		ItemSelector     lipgloss.Style
+		ItemActive       lipgloss.Style
+		ItemInactive     lipgloss.Style
+		FileDirInactive  lipgloss.Style
+		FileDirActive    lipgloss.Style
+		FileModeInactive lipgloss.Style
+		FileModeActive   lipgloss.Style
+		FileSizeInactive lipgloss.Style
+		FileSizeActive   lipgloss.Style
+		FileContent      lipgloss.Style
+		Paginator        lipgloss.Style
+		NoItems          lipgloss.Style
+	}
 
 	Spinner lipgloss.Style
 
@@ -151,26 +157,26 @@ func DefaultStyles() *Styles {
 
 	s.ReadmeBox = lipgloss.NewStyle()
 
-	s.Repo = lipgloss.NewStyle()
+	s.Repo.Base = lipgloss.NewStyle()
 
-	s.RepoTitle = lipgloss.NewStyle().
+	s.Repo.Title = lipgloss.NewStyle().
 		Padding(0, 2)
 
-	s.RepoCommand = lipgloss.NewStyle().
+	s.Repo.Command = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("168"))
 
-	s.RepoBody = lipgloss.NewStyle().
+	s.Repo.Body = lipgloss.NewStyle().
 		Margin(1, 0)
 
-	s.RepoHeader = lipgloss.NewStyle().
+	s.Repo.Header = lipgloss.NewStyle().
 		Height(2).
 		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(lipgloss.Color("238"))
 
-	s.RepoHeaderName = lipgloss.NewStyle().
+	s.Repo.HeaderName = lipgloss.NewStyle().
 		Bold(true)
 
-	s.RepoHeaderDesc = lipgloss.NewStyle().
+	s.Repo.HeaderDesc = lipgloss.NewStyle().
 		Faint(true)
 
 	s.Footer = lipgloss.NewStyle().
@@ -269,65 +275,65 @@ func DefaultStyles() *Styles {
 		Margin(0).
 		Align(lipgloss.Center)
 
-	s.RefItemInactive = lipgloss.NewStyle()
+	s.Ref.ItemInactive = lipgloss.NewStyle()
 
-	s.RefItemSelector = lipgloss.NewStyle().
+	s.Ref.ItemSelector = lipgloss.NewStyle().
 		Foreground(selectorColor).
 		SetString("> ")
 
-	s.RefItemActive = s.RefItemActive.Copy().
+	s.Ref.ItemActive = s.Ref.ItemActive.Copy().
 		Foreground(highlightColorDim)
 
-	s.RefItemBranch = lipgloss.NewStyle()
+	s.Ref.ItemBranch = lipgloss.NewStyle()
 
-	s.RefItemTagInactive = lipgloss.NewStyle().
+	s.Ref.ItemTagInactive = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#A3A322"))
 
-	s.RefItemTagActive = lipgloss.NewStyle().
+	s.Ref.ItemTagActive = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(highlightColor)
 
-	s.RefItemActive = lipgloss.NewStyle().
+	s.Ref.ItemActive = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(highlightColor)
 
-	s.RefPaginator = s.Log.Paginator.Copy()
+	s.Ref.Paginator = s.Log.Paginator.Copy()
 
-	s.TreeItemSelector = s.TreeItemInactive.Copy().
+	s.Tree.ItemSelector = s.Tree.ItemInactive.Copy().
 		Width(1).
 		Foreground(selectorColor)
 
-	s.TreeItemInactive = lipgloss.NewStyle().
+	s.Tree.ItemInactive = lipgloss.NewStyle().
 		MarginLeft(1)
 
-	s.TreeItemActive = s.TreeItemInactive.Copy().
+	s.Tree.ItemActive = s.Tree.ItemInactive.Copy().
 		Bold(true).
 		Foreground(highlightColor)
 
-	s.TreeFileDirInactive = lipgloss.NewStyle().
+	s.Tree.FileDirInactive = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("39"))
 
-	s.TreeFileDirActive = lipgloss.NewStyle().
+	s.Tree.FileDirActive = lipgloss.NewStyle().
 		Foreground(highlightColor)
 
-	s.TreeFileModeInactive = s.TreeItemInactive.Copy().
+	s.Tree.FileModeInactive = s.Tree.ItemInactive.Copy().
 		Width(10).
 		Foreground(lipgloss.Color("243"))
 
-	s.TreeFileModeActive = s.TreeFileModeInactive.Copy().
+	s.Tree.FileModeActive = s.Tree.FileModeInactive.Copy().
 		Foreground(highlightColorDim)
 
-	s.TreeFileSizeInactive = s.TreeItemInactive.Copy().
+	s.Tree.FileSizeInactive = s.Tree.ItemInactive.Copy().
 		Foreground(lipgloss.Color("243"))
 
-	s.TreeFileSizeActive = s.TreeItemInactive.Copy().
+	s.Tree.FileSizeActive = s.Tree.ItemInactive.Copy().
 		Foreground(highlightColorDim)
 
-	s.TreeFileContent = lipgloss.NewStyle()
+	s.Tree.FileContent = lipgloss.NewStyle()
 
-	s.TreePaginator = s.Log.Paginator.Copy()
+	s.Tree.Paginator = s.Log.Paginator.Copy()
 
-	s.TreeNoItems = s.AboutNoReadme.Copy()
+	s.Tree.NoItems = s.AboutNoReadme.Copy()
 
 	s.Spinner = lipgloss.NewStyle().
 		MarginTop(1).
