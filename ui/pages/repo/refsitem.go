@@ -98,13 +98,13 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	isActive := index == m.Index()
 
 	if isTag && isActive {
-		st = s.ItemTagActive
+		st = s.Active.ItemTag
 	} else if isTag {
-		st = s.ItemTagInactive
+		st = s.Normal.ItemTag
 	} else if isActive {
-		st = s.ItemActive
+		st = s.Active.Item
 	} else {
-		st = s.ItemInactive
+		st = s.Normal.Item
 	}
 
 	if isActive {
@@ -118,7 +118,7 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	refMaxWidth := m.Width() -
 		s.ItemSelector.GetMarginLeft() -
 		s.ItemSelector.GetWidth() -
-		s.ItemInactive.GetMarginLeft()
+		s.Normal.Item.GetMarginLeft()
 	ref = common.TruncateString(ref, refMaxWidth)
 	ref = st.Render(ref)
 	fmt.Fprint(w, selector, ref)
