@@ -44,8 +44,8 @@ func (i Item) Command() string {
 
 // ItemDelegate is the delegate for the item.
 type ItemDelegate struct {
-	common    *common.Common
-	activeBox *box
+	common     *common.Common
+	activePane *pane
 }
 
 // Width returns the item width.
@@ -102,7 +102,7 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 				Left: "┃",
 			}).
 			BorderForeground(styles.ActiveBorderColor)
-		if d.activeBox != nil && *d.activeBox == readmeBox {
+		if d.activePane != nil && *d.activePane == readmePane {
 			itemStyle = itemStyle.BorderForeground(styles.InactiveBorderColor)
 		}
 	}
