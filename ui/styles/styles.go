@@ -20,10 +20,6 @@ type Styles struct {
 	MenuItem       lipgloss.Style
 	MenuLastUpdate lipgloss.Style
 
-	// Selection page styles
-	SelectorBox lipgloss.Style
-	ReadmeBox   lipgloss.Style
-
 	Repo struct {
 		Base       lipgloss.Style
 		Title      lipgloss.Style
@@ -167,10 +163,6 @@ func DefaultStyles() *Styles {
 	s.MenuLastUpdate = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("241")).
 		Align(lipgloss.Right)
-
-	s.SelectorBox = lipgloss.NewStyle()
-
-	s.ReadmeBox = lipgloss.NewStyle()
 
 	s.Repo.Base = lipgloss.NewStyle()
 
