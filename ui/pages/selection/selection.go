@@ -17,19 +17,19 @@ import (
 	"github.com/gliderlabs/ssh"
 )
 
-type box int
+type pane int
 
 const (
-	selectorBox box = iota
-	readmeBox
-	lastBox
+	selectorPane pane = iota
+	readmePane
+	lastPane
 )
 
-func (b box) String() string {
+func (p pane) String() string {
 	return []string{
 		"Repositories",
 		"About",
-	}[b]
+	}[p]
 }
 
 // Selection is the model for the selection screen/page.
@@ -40,14 +40,14 @@ type Selection struct {
 	readme       *code.Code
 	readmeHeight int
 	selector     *selector.Selector
-	activeBox    box
+	activePane   pane
 	tabs         *tabs.Tabs
 }
 
 // New creates a new selection model.
 func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection {
-	ts := make([]string, lastBox)
-	for i, b := range []box{selectorBox, readmeBox} {
+	ts := make([]string, lastPane)
+	for i, b := range []pane{selectorPane, readmePane} {
 		ts[i] = b.String()
 	}
 	t := tabs.New(common, ts)
@@ -61,17 +61,17 @@ func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection 
 		Background(lipgloss.Color("62")).
 		Foreground(lipgloss.Color("230"))
 	sel := &Selection{
-		cfg:       cfg,
-		pk:        pk,
-		common:    common,
-		activeBox: selectorBox, // start with the selector focused
-		tabs:      t,
+		cfg:        cfg,
+		pk:         pk,
+		common:     common,
+		activePane: selectorPane, // start with the selector focused
+		tabs:       t,
 	}
 	readme := code.New(common, "", "")
 	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
 	selector := selector.New(common,
 		[]selector.IdentifiableItem{},
-		ItemDelegate{&common, &sel.activeBox})
+		ItemDelegate{&common, &sel.activePane})
 	selector.SetShowTitle(false)
 	selector.SetShowHelp(false)
 	selector.SetShowStatusBar(false)
@@ -86,9 +86,9 @@ func (s *Selection) getMargins() (wm, hm int) {
 	hm = s.common.Styles.Tabs.GetVerticalFrameSize() +
 		s.common.Styles.Tabs.GetHeight() +
 		2 // tabs margin see View()
-	switch s.activeBox {
-	case selectorBox:
-	case readmeBox:
+	switch s.activePane {
+	case selectorPane:
+	case readmePane:
 		hm += 1 // readme statusbar
 	}
 	return
@@ -111,7 +111,7 @@ func (s *Selection) ShortHelp() []key.Binding {
 		s.common.KeyMap.UpDown,
 		s.common.KeyMap.Section,
 	)
-	if s.activeBox == selectorBox {
+	if s.activePane == selectorPane {
 		copyKey := s.common.KeyMap.Copy
 		copyKey.SetHelp("c", "copy command")
 		kb = append(kb,
@@ -126,8 +126,8 @@ func (s *Selection) ShortHelp() []key.Binding {
 
 // FullHelp implements help.KeyMap.
 func (s *Selection) FullHelp() [][]key.Binding {
-	switch s.activeBox {
-	case readmeBox:
+	switch s.activePane {
+	case readmePane:
 		k := s.readme.KeyMap
 		return [][]key.Binding{
 			{
@@ -143,7 +143,7 @@ func (s *Selection) FullHelp() [][]key.Binding {
 				k.Up,
 			},
 		}
-	case selectorBox:
+	case selectorPane:
 		copyKey := s.common.KeyMap.Copy
 		copyKey.SetHelp("c", "copy command")
 		k := s.selector.KeyMap
@@ -264,16 +264,16 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 	case tabs.ActiveTabMsg:
-		s.activeBox = box(msg)
+		s.activePane = pane(msg)
 	}
-	switch s.activeBox {
-	case readmeBox:
+	switch s.activePane {
+	case readmePane:
 		r, cmd := s.readme.Update(msg)
 		s.readme = r.(*code.Code)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-	case selectorBox:
+	case selectorPane:
 		m, cmd := s.selector.Update(msg)
 		s.selector = m.(*selector.Selector)
 		if cmd != nil {
@@ -288,13 +288,13 @@ func (s *Selection) View() string {
 	var view string
 	wm, hm := s.getMargins()
 	hm++ // tabs margin
-	switch s.activeBox {
-	case selectorBox:
+	switch s.activePane {
+	case selectorPane:
 		ss := lipgloss.NewStyle().
 			Width(s.common.Width - wm).
 			Height(s.common.Height - hm)
 		view = ss.Render(s.selector.View())
-	case readmeBox:
+	case readmePane:
 		rs := lipgloss.NewStyle().
 			Height(s.common.Height - hm)
 		status := fmt.Sprintf("☰ %.f%%", s.readme.ScrollPercent()*100)
