@@ -85,18 +85,22 @@ type Styles struct {
 	}
 
 	Tree struct {
-		ItemSelector     lipgloss.Style
-		ItemActive       lipgloss.Style
-		ItemInactive     lipgloss.Style
-		FileDirInactive  lipgloss.Style
-		FileDirActive    lipgloss.Style
-		FileModeInactive lipgloss.Style
-		FileModeActive   lipgloss.Style
-		FileSizeInactive lipgloss.Style
-		FileSizeActive   lipgloss.Style
-		FileContent      lipgloss.Style
-		Paginator        lipgloss.Style
-		NoItems          lipgloss.Style
+		Normal struct {
+			FileName lipgloss.Style
+			FileDir  lipgloss.Style
+			FileMode lipgloss.Style
+			FileSize lipgloss.Style
+		}
+		Active struct {
+			FileName lipgloss.Style
+			FileDir  lipgloss.Style
+			FileMode lipgloss.Style
+			FileSize lipgloss.Style
+		}
+		Selector    lipgloss.Style
+		FileContent lipgloss.Style
+		Paginator   lipgloss.Style
+		NoItems     lipgloss.Style
 	}
 
 	Spinner lipgloss.Style
@@ -312,34 +316,34 @@ func DefaultStyles() *Styles {
 
 	s.Ref.Paginator = s.Log.Paginator.Copy()
 
-	s.Tree.ItemSelector = s.Tree.ItemInactive.Copy().
+	s.Tree.Selector = s.Tree.Normal.FileName.Copy().
 		Width(1).
 		Foreground(selectorColor)
 
-	s.Tree.ItemInactive = lipgloss.NewStyle().
+	s.Tree.Normal.FileName = lipgloss.NewStyle().
 		MarginLeft(1)
 
-	s.Tree.ItemActive = s.Tree.ItemInactive.Copy().
+	s.Tree.Active.FileName = s.Tree.Normal.FileName.Copy().
 		Bold(true).
 		Foreground(highlightColor)
 
-	s.Tree.FileDirInactive = lipgloss.NewStyle().
+	s.Tree.Normal.FileDir = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("39"))
 
-	s.Tree.FileDirActive = lipgloss.NewStyle().
+	s.Tree.Active.FileDir = lipgloss.NewStyle().
 		Foreground(highlightColor)
 
-	s.Tree.FileModeInactive = s.Tree.ItemInactive.Copy().
+	s.Tree.Normal.FileMode = s.Tree.Active.FileName.Copy().
 		Width(10).
 		Foreground(lipgloss.Color("243"))
 
-	s.Tree.FileModeActive = s.Tree.FileModeInactive.Copy().
+	s.Tree.Active.FileMode = s.Tree.Normal.FileMode.Copy().
 		Foreground(highlightColorDim)
 
-	s.Tree.FileSizeInactive = s.Tree.ItemInactive.Copy().
+	s.Tree.Normal.FileSize = s.Tree.Normal.FileName.Copy().
 		Foreground(lipgloss.Color("243"))
 
-	s.Tree.FileSizeActive = s.Tree.ItemInactive.Copy().
+	s.Tree.Active.FileSize = s.Tree.Normal.FileName.Copy().
 		Foreground(highlightColorDim)
 
 	s.Tree.FileContent = lipgloss.NewStyle()
