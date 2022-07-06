@@ -57,6 +57,7 @@ func RootCommand() *cobra.Command {
 		CatCommand(),
 		ListCommand(),
 		GitCommand(),
+		InternalCommand(),
 	)
 
 	return rootCmd

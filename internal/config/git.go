@@ -4,9 +4,27 @@ import (
 	"log"
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/config"
 	gm "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
 )
+
+type HookOption = config.GitHookOption
+
+// PreReceive implements GitHooks interface. It is called before a git push is
+// performed.
+func (cfg *Config) PreReceive(repo string, args []HookOption) {
+}
+
+// Update implements GitHooks interface. It is called during a git push once for
+// each reference.
+func (cfg *Config) Update(repo string, arg HookOption) {
+}
+
+// PostReceive implements GitHooks interface. It is called after a git push is
+// performed.
+func (cfg *Config) PostReceive(repo string, args []HookOption) {
+}
 
 // Push registers Git push functionality for the given repo and key.
 func (cfg *Config) Push(repo string, pk ssh.PublicKey) {

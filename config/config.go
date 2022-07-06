@@ -7,6 +7,20 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+//
+type GitHookOption struct {
+	OldSha  string
+	NewSha  string
+	RefName string
+}
+
+// GitHooks provides an interface for git server-side hooks.
+type GitHooks interface {
+	PreReceive(string, []GitHookOption)
+	Update(string, GitHookOption)
+	PostReceive(string, []GitHookOption)
+}
+
 // Callbacks provides an interface that can be used to run callbacks on different events.
 type Callbacks interface {
 	Tui(action string)
@@ -20,6 +34,7 @@ type Config struct {
 	Host             string   `env:"SOFT_SERVE_HOST" envDefault:"localhost"`
 	Port             int      `env:"SOFT_SERVE_PORT" envDefault:"23231"`
 	KeyPath          string   `env:"SOFT_SERVE_KEY_PATH"`
+	InternalKeyPath  string   `env:"SOFT_SERVE_INTERNAL_KEY_PATH"`
 	RepoPath         string   `env:"SOFT_SERVE_REPO_PATH" envDefault:".repos"`
 	InitialAdminKeys []string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY" envSeparator:"\n"`
 	Callbacks        Callbacks
@@ -36,6 +51,10 @@ func DefaultConfig() *Config {
 	if cfg.KeyPath == "" {
 		// NB: cross-platform-compatible path
 		cfg.KeyPath = filepath.Join(".ssh", "soft_serve_server_ed25519")
+	}
+	if cfg.InternalKeyPath == "" {
+		// NB: cross-platform-compatible path
+		cfg.InternalKeyPath = filepath.Join(".ssh", "soft_serve_internal_ed25519")
 	}
 	return cfg.WithCallbacks(nil)
 }

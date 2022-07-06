@@ -30,6 +30,7 @@ func init() {
 	rootCmd.AddCommand(
 		serveCmd,
 		manCmd,
+		internalCmd,
 	)
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
