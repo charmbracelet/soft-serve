@@ -46,26 +46,32 @@ type Styles struct {
 
 	AboutNoReadme lipgloss.Style
 
+	LogItem struct {
+		Normal struct {
+			Base    lipgloss.Style
+			Hash    lipgloss.Style
+			Title   lipgloss.Style
+			Desc    lipgloss.Style
+			Keyword lipgloss.Style
+		}
+		Active struct {
+			Base    lipgloss.Style
+			Hash    lipgloss.Style
+			Title   lipgloss.Style
+			Desc    lipgloss.Style
+			Keyword lipgloss.Style
+		}
+	}
+
 	Log struct {
-		Item                lipgloss.Style
-		ItemSelector        lipgloss.Style
-		ItemActive          lipgloss.Style
-		ItemInactive        lipgloss.Style
-		ItemHash            lipgloss.Style
-		ItemTitleInactive   lipgloss.Style
-		ItemTitleActive     lipgloss.Style
-		ItemDescInactive    lipgloss.Style
-		ItemDescActive      lipgloss.Style
-		ItemKeywordActive   lipgloss.Style
-		ItemKeywordInactive lipgloss.Style
-		Commit              lipgloss.Style
-		CommitHash          lipgloss.Style
-		CommitAuthor        lipgloss.Style
-		CommitDate          lipgloss.Style
-		CommitBody          lipgloss.Style
-		CommitStatsAdd      lipgloss.Style
-		CommitStatsDel      lipgloss.Style
-		Paginator           lipgloss.Style
+		Commit         lipgloss.Style
+		CommitHash     lipgloss.Style
+		CommitAuthor   lipgloss.Style
+		CommitDate     lipgloss.Style
+		CommitBody     lipgloss.Style
+		CommitStatsAdd lipgloss.Style
+		CommitStatsDel lipgloss.Style
+		Paginator      lipgloss.Style
 	}
 
 	Ref struct {
@@ -115,6 +121,7 @@ func DefaultStyles() *Styles {
 	highlightColor := lipgloss.Color("210")
 	highlightColorDim := lipgloss.Color("174")
 	selectorColor := lipgloss.Color("167")
+	hashColor := lipgloss.Color("184")
 
 	s := new(Styles)
 
@@ -217,46 +224,52 @@ func DefaultStyles() *Styles {
 		MarginLeft(2).
 		Foreground(lipgloss.Color("242"))
 
-	s.Log.ItemInactive = lipgloss.NewStyle().
+	s.LogItem.Normal.Base = lipgloss.NewStyle().
 		Border(lipgloss.Border{
 			Left: " ",
 		}, false, false, false, true).
 		PaddingLeft(1)
 
-	s.Log.ItemActive = s.Log.ItemInactive.Copy().
+	s.LogItem.Active.Base = s.LogItem.Normal.Base.Copy().
 		Border(lipgloss.Border{
 			Left: "┃",
 		}, false, false, false, true).
 		BorderForeground(selectorColor)
 
-	s.Log.ItemSelector = s.Log.ItemInactive.Copy().
-		Width(1).
-		Foreground(lipgloss.Color("62"))
+	s.LogItem.Active.Hash = s.LogItem.Normal.Hash.Copy().
+		Foreground(hashColor)
 
-	s.Log.ItemHash = s.Log.ItemInactive.Copy().
-		Foreground(lipgloss.Color("184"))
+	s.LogItem.Active.Hash = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(highlightColor)
 
-	s.Log.ItemTitleInactive = lipgloss.NewStyle().
+	s.LogItem.Normal.Title = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("105"))
 
-	s.Log.ItemTitleActive = lipgloss.NewStyle().
+	s.LogItem.Active.Title = lipgloss.NewStyle().
 		Foreground(highlightColor).
 		Bold(true)
 
-	s.Log.ItemDescInactive = lipgloss.NewStyle().
+	s.LogItem.Normal.Desc = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("246"))
 
-	s.Log.ItemDescActive = lipgloss.NewStyle().
+	s.LogItem.Active.Desc = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("95"))
 
-	s.Log.ItemKeywordActive = s.Log.ItemDescActive.Copy().
+	s.LogItem.Active.Keyword = s.LogItem.Active.Desc.Copy().
 		Foreground(highlightColorDim)
+
+	s.LogItem.Normal.Hash = lipgloss.NewStyle().
+		Foreground(hashColor)
+
+	s.LogItem.Active.Hash = lipgloss.NewStyle().
+		Foreground(highlightColor)
 
 	s.Log.Commit = lipgloss.NewStyle().
 		Margin(0, 2)
 
 	s.Log.CommitHash = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("184")).
+		Foreground(hashColor).
 		Bold(true)
 
 	s.Log.CommitBody = lipgloss.NewStyle().
