@@ -85,7 +85,7 @@ func (d RefItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 
 // Render implements list.ItemDelegate.
 func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	s := d.common.Styles
+	s := d.common.Styles.Ref
 	i, ok := listItem.(RefItem)
 	if !ok {
 		return
@@ -98,27 +98,27 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	isActive := index == m.Index()
 
 	if isTag && isActive {
-		st = s.RefItemTagActive
+		st = s.ItemTagActive
 	} else if isTag {
-		st = s.RefItemTagInactive
+		st = s.ItemTagInactive
 	} else if isActive {
-		st = s.RefItemActive
+		st = s.ItemActive
 	} else {
-		st = s.RefItemInactive
+		st = s.ItemInactive
 	}
 
 	if isActive {
-		selector = s.RefItemSelector.String()
+		selector = s.ItemSelector.String()
 	} else {
 		selector = "  "
 	}
 
 	ref := i.Short()
-	ref = s.RefItemBranch.Render(ref)
+	ref = s.ItemBranch.Render(ref)
 	refMaxWidth := m.Width() -
-		s.RefItemSelector.GetMarginLeft() -
-		s.RefItemSelector.GetWidth() -
-		s.RefItemInactive.GetMarginLeft()
+		s.ItemSelector.GetMarginLeft() -
+		s.ItemSelector.GetWidth() -
+		s.ItemInactive.GetMarginLeft()
 	ref = common.TruncateString(ref, refMaxWidth)
 	ref = st.Render(ref)
 	fmt.Fprint(w, selector, ref)
