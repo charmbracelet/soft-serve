@@ -100,9 +100,9 @@ func New(cfg *config.Config, c common.Common) *Repo {
 // SetSize implements common.Component.
 func (r *Repo) SetSize(width, height int) {
 	r.common.SetSize(width, height)
-	hm := r.common.Styles.RepoBody.GetVerticalFrameSize() +
-		r.common.Styles.RepoHeader.GetHeight() +
-		r.common.Styles.RepoHeader.GetVerticalFrameSize() +
+	hm := r.common.Styles.Repo.Body.GetVerticalFrameSize() +
+		r.common.Styles.Repo.Header.GetHeight() +
+		r.common.Styles.Repo.Header.GetVerticalFrameSize() +
 		r.common.Styles.StatusBar.GetHeight() +
 		r.common.Styles.Tabs.GetHeight() +
 		r.common.Styles.Tabs.GetVerticalFrameSize()
@@ -242,13 +242,13 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (r *Repo) View() string {
-	s := r.common.Styles.Repo.Copy().
+	s := r.common.Styles.Repo.Base.Copy().
 		Width(r.common.Width).
 		Height(r.common.Height)
-	repoBodyStyle := r.common.Styles.RepoBody.Copy()
+	repoBodyStyle := r.common.Styles.Repo.Body.Copy()
 	hm := repoBodyStyle.GetVerticalFrameSize() +
-		r.common.Styles.RepoHeader.GetHeight() +
-		r.common.Styles.RepoHeader.GetVerticalFrameSize() +
+		r.common.Styles.Repo.Header.GetHeight() +
+		r.common.Styles.Repo.Header.GetVerticalFrameSize() +
 		r.common.Styles.StatusBar.GetHeight() +
 		r.common.Styles.Tabs.GetHeight() +
 		r.common.Styles.Tabs.GetVerticalFrameSize()
@@ -270,13 +270,13 @@ func (r *Repo) headerView() string {
 	}
 	cfg := r.cfg
 	truncate := lipgloss.NewStyle().MaxWidth(r.common.Width)
-	name := r.common.Styles.RepoHeaderName.Render(r.selectedRepo.Name())
+	name := r.common.Styles.Repo.HeaderName.Render(r.selectedRepo.Name())
 	desc := r.selectedRepo.Description()
 	if desc == "" {
 		desc = name
 		name = ""
 	} else {
-		desc = r.common.Styles.RepoHeaderDesc.Render(desc)
+		desc = r.common.Styles.Repo.HeaderDesc.Render(desc)
 	}
 	// TODO move this into a style.
 	urlStyle := lipgloss.NewStyle().
@@ -287,7 +287,7 @@ func (r *Repo) headerView() string {
 	url := git.RepoURL(cfg.Host, cfg.Port, r.selectedRepo.Repo())
 	url = common.TruncateString(url, r.common.Width-lipgloss.Width(desc)-1)
 	url = urlStyle.Render(url)
-	style := r.common.Styles.RepoHeader.Copy().Width(r.common.Width)
+	style := r.common.Styles.Repo.Header.Copy().Width(r.common.Width)
 	return style.Render(
 		lipgloss.JoinVertical(lipgloss.Top,
 			truncate.Render(name),
