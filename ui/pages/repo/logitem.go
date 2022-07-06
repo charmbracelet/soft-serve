@@ -76,7 +76,6 @@ func (d LogItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 
 // Render renders the item. Implements list.ItemDelegate.
 func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	styles := d.common.Styles.Log
 	i, ok := listItem.(LogItem)
 	if !ok {
 		return
@@ -85,58 +84,49 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		return
 	}
 
-	var titleStyler,
-		descStyler,
-		keywordStyler func(string) string
-	style := styles.ItemInactive
-
+	styles := d.common.Styles.LogItem.Normal
 	if index == m.Index() {
-		titleStyler = styles.ItemTitleActive.Render
-		descStyler = styles.ItemDescActive.Render
-		keywordStyler = styles.ItemKeywordActive.Render
-		style = styles.ItemActive
-	} else {
-		titleStyler = styles.ItemTitleInactive.Render
-		descStyler = styles.ItemDescInactive.Render
-		keywordStyler = styles.ItemKeywordInactive.Render
+		styles = d.common.Styles.LogItem.Active
 	}
+
+	horizontalFrameSize := styles.Base.GetHorizontalFrameSize()
 
 	hash := i.Commit.ID.String()[:7]
 	if !i.copied.IsZero() && i.copied.Add(time.Second).After(time.Now()) {
 		hash = "copied"
 	}
-	title := titleStyler(
+	title := styles.Title.Render(
 		common.TruncateString(i.Title(),
 			m.Width()-
-				style.GetHorizontalFrameSize()-
+				horizontalFrameSize-
 				// 9 is the length of the hash (7) + the left padding (1) + the
 				// title truncation symbol (1)
 				9),
 	)
-	hashStyle := styles.ItemHash.Copy().
+	hashStyle := styles.Hash.Copy().
 		Align(lipgloss.Right).
 		PaddingLeft(1).
 		Width(m.Width() -
-			style.GetHorizontalFrameSize() -
+			horizontalFrameSize -
 			lipgloss.Width(title) - 1) // 1 is for the left padding
 	if index == m.Index() {
 		hashStyle = hashStyle.Bold(true)
 	}
 	hash = hashStyle.Render(hash)
-	if m.Width()-style.GetHorizontalFrameSize()-hashStyle.GetHorizontalFrameSize()-hashStyle.GetWidth() <= 0 {
+	if m.Width()-horizontalFrameSize-hashStyle.GetHorizontalFrameSize()-hashStyle.GetWidth() <= 0 {
 		hash = ""
-		title = titleStyler(
+		title = styles.Title.Render(
 			common.TruncateString(i.Title(),
-				m.Width()-style.GetHorizontalFrameSize()),
+				m.Width()-horizontalFrameSize),
 		)
 	}
 	author := i.Author.Name
 	committer := i.Committer.Name
 	who := ""
 	if author != "" && committer != "" {
-		who = keywordStyler(committer) + descStyler(" committed")
+		who = styles.Keyword.Render(committer) + styles.Desc.Render(" committed")
 		if author != committer {
-			who = keywordStyler(author) + descStyler(" authored and ") + who
+			who = styles.Keyword.Render(author) + styles.Desc.Render(" authored and ") + who
 		}
 		who += " "
 	}
@@ -144,15 +134,15 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	if i.Committer.When.Year() != time.Now().Year() {
 		date += fmt.Sprintf(" %d", i.Committer.When.Year())
 	}
-	who += descStyler("on ") + keywordStyler(date)
-	who = common.TruncateString(who, m.Width()-style.GetHorizontalFrameSize())
+	who += styles.Desc.Render("on ") + styles.Keyword.Render(date)
+	who = common.TruncateString(who, m.Width()-horizontalFrameSize)
 	fmt.Fprint(w,
-		style.Render(
+		styles.Base.Render(
 			lipgloss.JoinVertical(lipgloss.Top,
 				truncate.String(fmt.Sprintf("%s%s",
 					title,
 					hash,
-				), uint(m.Width()-style.GetHorizontalFrameSize())),
+				), uint(m.Width()-horizontalFrameSize)),
 				who,
 			),
 		),
