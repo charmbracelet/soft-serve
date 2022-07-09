@@ -61,7 +61,7 @@ type Repo struct {
 	activeTab    tab
 	tabs         *tabs.Tabs
 	statusbar    *statusbar.StatusBar
-	boxes        []common.Component
+	panes        []common.Component
 	ref          *ggit.Reference
 }
 
@@ -80,7 +80,7 @@ func New(cfg *config.Config, c common.Common) *Repo {
 	branches := NewRefs(c, ggit.RefsHeads)
 	tags := NewRefs(c, ggit.RefsTags)
 	// Make sure the order matches the order of tab constants above.
-	boxes := []common.Component{
+	panes := []common.Component{
 		readme,
 		files,
 		log,
@@ -92,7 +92,7 @@ func New(cfg *config.Config, c common.Common) *Repo {
 		common:    c,
 		tabs:      tb,
 		statusbar: sb,
-		boxes:     boxes,
+		panes:     panes,
 	}
 	return r
 }
@@ -108,8 +108,8 @@ func (r *Repo) SetSize(width, height int) {
 		r.common.Styles.Tabs.GetVerticalFrameSize()
 	r.tabs.SetSize(width, height-hm)
 	r.statusbar.SetSize(width, height-hm)
-	for _, b := range r.boxes {
-		b.SetSize(width, height-hm)
+	for _, p := range r.panes {
+		p.SetSize(width, height-hm)
 	}
 }
 
@@ -127,7 +127,7 @@ func (r *Repo) commonHelp() []key.Binding {
 // ShortHelp implements help.KeyMap.
 func (r *Repo) ShortHelp() []key.Binding {
 	b := r.commonHelp()
-	b = append(b, r.boxes[r.activeTab].(help.KeyMap).ShortHelp()...)
+	b = append(b, r.panes[r.activeTab].(help.KeyMap).ShortHelp()...)
 	return b
 }
 
@@ -135,7 +135,7 @@ func (r *Repo) ShortHelp() []key.Binding {
 func (r *Repo) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
 	b = append(b, r.commonHelp())
-	b = append(b, r.boxes[r.activeTab].(help.KeyMap).FullHelp()...)
+	b = append(b, r.panes[r.activeTab].(help.KeyMap).FullHelp()...)
 	return b
 }
 
@@ -161,8 +161,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 	case RefMsg:
 		r.ref = msg
-		for _, b := range r.boxes {
-			cmds = append(cmds, b.Init())
+		for _, p := range r.panes {
+			cmds = append(cmds, p.Init())
 		}
 		cmds = append(cmds,
 			r.updateStatusBarCmd,
@@ -193,8 +193,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case ReadmeMsg:
 	case FileItemsMsg:
-		f, cmd := r.boxes[filesTab].Update(msg)
-		r.boxes[filesTab] = f.(*Files)
+		f, cmd := r.panes[filesTab].Update(msg)
+		r.panes[filesTab] = f.(*Files)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
@@ -202,22 +202,22 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// for now. We need to pass the TickMsg to the Log bubble when the Log is
 	// loading but not the current selected tab so that the spinner works.
 	case LogCountMsg, LogItemsMsg, spinner.TickMsg:
-		l, cmd := r.boxes[commitsTab].Update(msg)
-		r.boxes[commitsTab] = l.(*Log)
+		l, cmd := r.panes[commitsTab].Update(msg)
+		r.panes[commitsTab] = l.(*Log)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 	case RefItemsMsg:
 		switch msg.prefix {
 		case ggit.RefsHeads:
-			b, cmd := r.boxes[branchesTab].Update(msg)
-			r.boxes[branchesTab] = b.(*Refs)
+			b, cmd := r.panes[branchesTab].Update(msg)
+			r.panes[branchesTab] = b.(*Refs)
 			if cmd != nil {
 				cmds = append(cmds, cmd)
 			}
 		case ggit.RefsTags:
-			t, cmd := r.boxes[tagsTab].Update(msg)
-			r.boxes[tagsTab] = t.(*Refs)
+			t, cmd := r.panes[tagsTab].Update(msg)
+			r.panes[tagsTab] = t.(*Refs)
 			if cmd != nil {
 				cmds = append(cmds, cmd)
 			}
@@ -232,8 +232,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
-	m, cmd := r.boxes[r.activeTab].Update(msg)
-	r.boxes[r.activeTab] = m.(common.Component)
+	m, cmd := r.panes[r.activeTab].Update(msg)
+	r.panes[r.activeTab] = m.(common.Component)
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
@@ -254,7 +254,7 @@ func (r *Repo) View() string {
 		r.common.Styles.Tabs.GetVerticalFrameSize()
 	mainStyle := repoBodyStyle.
 		Height(r.common.Height - hm)
-	main := r.boxes[r.activeTab].View()
+	main := r.panes[r.activeTab].View()
 	view := lipgloss.JoinVertical(lipgloss.Top,
 		r.headerView(),
 		r.tabs.View(),
@@ -303,8 +303,8 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 	if r.selectedRepo == nil {
 		return nil
 	}
-	value := r.boxes[r.activeTab].(statusbar.Model).StatusBarValue()
-	info := r.boxes[r.activeTab].(statusbar.Model).StatusBarInfo()
+	value := r.panes[r.activeTab].(statusbar.Model).StatusBarValue()
+	info := r.panes[r.activeTab].(statusbar.Model).StatusBarInfo()
 	ref := ""
 	if r.ref != nil {
 		ref = r.ref.Name().Short()
@@ -330,9 +330,9 @@ func (r *Repo) updateRefCmd() tea.Msg {
 
 func (r *Repo) updateModels(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
-	for i, b := range r.boxes {
+	for i, b := range r.panes {
 		m, cmd := b.Update(msg)
-		r.boxes[i] = m.(common.Component)
+		r.panes[i] = m.(common.Component)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
