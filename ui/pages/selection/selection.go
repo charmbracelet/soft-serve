@@ -52,14 +52,10 @@ func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection 
 	}
 	t := tabs.New(common, ts)
 	t.TabSeparator = lipgloss.NewStyle()
-	t.TabInactive = lipgloss.NewStyle().
-		Bold(true).
-		UnsetBackground().
-		Foreground(common.Styles.InactiveBorderColor).
-		Padding(0, 1)
-	t.TabActive = t.TabInactive.Copy().
-		Background(lipgloss.Color("62")).
-		Foreground(lipgloss.Color("230"))
+	t.TabInactive = common.Styles.TopLevelTabNormal.Copy()
+	t.TabActive = common.Styles.TopLevelActiveTab.Copy()
+	t.TabDot = common.Styles.TopLevelActiveTabDot.Copy()
+	t.UseDot = true
 	sel := &Selection{
 		cfg:        cfg,
 		pk:         pk,
@@ -86,9 +82,7 @@ func (s *Selection) getMargins() (wm, hm int) {
 	hm = s.common.Styles.Tabs.GetVerticalFrameSize() +
 		s.common.Styles.Tabs.GetHeight() +
 		2 // tabs margin see View()
-	switch s.activePane {
-	case selectorPane:
-	case readmePane:
+	if s.activePane == readmePane {
 		hm += 1 // readme statusbar
 	}
 	return
@@ -303,15 +297,11 @@ func (s *Selection) View() string {
 			Width(s.common.Width - wm).
 			Foreground(s.common.Styles.InactiveBorderColor).
 			Render(status)
-		view = rs.Render(lipgloss.JoinVertical(lipgloss.Top,
+		view = rs.Render(lipgloss.JoinVertical(lipgloss.Left,
 			s.readme.View(),
 			readmeStatus,
 		))
 	}
-	ts := s.common.Styles.Tabs.Copy().
-		MarginBottom(1)
-	return lipgloss.JoinVertical(lipgloss.Top,
-		ts.Render(s.tabs.View()),
-		view,
-	)
+	ts := s.common.Styles.Tabs.Copy()
+	return lipgloss.JoinVertical(lipgloss.Left, ts.Render(s.tabs.View()), view)
 }
