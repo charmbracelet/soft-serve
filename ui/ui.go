@@ -260,13 +260,11 @@ func (ui *UI) View() string {
 	default:
 		view = "Unknown state :/ this is a bug!"
 	}
-	switch ui.activePage {
-	case selectionPage:
+	if ui.activePage == selectionPage {
 		view = lipgloss.JoinVertical(lipgloss.Bottom,
 			ui.header.View(),
 			view,
 		)
-	case repoPage:
 	}
 	if ui.showFooter {
 		view = lipgloss.JoinVertical(lipgloss.Bottom,
@@ -274,9 +272,7 @@ func (ui *UI) View() string {
 			ui.footer.View(),
 		)
 	}
-	return style.Render(
-		view,
-	)
+	return style.Render(view)
 }
 
 func (ui *UI) setRepoCmd(rn string) tea.Cmd {

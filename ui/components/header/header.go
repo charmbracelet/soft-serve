@@ -15,11 +15,10 @@ type Header struct {
 
 // New creates a new header component.
 func New(c common.Common, text string) *Header {
-	h := &Header{
+	return &Header{
 		common: c,
 		text:   text,
 	}
-	return h
 }
 
 // SetSize implements common.Component.
@@ -39,6 +38,5 @@ func (h *Header) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (h *Header) View() string {
-	s := h.common.Styles.Header.Copy().Width(h.common.Width)
-	return s.Render(strings.TrimSpace(h.text))
+	return h.common.Styles.ServerName.Render(strings.TrimSpace(h.text))
 }
