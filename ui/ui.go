@@ -73,8 +73,8 @@ func (ui *UI) getMargins() (wm, hm int) {
 	style := ui.common.Styles.App.Copy()
 	switch ui.activePage {
 	case selectionPage:
-		hm += ui.common.Styles.Header.GetHeight() +
-			ui.common.Styles.Header.GetVerticalFrameSize()
+		hm += ui.common.Styles.ServerName.GetHeight() +
+			ui.common.Styles.ServerName.GetVerticalFrameSize()
 	case repoPage:
 	}
 	wm += style.GetHorizontalFrameSize()
@@ -261,16 +261,10 @@ func (ui *UI) View() string {
 		view = "Unknown state :/ this is a bug!"
 	}
 	if ui.activePage == selectionPage {
-		view = lipgloss.JoinVertical(lipgloss.Bottom,
-			ui.header.View(),
-			view,
-		)
+		view = lipgloss.JoinVertical(lipgloss.Left, ui.header.View(), view)
 	}
 	if ui.showFooter {
-		view = lipgloss.JoinVertical(lipgloss.Bottom,
-			view,
-			ui.footer.View(),
-		)
+		view = lipgloss.JoinVertical(lipgloss.Left, view, ui.footer.View())
 	}
 	return style.Render(view)
 }
