@@ -12,8 +12,8 @@ type Styles struct {
 	ActiveBorderColor   lipgloss.Color
 	InactiveBorderColor lipgloss.Color
 
-	App    lipgloss.Style
-	Header lipgloss.Style
+	App        lipgloss.Style
+	ServerName lipgloss.Style
 
 	Menu           lipgloss.Style
 	MenuCursor     lipgloss.Style
@@ -135,11 +135,13 @@ func DefaultStyles() *Styles {
 	s.App = lipgloss.NewStyle().
 		Margin(1, 2)
 
-	s.Header = lipgloss.NewStyle().
-		Align(lipgloss.Left).
+	s.ServerName = lipgloss.NewStyle().
 		Height(1).
-		PaddingLeft(1).
+		MarginLeft(1).
 		MarginBottom(1).
+		Padding(0, 1).
+		Background(lipgloss.Color("57")).
+		Foreground(lipgloss.Color("229")).
 		Bold(true)
 
 	s.Menu = lipgloss.NewStyle().
