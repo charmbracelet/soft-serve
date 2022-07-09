@@ -181,10 +181,11 @@ func DefaultStyles() *Styles {
 		BorderForeground(lipgloss.Color("238"))
 
 	s.Repo.HeaderName = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("212")).
 		Bold(true)
 
 	s.Repo.HeaderDesc = lipgloss.NewStyle().
-		Faint(true)
+		Foreground(lipgloss.Color("244"))
 
 	s.Footer = lipgloss.NewStyle().
 		MarginTop(1).
