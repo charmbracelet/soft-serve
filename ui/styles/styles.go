@@ -15,8 +15,6 @@ type Styles struct {
 	App        lipgloss.Style
 	ServerName lipgloss.Style
 
-	Menu           lipgloss.Style
-	MenuCursor     lipgloss.Style
 	MenuItem       lipgloss.Style
 	MenuLastUpdate lipgloss.Style
 
@@ -143,17 +141,6 @@ func DefaultStyles() *Styles {
 		Background(lipgloss.Color("57")).
 		Foreground(lipgloss.Color("229")).
 		Bold(true)
-
-	s.Menu = lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(s.InactiveBorderColor).
-		Padding(1, 2).
-		MarginRight(1).
-		Width(24)
-
-	s.MenuCursor = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("213")).
-		SetString(">")
 
 	s.MenuItem = lipgloss.NewStyle().
 		PaddingLeft(1).
