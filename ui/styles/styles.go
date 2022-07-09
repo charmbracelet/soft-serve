@@ -12,8 +12,11 @@ type Styles struct {
 	ActiveBorderColor   lipgloss.Color
 	InactiveBorderColor lipgloss.Color
 
-	App        lipgloss.Style
-	ServerName lipgloss.Style
+	App                  lipgloss.Style
+	ServerName           lipgloss.Style
+	TopLevelNormalTab    lipgloss.Style
+	TopLevelActiveTab    lipgloss.Style
+	TopLevelActiveTabDot lipgloss.Style
 
 	MenuItem       lipgloss.Style
 	MenuLastUpdate lipgloss.Style
@@ -141,6 +144,15 @@ func DefaultStyles() *Styles {
 		Background(lipgloss.Color("57")).
 		Foreground(lipgloss.Color("229")).
 		Bold(true)
+
+	s.TopLevelNormalTab = lipgloss.NewStyle().
+		MarginRight(2)
+
+	s.TopLevelActiveTab = s.TopLevelNormalTab.Copy().
+		Foreground(lipgloss.Color("42"))
+
+	s.TopLevelActiveTabDot = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("29"))
 
 	s.MenuItem = lipgloss.NewStyle().
 		PaddingLeft(1).

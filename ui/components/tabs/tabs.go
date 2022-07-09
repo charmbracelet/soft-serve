@@ -22,6 +22,8 @@ type Tabs struct {
 	TabSeparator lipgloss.Style
 	TabInactive  lipgloss.Style
 	TabActive    lipgloss.Style
+	TabDot       lipgloss.Style
+	UseDot       bool
 }
 
 // New creates a new Tabs component.
@@ -76,8 +78,13 @@ func (t *Tabs) View() string {
 	sep := t.TabSeparator
 	for i, tab := range t.tabs {
 		style := t.TabInactive.Copy()
+		prefix := "  "
 		if i == t.activeTab {
 			style = t.TabActive.Copy()
+			prefix = t.TabDot.Render("• ")
+		}
+		if t.UseDot {
+			s.WriteString(prefix)
 		}
 		s.WriteString(style.Render(tab))
 		if i != len(t.tabs)-1 {
