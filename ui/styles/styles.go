@@ -446,8 +446,8 @@ func DefaultStyles() *Styles {
 	s.TabInactive = lipgloss.NewStyle()
 
 	s.TabActive = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("63"))
+		Underline(true).
+		Foreground(lipgloss.Color("42"))
 
 	s.TabSeparator = lipgloss.NewStyle().
 		SetString("│").
