@@ -52,7 +52,7 @@ func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection 
 	}
 	t := tabs.New(common, ts)
 	t.TabSeparator = lipgloss.NewStyle()
-	t.TabInactive = common.Styles.TopLevelTabNormal.Copy()
+	t.TabInactive = common.Styles.TopLevelNormalTab.Copy()
 	t.TabActive = common.Styles.TopLevelActiveTab.Copy()
 	t.TabDot = common.Styles.TopLevelActiveTabDot.Copy()
 	t.UseDot = true
