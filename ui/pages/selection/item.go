@@ -84,7 +84,6 @@ func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 
 // Render implements list.ItemDelegate.
 func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	styles := d.common.Styles
 	i := listItem.(Item)
 	s := strings.Builder{}
 	var matchedRunes []int
@@ -95,20 +94,13 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		isFiltered = m.FilterState() == list.Filtering || m.FilterState() == list.FilterApplied
 	)
 
-	itemStyle := styles.MenuItem.Copy()
+	styles := d.common.Styles.RepoSelector.Normal
 	if isSelected {
-		itemStyle = itemStyle.Copy().
-			BorderStyle(lipgloss.Border{
-				Left: "┃",
-			}).
-			BorderForeground(styles.ActiveBorderColor)
-		if d.activePane != nil && *d.activePane == readmePane {
-			itemStyle = itemStyle.BorderForeground(styles.InactiveBorderColor)
-		}
+		styles = d.common.Styles.RepoSelector.Active
 	}
 
 	title := i.Title()
-	title = common.TruncateString(title, m.Width()-itemStyle.GetHorizontalFrameSize())
+	title = common.TruncateString(title, m.Width()-styles.Base.GetHorizontalFrameSize())
 	if i.repo.IsPrivate() {
 		title += " 🔒"
 	}
@@ -116,15 +108,12 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		title += " "
 	}
 	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.lastUpdate))
-	if m.Width()-itemStyle.GetHorizontalFrameSize()-lipgloss.Width(updatedStr)-lipgloss.Width(title) <= 0 {
+	if m.Width()-styles.Base.GetHorizontalFrameSize()-lipgloss.Width(updatedStr)-lipgloss.Width(title) <= 0 {
 		updatedStr = ""
 	}
-	updatedStyle := styles.MenuLastUpdate.Copy().
+	updatedStyle := styles.Updated.Copy().
 		Align(lipgloss.Right).
-		Width(m.Width() - itemStyle.GetHorizontalFrameSize() - lipgloss.Width(title))
-	if isSelected {
-		updatedStyle = updatedStyle.Bold(true)
-	}
+		Width(m.Width() - styles.Base.GetHorizontalFrameSize() - lipgloss.Width(title))
 	updated := updatedStyle.Render(updatedStr)
 
 	if isFiltered && index < len(m.VisibleItems()) {
@@ -141,30 +130,20 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		}
 		title = lipgloss.StyleRunes(title, matchedRunes, matched, unmatched)
 	}
-	titleStyle := lipgloss.NewStyle()
-	if isSelected {
-		titleStyle = titleStyle.Bold(true)
-	}
-	title = titleStyle.Render(title)
+	title = styles.Title.Render(title)
 	desc := i.Description()
-	descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
-	if desc == "" {
-		desc = "No description"
-		descStyle = descStyle.Faint(true)
-	}
-	desc = common.TruncateString(desc, m.Width()-itemStyle.GetHorizontalFrameSize())
-	desc = descStyle.Render(desc)
+	desc = common.TruncateString(desc, m.Width()-styles.Base.GetHorizontalFrameSize())
+	desc = styles.Desc.Render(desc)
 
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, title, updated))
-	s.WriteString("\n")
+	s.WriteRune('\n')
 	s.WriteString(desc)
-	s.WriteString("\n")
-	cmdStyle := styles.Repo.Command.Copy()
-	cmd := common.TruncateString(i.Command(), m.Width()-itemStyle.GetHorizontalFrameSize())
-	cmd = cmdStyle.Render(cmd)
+	s.WriteRune('\n')
+	cmd := common.TruncateString(i.Command(), m.Width()-styles.Base.GetHorizontalFrameSize())
+	cmd = styles.Command.Render(cmd)
 	if !i.copied.IsZero() && i.copied.Add(time.Second).After(time.Now()) {
-		cmd = cmdStyle.Render("Copied!")
+		cmd = styles.Command.Render("Copied!")
 	}
 	s.WriteString(cmd)
-	fmt.Fprint(w, itemStyle.Render(s.String()))
+	fmt.Fprint(w, styles.Base.Render(s.String()))
 }

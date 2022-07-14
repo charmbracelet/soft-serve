@@ -21,6 +21,23 @@ type Styles struct {
 	MenuItem       lipgloss.Style
 	MenuLastUpdate lipgloss.Style
 
+	RepoSelector struct {
+		Normal struct {
+			Base,
+			Title,
+			Desc,
+			Command,
+			Updated lipgloss.Style
+		}
+		Active struct {
+			Base,
+			Title,
+			Desc,
+			Command,
+			Updated lipgloss.Style
+		}
+	}
+
 	Repo struct {
 		Base       lipgloss.Style
 		Title      lipgloss.Style
@@ -153,6 +170,40 @@ func DefaultStyles() *Styles {
 
 	s.TopLevelActiveTabDot = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("29"))
+
+	s.RepoSelector.Normal.Base = lipgloss.NewStyle().
+		PaddingLeft(1).
+		Border(lipgloss.Border{Left: " "}, false, false, false, true).
+		Height(3)
+
+	s.RepoSelector.Normal.Title = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("212")).
+		Bold(true)
+
+	s.RepoSelector.Normal.Desc = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("250"))
+
+	s.RepoSelector.Normal.Command = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("246"))
+
+	s.RepoSelector.Normal.Updated = lipgloss.NewStyle()
+
+	s.RepoSelector.Active.Base = s.RepoSelector.Normal.Base.Copy().
+		BorderStyle(lipgloss.Border{Left: "┃"}).
+		BorderForeground(selectorColor)
+
+	s.RepoSelector.Active.Title = lipgloss.NewStyle().
+		Foreground(highlightColor).
+		Bold(true)
+
+	s.RepoSelector.Active.Desc = lipgloss.NewStyle().
+		Foreground(highlightColorDim)
+
+	s.RepoSelector.Active.Updated = s.RepoSelector.Normal.Updated.Copy().
+		Foreground(highlightColorDim)
+
+	s.RepoSelector.Active.Command = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("138"))
 
 	s.MenuItem = lipgloss.NewStyle().
 		PaddingLeft(1).
