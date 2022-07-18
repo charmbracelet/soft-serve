@@ -166,7 +166,7 @@ func DefaultStyles() *Styles {
 		MarginRight(2)
 
 	s.TopLevelActiveTab = s.TopLevelNormalTab.Copy().
-		Foreground(lipgloss.Color("42"))
+		Foreground(lipgloss.Color("35"))
 
 	s.TopLevelActiveTabDot = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("29"))
@@ -447,7 +447,7 @@ func DefaultStyles() *Styles {
 
 	s.TabActive = lipgloss.NewStyle().
 		Underline(true).
-		Foreground(lipgloss.Color("42"))
+		Foreground(lipgloss.Color("35"))
 
 	s.TabSeparator = lipgloss.NewStyle().
 		SetString("│").
