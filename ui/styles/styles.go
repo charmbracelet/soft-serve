@@ -180,8 +180,7 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("212")).
 		Bold(true)
 
-	s.RepoSelector.Normal.Desc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("250"))
+	s.RepoSelector.Normal.Desc = lipgloss.NewStyle()
 
 	s.RepoSelector.Normal.Command = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("246"))
@@ -230,14 +229,13 @@ func DefaultStyles() *Styles {
 	s.Repo.Header = lipgloss.NewStyle().
 		Height(2).
 		Border(lipgloss.NormalBorder(), false, false, true, false).
-		BorderForeground(lipgloss.Color("238"))
+		BorderForeground(lipgloss.Color("236"))
 
 	s.Repo.HeaderName = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("212")).
 		Bold(true)
 
-	s.Repo.HeaderDesc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("244"))
+	s.Repo.HeaderDesc = lipgloss.NewStyle()
 
 	s.Footer = lipgloss.NewStyle().
 		MarginTop(1).
