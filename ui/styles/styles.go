@@ -23,17 +23,17 @@ type Styles struct {
 
 	RepoSelector struct {
 		Normal struct {
-			Base,
-			Title,
-			Desc,
-			Command,
+			Base    lipgloss.Style
+			Title   lipgloss.Style
+			Desc    lipgloss.Style
+			Command lipgloss.Style
 			Updated lipgloss.Style
 		}
 		Active struct {
-			Base,
-			Title,
-			Desc,
-			Command,
+			Base    lipgloss.Style
+			Title   lipgloss.Style
+			Desc    lipgloss.Style
+			Command lipgloss.Style
 			Updated lipgloss.Style
 		}
 	}
