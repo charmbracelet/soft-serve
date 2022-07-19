@@ -184,7 +184,8 @@ func DefaultStyles() *Styles {
 	s.RepoSelector.Normal.Command = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("132"))
 
-	s.RepoSelector.Normal.Updated = lipgloss.NewStyle()
+	s.RepoSelector.Normal.Updated = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("243"))
 
 	s.RepoSelector.Active.Base = s.RepoSelector.Normal.Base.Copy().
 		BorderStyle(lipgloss.Border{Left: "┃"}).
@@ -195,7 +196,7 @@ func DefaultStyles() *Styles {
 		Bold(true)
 
 	s.RepoSelector.Active.Desc = s.RepoSelector.Normal.Desc.Copy().
-		Foreground(lipgloss.Color("245"))
+		Foreground(lipgloss.Color("246"))
 
 	s.RepoSelector.Active.Updated = s.RepoSelector.Normal.Updated.Copy().
 		Foreground(lipgloss.Color("212"))
@@ -234,7 +235,8 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("212")).
 		Bold(true)
 
-	s.Repo.HeaderDesc = lipgloss.NewStyle()
+	s.Repo.HeaderDesc = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("243"))
 
 	s.Footer = lipgloss.NewStyle().
 		MarginTop(1).
