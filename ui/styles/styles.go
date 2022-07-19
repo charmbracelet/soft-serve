@@ -176,33 +176,32 @@ func DefaultStyles() *Styles {
 		Border(lipgloss.Border{Left: " "}, false, false, false, true).
 		Height(3)
 
-	s.RepoSelector.Normal.Title = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("212")).
-		Bold(true)
+	s.RepoSelector.Normal.Title = lipgloss.NewStyle().Bold(true)
 
-	s.RepoSelector.Normal.Desc = lipgloss.NewStyle()
+	s.RepoSelector.Normal.Desc = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("243"))
 
 	s.RepoSelector.Normal.Command = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("246"))
+		Foreground(lipgloss.Color("132"))
 
 	s.RepoSelector.Normal.Updated = lipgloss.NewStyle()
 
 	s.RepoSelector.Active.Base = s.RepoSelector.Normal.Base.Copy().
 		BorderStyle(lipgloss.Border{Left: "┃"}).
-		BorderForeground(selectorColor)
+		BorderForeground(lipgloss.Color("212"))
 
-	s.RepoSelector.Active.Title = lipgloss.NewStyle().
-		Foreground(highlightColor).
+	s.RepoSelector.Active.Title = s.RepoSelector.Normal.Title.Copy().
+		Foreground(lipgloss.Color("212")).
 		Bold(true)
 
-	s.RepoSelector.Active.Desc = lipgloss.NewStyle().
-		Foreground(highlightColorDim)
+	s.RepoSelector.Active.Desc = s.RepoSelector.Normal.Desc.Copy().
+		Foreground(lipgloss.Color("245"))
 
 	s.RepoSelector.Active.Updated = s.RepoSelector.Normal.Updated.Copy().
-		Foreground(highlightColorDim)
+		Foreground(lipgloss.Color("212"))
 
-	s.RepoSelector.Active.Command = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("138"))
+	s.RepoSelector.Active.Command = s.RepoSelector.Normal.Command.Copy().
+		Foreground(lipgloss.Color("204"))
 
 	s.MenuItem = lipgloss.NewStyle().
 		PaddingLeft(1).
