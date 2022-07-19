@@ -352,7 +352,7 @@ func DefaultStyles() *Styles {
 	s.Ref.ItemBranch = lipgloss.NewStyle()
 
 	s.Ref.Normal.ItemTag = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("185"))
+		Foreground(lipgloss.Color("39"))
 
 	s.Ref.Active.ItemTag = lipgloss.NewStyle().
 		Bold(true).
