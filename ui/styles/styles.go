@@ -143,7 +143,7 @@ func DefaultStyles() *Styles {
 	highlightColor := lipgloss.Color("210")
 	highlightColorDim := lipgloss.Color("174")
 	selectorColor := lipgloss.Color("167")
-	hashColor := lipgloss.Color("184")
+	hashColor := lipgloss.Color("185")
 
 	s := new(Styles)
 
