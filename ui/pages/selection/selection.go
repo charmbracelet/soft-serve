@@ -302,6 +302,9 @@ func (s *Selection) View() string {
 			readmeStatus,
 		))
 	}
-	ts := s.common.Styles.Tabs.Copy()
-	return lipgloss.JoinVertical(lipgloss.Left, ts.Render(s.tabs.View()), view)
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		s.common.Styles.Tabs.Render(s.tabs.View()),
+		view,
+	)
 }

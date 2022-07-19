@@ -240,7 +240,6 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (ui *UI) View() string {
 	var view string
 	wm, hm := ui.getMargins()
-	style := ui.common.Styles.App.Copy()
 	switch ui.state {
 	case startState:
 		view = "Loading..."
@@ -266,7 +265,7 @@ func (ui *UI) View() string {
 	if ui.showFooter {
 		view = lipgloss.JoinVertical(lipgloss.Left, view, ui.footer.View())
 	}
-	return style.Render(view)
+	return ui.common.Styles.App.Render(view)
 }
 
 func (ui *UI) setRepoCmd(rn string) tea.Cmd {
