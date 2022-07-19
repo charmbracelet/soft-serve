@@ -30,6 +30,7 @@ func softMiddleware(ac *appCfg.Config) wish.Middleware {
 				use += fmt.Sprintf(" %s", ac.Host)
 				cmd := cmd.RootCommand()
 				cmd.Use = use
+				cmd.CompletionOptions.DisableDefaultCmd = true
 				cmd.SetIn(s)
 				cmd.SetOut(s)
 				cmd.SetErr(s.Stderr())
