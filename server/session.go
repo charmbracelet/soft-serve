@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/styles"
 	bm "github.com/charmbracelet/wish/bubbletea"
 	"github.com/gliderlabs/ssh"
+	zone "github.com/lrstanley/bubblezone"
 )
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
@@ -38,6 +39,7 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 			KeyMap: keymap.DefaultKeyMap(),
 			Width:  pty.Window.Width,
 			Height: pty.Window.Height,
+			Zone:   zone.New(),
 		}
 		m := ui.New(
 			ac,
