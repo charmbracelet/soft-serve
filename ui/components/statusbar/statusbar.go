@@ -59,7 +59,10 @@ func (s *StatusBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (s *StatusBar) View() string {
 	st := s.common.Styles
 	w := lipgloss.Width
-	help := st.StatusBarHelp.Render("? Help")
+	help := s.common.Zone.Mark(
+		"repo-help",
+		st.StatusBarHelp.Render("? Help"),
+	)
 	key := st.StatusBarKey.Render(s.msg.Key)
 	info := ""
 	if s.msg.Info != "" {

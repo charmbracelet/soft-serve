@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -44,6 +45,12 @@ func (t tab) String() string {
 	}[t]
 }
 
+// CopyUrlMsg is a message to copy the URL of the current repository.
+type CopyUrlMsg struct{}
+
+// ResetUrlMsg is a message to reset the URL string.
+type ResetUrlMsg struct{}
+
 // UpdateStatusBarMsg updates the status bar.
 type UpdateStatusBarMsg struct{}
 
@@ -63,6 +70,7 @@ type Repo struct {
 	statusbar    *statusbar.StatusBar
 	panes        []common.Component
 	ref          *ggit.Reference
+	copyUrl      time.Time
 }
 
 // New returns a new Repo.
@@ -190,7 +198,22 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if r.selectedRepo != nil {
 			cmds = append(cmds, r.updateStatusBarCmd)
+			switch msg := msg.(type) {
+			case tea.MouseMsg:
+				if msg.Type == tea.MouseLeft {
+					id := fmt.Sprintf("%s-url", r.selectedRepo.Repo())
+					if r.common.Zone.Get(id).InBounds(msg) {
+						cmds = append(cmds, r.copyUrlCmd())
+					}
+				}
+			}
 		}
+	case CopyUrlMsg:
+		r.common.Copy.Copy(
+			git.RepoURL(r.cfg.Host, r.cfg.Port, r.selectedRepo.Repo()),
+		)
+	case ResetUrlMsg:
+		r.copyUrl = time.Time{}
 	case ReadmeMsg:
 	case FileItemsMsg:
 		f, cmd := r.panes[filesTab].Update(msg)
@@ -285,8 +308,14 @@ func (r *Repo) headerView() string {
 		Width(r.common.Width - lipgloss.Width(desc) - 1).
 		Align(lipgloss.Right)
 	url := git.RepoURL(cfg.Host, cfg.Port, r.selectedRepo.Repo())
+	if !r.copyUrl.IsZero() && r.copyUrl.Add(time.Second).After(time.Now()) {
+		url = "copied!"
+	}
 	url = common.TruncateString(url, r.common.Width-lipgloss.Width(desc)-1)
-	url = urlStyle.Render(url)
+	url = r.common.Zone.Mark(
+		fmt.Sprintf("%s-url", r.selectedRepo.Repo()),
+		urlStyle.Render(url),
+	)
 	style := r.common.Styles.Repo.Header.Copy().Width(r.common.Width)
 	return style.Render(
 		lipgloss.JoinVertical(lipgloss.Top,
@@ -338,6 +367,18 @@ func (r *Repo) updateModels(msg tea.Msg) tea.Cmd {
 		}
 	}
 	return tea.Batch(cmds...)
+}
+
+func (r *Repo) copyUrlCmd() tea.Cmd {
+	r.copyUrl = time.Now()
+	return tea.Batch(
+		func() tea.Msg {
+			return CopyUrlMsg{}
+		},
+		tea.Tick(time.Second, func(time.Time) tea.Msg {
+			return ResetUrlMsg{}
+		}),
+	)
 }
 
 func updateStatusBarCmd() tea.Msg {

@@ -194,6 +194,14 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Always show the footer on selection page.
 				ui.showFooter = true
 			}
+		case tea.MouseMsg:
+			if msg.Type == tea.MouseLeft {
+				switch {
+				case ui.common.Zone.Get("repo-help").InBounds(msg),
+					ui.common.Zone.Get("footer").InBounds(msg):
+					cmds = append(cmds, footer.ToggleFooterCmd)
+				}
+			}
 		}
 	case footer.ToggleFooterMsg:
 		ui.footer.SetShowAll(!ui.footer.ShowAll())
