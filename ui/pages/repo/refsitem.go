@@ -121,5 +121,10 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		s.Normal.Item.GetMarginLeft()
 	ref = common.TruncateString(ref, refMaxWidth)
 	ref = st.Render(ref)
-	fmt.Fprint(w, selector, ref)
+	fmt.Fprint(w,
+		d.common.Zone.Mark(
+			i.ID(),
+			fmt.Sprint(selector, ref),
+		),
+	)
 }
