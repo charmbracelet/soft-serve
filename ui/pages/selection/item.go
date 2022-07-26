@@ -141,5 +141,9 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		cmd = styles.Command.Render("Copied!")
 	}
 	s.WriteString(cmd)
-	fmt.Fprint(w, styles.Base.Render(s.String()))
+	fmt.Fprint(w,
+		d.common.Zone.Mark(i.ID(),
+			styles.Base.Render(s.String()),
+		),
+	)
 }

@@ -146,10 +146,13 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		s.Selector.GetHorizontalFrameSize() -
 		s.Selector.GetWidth())
 	fmt.Fprint(w,
-		truncate.Render(fmt.Sprintf("%s%s%s",
-			modeStr,
-			size,
-			name,
-		)),
+		d.common.Zone.Mark(
+			i.ID(),
+			truncate.Render(fmt.Sprintf("%s%s%s",
+				modeStr,
+				size,
+				name,
+			)),
+		),
 	)
 }
