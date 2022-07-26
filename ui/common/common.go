@@ -4,6 +4,7 @@ import (
 	"github.com/aymanbagabas/go-osc52"
 	"github.com/charmbracelet/soft-serve/ui/keymap"
 	"github.com/charmbracelet/soft-serve/ui/styles"
+	zone "github.com/lrstanley/bubblezone"
 )
 
 // Common is a struct all components should embed.
@@ -13,6 +14,7 @@ type Common struct {
 	KeyMap *keymap.KeyMap
 	Width  int
 	Height int
+	Zone   *zone.Manager
 }
 
 // SetSize sets the width and height of the common struct.
