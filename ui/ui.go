@@ -267,7 +267,9 @@ func (ui *UI) View() string {
 	if ui.showFooter {
 		view = lipgloss.JoinVertical(lipgloss.Left, view, ui.footer.View())
 	}
-	return ui.common.Styles.App.Render(view)
+	return ui.common.Zone.Scan(
+		ui.common.Styles.App.Render(view),
+	)
 }
 
 func (ui *UI) setRepoCmd(rn string) tea.Cmd {
