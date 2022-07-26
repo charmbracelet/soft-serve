@@ -186,6 +186,8 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, ui.common.KeyMap.Help):
 				cmds = append(cmds, footer.ToggleFooterCmd)
 			case key.Matches(msg, ui.common.KeyMap.Quit):
+				// Stop bubblezone background workers.
+				ui.common.Zone.Close()
 				return ui, tea.Quit
 			case ui.activePage == repoPage && key.Matches(msg, ui.common.KeyMap.Back):
 				ui.activePage = selectionPage
