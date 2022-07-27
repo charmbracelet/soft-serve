@@ -18,6 +18,5 @@ jobs:
       gh_pat: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       goreleaser_key: ${{ secrets.GORELEASER_KEY }}
       fury_token: ${{ secrets.FURY_TOKEN }}
-      aur_key: ${{ secrets.AUR_KEY }}
       nfpm_gpg_key: ${{ secrets.NFPM_GPG_KEY }}
       nfpm_passphrase: ${{ secrets.NFPM_PASSPHRASE }}
