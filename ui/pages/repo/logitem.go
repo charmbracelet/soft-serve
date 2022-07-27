@@ -130,7 +130,7 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		}
 		who += " "
 	}
-	date := i.Committer.When.Format("Feb 02")
+	date := i.Committer.When.Format("Jan 02")
 	if i.Committer.When.Year() != time.Now().Year() {
 		date += fmt.Sprintf(" %d", i.Committer.When.Year())
 	}
