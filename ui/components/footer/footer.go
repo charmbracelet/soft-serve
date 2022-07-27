@@ -8,6 +8,9 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/common"
 )
 
+// ToggleFooterMsg is a message sent to show/hide the footer.
+type ToggleFooterMsg struct{}
+
 // Footer is a Bubble Tea model that displays help and other info.
 type Footer struct {
 	common common.Common
@@ -82,4 +85,9 @@ func (f *Footer) SetShowAll(show bool) {
 // Height returns the height of the footer.
 func (f *Footer) Height() int {
 	return lipgloss.Height(f.View())
+}
+
+// ToggleFooterCmd sends a ToggleFooterMsg to show/hide the help footer.
+func ToggleFooterCmd() tea.Msg {
+	return ToggleFooterMsg{}
 }
