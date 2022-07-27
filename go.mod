@@ -7,7 +7,7 @@ require (
 	github.com/caarlos0/env/v6 v6.9.1
 	github.com/charmbracelet/bubbles v0.11.0
 	github.com/charmbracelet/bubbletea v0.21.0
-	github.com/charmbracelet/glamour v0.5.0
+	github.com/charmbracelet/glamour v0.5.1-0.20220727183416-a99aac852791
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/charmbracelet/wish v0.5.0
 	github.com/dustin/go-humanize v1.0.0
@@ -54,7 +54,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mcuadros/go-version v0.0.0-20190308113854-92cdf37c5b75 // indirect
-	github.com/microcosm-cc/bluemonday v1.0.17 // indirect
+	github.com/microcosm-cc/bluemonday v1.0.19 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/muesli/ansi v0.0.0-20211031195517-c9f0611b6c70 // indirect
 	github.com/muesli/cancelreader v0.2.1 // indirect
