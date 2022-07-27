@@ -184,11 +184,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Always show the footer on error.
 				ui.showFooter = ui.footer.ShowAll()
 			case key.Matches(msg, ui.common.KeyMap.Help):
-				ui.footer.SetShowAll(!ui.footer.ShowAll())
-				// Show the footer when on repo page and shot all help.
-				if ui.error == nil && ui.activePage == repoPage {
-					ui.showFooter = !ui.showFooter
-				}
+				cmds = append(cmds, footer.ToggleFooterCmd)
 			case key.Matches(msg, ui.common.KeyMap.Quit):
 				return ui, tea.Quit
 			case ui.activePage == repoPage && key.Matches(msg, ui.common.KeyMap.Back):
@@ -196,6 +192,12 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Always show the footer on selection page.
 				ui.showFooter = true
 			}
+		}
+	case footer.ToggleFooterMsg:
+		ui.footer.SetShowAll(!ui.footer.ShowAll())
+		// Show the footer when on repo page and shot all help.
+		if ui.error == nil && ui.activePage == repoPage {
+			ui.showFooter = !ui.showFooter
 		}
 	case repo.RepoMsg:
 		ui.activePage = repoPage
