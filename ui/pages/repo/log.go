@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
+	"github.com/charmbracelet/soft-serve/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/viewport"
 	"github.com/charmbracelet/soft-serve/ui/git"
@@ -274,6 +275,8 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// stop loading after setting the viewport content
 			l.stopLoading(),
 		)
+	case footer.ToggleFooterMsg:
+		cmds = append(cmds, l.updateCommitsCmd)
 	case tea.WindowSizeMsg:
 		if l.selectedCommit != nil && l.currentDiff != nil {
 			l.vp.SetContent(
