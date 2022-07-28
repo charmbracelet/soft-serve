@@ -192,8 +192,7 @@ func DefaultStyles() *Styles {
 		BorderForeground(lipgloss.Color("212"))
 
 	s.RepoSelector.Active.Title = s.RepoSelector.Normal.Title.Copy().
-		Foreground(lipgloss.Color("212")).
-		Bold(true)
+		Foreground(lipgloss.Color("212"))
 
 	s.RepoSelector.Active.Desc = s.RepoSelector.Normal.Desc.Copy().
 		Foreground(lipgloss.Color("246"))
