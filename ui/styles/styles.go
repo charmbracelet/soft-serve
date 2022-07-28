@@ -189,7 +189,7 @@ func DefaultStyles() *Styles {
 
 	s.RepoSelector.Active.Base = s.RepoSelector.Normal.Base.Copy().
 		BorderStyle(lipgloss.Border{Left: "┃"}).
-		BorderForeground(lipgloss.Color("212"))
+		BorderForeground(lipgloss.Color("176"))
 
 	s.RepoSelector.Active.Title = s.RepoSelector.Normal.Title.Copy().
 		Foreground(lipgloss.Color("212"))
