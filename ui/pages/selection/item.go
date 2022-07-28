@@ -122,12 +122,8 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	if isFiltered {
-		unmatched := lipgloss.NewStyle().Inline(true)
+		unmatched := styles.Title.Copy().Inline(true)
 		matched := unmatched.Copy().Underline(true)
-		if isSelected {
-			unmatched = unmatched.Bold(true)
-			matched = matched.Bold(true)
-		}
 		title = lipgloss.StyleRunes(title, matchedRunes, matched, unmatched)
 	}
 	title = styles.Title.Render(title)
