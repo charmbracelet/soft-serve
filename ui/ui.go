@@ -1,9 +1,6 @@
 package ui
 
 import (
-	"log"
-	"os"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -160,9 +157,6 @@ func (ui *UI) Init() tea.Cmd {
 
 // Update implements tea.Model.
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if os.Getenv("DEBUG") == "true" {
-		log.Printf("ui msg: %T", msg)
-	}
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
