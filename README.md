@@ -34,10 +34,10 @@ ssh git.charm.sh -t soft-serve
 ssh git.charm.sh ls soft-serve
 
 # Print a specific file
-ssh git.charm.sh cat soft-serve/cmd/soft/main.go
+ssh git.charm.sh cat soft-serve/cmd/soft/root.go
 
 # Print a file with syntax highlighting and line numbers
-ssh git.charm.sh cat soft-serve/cmd/soft/main.go -c -l
+ssh git.charm.sh cat soft-serve/cmd/soft/root.go -c -l
 ```
 
 ## Installation
