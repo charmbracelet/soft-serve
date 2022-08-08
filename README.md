@@ -11,7 +11,11 @@ Soft Serve
 
 A tasty, self-hostable Git server for the command line. 🍦
 
-<img src="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0" width="750" alt="Soft Serve screencast">
+<picture>
+  <source media="(max-width: 750px)" srcset="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0">
+  <source media="(min-width: 750px)" width="750" srcset="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0">
+  <img src="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0" alt="Soft Serve screencast">
+</picture>
 
 * Configure with `git`
 * Create repos on demand with `git push`
