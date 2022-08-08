@@ -11,11 +11,12 @@ Soft Serve
 
 A tasty, self-hostable Git server for the command line. 🍦
 
-<img src="https://stuff.charm.sh/soft-serve/soft-serve-cli-demo.gif?0" width="750" alt="Soft Serve screencast">
+<img src="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0" width="750" alt="Soft Serve screencast">
 
 * Configure with `git`
 * Create repos on demand with `git push`
 * Browse repos, files and commits with an SSH-accessible TUI
+* TUI mouse support
 * Print files over SSH with or without syntax highlighting and line numbers
 * Easy access control
   - Allow/disallow anonymous access
@@ -186,7 +187,7 @@ git push soft main
 
 ## The Soft Serve TUI
 
-<img src="https://stuff.charm.sh/soft-serve/soft-serve-tui-diff.png" width="750" alt="TUI example showing a diff">
+<img src="https://stuff.charm.sh/soft-serve/soft-serve-demo-commit.png" width="750" alt="TUI example showing a diff">
 
 Soft Serve serves a TUI over SSH for browsing repos, viewing files and commits,
 and grabbing clone commands:
@@ -201,13 +202,9 @@ It's also possible to “link” to a specific repo:
 ssh localhost -t -p 23231 REPO
 ```
 
-You can use the `tab` key to move between the repo menu and a particular repo.
-When a repo is highlighted you can use the following keys for navigation:
+You can copy text to your clipboard over SSH. For instance, you can press <kbd>c</kbd> on the highlighted repo in the menu to copy the clone command [^osc52].
 
-* `R` – View the project's README file
-* `F` – Navigate and view all of the files in the project
-* `C` – View the commit log for the repo
-* `B` – View branches and tags for the repo
+[^osc52]: Copying over SSH depends on your terminal support of OSC52.
 
 ## The Soft Serve SSH CLI
 
@@ -244,14 +241,14 @@ ssh -p 23231 localhost ls soft-serve
 From there, you can print individual files using the `cat` command:
 
 ```sh
-ssh -p 23231 localhost cat soft-serve/cmd/soft/main.go
+ssh -p 23231 localhost cat soft-serve/cmd/soft/root.go
 ```
 
 You can add the `-c` flag to enable syntax coloring and `-l` to print line
 numbers:
 
 ```sh
-ssh -p 23231 localhost cat soft-serve/cmd/soft/main.go -c -l
+ssh -p 23231 localhost cat soft-serve/cmd/soft/root.go -c -l
 ```
 
 You can also use the `git` command to perform Git operations on a repo such as changing the default branch name for instance:
