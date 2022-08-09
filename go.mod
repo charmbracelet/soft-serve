@@ -73,3 +73,6 @@ require (
 	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+// see https://github.com/sergi/go-diff/issues/123
+exclude github.com/sergi/go-diff v1.2.0
