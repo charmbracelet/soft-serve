@@ -67,12 +67,18 @@ func (srv *Server) Reload() error {
 
 // Start starts the SSH server.
 func (srv *Server) Start() error {
-	return srv.SSHServer.ListenAndServe()
+	if err := srv.SSHServer.ListenAndServe(); err != ssh.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 // Serve serves the SSH server using the provided listener.
 func (srv *Server) Serve(l net.Listener) error {
-	return srv.SSHServer.Serve(l)
+	if err := srv.SSHServer.Serve(l); err != ssh.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 // Shutdown lets the server gracefully shutdown.
