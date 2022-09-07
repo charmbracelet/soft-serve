@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	pm "github.com/charmbracelet/promwish"
 	"log"
 	"net"
 	"path/filepath"
@@ -64,6 +65,7 @@ func NewServer(cfg *config.Config) *Server {
 				}
 			},
 			lm.Middleware(),
+			pm.Middleware("localhost:9222", "soft-serve"),
 		),
 	}
 	s, err := wish.NewServer(

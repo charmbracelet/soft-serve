@@ -5,3 +5,4 @@ dist
 testdata
 completions/
 manpages/
+.idea

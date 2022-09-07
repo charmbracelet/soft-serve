@@ -17,6 +17,8 @@ ENV SOFT_SERVE_REPO_PATH "/soft-serve/repos"
 # Expose ports
 # SSH
 EXPOSE 23231/tcp
+# Metrics
+EXPOSE 9222/tcp
 
 # Set the default command
 ENTRYPOINT [ "/usr/local/bin/soft", "serve" ]
