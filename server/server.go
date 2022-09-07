@@ -65,7 +65,7 @@ func NewServer(cfg *config.Config) *Server {
 				}
 			},
 			lm.Middleware(),
-			pm.Middleware("localhost:9222", "soft-serve"),
+			pm.Middleware("0.0.0.0:9222", "soft-serve"),
 		),
 	}
 	s, err := wish.NewServer(
