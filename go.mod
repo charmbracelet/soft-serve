@@ -16,7 +16,7 @@ require (
 	github.com/go-git/go-git/v5 v5.4.3-0.20210630082519-b4368b2a2ca4
 	github.com/matryer/is v1.4.0
 	github.com/muesli/reflow v0.3.0
-	github.com/muesli/termenv v0.12.0
+	github.com/muesli/termenv v0.13.0
 	github.com/sergi/go-diff v1.1.0
 	golang.org/x/crypto v0.0.0-20220826181053-bd7e27e6170d
 )
@@ -54,7 +54,7 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
-	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mcuadros/go-version v0.0.0-20190308113854-92cdf37c5b75 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.19 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
