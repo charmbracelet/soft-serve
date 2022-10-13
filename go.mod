@@ -7,13 +7,13 @@ require (
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/charmbracelet/bubbles v0.14.0
 	github.com/charmbracelet/bubbletea v0.22.1
-	github.com/charmbracelet/glamour v0.5.1-0.20220727183416-a99aac852791
+	github.com/charmbracelet/glamour v0.5.1-0.20221011134325-f74666fece07
 	github.com/charmbracelet/lipgloss v0.6.0
 	github.com/charmbracelet/wish v0.5.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/go-git/go-billy/v5 v5.3.1
-	github.com/go-git/go-git/v5 v5.4.3-0.20210630082519-b4368b2a2ca4
+	github.com/go-git/go-git/v5 v5.4.2
 	github.com/matryer/is v1.4.0
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.13.0
@@ -74,6 +74,7 @@ require (
 	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 // see https://github.com/sergi/go-diff/issues/123
