@@ -132,9 +132,6 @@ repos:
     private: true
     note: "A private repo"
 
-# Authorized users. Admins have full access to all repos. Regular users
-# can read public repos and push to their collab-repos.
-
 # Authorized users. Admins have full access to all repos. Private repos are only
 # accessible by admins and collab users. Regular users can read public repos
 # based on your anon-access setting.
