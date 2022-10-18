@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"log"
@@ -17,6 +18,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/go-git/go-billy/v5/memfs"
 	ggit "github.com/go-git/go-git/v5"
@@ -25,35 +27,40 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 )
 
+var (
+	// ErrNoConfig is returned when no config file is found.
+	ErrNoConfig = errors.New("no config file found")
+)
+
 // Config is the Soft Serve configuration.
 type Config struct {
-	Name         string         `yaml:"name"`
-	Host         string         `yaml:"host"`
-	Port         int            `yaml:"port"`
-	AnonAccess   string         `yaml:"anon-access"`
-	AllowKeyless bool           `yaml:"allow-keyless"`
-	Users        []User         `yaml:"users"`
-	Repos        []MenuRepo     `yaml:"repos"`
-	Source       *RepoSource    `yaml:"-"`
-	Cfg          *config.Config `yaml:"-"`
+	Name         string         `yaml:"name" json:"name"`
+	Host         string         `yaml:"host" json:"host"`
+	Port         int            `yaml:"port" json:"port"`
+	AnonAccess   string         `yaml:"anon-access" json:"anon-access"`
+	AllowKeyless bool           `yaml:"allow-keyless" json:"allow-keyless"`
+	Users        []User         `yaml:"users" json:"users"`
+	Repos        []MenuRepo     `yaml:"repos" json:"repos"`
+	Source       *RepoSource    `yaml:"-" json:"-"`
+	Cfg          *config.Config `yaml:"-" json:"-"`
 	mtx          sync.Mutex
 }
 
 // User contains user-level configuration for a repository.
 type User struct {
-	Name        string   `yaml:"name"`
-	Admin       bool     `yaml:"admin"`
-	PublicKeys  []string `yaml:"public-keys"`
-	CollabRepos []string `yaml:"collab-repos"`
+	Name        string   `yaml:"name" json:"name"`
+	Admin       bool     `yaml:"admin" json:"admin"`
+	PublicKeys  []string `yaml:"public-keys" json:"public-keys"`
+	CollabRepos []string `yaml:"collab-repos" json:"collab-repos"`
 }
 
 // Repo contains repository configuration information.
 type MenuRepo struct {
-	Name    string `yaml:"name"`
-	Repo    string `yaml:"repo"`
-	Note    string `yaml:"note"`
-	Private bool   `yaml:"private"`
-	Readme  string `yaml:"readme"`
+	Name    string `yaml:"name" json:"name"`
+	Repo    string `yaml:"repo" json:"repo"`
+	Note    string `yaml:"note" json:"note"`
+	Private bool   `yaml:"private" json:"private"`
+	Readme  string `yaml:"readme" json:"readme"`
 }
 
 // NewConfig creates a new internal Config struct.
@@ -133,13 +140,26 @@ func (cfg *Config) Reload() error {
 	if err != nil {
 		return err
 	}
-	cs, _, err := cr.LatestFile("config.yaml")
-	if err != nil {
-		return err
+	cy, _, err := cr.LatestFile("config.yaml")
+	if err != nil && !errors.Is(err, git.ErrFileNotFound) {
+		return fmt.Errorf("error reading config.yaml: %w", err)
 	}
-	err = yaml.Unmarshal([]byte(cs), cfg)
-	if err != nil {
-		return fmt.Errorf("bad yaml in config.yaml: %s", err)
+	cj, _, err := cr.LatestFile("config.json")
+	if err != nil && !errors.Is(err, git.ErrFileNotFound) {
+		return fmt.Errorf("error reading config.json: %w", err)
+	}
+	if cy != "" {
+		err = yaml.Unmarshal([]byte(cy), cfg)
+		if err != nil {
+			return fmt.Errorf("bad yaml in config.yaml: %s", err)
+		}
+	} else if cj != "" {
+		err = json.Unmarshal([]byte(cj), cfg)
+		if err != nil {
+			return fmt.Errorf("bad json in config.json: %s", err)
+		}
+	} else {
+		return ErrNoConfig
 	}
 	for _, r := range cfg.Source.AllRepos() {
 		name := r.Name()
