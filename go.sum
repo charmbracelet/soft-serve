@@ -36,6 +36,8 @@ github.com/charmbracelet/bubbletea v0.22.1 h1:z66q0LWdJNOWEH9zadiAIXp2GN1AWrwNXU
 github.com/charmbracelet/bubbletea v0.22.1/go.mod h1:8/7hVvbPN6ZZPkczLiB8YpLkLJ0n7DMho5Wvfd2X1C0=
 github.com/charmbracelet/glamour v0.5.1-0.20221011134325-f74666fece07 h1:yGFfO5criduZLOU+K/lfIsiNQAscJw/2g/p9Iref450=
 github.com/charmbracelet/glamour v0.5.1-0.20221011134325-f74666fece07/go.mod h1:HXz79SMFnF9arKxqeoHWxmo1BhplAH7wehlRhKQIL94=
+github.com/charmbracelet/glamour v0.5.1-0.20221015050842-c4cd9ed13e4c h1:ab5qQmotMEJBf9OfZxqGfoIEkFpiPZp7Wt6oSwAWa1c=
+github.com/charmbracelet/glamour v0.5.1-0.20221015050842-c4cd9ed13e4c/go.mod h1:taqWV4swIMMbWALc0m7AfE9JkPSU8om2538k9ITBxOc=
 github.com/charmbracelet/harmonica v0.2.0/go.mod h1:KSri/1RMQOZLbw7AHqgcBycp8pgJnQMYYT8QZRqZ1Ao=
 github.com/charmbracelet/keygen v0.3.0 h1:mXpsQcH7DDlST5TddmXNXjS0L7ECk4/kLQYyBcsan2Y=
 github.com/charmbracelet/keygen v0.3.0/go.mod h1:1ukgO8806O25lUZ5s0IrNur+RlwTBERlezdgW71F5rM=
@@ -128,6 +130,8 @@ github.com/mcuadros/go-version v0.0.0-20190308113854-92cdf37c5b75 h1:Pijfgr7ZuvX
 github.com/mcuadros/go-version v0.0.0-20190308113854-92cdf37c5b75/go.mod h1:76rfSfYPWj01Z85hUf/ituArm797mNKcvINh1OlsZKo=
 github.com/microcosm-cc/bluemonday v1.0.19 h1:OI7hoF5FY4pFz2VA//RN8TfM0YJ2dJcl4P4APrCWy6c=
 github.com/microcosm-cc/bluemonday v1.0.19/go.mod h1:QNzV2UbLK2/53oIIwTOyLUSABMkjZ4tqiyC1g/DyqxE=
+github.com/microcosm-cc/bluemonday v1.0.21 h1:dNH3e4PSyE4vNX+KlRGHT5KrSvjeUkoNPwEORjffHJg=
+github.com/microcosm-cc/bluemonday v1.0.21/go.mod h1:ytNkv4RrDrLJ2pqlsSI46O6IVXmZOBBD4SaJyDwwTkM=
 github.com/mitchellh/go-homedir v1.1.0 h1:lukF9ziXFxDFPkA1vsr5zpc1XuPDn/wFntq5mG+4E0Y=
 github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrkLzIz1N1q0pr0=
 github.com/muesli/ansi v0.0.0-20211018074035-2e021307bc4b/go.mod h1:fQuZ0gauxyBcmsdE3ZT4NasjaRdxmbCS0jRHsrWu3Ho=
@@ -190,6 +194,8 @@ github.com/xanzy/ssh-agent v0.3.1/go.mod h1:QIE4lCeL7nkC25x+yA3LBIYfwCc1TFziCtG7
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.4 h1:zNWRjYUW32G9KirMXYHQHVNFkXvMI7LpgNW2AgYAoIs=
 github.com/yuin/goldmark v1.4.4/go.mod h1:rmuwmfZ0+bvzB24eSC//bk1R1Zp3hM0OXYv/G2LIilg=
+github.com/yuin/goldmark v1.5.2 h1:ALmeCk/px5FSm1MAcFBAsVKZjDuMVj8Tm7FFIlMJnqU=
+github.com/yuin/goldmark v1.5.2/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/yuin/goldmark-emoji v1.0.1 h1:ctuWEyzGBwiucEqxzwe0SOYDXPAucOrE9NQC18Wa1os=
 github.com/yuin/goldmark-emoji v1.0.1/go.mod h1:2w1E6FEWLcDQkoTE+7HU6QF1F6SLlNGjRIBbIZQFqkQ=
 golang.org/x/crypto v0.0.0-20190219172222-a4c6cb3142f2/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
@@ -206,6 +212,8 @@ golang.org/x/net v0.0.0-20210614182718-04defd469f4e/go.mod h1:9nx3DQGgdP8bBQD5qx
 golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20220826154423-83b083e8dc8b h1:ZmngSVLe/wycRns9MKikG9OWIEjGcGAkacif7oYQaUY=
 golang.org/x/net v0.0.0-20220826154423-83b083e8dc8b/go.mod h1:YDH+HFinaLZZlnHAfSS6ZXJJ9M9t4Dl22yv3iI2vPwk=
+golang.org/x/net v0.0.0-20221002022538-bcab6841153b h1:6e93nYa3hNqAvLr0pD4PN1fFS+gKzp2zAXqrnTCstqU=
+golang.org/x/net v0.0.0-20221002022538-bcab6841153b/go.mod h1:YDH+HFinaLZZlnHAfSS6ZXJJ9M9t4Dl22yv3iI2vPwk=
 golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20210220032951-036812b2e83c h1:5KslGYwFpkhGh+Q16bwMP3cOontH8FOep7tGV86Y7SQ=
 golang.org/x/sync v0.0.0-20210220032951-036812b2e83c/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
