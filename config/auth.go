@@ -6,6 +6,7 @@ import (
 
 	gm "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
+	gossh "golang.org/x/crypto/ssh"
 )
 
 // Push registers Git push functionality for the given repo and key.
@@ -44,6 +45,11 @@ func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) gm.AccessLevel {
 
 // PasswordHandler returns whether or not password access is allowed.
 func (cfg *Config) PasswordHandler(ctx ssh.Context, password string) bool {
+	return (cfg.AnonAccess != "no-access") && cfg.AllowKeyless
+}
+
+// KeyboardInteractiveHandler returns whether or not keyboard interactive is allowed.
+func (cfg *Config) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
 	return (cfg.AnonAccess != "no-access") && cfg.AllowKeyless
 }
 
