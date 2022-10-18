@@ -27,11 +27,6 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 )
 
-var (
-	// ErrNoConfig is returned when no config file is found.
-	ErrNoConfig = errors.New("no config file found")
-)
-
 // Config is the Soft Serve configuration.
 type Config struct {
 	Name         string         `yaml:"name" json:"name"`
@@ -40,7 +35,7 @@ type Config struct {
 	AnonAccess   string         `yaml:"anon-access" json:"anon-access"`
 	AllowKeyless bool           `yaml:"allow-keyless" json:"allow-keyless"`
 	Users        []User         `yaml:"users" json:"users"`
-	Repos        []MenuRepo     `yaml:"repos" json:"repos"`
+	Repos        []RepoConfig   `yaml:"repos" json:"repos"`
 	Source       *RepoSource    `yaml:"-" json:"-"`
 	Cfg          *config.Config `yaml:"-" json:"-"`
 	mtx          sync.Mutex
@@ -54,8 +49,8 @@ type User struct {
 	CollabRepos []string `yaml:"collab-repos" json:"collab-repos"`
 }
 
-// Repo contains repository configuration information.
-type MenuRepo struct {
+// RepoConfig is a repository configuration.
+type RepoConfig struct {
 	Name    string `yaml:"name" json:"name"`
 	Repo    string `yaml:"repo" json:"repo"`
 	Note    string `yaml:"note" json:"note"`
@@ -128,6 +123,35 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	return c, nil
 }
 
+func (cfg *Config) readConfig(repo string, v interface{}) error {
+	cr, err := cfg.Source.GetRepo(repo)
+	if err != nil {
+		return err
+	}
+	cy, _, err := cr.LatestFile(repo + ".yaml")
+	if err != nil && !errors.Is(err, git.ErrFileNotFound) {
+		return fmt.Errorf("error reading %s.yaml: %w", repo, err)
+	}
+	cj, _, err := cr.LatestFile(repo + ".json")
+	if err != nil && !errors.Is(err, git.ErrFileNotFound) {
+		return fmt.Errorf("error reading %s.json: %w", repo, err)
+	}
+	if cy != "" {
+		err = yaml.Unmarshal([]byte(cy), v)
+		if err != nil {
+			return fmt.Errorf("bad yaml in %s.yaml: %s", repo, err)
+		}
+	} else if cj != "" {
+		err = json.Unmarshal([]byte(cj), v)
+		if err != nil {
+			return fmt.Errorf("bad json in %s.json: %s", repo, err)
+		}
+	} else {
+		return fmt.Errorf("no config file found for %q", repo)
+	}
+	return nil
+}
+
 // Reload reloads the configuration.
 func (cfg *Config) Reload() error {
 	cfg.mtx.Lock()
@@ -136,30 +160,8 @@ func (cfg *Config) Reload() error {
 	if err != nil {
 		return err
 	}
-	cr, err := cfg.Source.GetRepo("config")
-	if err != nil {
-		return err
-	}
-	cy, _, err := cr.LatestFile("config.yaml")
-	if err != nil && !errors.Is(err, git.ErrFileNotFound) {
-		return fmt.Errorf("error reading config.yaml: %w", err)
-	}
-	cj, _, err := cr.LatestFile("config.json")
-	if err != nil && !errors.Is(err, git.ErrFileNotFound) {
-		return fmt.Errorf("error reading config.json: %w", err)
-	}
-	if cy != "" {
-		err = yaml.Unmarshal([]byte(cy), cfg)
-		if err != nil {
-			return fmt.Errorf("bad yaml in config.yaml: %s", err)
-		}
-	} else if cj != "" {
-		err = json.Unmarshal([]byte(cj), cfg)
-		if err != nil {
-			return fmt.Errorf("bad json in config.json: %s", err)
-		}
-	} else {
-		return ErrNoConfig
+	if err := cfg.readConfig("config", cfg); err != nil {
+		return fmt.Errorf("error reading config: %w", err)
 	}
 	for _, r := range cfg.Source.AllRepos() {
 		name := r.Name()
@@ -274,15 +276,6 @@ func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 		return err
 	}
 	return cfg.Reload()
-}
-
-func (cfg *Config) isPrivate(repo string) bool {
-	for _, r := range cfg.Repos {
-		if r.Repo == repo {
-			return r.Private
-		}
-	}
-	return false
 }
 
 func templatize(mdt string, tmpl interface{}) (string, error) {
