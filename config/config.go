@@ -51,11 +51,12 @@ type User struct {
 
 // RepoConfig is a repository configuration.
 type RepoConfig struct {
-	Name    string `yaml:"name" json:"name"`
-	Repo    string `yaml:"repo" json:"repo"`
-	Note    string `yaml:"note" json:"note"`
-	Private bool   `yaml:"private" json:"private"`
-	Readme  string `yaml:"readme" json:"readme"`
+	Name    string   `yaml:"name" json:"name"`
+	Repo    string   `yaml:"repo" json:"repo"`
+	Note    string   `yaml:"note" json:"note"`
+	Private bool     `yaml:"private" json:"private"`
+	Readme  string   `yaml:"readme" json:"readme"`
+	Collabs []string `yaml:"collabs" json:"collabs"`
 }
 
 // NewConfig creates a new internal Config struct.
