@@ -106,7 +106,7 @@ name: Soft Serve
 
 # The host and port to display in the TUI. You may want to change this if your
 # server is accessible from a different host and/or port that what it's
-# actually listening on (for example, if it's behind a reverse proxy).
+# actually listening on (for example, if it's behind a port forwarding router).
 host: localhost
 port: 23231
 
