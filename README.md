@@ -271,7 +271,7 @@ admin-access` in the configuration.
 
 ## Managing Repos
 
-`.repos` and `.ssh` directories are created when you first run `soft` at the paths specified for the `SOFT_SERVE_KEY_PATH` and `SOFT_SERVE_REPO_PATH` environment variables. 
+`.repos` and `.ssh` directories are created when you first run `soft` at the paths specified for the `SOFT_SERVE_KEY_PATH` and `SOFT_SERVE_REPO_PATH` environment variables.
 It's recommended to have a dedicated directory for your soft-serve repos and config.
 
 ### Deleting a Repo
@@ -281,7 +281,7 @@ To delete a repo from your soft serve server, you'll have to remove the repo fro
 ### Renaming a Repo
 
 To rename a repo's display name in the menu, change its name in the config.yaml file for your soft serve server.
-By default, the display name will be the repository name. 
+By default, the display name will be the repository name.
 
 ## A note about RSA keys
 
@@ -308,8 +308,8 @@ If you’re curious about the inner workings of this problem have a look at:
 We’d love to hear your thoughts on this project. Feel free to drop us a note!
 
 * [Twitter](https://twitter.com/charmcli)
-* [The Fediverse](https://mastodon.technology/@charm)
-* [Slack](https://charm.sh/slack)
+* [The Fediverse](https://mastodon.social/@charmcli)
+* [Discord](https://charm.sh/chat)
 
 ## License
 
