@@ -30,7 +30,7 @@ require (
 	github.com/lrstanley/bubblezone v0.0.0-20220716194435-3cb8c52f6a8f
 	github.com/muesli/mango-cobra v1.2.0
 	github.com/muesli/roff v0.1.0
-	github.com/spf13/cobra v1.6.0
+	github.com/spf13/cobra v1.6.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
