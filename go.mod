@@ -25,7 +25,7 @@ require (
 	github.com/aymanbagabas/go-osc52 v1.2.1
 	github.com/charmbracelet/keygen v0.3.0
 	github.com/gobwas/glob v0.2.3
-	github.com/gogs/git-module v1.7.0
+	github.com/gogs/git-module v1.7.1
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/lrstanley/bubblezone v0.0.0-20220716194435-3cb8c52f6a8f
 	github.com/muesli/mango-cobra v1.2.0
@@ -66,7 +66,6 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sahilm/fuzzy v0.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	github.com/yuin/goldmark v1.5.2 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
