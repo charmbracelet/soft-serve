@@ -23,22 +23,27 @@ var (
 			cfg := config.DefaultConfig()
 			s := server.NewServer(cfg)
 
-			done := make(chan os.Signal, 1)
-			signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
 			log.Printf("Starting SSH server on %s:%d", cfg.BindAddr, cfg.Port)
+
+			lch := make(chan error)
 			go func() {
-				if err := s.Start(); err != nil {
-					log.Fatalln(err)
-				}
+				defer close(lch)
+				lch <- s.Start()
 			}()
 
+			done := make(chan os.Signal, 1)
+			signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 			<-done
 
 			log.Printf("Stopping SSH server on %s:%d", cfg.BindAddr, cfg.Port)
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer func() { cancel() }()
-			return s.Shutdown(ctx)
+			defer cancel()
+			if err := s.Shutdown(ctx); err != nil {
+				return err
+			}
+
+			// wait for serve to finish
+			return <-lch
 		},
 	}
 )
