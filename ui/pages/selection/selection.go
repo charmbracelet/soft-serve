@@ -81,10 +81,10 @@ func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection 
 func (s *Selection) getMargins() (wm, hm int) {
 	wm = 0
 	hm = s.common.Styles.Tabs.GetVerticalFrameSize() +
-		s.common.Styles.Tabs.GetHeight() +
-		2 // tabs margin see View()
-	if s.activePane == readmePane {
-		hm += 1 // readme statusbar
+		s.common.Styles.Tabs.GetHeight()
+	if s.activePane == selectorPane && s.FilterState() == list.Filtering {
+		// hide tabs when filtering
+		hm = 0
 	}
 	return
 }
@@ -100,7 +100,7 @@ func (s *Selection) SetSize(width, height int) {
 	wm, hm := s.getMargins()
 	s.tabs.SetSize(width, height-hm)
 	s.selector.SetSize(width-wm, height-hm)
-	s.readme.SetSize(width-wm, height-hm)
+	s.readme.SetSize(width-wm, height-hm-1) // -1 for readme status line
 }
 
 // ShortHelp implements help.KeyMap.
@@ -287,7 +287,6 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (s *Selection) View() string {
 	var view string
 	wm, hm := s.getMargins()
-	hm++ // tabs margin
 	switch s.activePane {
 	case selectorPane:
 		ss := lipgloss.NewStyle().
@@ -308,9 +307,15 @@ func (s *Selection) View() string {
 			readmeStatus,
 		))
 	}
+	if s.activePane != selectorPane || s.FilterState() != list.Filtering {
+		tabs := s.common.Styles.Tabs.Render(s.tabs.View())
+		view = lipgloss.JoinVertical(lipgloss.Left,
+			tabs,
+			view,
+		)
+	}
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		s.common.Styles.Tabs.Render(s.tabs.View()),
 		view,
 	)
 }

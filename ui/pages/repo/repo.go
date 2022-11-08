@@ -111,9 +111,7 @@ func (r *Repo) SetSize(width, height int) {
 	hm := r.common.Styles.Repo.Body.GetVerticalFrameSize() +
 		r.common.Styles.Repo.Header.GetHeight() +
 		r.common.Styles.Repo.Header.GetVerticalFrameSize() +
-		r.common.Styles.StatusBar.GetHeight() +
-		r.common.Styles.Tabs.GetHeight() +
-		r.common.Styles.Tabs.GetVerticalFrameSize()
+		r.common.Styles.StatusBar.GetHeight()
 	r.tabs.SetSize(width, height-hm)
 	r.statusbar.SetSize(width, height-hm)
 	for _, p := range r.panes {
