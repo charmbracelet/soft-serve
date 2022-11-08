@@ -439,7 +439,8 @@ func DefaultStyles() *Styles {
 		Background(lipgloss.Color("237")).
 		Foreground(lipgloss.Color("243"))
 
-	s.Tabs = lipgloss.NewStyle()
+	s.Tabs = lipgloss.NewStyle().
+		Height(1)
 
 	s.TabInactive = lipgloss.NewStyle()
 
