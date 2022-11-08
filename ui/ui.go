@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/config"
@@ -180,9 +181,17 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, ui.common.KeyMap.Help):
 				cmds = append(cmds, footer.ToggleFooterCmd)
 			case key.Matches(msg, ui.common.KeyMap.Quit):
-				// Stop bubblezone background workers.
-				ui.common.Zone.Close()
-				return ui, tea.Quit
+				switch {
+				case ui.activePage == selectionPage:
+					if s, ok := ui.pages[selectionPage].(*selection.Selection); ok && s.FilterState() == list.Filtering {
+						break
+					}
+					fallthrough
+				default:
+					// Stop bubblezone background workers.
+					ui.common.Zone.Close()
+					return ui, tea.Quit
+				}
 			case ui.activePage == repoPage && key.Matches(msg, ui.common.KeyMap.Back):
 				ui.activePage = selectionPage
 				// Always show the footer on selection page.

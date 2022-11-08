@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/config"
@@ -86,6 +87,11 @@ func (s *Selection) getMargins() (wm, hm int) {
 		hm += 1 // readme statusbar
 	}
 	return
+}
+
+// FilterState returns the current filter state.
+func (s *Selection) FilterState() list.FilterState {
+	return s.selector.FilterState()
 }
 
 // SetSize implements common.Component.
