@@ -82,7 +82,7 @@ func (s *Selection) getMargins() (wm, hm int) {
 	wm = 0
 	hm = s.common.Styles.Tabs.GetVerticalFrameSize() +
 		s.common.Styles.Tabs.GetHeight()
-	if s.activePane == selectorPane && s.FilterState() == list.Filtering {
+	if s.activePane == selectorPane && s.IsFiltering() {
 		// hide tabs when filtering
 		hm = 0
 	}
@@ -101,6 +101,11 @@ func (s *Selection) SetSize(width, height int) {
 	s.tabs.SetSize(width, height-hm)
 	s.selector.SetSize(width-wm, height-hm)
 	s.readme.SetSize(width-wm, height-hm-1) // -1 for readme status line
+}
+
+// IsFiltering returns true if the selector is currently filtering.
+func (s *Selection) IsFiltering() bool {
+	return s.FilterState() == list.Filtering
 }
 
 // ShortHelp implements help.KeyMap.
@@ -126,49 +131,54 @@ func (s *Selection) ShortHelp() []key.Binding {
 
 // FullHelp implements help.KeyMap.
 func (s *Selection) FullHelp() [][]key.Binding {
+	b := [][]key.Binding{
+		{
+			s.common.KeyMap.Section,
+		},
+	}
 	switch s.activePane {
 	case readmePane:
 		k := s.readme.KeyMap
-		return [][]key.Binding{
-			{
-				k.PageDown,
-				k.PageUp,
-			},
-			{
-				k.HalfPageDown,
-				k.HalfPageUp,
-			},
-			{
-				k.Down,
-				k.Up,
-			},
-		}
+		b = append(b, []key.Binding{
+			k.PageDown,
+			k.PageUp,
+		})
+		b = append(b, []key.Binding{
+			k.HalfPageDown,
+			k.HalfPageUp,
+		})
+		b = append(b, []key.Binding{
+			k.Down,
+			k.Up,
+		})
 	case selectorPane:
 		copyKey := s.common.KeyMap.Copy
 		copyKey.SetHelp("c", "copy command")
 		k := s.selector.KeyMap
-		return [][]key.Binding{
-			{
+		if !s.IsFiltering() {
+			b[0] = append(b[0],
 				s.common.KeyMap.Select,
 				copyKey,
-				k.CursorUp,
-				k.CursorDown,
-			},
-			{
-				k.NextPage,
-				k.PrevPage,
-				k.GoToStart,
-				k.GoToEnd,
-			},
-			{
-				k.Filter,
-				k.ClearFilter,
-				k.CancelWhileFiltering,
-				k.AcceptWhileFiltering,
-			},
+			)
 		}
+		b = append(b, []key.Binding{
+			k.CursorUp,
+			k.CursorDown,
+		})
+		b = append(b, []key.Binding{
+			k.NextPage,
+			k.PrevPage,
+			k.GoToStart,
+			k.GoToEnd,
+		})
+		b = append(b, []key.Binding{
+			k.Filter,
+			k.ClearFilter,
+			k.CancelWhileFiltering,
+			k.AcceptWhileFiltering,
+		})
 	}
-	return [][]key.Binding{}
+	return b
 }
 
 // Init implements tea.Model.
