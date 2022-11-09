@@ -227,20 +227,21 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, f.selectFileCmd)
 			}
 		}
+	case BackMsg:
+		cmds = append(cmds, f.deselectItemCmd)
 	case tea.KeyMsg:
 		switch f.activeView {
 		case filesViewFiles:
-			switch msg.String() {
-			case "l", "right":
+			switch {
+			case key.Matches(msg, f.common.KeyMap.SelectItem):
 				cmds = append(cmds, f.selector.SelectItem)
-			case "h", "left":
-				cmds = append(cmds, f.deselectItemCmd)
+			case key.Matches(msg, f.common.KeyMap.BackItem):
+				cmds = append(cmds, backCmd)
 			}
 		case filesViewContent:
-			keyStr := msg.String()
 			switch {
-			case keyStr == "h", keyStr == "left":
-				cmds = append(cmds, f.deselectItemCmd)
+			case key.Matches(msg, f.common.KeyMap.BackItem):
+				cmds = append(cmds, backCmd)
 			case key.Matches(msg, f.common.KeyMap.Copy):
 				f.common.Copy.Copy(f.currentContent.content)
 			case key.Matches(msg, lineNo):
