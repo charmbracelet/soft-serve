@@ -310,10 +310,7 @@ func (r *Repo) headerView() string {
 	} else {
 		desc = r.common.Styles.Repo.HeaderDesc.Render(desc)
 	}
-	// TODO move this into a style.
-	urlStyle := lipgloss.NewStyle().
-		MarginLeft(1).
-		Foreground(lipgloss.Color("168")).
+	urlStyle := r.common.Styles.URLStyle.Copy().
 		Width(r.common.Width - lipgloss.Width(desc) - 1).
 		Align(lipgloss.Right)
 	url := git.RepoURL(cfg.Host, cfg.Port, r.selectedRepo.Repo())
