@@ -183,6 +183,7 @@ func DefaultKeyMap() *KeyMap {
 		key.WithKeys(
 			"h",
 			"left",
+			"backspace",
 		),
 		key.WithHelp(
 			"←",

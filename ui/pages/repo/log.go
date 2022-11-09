@@ -211,10 +211,10 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg, tea.MouseMsg:
 		switch l.activeView {
 		case logViewCommits:
-			switch key := msg.(type) {
+			switch kmsg := msg.(type) {
 			case tea.KeyMsg:
-				switch key.String() {
-				case "l", "right":
+				switch {
+				case key.Matches(kmsg, l.common.KeyMap.SelectItem):
 					cmds = append(cmds, l.selector.SelectItem)
 				}
 			}
@@ -233,14 +233,18 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			cmds = append(cmds, cmd)
 		case logViewDiff:
-			switch key := msg.(type) {
+			switch kmsg := msg.(type) {
 			case tea.KeyMsg:
-				switch key.String() {
-				case "h", "left":
-					l.activeView = logViewCommits
-					l.selectedCommit = nil
+				switch {
+				case key.Matches(kmsg, l.common.KeyMap.BackItem):
+					cmds = append(cmds, backCmd)
 				}
 			}
+		}
+	case BackMsg:
+		if l.activeView == logViewDiff {
+			l.activeView = logViewCommits
+			l.selectedCommit = nil
 		}
 	case selector.ActiveMsg:
 		switch sel := msg.IdentifiableItem.(type) {

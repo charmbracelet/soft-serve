@@ -132,8 +132,8 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		}
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "l", "right":
+		switch {
+		case key.Matches(msg, r.common.KeyMap.SelectItem):
 			cmds = append(cmds, r.selector.SelectItem)
 		}
 	}
