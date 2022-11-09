@@ -239,7 +239,7 @@ func (rs *RepoSource) LoadRepo(name string) error {
 	rp := filepath.Join(rs.Path, name)
 	r, err := rs.open(rp)
 	if err != nil {
-		log.Printf("error opening repository %s: %s", name, err)
+		log.Printf("error opening repository %q: %s", rp, err)
 		return err
 	}
 	rs.repos[name] = r
@@ -253,6 +253,10 @@ func (rs *RepoSource) LoadRepos() error {
 		return err
 	}
 	for _, de := range rd {
+		if !de.IsDir() {
+			log.Printf("warning: %q is not a directory", filepath.Join(rs.Path, de.Name()))
+			continue
+		}
 		err = rs.LoadRepo(de.Name())
 		if err == git.ErrNotAGitRepository {
 			continue
