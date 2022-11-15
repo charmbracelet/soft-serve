@@ -205,10 +205,10 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				ui.showFooter = true
 			}
 		case tea.MouseMsg:
-			if msg.Type == tea.MouseLeft {
+			switch msg.Type {
+			case tea.MouseLeft:
 				switch {
-				case ui.common.Zone.Get("repo-help").InBounds(msg),
-					ui.common.Zone.Get("footer").InBounds(msg):
+				case ui.common.Zone.Get("footer").InBounds(msg):
 					cmds = append(cmds, footer.ToggleFooterCmd)
 				}
 			}
