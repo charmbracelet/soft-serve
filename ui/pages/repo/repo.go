@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/soft-serve/config"
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
+	"github.com/charmbracelet/soft-serve/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/ui/components/statusbar"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
 	"github.com/charmbracelet/soft-serve/ui/git"
@@ -199,18 +200,23 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if r.selectedRepo != nil {
 			cmds = append(cmds, r.updateStatusBarCmd)
-			switch msg := msg.(type) {
-			case tea.MouseMsg:
-				switch msg.Type {
-				case tea.MouseLeft:
-					id := fmt.Sprintf("%s-url", r.selectedRepo.Repo())
-					if r.common.Zone.Get(id).InBounds(msg) {
-						cmds = append(cmds, r.copyUrlCmd())
-					}
-				case tea.MouseRight:
-					if r.common.Zone.Get("repo-main").InBounds(msg) {
-						cmds = append(cmds, backCmd)
-					}
+			urlID := fmt.Sprintf("%s-url", r.selectedRepo.Repo())
+			if msg, ok := msg.(tea.MouseMsg); ok && r.common.Zone.Get(urlID).InBounds(msg) {
+				cmds = append(cmds, r.copyURLCmd())
+			}
+		}
+		switch msg := msg.(type) {
+		case tea.MouseMsg:
+			switch msg.Type {
+			case tea.MouseLeft:
+				switch {
+				case r.common.Zone.Get("repo-help").InBounds(msg):
+					cmds = append(cmds, footer.ToggleFooterCmd)
+				}
+			case tea.MouseRight:
+				switch {
+				case r.common.Zone.Get("repo-main").InBounds(msg):
+					cmds = append(cmds, backCmd)
 				}
 			}
 		}
@@ -285,12 +291,12 @@ func (r *Repo) View() string {
 		Height(r.common.Height - hm)
 	main := r.common.Zone.Mark(
 		"repo-main",
-		r.panes[r.activeTab].View(),
+		mainStyle.Render(r.panes[r.activeTab].View()),
 	)
 	view := lipgloss.JoinVertical(lipgloss.Top,
 		r.headerView(),
 		r.tabs.View(),
-		mainStyle.Render(main),
+		main,
 		r.statusbar.View(),
 	)
 	return s.Render(view)
@@ -375,7 +381,7 @@ func (r *Repo) updateModels(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (r *Repo) copyUrlCmd() tea.Cmd {
+func (r *Repo) copyURLCmd() tea.Cmd {
 	r.copyURL = time.Now()
 	return tea.Batch(
 		func() tea.Msg {
