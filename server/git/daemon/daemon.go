@@ -59,7 +59,6 @@ func (d *Daemon) Start() error {
 	// loop work cycle with accept connections or interrupt
 	// by system signal
 	for {
-		log.Printf("listener len %d cap %d", len(listen), cap(listen))
 		select {
 		case conn := <-listen:
 			d.wg.Add(1)
