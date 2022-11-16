@@ -1,4 +1,4 @@
-package git
+package ssh
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/keygen"
+	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/wish"
 	"github.com/gliderlabs/ssh"
 )
@@ -27,13 +28,13 @@ func TestGitMiddleware(t *testing.T) {
 		pushes:  []action{},
 		fetches: []action{},
 		access: []accessDetails{
-			{pubkey, "repo1", AdminAccess},
-			{pubkey, "repo2", AdminAccess},
-			{pubkey, "repo3", AdminAccess},
-			{pubkey, "repo4", AdminAccess},
-			{pubkey, "repo5", NoAccess},
-			{pubkey, "repo6", ReadOnlyAccess},
-			{pubkey, "repo7", AdminAccess},
+			{pubkey, "repo1", git.AdminAccess},
+			{pubkey, "repo2", git.AdminAccess},
+			{pubkey, "repo3", git.AdminAccess},
+			{pubkey, "repo4", git.AdminAccess},
+			{pubkey, "repo5", git.NoAccess},
+			{pubkey, "repo6", git.ReadOnlyAccess},
+			{pubkey, "repo7", git.AdminAccess},
 		},
 	}
 	srv, err := wish.NewServer(
@@ -179,7 +180,7 @@ func createKeyPair(t *testing.T) (ssh.PublicKey, string) {
 type accessDetails struct {
 	key   ssh.PublicKey
 	repo  string
-	level AccessLevel
+	level git.AccessLevel
 }
 
 type action struct {
@@ -194,13 +195,13 @@ type testHooks struct {
 	access  []accessDetails
 }
 
-func (h *testHooks) AuthRepo(repo string, key ssh.PublicKey) AccessLevel {
+func (h *testHooks) AuthRepo(repo string, key ssh.PublicKey) git.AccessLevel {
 	for _, dets := range h.access {
 		if dets.repo == repo && ssh.KeysEqual(key, dets.key) {
 			return dets.level
 		}
 	}
-	return NoAccess
+	return git.NoAccess
 }
 
 func (h *testHooks) Push(repo string, key ssh.PublicKey) {

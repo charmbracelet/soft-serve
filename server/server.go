@@ -4,23 +4,25 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 
 	appCfg "github.com/charmbracelet/soft-serve/config"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
-	gm "github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/git/daemon"
+	gm "github.com/charmbracelet/soft-serve/server/git/ssh"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
 	lm "github.com/charmbracelet/wish/logging"
 	rm "github.com/charmbracelet/wish/recover"
 	"github.com/gliderlabs/ssh"
 	"github.com/muesli/termenv"
+	"golang.org/x/sync/errgroup"
 )
 
 // Server is the Soft Serve server.
 type Server struct {
 	SSHServer *ssh.Server
+	GitServer *daemon.Daemon
 	Config    *config.Config
 	config    *appCfg.Config
 }
@@ -58,40 +60,63 @@ func NewServer(cfg *config.Config) *Server {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	d, err := daemon.NewDaemon(cfg, ac)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	return &Server{
 		SSHServer: s,
+		GitServer: d,
 		Config:    cfg,
 		config:    ac,
 	}
 }
 
 // Reload reloads the server configuration.
-func (srv *Server) Reload() error {
-	return srv.config.Reload()
+func (s *Server) Reload() error {
+	return s.config.Reload()
 }
 
 // Start starts the SSH server.
-func (srv *Server) Start() error {
-	if err := srv.SSHServer.ListenAndServe(); err != ssh.ErrServerClosed {
-		return err
-	}
-	return nil
-}
-
-// Serve serves the SSH server using the provided listener.
-func (srv *Server) Serve(l net.Listener) error {
-	if err := srv.SSHServer.Serve(l); err != ssh.ErrServerClosed {
-		return err
-	}
-	return nil
+func (s *Server) Start() error {
+	var errg errgroup.Group
+	errg.Go(func() error {
+		log.Printf("Starting Git server on %s:%d", s.Config.BindAddr, s.Config.GitPort)
+		if err := s.GitServer.Start(); err != daemon.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+	errg.Go(func() error {
+		log.Printf("Starting SSH server on %s:%d", s.Config.BindAddr, s.Config.Port)
+		if err := s.SSHServer.ListenAndServe(); err != ssh.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+	return errg.Wait()
 }
 
 // Shutdown lets the server gracefully shutdown.
-func (srv *Server) Shutdown(ctx context.Context) error {
-	return srv.SSHServer.Shutdown(ctx)
+func (s *Server) Shutdown(ctx context.Context) error {
+	var errg errgroup.Group
+	errg.Go(func() error {
+		return s.SSHServer.Shutdown(ctx)
+	})
+	errg.Go(func() error {
+		return s.GitServer.Shutdown(ctx)
+	})
+	return errg.Wait()
 }
 
 // Close closes the SSH server.
-func (srv *Server) Close() error {
-	return srv.SSHServer.Close()
+func (s *Server) Close() error {
+	var errg errgroup.Group
+	errg.Go(func() error {
+		return s.SSHServer.Close()
+	})
+	errg.Go(func() error {
+		return s.GitServer.Close()
+	})
+	return errg.Wait()
 }

@@ -52,7 +52,7 @@ func main() {
 
 	log.Printf("Starting SSH server on %s:%d", cfg.BindAddr, cfg.Port)
 	go func() {
-		if err := s.Serve(ls); err != nil {
+		if err := s.SSHServer.Serve(ls); err != nil {
 			log.Fatalln(err)
 		}
 	}()
