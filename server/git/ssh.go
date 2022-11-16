@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/wish"
 	"github.com/gliderlabs/ssh"
+	g "github.com/gogs/git-module"
 )
 
 // ErrNotAuthed represents unauthorized access.
@@ -215,14 +215,12 @@ func ensureRepo(dir string, repo string) error {
 }
 
 func runGit(s ssh.Session, dir string, args ...string) error {
-	usi := exec.CommandContext(s.Context(), "git", args...)
-	usi.Dir = dir
-	usi.Stdout = s
-	usi.Stdin = s
-	if err := usi.Run(); err != nil {
-		return err
-	}
-	return nil
+	c := g.NewCommand(args...)
+	return c.RunInDirWithOptions(dir, g.RunInDirOptions{
+		Stdout: s,
+		Stdin:  s,
+		Stderr: s.Stderr(),
+	})
 }
 
 func ensureDefaultBranch(s ssh.Session, repoPath string) error {
