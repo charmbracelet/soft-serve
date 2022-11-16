@@ -1,4 +1,4 @@
-package server
+package cmd
 
 import (
 	"os"
@@ -26,7 +26,7 @@ func TestMiddleware(t *testing.T) {
 	})
 	is.NoErr(err)
 	_ = testsession.New(t, &ssh.Server{
-		Handler: softMiddleware(appCfg)(func(s ssh.Session) {
+		Handler: Middleware(appCfg)(func(s ssh.Session) {
 			t.Run("TestCatConfig", func(t *testing.T) {
 				_, err := s.Write([]byte("cat config/config.json"))
 				if err == nil {

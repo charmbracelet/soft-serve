@@ -1,17 +1,16 @@
-package server
+package cmd
 
 import (
 	"context"
 	"fmt"
 
 	appCfg "github.com/charmbracelet/soft-serve/config"
-	"github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/wish"
 	"github.com/gliderlabs/ssh"
 )
 
-// softMiddleware is the Soft Serve middleware that handles SSH commands.
-func softMiddleware(ac *appCfg.Config) wish.Middleware {
+// Middleware is the Soft Serve middleware that handles SSH commands.
+func Middleware(ac *appCfg.Config) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			func() {
@@ -19,8 +18,8 @@ func softMiddleware(ac *appCfg.Config) wish.Middleware {
 				if active {
 					return
 				}
-				ctx := context.WithValue(s.Context(), cmd.ConfigCtxKey, ac)
-				ctx = context.WithValue(ctx, cmd.SessionCtxKey, s)
+				ctx := context.WithValue(s.Context(), ConfigCtxKey, ac)
+				ctx = context.WithValue(ctx, SessionCtxKey, s)
 
 				use := "ssh"
 				port := ac.Port
@@ -28,7 +27,7 @@ func softMiddleware(ac *appCfg.Config) wish.Middleware {
 					use += fmt.Sprintf(" -p%d", port)
 				}
 				use += fmt.Sprintf(" %s", ac.Host)
-				cmd := cmd.RootCommand()
+				cmd := RootCommand()
 				cmd.Use = use
 				cmd.CompletionOptions.DisableDefaultCmd = true
 				cmd.SetIn(s)
