@@ -44,6 +44,8 @@ github.com/charmbracelet/lipgloss v0.6.0 h1:1StyZB9vBSOyuZxQUcUwGr17JmojPNm87ini
 github.com/charmbracelet/lipgloss v0.6.0/go.mod h1:tHh2wr34xcHjC2HCXIlGSG1jaDF0S0atAUvBMP6Ppuk=
 github.com/charmbracelet/wish v0.6.0 h1:njygCS/bXIZfa3zf+BjzXI64islPRON81onHhuTpPso=
 github.com/charmbracelet/wish v0.6.0/go.mod h1:LgsszaPfplsjqqXATWqe/MJSkY1LCxUGecmIHFQ1n20=
+github.com/charmbracelet/wish v0.7.0 h1:rdfacCWaKCQpCMPbOKfi68GYqsb+9CnUzN1Ov/INZJ0=
+github.com/charmbracelet/wish v0.7.0/go.mod h1:16EQz7k3hEgPkPENghcpEddvlrmucIudE0jnczKr+k4=
 github.com/containerd/console v1.0.3 h1:lIr7SlA5PxZyMV30bDW0MGbiOPXwc63yRuCP0ARubLw=
 github.com/containerd/console v1.0.3/go.mod h1:7LqA/THxQ86k76b8c/EMSiaJ3h1eZkMkXar0TQ1gf3U=
 github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
