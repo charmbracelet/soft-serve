@@ -41,18 +41,18 @@ users:
 `
 
 const defaultUserConfig = `
-# users:
-#   - name: Admin
-#     admin: true
-#     public-keys:
-#       - ssh-ed25519 AAAA... # redacted
-#       - ssh-rsa AAAAB3Nz... # redacted`
+#users:
+#  - name: Admin
+#    admin: true
+#    public-keys:
+#      - ssh-ed25519 AAAA... # redacted
+#      - ssh-rsa AAAAB3Nz... # redacted`
 
 const exampleUserConfig = `
-#   - name: Example User
-#     collab-repos:
-#       - REPO
-#     public-keys:
-#       - ssh-ed25519 AAAA... # redacted
-#       - ssh-rsa AAAAB3Nz... # redacted
+#  - name: Example User
+#    collab-repos:
+#      - REPO
+#    public-keys:
+#      - ssh-ed25519 AAAA... # redacted
+#      - ssh-rsa AAAAB3Nz... # redacted
 `
