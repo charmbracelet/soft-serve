@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/charmbracelet/soft-serve/git"
@@ -70,7 +71,7 @@ func (r *Repo) Repo() string {
 // Name returns the name of the repository.
 func (r *Repo) Name() string {
 	if r.name == "" {
-		return r.Repo()
+		return strings.TrimSuffix(r.Repo(), ".git")
 	}
 	return r.name
 }
@@ -205,6 +206,9 @@ func (rs *RepoSource) AllRepos() []*Repo {
 func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
+	if strings.HasSuffix(name, ".git") {
+		name = strings.TrimSuffix(name, ".git")
+	}
 	r, ok := rs.repos[name]
 	if !ok {
 		return nil, ErrMissingRepo
@@ -212,31 +216,19 @@ func (rs *RepoSource) GetRepo(name string) (*Repo, error) {
 	return r, nil
 }
 
-// InitRepo initializes a new Git repository.
-func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
-	rs.mtx.Lock()
-	defer rs.mtx.Unlock()
-	rp := filepath.Join(rs.Path, name)
-	rg, err := git.Init(rp, bare)
-	if err != nil {
-		return nil, err
-	}
-	r := &Repo{
-		path:       rp,
-		repository: rg,
-		refs: []*git.Reference{
-			git.NewReference(rp, git.RefsHeads+"master"),
-		},
-	}
-	rs.repos[name] = r
-	return r, nil
-}
-
 // LoadRepo loads a repository from disk.
 func (rs *RepoSource) LoadRepo(name string) error {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
+	if strings.HasSuffix(name, ".git") {
+		name = strings.TrimSuffix(name, ".git")
+	}
 	rp := filepath.Join(rs.Path, name)
+	if _, err := os.Stat(rp); os.IsNotExist(err) {
+		rp += ".git"
+	} else {
+		log.Printf("warning: %q should be renamed to %q", rp, rp+".git")
+	}
 	r, err := rs.open(rp)
 	if err != nil {
 		log.Printf("error opening repository %q: %s", rp, err)
