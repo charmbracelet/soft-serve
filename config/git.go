@@ -53,6 +53,11 @@ func (rs *RepoSource) open(path string) (*Repo, error) {
 	return r, nil
 }
 
+// IsBare returns true if the repository is a bare repository.
+func (r *Repo) IsBare() bool {
+	return r.repository.IsBare
+}
+
 // IsPrivate returns true if the repository is private.
 func (r *Repo) IsPrivate() bool {
 	return r.private
@@ -65,13 +70,13 @@ func (r *Repo) Path() string {
 
 // Repo returns the repository directory name.
 func (r *Repo) Repo() string {
-	return filepath.Base(r.path)
+	return strings.TrimSuffix(filepath.Base(r.path), ".git")
 }
 
 // Name returns the name of the repository.
 func (r *Repo) Name() string {
 	if r.name == "" {
-		return strings.TrimSuffix(r.Repo(), ".git")
+		return r.Repo()
 	}
 	return r.name
 }
@@ -226,13 +231,15 @@ func (rs *RepoSource) LoadRepo(name string) error {
 	rp := filepath.Join(rs.Path, name)
 	if _, err := os.Stat(rp); os.IsNotExist(err) {
 		rp += ".git"
-	} else {
-		log.Printf("warning: %q should be renamed to %q", rp, rp+".git")
 	}
 	r, err := rs.open(rp)
 	if err != nil {
-		log.Printf("error opening repository %q: %s", rp, err)
 		return err
+	}
+	if !r.IsBare() {
+		log.Printf("warning: %q is not a bare repository", rp)
+	} else if r.IsBare() && !strings.HasSuffix(rp, ".git") {
+		log.Printf("warning: %q should be renamed to %q", rp, rp+".git")
 	}
 	rs.repos[name] = r
 	return nil
@@ -249,12 +256,9 @@ func (rs *RepoSource) LoadRepos() error {
 			log.Printf("warning: %q is not a directory", filepath.Join(rs.Path, de.Name()))
 			continue
 		}
-		err = rs.LoadRepo(de.Name())
-		if err == git.ErrNotAGitRepository {
+		if err := rs.LoadRepo(de.Name()); err != nil {
+			log.Printf("error opening repository %q: %s", de.Name(), err)
 			continue
-		}
-		if err != nil {
-			return err
 		}
 	}
 	return nil

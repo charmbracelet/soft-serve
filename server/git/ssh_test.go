@@ -128,9 +128,7 @@ func runGitHelper(t *testing.T, pk, cwd string, args ...string) error {
 	cmd.Dir = cwd
 	cmd.Env = []string{fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i %s -F /dev/null`, pk)}
 	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Log("git out:", string(out))
-	}
+	t.Log("git out:", string(out))
 	return err
 }
 
@@ -154,15 +152,7 @@ func requireHasAction(t *testing.T, actions []action, key ssh.PublicKey, repo st
 	t.Helper()
 
 	for _, action := range actions {
-		r1 := repo
-		if !strings.HasSuffix(r1, ".git") {
-			r1 += ".git"
-		}
-		r2 := action.repo
-		if !strings.HasSuffix(r2, ".git") {
-			r2 += ".git"
-		}
-		if r1 == r2 && ssh.KeysEqual(key, action.key) {
+		if repo == strings.TrimSuffix(action.repo, ".git") && ssh.KeysEqual(key, action.key) {
 			return
 		}
 	}
@@ -203,9 +193,7 @@ type testHooks struct {
 
 func (h *testHooks) AuthRepo(repo string, key ssh.PublicKey) AccessLevel {
 	for _, dets := range h.access {
-		r1 := strings.TrimSuffix(dets.repo, ".git")
-		r2 := strings.TrimSuffix(repo, ".git")
-		if r1 == r2 && ssh.KeysEqual(key, dets.key) {
+		if dets.repo == repo && ssh.KeysEqual(key, dets.key) {
 			return dets.level
 		}
 	}

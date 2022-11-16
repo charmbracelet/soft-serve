@@ -9,10 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/wish"
 	"github.com/gliderlabs/ssh"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 )
 
 // ErrNotAuthed represents unauthorized access.
@@ -75,55 +74,63 @@ type Hooks interface {
 func Middleware(repoDir string, gh Hooks) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
-			cmd := s.Command()
-			if len(cmd) == 2 {
-				gc := cmd[0]
-				// repo should be in the form of "repo.git"
-				repo := strings.TrimPrefix(cmd[1], "/")
-				repo = filepath.Clean(repo)
-				if strings.Contains(repo, "/") {
-					Fatal(s, fmt.Errorf("%s: %s", ErrInvalidRepo, "user repos not supported"))
-				}
-				// git bare repositories should end in ".git"
-				// https://git-scm.com/docs/gitrepository-layout
-				if !strings.HasSuffix(repo, ".git") {
-					repo += ".git"
-				}
-				pk := s.PublicKey()
-				access := gh.AuthRepo(repo, pk)
-				switch gc {
-				case "git-receive-pack":
-					switch access {
-					case ReadWriteAccess, AdminAccess:
-						err := gitPack(s, gc, repoDir, repo)
-						if err != nil {
-							Fatal(s, ErrSystemMalfunction)
-						} else {
-							gh.Push(repo, pk)
-						}
-					default:
-						Fatal(s, ErrNotAuthed)
+			func() {
+				cmd := s.Command()
+				if len(cmd) == 2 {
+					gc := cmd[0]
+					// repo should be in the form of "repo.git"
+					repo := strings.TrimPrefix(cmd[1], "/")
+					repo = filepath.Clean(repo)
+					if strings.Contains(repo, "/") {
+						log.Printf("invalid repo: %s", repo)
+						Fatal(s, fmt.Errorf("%s: %s", ErrInvalidRepo, "user repos not supported"))
+						return
 					}
-					return
-				case "git-upload-archive", "git-upload-pack":
-					switch access {
-					case ReadOnlyAccess, ReadWriteAccess, AdminAccess:
-						err := gitPack(s, gc, repoDir, repo)
-						switch err {
-						case ErrInvalidRepo:
-							Fatal(s, ErrInvalidRepo)
-						case nil:
-							gh.Fetch(repo, pk)
+					pk := s.PublicKey()
+					access := gh.AuthRepo(strings.TrimSuffix(repo, ".git"), pk)
+					// git bare repositories should end in ".git"
+					// https://git-scm.com/docs/gitrepository-layout
+					if !strings.HasSuffix(repo, ".git") {
+						repo += ".git"
+					}
+					switch gc {
+					case "git-receive-pack":
+						switch access {
+						case ReadWriteAccess, AdminAccess:
+							err := gitPack(s, gc, repoDir, repo)
+							if err != nil {
+								Fatal(s, ErrSystemMalfunction)
+							} else {
+								gh.Push(repo, pk)
+							}
 						default:
-							log.Printf("unknown git error: %s", err)
-							Fatal(s, ErrSystemMalfunction)
+							Fatal(s, ErrNotAuthed)
 						}
-					default:
-						Fatal(s, ErrNotAuthed)
+						return
+					case "git-upload-archive", "git-upload-pack":
+						switch access {
+						case ReadOnlyAccess, ReadWriteAccess, AdminAccess:
+							// try to upload <repo>.git first, then <repo>
+							err := gitPack(s, gc, repoDir, repo)
+							if err != nil {
+								err = gitPack(s, gc, repoDir, strings.TrimSuffix(repo, ".git"))
+							}
+							switch err {
+							case ErrInvalidRepo:
+								Fatal(s, ErrInvalidRepo)
+							case nil:
+								gh.Fetch(repo, pk)
+							default:
+								log.Printf("unknown git error: %s", err)
+								Fatal(s, ErrSystemMalfunction)
+							}
+						default:
+							Fatal(s, ErrNotAuthed)
+						}
+						return
 					}
-					return
 				}
-			}
+			}()
 			sh(s)
 		}
 	}
@@ -199,7 +206,7 @@ func ensureRepo(dir string, repo string) error {
 		return err
 	}
 	if !exists {
-		_, err := git.PlainInit(rp, true)
+		_, err := git.Init(rp, true)
 		if err != nil {
 			return err
 		}
@@ -219,7 +226,7 @@ func runGit(s ssh.Session, dir string, args ...string) error {
 }
 
 func ensureDefaultBranch(s ssh.Session, repoPath string) error {
-	r, err := git.PlainOpen(repoPath)
+	r, err := git.Open(repoPath)
 	if err != nil {
 		return err
 	}
@@ -227,20 +234,18 @@ func ensureDefaultBranch(s ssh.Session, repoPath string) error {
 	if err != nil {
 		return err
 	}
-	defer brs.Close()
-	fb, err := brs.Next()
-	if err != nil {
-		return err
+	if len(brs) == 0 {
+		return fmt.Errorf("no branches found")
 	}
 	// Rename the default branch to the first branch available
-	_, err = r.Head()
-	if err == plumbing.ErrReferenceNotFound {
-		err = runGit(s, repoPath, "branch", "-M", fb.Name().Short())
+	_, err = r.HEAD()
+	if err == git.ErrReferenceNotExist {
+		err = runGit(s, repoPath, "branch", "-M", brs[0])
 		if err != nil {
 			return err
 		}
 	}
-	if err != nil && err != plumbing.ErrReferenceNotFound {
+	if err != nil && err != git.ErrReferenceNotExist {
 		return err
 	}
 	return nil
