@@ -2,11 +2,11 @@ package server
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/charmbracelet/keygen"
+	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/gliderlabs/ssh"
 	"github.com/go-git/go-git/v5"
@@ -18,32 +18,21 @@ import (
 )
 
 var (
-	testdata = "testdata"
-	cfg      = &config.Config{
+	cfg = &config.Config{
 		BindAddr: "",
 		Host:     "localhost",
 		Port:     22222,
-		RepoPath: fmt.Sprintf("%s/repos", testdata),
-		KeyPath:  fmt.Sprintf("%s/key", testdata),
 	}
-	pkPath = ""
 )
 
-func TestServer(t *testing.T) {
-	t.Cleanup(func() {
-		os.RemoveAll(testdata)
-	})
+func TestPushRepo(t *testing.T) {
 	is := is.New(t)
-	_, pkPath = createKeyPair(t)
+	_, pkPath := createKeyPair(t)
 	s := setupServer(t)
+	defer s.Close()
 	err := s.Reload()
 	is.NoErr(err)
-	t.Run("TestPushRepo", testPushRepo)
-	t.Run("TestCloneRepo", testCloneRepo)
-}
 
-func testPushRepo(t *testing.T) {
-	is := is.New(t)
 	rp := t.TempDir()
 	r, err := git.PlainInit(rp, false)
 	is.NoErr(err)
@@ -79,22 +68,31 @@ func testPushRepo(t *testing.T) {
 	is.NoErr(err)
 }
 
-func testCloneRepo(t *testing.T) {
+func TestCloneRepo(t *testing.T) {
 	is := is.New(t)
-	auth, err := gssh.NewPublicKeysFromFile("git", pkPath, "")
+	_, pkPath := createKeyPair(t)
+	s := setupServer(t)
+	defer s.Close()
+	err := s.Reload()
 	is.NoErr(err)
-	auth.HostKeyCallbackHelper = gssh.HostKeyCallbackHelper{
-		HostKeyCallback: cssh.InsecureIgnoreHostKey(),
-	}
+
 	dst := t.TempDir()
-	_, err = git.PlainClone(dst, false, &git.CloneOptions{
-		URL:  fmt.Sprintf("ssh://%s:%d/config", cfg.Host, cfg.Port),
-		Auth: auth,
+	url := fmt.Sprintf("ssh://%s:%d/config", cfg.Host, cfg.Port)
+	err = ggit.Clone(url, dst, ggit.CloneOptions{
+		CommandOptions: ggit.CommandOptions{
+			Envs: []string{
+				fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i %s -F /dev/null`, pkPath),
+			},
+		},
 	})
 	is.NoErr(err)
 }
 
 func setupServer(t *testing.T) *Server {
+	t.Helper()
+	tmpdir := t.TempDir()
+	cfg.RepoPath = filepath.Join(tmpdir, "repos")
+	cfg.KeyPath = filepath.Join(tmpdir, "key")
 	s := NewServer(cfg)
 	go func() {
 		s.Start()
@@ -106,8 +104,8 @@ func setupServer(t *testing.T) *Server {
 }
 
 func createKeyPair(t *testing.T) (ssh.PublicKey, string) {
-	is := is.New(t)
 	t.Helper()
+	is := is.New(t)
 	keyDir := t.TempDir()
 	kp, err := keygen.NewWithWrite(filepath.Join(keyDir, "id"), nil, keygen.Ed25519)
 	is.NoErr(err)

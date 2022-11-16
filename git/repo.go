@@ -74,7 +74,7 @@ func (r *Repository) Name() string {
 
 // HEAD returns the HEAD reference for a repository.
 func (r *Repository) HEAD() (*Reference, error) {
-	rn, err := r.SymbolicRef()
+	rn, err := r.SymbolicRef(git.SymbolicRefOptions{Name: "HEAD"})
 	if err != nil {
 		return nil, err
 	}
