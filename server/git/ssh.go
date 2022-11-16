@@ -76,7 +76,7 @@ func Middleware(repoDir string, gh Hooks) wish.Middleware {
 		return func(s ssh.Session) {
 			func() {
 				cmd := s.Command()
-				if len(cmd) == 2 {
+				if len(cmd) == 2 && strings.HasPrefix(cmd[0], "git") {
 					gc := cmd[0]
 					// repo should be in the form of "repo.git"
 					repo := strings.TrimPrefix(cmd[1], "/")
