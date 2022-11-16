@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	"github.com/charmbracelet/wish/git"
+	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/gliderlabs/ssh"
 	"github.com/matryer/is"
 )

@@ -8,8 +8,8 @@ import (
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/config"
+	gm "github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
-	gitwish "github.com/charmbracelet/wish/git"
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +37,7 @@ func CatCommand() *cobra.Command {
 			rn := ps[0]
 			fp := strings.Join(ps[1:], "/")
 			auth := ac.AuthRepo(rn, s.PublicKey())
-			if auth < gitwish.ReadOnlyAccess {
+			if auth < gm.ReadOnlyAccess {
 				return ErrUnauthorized
 			}
 			var repo *config.Repo

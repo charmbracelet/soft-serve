@@ -32,6 +32,10 @@ var (
 	ErrNoConfig = errors.New("no config file found")
 )
 
+const (
+	defaultConfigRepo = "config"
+)
+
 // Config is the Soft Serve configuration.
 type Config struct {
 	Name         string         `yaml:"name" json:"name"`
@@ -93,7 +97,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	c := &Config{
 		Cfg: cfg,
 	}
-	c.Host = cfg.Host
+	c.Host = host
 	c.Port = port
 	c.Source = rs
 	// Grant read-write access when no keys are provided.
@@ -133,7 +137,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 // readConfig reads the config file for the repo. All config files are stored in
 // the config repo.
 func (cfg *Config) readConfig(repo string, v interface{}) error {
-	cr, err := cfg.Source.GetRepo("config")
+	cr, err := cfg.Source.GetRepo(defaultConfigRepo)
 	if err != nil {
 		return err
 	}
@@ -176,7 +180,7 @@ func (cfg *Config) Reload() error {
 	if err != nil {
 		return err
 	}
-	if err := cfg.readConfig("config", cfg); err != nil {
+	if err := cfg.readConfig(defaultConfigRepo, cfg); err != nil {
 		return fmt.Errorf("error reading config: %w", err)
 	}
 	// sanitize repo configs
@@ -187,7 +191,7 @@ func (cfg *Config) Reload() error {
 	for _, r := range cfg.Source.AllRepos() {
 		var rc RepoConfig
 		repo := r.Repo()
-		if repo == "config" {
+		if repo == defaultConfigRepo {
 			continue
 		}
 		if err := cfg.readConfig(repo, &rc); err != nil {
@@ -253,8 +257,8 @@ func createFile(path string, content string) error {
 }
 
 func (cfg *Config) createDefaultConfigRepo(yaml string) error {
-	cn := "config"
-	rp := filepath.Join(cfg.Cfg.RepoPath, cn)
+	cn := defaultConfigRepo
+	rp := filepath.Join(cfg.Cfg.RepoPath, cn) + ".git"
 	rs := cfg.Source
 	err := rs.LoadRepo(cn)
 	if errors.Is(err, fs.ErrNotExist) {

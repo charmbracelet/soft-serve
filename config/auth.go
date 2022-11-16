@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	gm "github.com/charmbracelet/wish/git"
+	gm "github.com/charmbracelet/soft-serve/server/git"
 	"github.com/gliderlabs/ssh"
 	gossh "golang.org/x/crypto/ssh"
 )
@@ -45,12 +45,12 @@ func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) gm.AccessLevel {
 
 // PasswordHandler returns whether or not password access is allowed.
 func (cfg *Config) PasswordHandler(ctx ssh.Context, password string) bool {
-	return (cfg.AnonAccess != "no-access") && cfg.AllowKeyless
+	return (cfg.AnonAccess != gm.NoAccess.String()) && cfg.AllowKeyless
 }
 
 // KeyboardInteractiveHandler returns whether or not keyboard interactive is allowed.
 func (cfg *Config) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
-	return (cfg.AnonAccess != "no-access") && cfg.AllowKeyless
+	return (cfg.AnonAccess != gm.NoAccess.String()) && cfg.AllowKeyless
 }
 
 // PublicKeyHandler returns whether or not the given public key may access the

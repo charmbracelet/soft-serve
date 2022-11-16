@@ -9,12 +9,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/config"
+	gm "github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
 	"github.com/charmbracelet/soft-serve/ui/git"
-	wgit "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
 )
 
@@ -190,7 +190,7 @@ func (s *Selection) Init() tea.Cmd {
 	// Put configured repos first
 	for _, r := range cfg.Repos {
 		acc := cfg.AuthRepo(r.Repo, pk)
-		if r.Private && acc < wgit.ReadOnlyAccess {
+		if r.Private && acc < gm.ReadOnlyAccess {
 			continue
 		}
 		repo, err := cfg.Source.GetRepo(r.Repo)
@@ -209,7 +209,7 @@ func (s *Selection) Init() tea.Cmd {
 			readmeCmd = s.readme.SetContent(rm, rp)
 		}
 		acc := cfg.AuthRepo(r.Repo(), pk)
-		if r.IsPrivate() && acc < wgit.ReadOnlyAccess {
+		if r.IsPrivate() && acc < gm.ReadOnlyAccess {
 			continue
 		}
 		exists := false

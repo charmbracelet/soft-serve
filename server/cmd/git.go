@@ -5,7 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/charmbracelet/soft-serve/config"
-	gitwish "github.com/charmbracelet/wish/git"
+	gm "github.com/charmbracelet/soft-serve/server/git"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +17,7 @@ func GitCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ac, s := fromContext(cmd)
 			auth := ac.AuthRepo("config", s.PublicKey())
-			if auth < gitwish.AdminAccess {
+			if auth < gm.AdminAccess {
 				return ErrUnauthorized
 			}
 			if len(args) < 1 {

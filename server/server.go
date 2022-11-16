@@ -10,9 +10,9 @@ import (
 
 	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/server/config"
+	gm "github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
-	gm "github.com/charmbracelet/wish/git"
 	lm "github.com/charmbracelet/wish/logging"
 	rm "github.com/charmbracelet/wish/recover"
 	"github.com/gliderlabs/ssh"

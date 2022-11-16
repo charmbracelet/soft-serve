@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/git"
-	gitwish "github.com/charmbracelet/wish/git"
+	gm "github.com/charmbracelet/soft-serve/server/git"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +27,7 @@ func ListCommand() *cobra.Command {
 				ps = strings.Split(path, "/")
 				rn = ps[0]
 				auth := ac.AuthRepo(rn, s.PublicKey())
-				if auth < gitwish.ReadOnlyAccess {
+				if auth < gm.ReadOnlyAccess {
 					return ErrUnauthorized
 				}
 			}
