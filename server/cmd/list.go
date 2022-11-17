@@ -33,7 +33,7 @@ func ListCommand() *cobra.Command {
 			}
 			if path == "" || path == "." || path == "/" {
 				for _, r := range ac.Source.AllRepos() {
-					if ac.AuthRepo(r.Repo(), s.PublicKey()) >= gitwish.ReadOnlyAccess {
+					if ac.AuthRepo(r.Repo(), s.PublicKey()) >= gm.ReadOnlyAccess {
 						fmt.Fprintln(s, r.Repo())
 					}
 				}
