@@ -99,7 +99,9 @@ func setupServer(t *testing.T) *Server {
 	go func() {
 		s.Start()
 	}()
-	defer s.Close()
+	t.Cleanup(func() {
+		s.Close()
+	})
 	return s
 }
 
