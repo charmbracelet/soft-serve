@@ -35,6 +35,27 @@ func TestAuth(t *testing.T) {
 			},
 		},
 		{
+			name:   "anon access: no-access, anonymous user with admin user",
+			access: git.NoAccess,
+			repo:   "foo",
+			cfg: Config{
+				AnonAccess: "no-access",
+				Repos: []RepoConfig{
+					{
+						Repo: "foo",
+					},
+				},
+				Users: []User{
+					{
+						Admin: true,
+						PublicKeys: []string{
+							adminKey,
+						},
+					},
+				},
+			},
+		},
+		{
 			name:   "anon access: no-access, authd user",
 			key:    dummyPk,
 			repo:   "foo",
@@ -50,6 +71,28 @@ func TestAuth(t *testing.T) {
 					{
 						PublicKeys: []string{
 							dummyKey,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "anon access: no-access, anonymous user with admin user",
+			key:    dummyPk,
+			repo:   "foo",
+			access: git.NoAccess,
+			cfg: Config{
+				AnonAccess: "no-access",
+				Repos: []RepoConfig{
+					{
+						Repo: "foo",
+					},
+				},
+				Users: []User{
+					{
+						Admin: true,
+						PublicKeys: []string{
+							adminKey,
 						},
 					},
 				},
@@ -429,13 +472,29 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: no-access, authd user, new repo",
 			key:    dummyPk,
 			repo:   "foo",
-			access: git.NoAccess,
+			access: git.ReadOnlyAccess,
 			cfg: Config{
 				AnonAccess: "no-access",
 				Users: []User{
 					{
 						PublicKeys: []string{
 							dummyKey,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "anon access: no-access, authd user, new repo, with user",
+			key:    dummyPk,
+			repo:   "foo",
+			access: git.NoAccess,
+			cfg: Config{
+				AnonAccess: "no-access",
+				Users: []User{
+					{
+						PublicKeys: []string{
+							adminKey,
 						},
 					},
 				},

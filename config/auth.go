@@ -81,10 +81,8 @@ func (cfg *Config) anonAccessLevel() gm.AccessLevel {
 // If repo exists, and private, then admins and collabs are allowed access.
 // If repo exists, and not private, then access is based on config.AnonAccess.
 func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
-	var u *User
-	var r *RepoConfig
 	anon := cfg.anonAccessLevel()
-OUT:
+	private := cfg.isPrivate(repo)
 	// Find user
 	for _, user := range cfg.Users {
 		for _, k := range user.PublicKeys {
@@ -94,49 +92,63 @@ OUT:
 				return gm.NoAccess
 			}
 			if ssh.KeysEqual(pk, apk) {
-				us := user
-				u = &us
-				break OUT
+				if user.Admin {
+					return gm.AdminAccess
+				}
+				u := user
+				if cfg.isCollab(repo, &u) {
+					if anon > gm.ReadWriteAccess {
+						return anon
+					}
+					return gm.ReadWriteAccess
+				}
+				if !private {
+					if anon > gm.ReadOnlyAccess {
+						return anon
+					}
+					return gm.ReadOnlyAccess
+				}
 			}
 		}
 	}
-	// Find repo
-	for _, rp := range cfg.Repos {
-		if rp.Repo == repo {
-			rr := rp
-			r = &rr
-			break
+	// Don't restrict access to private repos if no users are configured.
+	// Return anon access level.
+	if private && len(cfg.Users) > 0 {
+		return gm.NoAccess
+	}
+	return anon
+}
+
+func (cfg *Config) findRepo(repo string) *RepoConfig {
+	for _, r := range cfg.Repos {
+		if r.Repo == repo {
+			return &r
 		}
 	}
-	if u != nil && u.Admin {
-		return gm.AdminAccess
+	return nil
+}
+
+func (cfg *Config) isPrivate(repo string) bool {
+	if r := cfg.findRepo(repo); r != nil {
+		return r.Private
 	}
-	if r == nil || len(cfg.Users) == 0 {
-		return anon
-	}
-	// Collabs default access is read-write
-	if u != nil {
-		ac := gm.ReadWriteAccess
-		if anon > ac {
-			ac = anon
-		}
-		for _, c := range r.Collabs {
-			if c == u.Name {
-				return ac
+	return false
+}
+
+func (cfg *Config) isCollab(repo string, user *User) bool {
+	if user != nil {
+		for _, r := range user.CollabRepos {
+			if r == repo {
+				return true
 			}
 		}
-		for _, rr := range u.CollabRepos {
-			if rr == r.Repo {
-				return ac
+		if r := cfg.findRepo(repo); r != nil {
+			for _, c := range r.Collabs {
+				if c == user.Name {
+					return true
+				}
 			}
 		}
 	}
-	// Users default access is read-only
-	if !r.Private {
-		if anon > gm.ReadOnlyAccess {
-			return anon
-		}
-		return gm.ReadOnlyAccess
-	}
-	return gm.NoAccess
+	return false
 }
