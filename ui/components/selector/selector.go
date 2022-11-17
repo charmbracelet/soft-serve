@@ -1,6 +1,8 @@
 package selector
 
 import (
+	"sync"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,6 +15,7 @@ type Selector struct {
 	common      common.Common
 	active      int
 	filterState list.FilterState
+	mtx         sync.RWMutex
 }
 
 // IdentifiableItem is an item that can be identified by a string. Implements
@@ -110,6 +113,8 @@ func (s *Selector) SetFilteringEnabled(enabled bool) {
 
 // SetSize implements common.Component.
 func (s *Selector) SetSize(width, height int) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
 	s.common.SetSize(width, height)
 	s.Model.SetSize(width, height)
 }
@@ -174,7 +179,9 @@ func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, s.activeFilterCmd)
 	}
 	m, cmd := s.Model.Update(msg)
+	s.mtx.Lock()
 	s.Model = m
+	s.mtx.Unlock()
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
@@ -212,7 +219,9 @@ func (s *Selector) selectCmd() tea.Msg {
 }
 
 func (s *Selector) activeCmd() tea.Msg {
+	s.mtx.RLock()
 	item := s.Model.SelectedItem()
+	s.mtx.RUnlock()
 	i, ok := item.(IdentifiableItem)
 	if !ok {
 		return ActiveMsg{}
