@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"path/filepath"
+	"strings"
 
 	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/server/config"
@@ -40,6 +42,27 @@ func NewServer(cfg *config.Config) *Server {
 			softMiddleware(ac),
 			bm.MiddlewareWithProgramHandler(SessionHandler(ac), termenv.ANSI256),
 			gm.Middleware(cfg.RepoPath, ac),
+			// Note: disable pushing to subdirectories as it can create
+			// conflicts with existing repos. This only affects the git
+			// middleware.
+			//
+			// This is related to
+			// https://github.com/charmbracelet/soft-serve/issues/120
+			// https://github.com/charmbracelet/wish/commit/8808de520d3ea21931f13113c6b0b6d0141272d4
+			func(sh ssh.Handler) ssh.Handler {
+				return func(s ssh.Session) {
+					cmds := s.Command()
+					if len(cmds) == 2 && strings.HasPrefix(cmds[0], "git") {
+						repo := strings.TrimSuffix(strings.TrimPrefix(cmds[1], "/"), "/")
+						repo = filepath.Clean(repo)
+						if n := strings.Count(repo, "/"); n != 0 {
+							wish.Fatalln(s, fmt.Errorf("invalid repo path: subdirectories not allowed"))
+							return
+						}
+					}
+					sh(s)
+				}
+			},
 			lm.Middleware(),
 		),
 	}
