@@ -126,7 +126,7 @@ func runGitHelper(t *testing.T, pk, cwd string, args ...string) error {
 
 	cmd := exec.Command("git", allArgs...)
 	cmd.Dir = cwd
-	cmd.Env = []string{fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i %s -F /dev/null`, pk)}
+	cmd.Env = []string{fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "%s" -F /dev/null`, pk)}
 	out, err := cmd.CombinedOutput()
 	t.Log("git out:", string(out))
 	return err
@@ -163,9 +163,12 @@ func createKeyPair(t *testing.T) (ssh.PublicKey, string) {
 	t.Helper()
 
 	keyDir := t.TempDir()
-	_, err := keygen.NewWithWrite(filepath.Join(keyDir, "id"), nil, keygen.Ed25519)
+	t.Logf("Tempdir %s", keyDir)
+	kp, err := keygen.NewWithWrite(filepath.Join(keyDir, "id"), nil, keygen.Ed25519)
+	kp.KeyPairExists()
 	requireNoError(t, err)
 	pk := filepath.Join(keyDir, "id_ed25519")
+	t.Logf("pk %s", pk)
 	pubBytes, err := os.ReadFile(filepath.Join(keyDir, "id_ed25519.pub"))
 	requireNoError(t, err)
 	pubkey, _, _, _, err := ssh.ParseAuthorizedKey(pubBytes)
