@@ -25,13 +25,14 @@ var (
 
 			log.Printf("Starting SSH server on %s:%d", cfg.BindAddr, cfg.Port)
 
-			lch := make(chan error)
+			done := make(chan os.Signal, 1)
+			lch := make(chan error, 1)
 			go func() {
 				defer close(lch)
+				defer close(done)
 				lch <- s.Start()
 			}()
 
-			done := make(chan os.Signal, 1)
 			signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 			<-done
 
