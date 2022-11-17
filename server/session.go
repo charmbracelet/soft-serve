@@ -6,11 +6,14 @@ import (
 	"github.com/aymanbagabas/go-osc52"
 	tea "github.com/charmbracelet/bubbletea"
 	appCfg "github.com/charmbracelet/soft-serve/config"
+	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/ui"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/keymap"
 	"github.com/charmbracelet/soft-serve/ui/styles"
+	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
+	gm "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
 	zone "github.com/lrstanley/bubblezone"
 )
@@ -26,6 +29,11 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 		initialRepo := ""
 		if len(cmd) == 1 {
 			initialRepo = cmd[0]
+			auth := ac.AuthRepo(initialRepo, s.PublicKey())
+			if auth < gm.ReadOnlyAccess {
+				wish.Fatalln(s, cm.ErrUnauthorized)
+				return nil
+			}
 		}
 		if ac.Cfg.Callbacks != nil {
 			ac.Cfg.Callbacks.Tui("new session")
