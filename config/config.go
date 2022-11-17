@@ -96,10 +96,11 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	c.Host = cfg.Host
 	c.Port = port
 	c.Source = rs
+	// Grant read-write access when no keys are provided.
 	if len(pks) == 0 {
 		anonAccess = "read-write"
 	} else {
-		anonAccess = "no-access"
+		anonAccess = "read-only"
 	}
 	if host == "" {
 		displayHost = "localhost"
