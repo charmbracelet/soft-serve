@@ -47,7 +47,7 @@ type Config struct {
 	Repos        []RepoConfig   `yaml:"repos" json:"repos"`
 	Source       *RepoSource    `yaml:"-" json:"-"`
 	Cfg          *config.Config `yaml:"-" json:"-"`
-	mtx          sync.Mutex
+	mtx          sync.RWMutex
 }
 
 // User contains user-level configuration for a repository.

@@ -60,6 +60,8 @@ func (cfg *Config) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
 }
 
 func (cfg *Config) anonAccessLevel() gm.AccessLevel {
+	cfg.mtx.RLock()
+	defer cfg.mtx.RUnlock()
 	switch cfg.AnonAccess {
 	case "no-access":
 		return gm.NoAccess
