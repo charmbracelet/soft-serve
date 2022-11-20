@@ -20,6 +20,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/config"
+	gm "github.com/charmbracelet/soft-serve/server/git"
 	"github.com/go-git/go-billy/v5/memfs"
 	ggit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -102,9 +103,9 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	c.Source = rs
 	// Grant read-write access when no keys are provided.
 	if len(pks) == 0 {
-		anonAccess = "read-write"
+		anonAccess = gm.ReadWriteAccess.String()
 	} else {
-		anonAccess = "read-only"
+		anonAccess = gm.ReadOnlyAccess.String()
 	}
 	if host == "" {
 		displayHost = "localhost"
