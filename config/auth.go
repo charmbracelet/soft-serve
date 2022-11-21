@@ -86,29 +86,31 @@ func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
 	anon := cfg.anonAccessLevel()
 	private := cfg.isPrivate(repo)
 	// Find user
-	for _, user := range cfg.Users {
-		for _, k := range user.PublicKeys {
-			apk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(k)))
-			if err != nil {
-				log.Printf("error: malformed authorized key: '%s'", k)
-				return gm.NoAccess
-			}
-			if ssh.KeysEqual(pk, apk) {
-				if user.Admin {
-					return gm.AdminAccess
+	if pk != nil {
+		for _, user := range cfg.Users {
+			for _, k := range user.PublicKeys {
+				apk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(k)))
+				if err != nil {
+					log.Printf("error: malformed authorized key: '%s'", k)
+					return gm.NoAccess
 				}
-				u := user
-				if cfg.isCollab(repo, &u) {
-					if anon > gm.ReadWriteAccess {
-						return anon
+				if ssh.KeysEqual(pk, apk) {
+					if user.Admin {
+						return gm.AdminAccess
 					}
-					return gm.ReadWriteAccess
-				}
-				if !private {
-					if anon > gm.ReadOnlyAccess {
-						return anon
+					u := user
+					if cfg.isCollab(repo, &u) {
+						if anon > gm.ReadWriteAccess {
+							return anon
+						}
+						return gm.ReadWriteAccess
 					}
-					return gm.ReadOnlyAccess
+					if !private {
+						if anon > gm.ReadOnlyAccess {
+							return anon
+						}
+						return gm.ReadOnlyAccess
+					}
 				}
 			}
 		}
