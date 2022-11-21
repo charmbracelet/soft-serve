@@ -237,9 +237,9 @@ func (rs *RepoSource) LoadRepo(name string) error {
 		return err
 	}
 	if !r.IsBare() {
-		log.Printf("warning: %q is not a bare repository", rp)
+		log.Printf("warning: %q is not a bare repository", r.Path())
 	} else if r.IsBare() && !strings.HasSuffix(rp, ".git") {
-		log.Printf("warning: %q should be renamed to %q", rp, rp+".git")
+		log.Printf("warning: %q should be renamed to %q", r.Path(), r.Path()+".git")
 	}
 	rs.repos[name] = r
 	return nil
