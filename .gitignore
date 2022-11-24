@@ -1,4 +1,4 @@
-cmd/soft/soft
+soft
 .ssh
 .repos
 dist
