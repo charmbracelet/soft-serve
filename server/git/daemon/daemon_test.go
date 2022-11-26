@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"log"
 	"net"
@@ -18,13 +17,21 @@ import (
 var testDaemon *Daemon
 
 func TestMain(m *testing.M) {
-	cfg := config.DefaultConfig()
-	// Reduce the max connections to 3 so we can test the timeout.
-	cfg.GitMaxConnections = 3
-	// Reduce the max timeout to 100 second so we can test the timeout.
-	cfg.GitMaxTimeout = 100
-	// Reduce the max read timeout to 1 second so we can test the timeout.
-	cfg.GitMaxReadTimeout = 1
+	testdata := "testdata"
+	defer os.RemoveAll(testdata)
+	cfg := &config.Config{
+		Host:     "",
+		DataPath: testdata,
+		Git: config.GitConfig{
+			// Reduce the max timeout to 100 second so we can test the timeout.
+			MaxTimeout: 100,
+			// Reduce the max read timeout to 1 second so we can test the timeout.
+			MaxReadTimeout: 1,
+			// Reduce the max connections to 3 so we can test the timeout.
+			MaxConnections: 3,
+			Port:           9418,
+		},
+	}
 	ac, err := appCfg.NewConfig(cfg)
 	if err != nil {
 		log.Fatal(err)
@@ -39,7 +46,7 @@ func TestMain(m *testing.M) {
 			log.Fatal(err)
 		}
 	}()
-	defer d.Shutdown(context.Background())
+	defer d.Close()
 	os.Exit(m.Run())
 }
 

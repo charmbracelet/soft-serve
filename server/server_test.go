@@ -19,9 +19,10 @@ import (
 
 var (
 	cfg = &config.Config{
-		BindAddr: "",
-		Host:     "localhost",
-		Port:     22222,
+		Host: "",
+		SSH: config.SSHConfig{
+			Port: 22222,
+		},
 	}
 )
 
@@ -54,7 +55,7 @@ func TestPushRepo(t *testing.T) {
 	is.NoErr(err)
 	_, err = r.CreateRemote(&gconfig.RemoteConfig{
 		Name: "origin",
-		URLs: []string{fmt.Sprintf("ssh://%s:%d/%s", cfg.Host, cfg.Port, "testrepo")},
+		URLs: []string{fmt.Sprintf("ssh://%s:%d/%s", cfg.Host, cfg.SSH.Port, "testrepo")},
 	})
 	auth, err := gssh.NewPublicKeysFromFile("git", pkPath, "")
 	is.NoErr(err)
@@ -77,7 +78,7 @@ func TestCloneRepo(t *testing.T) {
 	is.NoErr(err)
 
 	dst := t.TempDir()
-	url := fmt.Sprintf("ssh://%s:%d/config", cfg.Host, cfg.Port)
+	url := fmt.Sprintf("ssh://%s:%d/config", cfg.Host, cfg.SSH.Port)
 	err = ggit.Clone(url, dst, ggit.CloneOptions{
 		CommandOptions: ggit.CommandOptions{
 			Envs: []string{
@@ -91,8 +92,7 @@ func TestCloneRepo(t *testing.T) {
 func setupServer(t *testing.T) *Server {
 	t.Helper()
 	tmpdir := t.TempDir()
-	cfg.RepoPath = filepath.Join(tmpdir, "repos")
-	cfg.KeyPath = filepath.Join(tmpdir, "key")
+	cfg.DataPath = tmpdir
 	s := NewServer(cfg)
 	go func() {
 		s.Start()

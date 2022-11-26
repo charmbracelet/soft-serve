@@ -44,13 +44,13 @@ func main() {
 		log.Fatalf("Setuid error: %s", err)
 	}
 	cfg := config.DefaultConfig()
-	cfg.Port = *port
+	cfg.SSH.Port = *port
 	s := server.NewServer(cfg)
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Printf("Starting SSH server on %s:%d", cfg.BindAddr, cfg.Port)
+	log.Printf("Starting SSH server on %s:%d", cfg.Host, cfg.SSH.Port)
 	go func() {
 		if err := s.SSHServer.Serve(ls); err != nil {
 			log.Fatalln(err)
@@ -59,7 +59,7 @@ func main() {
 
 	<-done
 
-	log.Printf("Stopping SSH server on %s:%d", cfg.BindAddr, cfg.Port)
+	log.Printf("Stopping SSH server on %s:%d", cfg.Host, cfg.SSH.Port)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer func() { cancel() }()
 	if err := s.Shutdown(ctx); err != nil {

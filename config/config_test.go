@@ -9,8 +9,7 @@ import (
 
 func TestMultipleInitialKeys(t *testing.T) {
 	cfg, err := NewConfig(&config.Config{
-		RepoPath: t.TempDir(),
-		KeyPath:  t.TempDir(),
+		DataPath: t.TempDir(),
 		InitialAdminKeys: []string{
 			"testdata/k1.pub",
 			"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFxIobhwtfdwN7m1TFt9wx3PsfvcAkISGPxmbmbauST8 a@b",
@@ -28,8 +27,7 @@ func TestMultipleInitialKeys(t *testing.T) {
 
 func TestEmptyInitialKeys(t *testing.T) {
 	cfg, err := NewConfig(&config.Config{
-		RepoPath: t.TempDir(),
-		KeyPath:  t.TempDir(),
+		DataPath: t.TempDir(),
 	})
 	is := is.New(t)
 	is.NoErr(err)

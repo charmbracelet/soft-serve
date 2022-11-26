@@ -19,10 +19,11 @@ func TestMiddleware(t *testing.T) {
 	})
 	is := is.New(t)
 	appCfg, err := config.NewConfig(&sconfig.Config{
-		Host:     "localhost",
-		Port:     22223,
-		RepoPath: "testmiddleware/repos",
-		KeyPath:  "testmiddleware/key",
+		Host: "localhost",
+		SSH: sconfig.SSHConfig{
+			Port: 22223,
+		},
+		DataPath: "testmiddleware",
 	})
 	is.NoErr(err)
 	_ = testsession.New(t, &ssh.Server{

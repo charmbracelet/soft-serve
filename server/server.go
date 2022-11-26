@@ -45,7 +45,7 @@ func NewServer(cfg *config.Config) *Server {
 			// Command middleware must come after the git middleware.
 			cm.Middleware(ac),
 			// Git middleware.
-			gm.Middleware(cfg.RepoPath, ac),
+			gm.Middleware(cfg.RepoPath(), ac),
 			// Logging middleware must be last to be executed first.
 			lm.Middleware(),
 		),
@@ -53,8 +53,8 @@ func NewServer(cfg *config.Config) *Server {
 	s, err := wish.NewServer(
 		ssh.PublicKeyAuth(ac.PublicKeyHandler),
 		ssh.KeyboardInteractiveAuth(ac.KeyboardInteractiveHandler),
-		wish.WithAddress(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port)),
-		wish.WithHostKeyPath(cfg.KeyPath),
+		wish.WithAddress(fmt.Sprintf("%s:%d", cfg.Host, cfg.SSH.Port)),
+		wish.WithHostKeyPath(cfg.PrivateKeyPath()),
 		wish.WithMiddleware(mw...),
 	)
 	if err != nil {
@@ -81,14 +81,14 @@ func (s *Server) Reload() error {
 func (s *Server) Start() error {
 	var errg errgroup.Group
 	errg.Go(func() error {
-		log.Printf("Starting Git server on %s:%d", s.Config.BindAddr, s.Config.GitPort)
+		log.Printf("Starting Git server on %s:%d", s.Config.Host, s.Config.Git.Port)
 		if err := s.GitServer.Start(); err != daemon.ErrServerClosed {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		log.Printf("Starting SSH server on %s:%d", s.Config.BindAddr, s.Config.Port)
+		log.Printf("Starting SSH server on %s:%d", s.Config.Host, s.Config.SSH.Port)
 		if err := s.SSHServer.ListenAndServe(); err != ssh.ErrServerClosed {
 			return err
 		}

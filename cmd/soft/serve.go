@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,8 +21,6 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := config.DefaultConfig()
 			s := server.NewServer(cfg)
-
-			log.Printf("Starting SSH server on %s:%d", cfg.BindAddr, cfg.Port)
 
 			done := make(chan os.Signal, 1)
 			lch := make(chan error, 1)

@@ -75,7 +75,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	var yamlUsers string
 	var displayHost string
 	host := cfg.Host
-	port := cfg.Port
+	port := cfg.SSH.Port
 
 	pks := make([]string, 0)
 	for _, k := range cfg.InitialAdminKeys {
@@ -94,7 +94,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 		pks = append(pks, pk)
 	}
 
-	rs := NewRepoSource(cfg.RepoPath)
+	rs := NewRepoSource(cfg.RepoPath())
 	c := &Config{
 		Cfg: cfg,
 	}
@@ -259,7 +259,7 @@ func createFile(path string, content string) error {
 
 func (cfg *Config) createDefaultConfigRepo(yaml string) error {
 	cn := defaultConfigRepo
-	rp := filepath.Join(cfg.Cfg.RepoPath, cn) + ".git"
+	rp := filepath.Join(cfg.Cfg.RepoPath(), cn) + ".git"
 	rs := cfg.Source
 	err := rs.LoadRepo(cn)
 	if errors.Is(err, fs.ErrNotExist) {

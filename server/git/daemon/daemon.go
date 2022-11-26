@@ -29,11 +29,12 @@ type Daemon struct {
 	conns    map[net.Conn]struct{}
 	cfg      *config.Config
 	wg       sync.WaitGroup
+	once     sync.Once
 }
 
 // NewDaemon returns a new Git daemon.
 func NewDaemon(cfg *config.Config, auth git.Hooks) (*Daemon, error) {
-	addr := fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.GitPort)
+	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Git.Port)
 	d := &Daemon{
 		addr:  addr,
 		auth:  auth,
@@ -53,7 +54,7 @@ func NewDaemon(cfg *config.Config, auth git.Hooks) (*Daemon, error) {
 // Start starts the Git TCP daemon.
 func (d *Daemon) Start() error {
 	// set up channel on which to send accepted connections
-	listen := make(chan net.Conn, d.cfg.GitMaxConnections)
+	listen := make(chan net.Conn, d.cfg.Git.MaxConnections)
 	go d.acceptConnection(d.listener, listen)
 
 	// loop work cycle with accept connections or interrupt
@@ -107,14 +108,14 @@ func (d *Daemon) handleClient(c net.Conn) {
 	defer delete(d.conns, c)
 
 	// Close connection if there are too many open connections.
-	if len(d.conns) >= d.cfg.GitMaxConnections {
+	if len(d.conns) >= d.cfg.Git.MaxConnections {
 		log.Printf("git: max connections reached, closing %s", c.RemoteAddr())
 		fatal(c, git.ErrMaxConns)
 		return
 	}
 
 	// Set connection timeout.
-	if err := c.SetDeadline(time.Now().Add(time.Duration(d.cfg.GitMaxTimeout) * time.Second)); err != nil {
+	if err := c.SetDeadline(time.Now().Add(time.Duration(d.cfg.Git.MaxTimeout) * time.Second)); err != nil {
 		log.Printf("git: error setting deadline: %v", err)
 		fatal(c, git.ErrSystemMalfunction)
 		return
@@ -123,7 +124,7 @@ func (d *Daemon) handleClient(c net.Conn) {
 	readc := make(chan struct{}, 1)
 	go func() {
 		select {
-		case <-time.After(time.Duration(d.cfg.GitMaxReadTimeout) * time.Second):
+		case <-time.After(time.Duration(d.cfg.Git.MaxReadTimeout) * time.Second):
 			log.Printf("git: read timeout from %s", c.RemoteAddr())
 			fatal(c, git.ErrMaxTimeout)
 		case <-readc:
@@ -168,11 +169,11 @@ func (d *Daemon) handleClient(c net.Conn) {
 		repo += ".git"
 	}
 
-	err := git.GitPack(c, c, c, cmd, d.cfg.RepoPath, repo)
+	err := git.GitPack(c, c, c, cmd, d.cfg.RepoPath(), repo)
 	if err == git.ErrInvalidRepo {
 		trimmed := strings.TrimSuffix(repo, ".git")
 		log.Printf("git: invalid repo %q trying again %q", repo, trimmed)
-		err = git.GitPack(c, c, c, cmd, d.cfg.RepoPath, trimmed)
+		err = git.GitPack(c, c, c, cmd, d.cfg.RepoPath(), trimmed)
 	}
 	if err != nil {
 		fatal(c, err)
@@ -182,12 +183,13 @@ func (d *Daemon) handleClient(c net.Conn) {
 
 // Close closes the underlying listener.
 func (d *Daemon) Close() error {
+	d.once.Do(func() { close(d.exit) })
 	return d.listener.Close()
 }
 
 // Shutdown gracefully shuts down the daemon.
 func (d *Daemon) Shutdown(_ context.Context) error {
-	close(d.exit)
+	d.once.Do(func() { close(d.exit) })
 	d.wg.Wait()
 	return nil
 }

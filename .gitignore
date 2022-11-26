@@ -1,6 +1,5 @@
-cmd/soft/soft
-.ssh
-.repos
+soft
+soft-serve
 dist
 testdata
 completions/
