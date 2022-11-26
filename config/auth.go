@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	gm "github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/gliderlabs/ssh"
 	gossh "golang.org/x/crypto/ssh"
 )
@@ -39,40 +39,40 @@ func (cfg *Config) Fetch(repo string, pk ssh.PublicKey) {
 }
 
 // AuthRepo grants repo authorization to the given key.
-func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) gm.AccessLevel {
+func (cfg *Config) AuthRepo(repo string, pk ssh.PublicKey) proto.AccessLevel {
 	return cfg.accessForKey(repo, pk)
 }
 
 // PasswordHandler returns whether or not password access is allowed.
 func (cfg *Config) PasswordHandler(ctx ssh.Context, password string) bool {
-	return (cfg.AnonAccess != gm.NoAccess.String()) && cfg.AllowKeyless
+	return (cfg.AnonAccess != proto.NoAccess.String()) && cfg.AllowKeyless
 }
 
 // KeyboardInteractiveHandler returns whether or not keyboard interactive is allowed.
 func (cfg *Config) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
-	return (cfg.AnonAccess != gm.NoAccess.String()) && cfg.AllowKeyless
+	return (cfg.AnonAccess != proto.NoAccess.String()) && cfg.AllowKeyless
 }
 
 // PublicKeyHandler returns whether or not the given public key may access the
 // repo.
 func (cfg *Config) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
-	return cfg.accessForKey("", pk) != gm.NoAccess
+	return cfg.accessForKey("", pk) != proto.NoAccess
 }
 
-func (cfg *Config) anonAccessLevel() gm.AccessLevel {
+func (cfg *Config) anonAccessLevel() proto.AccessLevel {
 	cfg.mtx.RLock()
 	defer cfg.mtx.RUnlock()
 	switch cfg.AnonAccess {
 	case "no-access":
-		return gm.NoAccess
+		return proto.NoAccess
 	case "read-only":
-		return gm.ReadOnlyAccess
+		return proto.ReadOnlyAccess
 	case "read-write":
-		return gm.ReadWriteAccess
+		return proto.ReadWriteAccess
 	case "admin-access":
-		return gm.AdminAccess
+		return proto.AdminAccess
 	default:
-		return gm.NoAccess
+		return proto.NoAccess
 	}
 }
 
@@ -82,7 +82,7 @@ func (cfg *Config) anonAccessLevel() gm.AccessLevel {
 // config.AnonAccess.
 // If repo exists, and private, then admins and collabs are allowed access.
 // If repo exists, and not private, then access is based on config.AnonAccess.
-func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
+func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) proto.AccessLevel {
 	anon := cfg.anonAccessLevel()
 	private := cfg.isPrivate(repo)
 	// Find user
@@ -92,24 +92,24 @@ func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
 				apk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(k)))
 				if err != nil {
 					log.Printf("error: malformed authorized key: '%s'", k)
-					return gm.NoAccess
+					return proto.NoAccess
 				}
 				if ssh.KeysEqual(pk, apk) {
 					if user.Admin {
-						return gm.AdminAccess
+						return proto.AdminAccess
 					}
 					u := user
 					if cfg.isCollab(repo, &u) {
-						if anon > gm.ReadWriteAccess {
+						if anon > proto.ReadWriteAccess {
 							return anon
 						}
-						return gm.ReadWriteAccess
+						return proto.ReadWriteAccess
 					}
 					if !private {
-						if anon > gm.ReadOnlyAccess {
+						if anon > proto.ReadOnlyAccess {
 							return anon
 						}
-						return gm.ReadOnlyAccess
+						return proto.ReadOnlyAccess
 					}
 				}
 			}
@@ -118,7 +118,7 @@ func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
 	// Don't restrict access to private repos if no users are configured.
 	// Return anon access level.
 	if private && len(cfg.Users) > 0 {
-		return gm.NoAccess
+		return proto.NoAccess
 	}
 	return anon
 }

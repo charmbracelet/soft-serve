@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/gliderlabs/ssh"
 	"github.com/matryer/is"
 )
@@ -18,12 +18,12 @@ func TestAuth(t *testing.T) {
 		cfg    Config
 		repo   string
 		key    ssh.PublicKey
-		access git.AccessLevel
+		access proto.AccessLevel
 	}{
 		// Repo access
 		{
 			name:   "anon access: no-access, anonymous user",
-			access: git.NoAccess,
+			access: proto.NoAccess,
 			repo:   "foo",
 			cfg: Config{
 				AnonAccess: "no-access",
@@ -36,7 +36,7 @@ func TestAuth(t *testing.T) {
 		},
 		{
 			name:   "anon access: no-access, anonymous user with admin user",
-			access: git.NoAccess,
+			access: proto.NoAccess,
 			repo:   "foo",
 			cfg: Config{
 				AnonAccess: "no-access",
@@ -59,7 +59,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: no-access, authd user",
 			key:    dummyPk,
 			repo:   "foo",
-			access: git.ReadOnlyAccess,
+			access: proto.ReadOnlyAccess,
 			cfg: Config{
 				AnonAccess: "no-access",
 				Repos: []RepoConfig{
@@ -80,7 +80,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: no-access, anonymous user with admin user",
 			key:    dummyPk,
 			repo:   "foo",
-			access: git.NoAccess,
+			access: proto.NoAccess,
 			cfg: Config{
 				AnonAccess: "no-access",
 				Repos: []RepoConfig{
@@ -102,7 +102,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: no-access, admin user",
 			repo:   "foo",
 			key:    adminPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "no-access",
 				Repos: []RepoConfig{
@@ -123,7 +123,7 @@ func TestAuth(t *testing.T) {
 		{
 			name:   "anon access: read-only, anonymous user",
 			repo:   "foo",
-			access: git.ReadOnlyAccess,
+			access: proto.ReadOnlyAccess,
 			cfg: Config{
 				AnonAccess: "read-only",
 				Repos: []RepoConfig{
@@ -137,7 +137,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: read-only, authd user",
 			repo:   "foo",
 			key:    dummyPk,
-			access: git.ReadOnlyAccess,
+			access: proto.ReadOnlyAccess,
 			cfg: Config{
 				AnonAccess: "read-only",
 				Repos: []RepoConfig{
@@ -158,7 +158,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: read-only, admin user",
 			repo:   "foo",
 			key:    adminPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "read-only",
 				Repos: []RepoConfig{
@@ -179,7 +179,7 @@ func TestAuth(t *testing.T) {
 		{
 			name:   "anon access: read-write, anonymous user",
 			repo:   "foo",
-			access: git.ReadWriteAccess,
+			access: proto.ReadWriteAccess,
 			cfg: Config{
 				AnonAccess: "read-write",
 				Repos: []RepoConfig{
@@ -193,7 +193,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: read-write, authd user",
 			repo:   "foo",
 			key:    dummyPk,
-			access: git.ReadWriteAccess,
+			access: proto.ReadWriteAccess,
 			cfg: Config{
 				AnonAccess: "read-write",
 				Repos: []RepoConfig{
@@ -213,7 +213,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: read-write, admin user",
 			repo:   "foo",
 			key:    adminPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "read-write",
 				Repos: []RepoConfig{
@@ -234,7 +234,7 @@ func TestAuth(t *testing.T) {
 		{
 			name:   "anon access: admin-access, anonymous user",
 			repo:   "foo",
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "admin-access",
 				Repos: []RepoConfig{
@@ -248,7 +248,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: admin-access, authd user",
 			repo:   "foo",
 			key:    dummyPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "admin-access",
 				Repos: []RepoConfig{
@@ -268,7 +268,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: admin-access, admin user",
 			repo:   "foo",
 			key:    adminPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "admin-access",
 				Repos: []RepoConfig{
@@ -292,7 +292,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: no-access, authd user, collab",
 			key:    dummyPk,
 			repo:   "foo",
-			access: git.ReadWriteAccess,
+			access: proto.ReadWriteAccess,
 			cfg: Config{
 				AnonAccess: "no-access",
 				Repos: []RepoConfig{
@@ -317,7 +317,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: no-access, authd user, collab, private repo",
 			key:    dummyPk,
 			repo:   "foo",
-			access: git.ReadWriteAccess,
+			access: proto.ReadWriteAccess,
 			cfg: Config{
 				AnonAccess: "no-access",
 				Repos: []RepoConfig{
@@ -343,7 +343,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: no-access, admin user, collab, private repo",
 			repo:   "foo",
 			key:    adminPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "no-access",
 				Repos: []RepoConfig{
@@ -370,7 +370,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: read-only, authd user, collab, private repo",
 			repo:   "foo",
 			key:    dummyPk,
-			access: git.ReadWriteAccess,
+			access: proto.ReadWriteAccess,
 			cfg: Config{
 				AnonAccess: "read-only",
 				Repos: []RepoConfig{
@@ -395,7 +395,7 @@ func TestAuth(t *testing.T) {
 		{
 			name:   "anon access: admin-access, anonymous user, collab",
 			repo:   "foo",
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "admin-access",
 				Repos: []RepoConfig{
@@ -412,7 +412,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: admin-access, authd user, collab",
 			repo:   "foo",
 			key:    dummyPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "admin-access",
 				Repos: []RepoConfig{
@@ -436,7 +436,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: admin-access, admin user, collab",
 			repo:   "foo",
 			key:    adminPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "admin-access",
 				Repos: []RepoConfig{
@@ -462,7 +462,7 @@ func TestAuth(t *testing.T) {
 		// New repo
 		{
 			name:   "anon access: no-access, anonymous user, new repo",
-			access: git.NoAccess,
+			access: proto.NoAccess,
 			repo:   "foo",
 			cfg: Config{
 				AnonAccess: "no-access",
@@ -472,7 +472,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: no-access, authd user, new repo",
 			key:    dummyPk,
 			repo:   "foo",
-			access: git.ReadOnlyAccess,
+			access: proto.ReadOnlyAccess,
 			cfg: Config{
 				AnonAccess: "no-access",
 				Users: []User{
@@ -488,7 +488,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: no-access, authd user, new repo, with user",
 			key:    dummyPk,
 			repo:   "foo",
-			access: git.NoAccess,
+			access: proto.NoAccess,
 			cfg: Config{
 				AnonAccess: "no-access",
 				Users: []User{
@@ -504,7 +504,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: no-access, admin user, new repo",
 			repo:   "foo",
 			key:    adminPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "no-access",
 				Users: []User{
@@ -520,7 +520,7 @@ func TestAuth(t *testing.T) {
 		{
 			name:   "anon access: read-only, anonymous user, new repo",
 			repo:   "foo",
-			access: git.ReadOnlyAccess,
+			access: proto.ReadOnlyAccess,
 			cfg: Config{
 				AnonAccess: "read-only",
 			},
@@ -529,7 +529,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: read-only, authd user, new repo",
 			repo:   "foo",
 			key:    dummyPk,
-			access: git.ReadOnlyAccess,
+			access: proto.ReadOnlyAccess,
 			cfg: Config{
 				AnonAccess: "read-only",
 				Users: []User{
@@ -545,7 +545,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: read-only, admin user, new repo",
 			repo:   "foo",
 			key:    adminPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "read-only",
 				Users: []User{
@@ -561,7 +561,7 @@ func TestAuth(t *testing.T) {
 		{
 			name:   "anon access: read-write, anonymous user, new repo",
 			repo:   "foo",
-			access: git.ReadWriteAccess,
+			access: proto.ReadWriteAccess,
 			cfg: Config{
 				AnonAccess: "read-write",
 			},
@@ -570,7 +570,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: read-write, authd user, new repo",
 			repo:   "foo",
 			key:    dummyPk,
-			access: git.ReadWriteAccess,
+			access: proto.ReadWriteAccess,
 			cfg: Config{
 				AnonAccess: "read-write",
 				Users: []User{
@@ -586,7 +586,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: read-write, admin user, new repo",
 			repo:   "foo",
 			key:    adminPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "read-write",
 				Users: []User{
@@ -602,7 +602,7 @@ func TestAuth(t *testing.T) {
 		{
 			name:   "anon access: admin-access, anonymous user, new repo",
 			repo:   "foo",
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "admin-access",
 			},
@@ -611,7 +611,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: admin-access, authd user, new repo",
 			repo:   "foo",
 			key:    dummyPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "admin-access",
 				Users: []User{
@@ -627,7 +627,7 @@ func TestAuth(t *testing.T) {
 			name:   "anon access: admin-access, admin user, new repo",
 			repo:   "foo",
 			key:    adminPk,
-			access: git.AdminAccess,
+			access: proto.AdminAccess,
 			cfg: Config{
 				AnonAccess: "admin-access",
 				Users: []User{
@@ -645,7 +645,7 @@ func TestAuth(t *testing.T) {
 		{
 			name:   "anon access: read-only, no users",
 			repo:   "foo",
-			access: git.ReadOnlyAccess,
+			access: proto.ReadOnlyAccess,
 			cfg: Config{
 				AnonAccess: "read-only",
 			},
@@ -653,7 +653,7 @@ func TestAuth(t *testing.T) {
 		{
 			name:   "anon access: read-write, no users",
 			repo:   "foo",
-			access: git.ReadWriteAccess,
+			access: proto.ReadWriteAccess,
 			cfg: Config{
 				AnonAccess: "read-write",
 			},

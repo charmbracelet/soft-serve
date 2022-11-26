@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/git"
-	gm "github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/spf13/cobra"
 )
 
@@ -27,13 +27,13 @@ func ListCommand() *cobra.Command {
 				ps = strings.Split(path, "/")
 				rn = ps[0]
 				auth := ac.AuthRepo(rn, s.PublicKey())
-				if auth < gm.ReadOnlyAccess {
+				if auth < proto.ReadOnlyAccess {
 					return ErrUnauthorized
 				}
 			}
 			if path == "" || path == "." || path == "/" {
 				for _, r := range ac.Source.AllRepos() {
-					if ac.AuthRepo(r.Repo(), s.PublicKey()) >= gm.ReadOnlyAccess {
+					if ac.AuthRepo(r.Repo(), s.PublicKey()) >= proto.ReadOnlyAccess {
 						fmt.Fprintln(s, r.Repo())
 					}
 				}

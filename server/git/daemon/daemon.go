@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
@@ -159,7 +160,7 @@ func (d *Daemon) handleClient(c net.Conn) {
 	defer log.Printf("git: disconnect %s %s %s", c.RemoteAddr(), cmd, repo)
 	repo = strings.TrimPrefix(repo, "/")
 	auth := d.auth.AuthRepo(strings.TrimSuffix(repo, ".git"), nil)
-	if auth < git.ReadOnlyAccess {
+	if auth < proto.ReadOnlyAccess {
 		fatal(c, git.ErrNotAuthed)
 		return
 	}

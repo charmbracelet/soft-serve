@@ -2,6 +2,9 @@ package server
 
 import (
 	"fmt"
+	"log"
+	"net"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -20,9 +23,7 @@ import (
 var (
 	cfg = &config.Config{
 		Host: "",
-		SSH: config.SSHConfig{
-			Port: 22222,
-		},
+		Git:  config.GitConfig{Port: 9418},
 	}
 )
 
@@ -30,10 +31,8 @@ func TestPushRepo(t *testing.T) {
 	is := is.New(t)
 	_, pkPath := createKeyPair(t)
 	s := setupServer(t)
-	defer s.Close()
 	err := s.Reload()
 	is.NoErr(err)
-
 	rp := t.TempDir()
 	r, err := git.PlainInit(rp, false)
 	is.NoErr(err)
@@ -55,7 +54,7 @@ func TestPushRepo(t *testing.T) {
 	is.NoErr(err)
 	_, err = r.CreateRemote(&gconfig.RemoteConfig{
 		Name: "origin",
-		URLs: []string{fmt.Sprintf("ssh://%s:%d/%s", cfg.Host, cfg.SSH.Port, "testrepo")},
+		URLs: []string{fmt.Sprintf("ssh://localhost:%d/%s", cfg.SSH.Port, "testrepo")},
 	})
 	auth, err := gssh.NewPublicKeysFromFile("git", pkPath, "")
 	is.NoErr(err)
@@ -73,12 +72,13 @@ func TestCloneRepo(t *testing.T) {
 	is := is.New(t)
 	_, pkPath := createKeyPair(t)
 	s := setupServer(t)
-	defer s.Close()
+	log.Print("starting server")
 	err := s.Reload()
+	log.Print("reloaded server")
 	is.NoErr(err)
-
 	dst := t.TempDir()
-	url := fmt.Sprintf("ssh://%s:%d/config", cfg.Host, cfg.SSH.Port)
+	url := fmt.Sprintf("ssh://localhost:%d/config", cfg.SSH.Port)
+	log.Print("cloning repo")
 	err = ggit.Clone(url, dst, ggit.CloneOptions{
 		CommandOptions: ggit.CommandOptions{
 			Envs: []string{
@@ -89,16 +89,24 @@ func TestCloneRepo(t *testing.T) {
 	is.NoErr(err)
 }
 
+func randomPort() int {
+	addr, _ := net.Listen("tcp", ":0") //nolint:gosec
+	_ = addr.Close()
+	return addr.Addr().(*net.TCPAddr).Port
+}
+
 func setupServer(t *testing.T) *Server {
 	t.Helper()
-	tmpdir := t.TempDir()
-	cfg.DataPath = tmpdir
+	cfg.DataPath = t.TempDir()
+	cfg.SSH.Port = randomPort()
 	s := NewServer(cfg)
 	go func() {
+		log.Print("starting server")
 		s.Start()
 	}()
 	t.Cleanup(func() {
 		s.Close()
+		os.RemoveAll(cfg.DataPath)
 	})
 	return s
 }

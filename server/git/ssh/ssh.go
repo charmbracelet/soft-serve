@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/wish"
 	"github.com/gliderlabs/ssh"
@@ -41,7 +42,7 @@ func Middleware(repoDir string, gh git.Hooks) wish.Middleware {
 					switch gc {
 					case "git-receive-pack":
 						switch access {
-						case git.ReadWriteAccess, git.AdminAccess:
+						case proto.ReadWriteAccess, proto.AdminAccess:
 							err := git.GitPack(s, s, s.Stderr(), gc, repoDir, repo)
 							if err != nil {
 								Fatal(s, git.ErrSystemMalfunction)
@@ -54,7 +55,7 @@ func Middleware(repoDir string, gh git.Hooks) wish.Middleware {
 						return
 					case "git-upload-archive", "git-upload-pack":
 						switch access {
-						case git.ReadOnlyAccess, git.ReadWriteAccess, git.AdminAccess:
+						case proto.ReadOnlyAccess, proto.ReadWriteAccess, proto.AdminAccess:
 							// try to upload <repo>.git first, then <repo>
 							err := git.GitPack(s, s, s.Stderr(), gc, repoDir, repo)
 							if err != nil {

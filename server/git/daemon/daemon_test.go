@@ -17,11 +17,14 @@ import (
 var testDaemon *Daemon
 
 func TestMain(m *testing.M) {
-	testdata := "testdata"
-	defer os.RemoveAll(testdata)
+	tmp, err := os.MkdirTemp("", "soft-serve-test")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
 	cfg := &config.Config{
 		Host:     "",
-		DataPath: testdata,
+		DataPath: tmp,
 		Git: config.GitConfig{
 			// Reduce the max timeout to 100 second so we can test the timeout.
 			MaxTimeout: 100,

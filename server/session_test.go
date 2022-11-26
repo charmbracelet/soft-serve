@@ -55,9 +55,10 @@ func TestSession(t *testing.T) {
 func setup(tb testing.TB) *gossh.Session {
 	is := is.New(tb)
 	tb.Helper()
-	cfg.DataPath = tb.TempDir()
 	ac, err := appCfg.NewConfig(&config.Config{
-		SSH:      config.SSHConfig{Port: 22226},
+		Host:     "",
+		SSH:      config.SSHConfig{Port: randomPort()},
+		Git:      config.GitConfig{Port: 9418},
 		DataPath: tb.TempDir(),
 		InitialAdminKeys: []string{
 			"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMJlb/qf2B2kMNdBxfpCQqI2ctPcsOkdZGVh5zTRhKtH",

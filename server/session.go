@@ -6,8 +6,8 @@ import (
 	"github.com/aymanbagabas/go-osc52"
 	tea "github.com/charmbracelet/bubbletea"
 	appCfg "github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/proto"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
-	gm "github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/ui"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/keymap"
@@ -30,7 +30,7 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 		if len(cmd) == 1 {
 			initialRepo = cmd[0]
 			auth := ac.AuthRepo(initialRepo, s.PublicKey())
-			if auth < gm.ReadOnlyAccess {
+			if auth < proto.ReadOnlyAccess {
 				wish.Fatalln(s, cm.ErrUnauthorized)
 				return nil
 			}

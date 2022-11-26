@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	gm "github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +13,7 @@ func ReloadCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ac, s := fromContext(cmd)
 			auth := ac.AuthRepo("config", s.PublicKey())
-			if auth < gm.AdminAccess {
+			if auth < proto.AdminAccess {
 				return ErrUnauthorized
 			}
 			return ac.Reload()

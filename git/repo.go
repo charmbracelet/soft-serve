@@ -207,3 +207,31 @@ func (r *Repository) UpdateServerInfo() error {
 	_, err := cmd.RunInDir(r.Path)
 	return err
 }
+
+// Config returns the config value for the given key.
+func (r *Repository) Config(key string, opts ...ConfigOptions) (string, error) {
+	dir, err := gitDir(r.Repository)
+	if err != nil {
+		return "", err
+	}
+	var opt ConfigOptions
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	opt.File = filepath.Join(dir, "config")
+	return Config(key, opt)
+}
+
+// SetConfig sets the config value for the given key.
+func (r *Repository) SetConfig(key, value string, opts ...ConfigOptions) error {
+	dir, err := gitDir(r.Repository)
+	if err != nil {
+		return err
+	}
+	var opt ConfigOptions
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	opt.File = filepath.Join(dir, "config")
+	return SetConfig(key, value, opt)
+}
