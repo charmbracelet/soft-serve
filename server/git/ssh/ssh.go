@@ -17,7 +17,7 @@ import (
 // checked for access on a per repo basis for a ssh.Session public key.
 // Hooks.Push and Hooks.Fetch will be called on successful completion of
 // their commands.
-func Middleware(repoDir string, gh git.Hooks) wish.Middleware {
+func Middleware(repoDir string, auth proto.Access) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			func() {
@@ -33,7 +33,7 @@ func Middleware(repoDir string, gh git.Hooks) wish.Middleware {
 						return
 					}
 					pk := s.PublicKey()
-					access := gh.AuthRepo(strings.TrimSuffix(repo, ".git"), pk)
+					access := auth.AuthRepo(strings.TrimSuffix(repo, ".git"), pk)
 					// git bare repositories should end in ".git"
 					// https://git-scm.com/docs/gitrepository-layout
 					if !strings.HasSuffix(repo, ".git") {
@@ -46,8 +46,6 @@ func Middleware(repoDir string, gh git.Hooks) wish.Middleware {
 							err := git.GitPack(s, s, s.Stderr(), gc, repoDir, repo)
 							if err != nil {
 								Fatal(s, git.ErrSystemMalfunction)
-							} else {
-								gh.Push(repo, pk)
 							}
 						default:
 							Fatal(s, git.ErrNotAuthed)
@@ -65,7 +63,6 @@ func Middleware(repoDir string, gh git.Hooks) wish.Middleware {
 							case git.ErrInvalidRepo:
 								Fatal(s, git.ErrInvalidRepo)
 							case nil:
-								gh.Fetch(repo, pk)
 							default:
 								log.Printf("unknown git error: %s", err)
 								Fatal(s, git.ErrSystemMalfunction)

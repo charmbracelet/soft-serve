@@ -1,6 +1,8 @@
 package types
 
-import "time"
+import (
+	"time"
+)
 
 // Repo is a repository database model.
 type Repo struct {

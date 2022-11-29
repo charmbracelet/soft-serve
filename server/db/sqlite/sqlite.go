@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -14,7 +15,7 @@ import (
 	sqlitelib "modernc.org/sqlite/lib"
 )
 
-var _ db.DB = &Sqlite{}
+var _ db.Store = &Sqlite{}
 
 // Sqlite is a SQLite database.
 type Sqlite struct {
@@ -36,7 +37,7 @@ func New(path string) (*Sqlite, error) {
 		path: path,
 	}
 	if err = d.CreateDB(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create db: %w", err)
 	}
 	return d, d.db.Ping()
 }
@@ -49,7 +50,7 @@ func (d *Sqlite) Close() error {
 // CreateDB creates the database and tables.
 func (d *Sqlite) CreateDB() error {
 	return d.wrapTransaction(func(tx *sql.Tx) error {
-		if _, err := tx.Exec(sqlInsertConfig); err != nil {
+		if _, err := tx.Exec(sqlCreateConfigTable); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(sqlCreateUserTable); err != nil {
@@ -273,6 +274,21 @@ func (d *Sqlite) SetUserAdmin(user *types.User, admin bool) error {
 	})
 }
 
+// CountUsers returns the number of users.
+func (d *Sqlite) CountUsers() (int, error) {
+	var count int
+	if err := d.wrapTransaction(func(tx *sql.Tx) error {
+		r := tx.QueryRow(sqlCountUsers)
+		if err := r.Scan(&count); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 // AddUserPublicKey adds a new user public key.
 func (d *Sqlite) AddUserPublicKey(user *types.User, key string) error {
 	return d.wrapTransaction(func(tx *sql.Tx) error {
@@ -381,9 +397,9 @@ func (d *Sqlite) SetRepoPrivate(name string, private bool) error {
 }
 
 // AddRepoCollab adds a new repo collaborator.
-func (d *Sqlite) AddRepoCollab(repo *types.Repo, user *types.User) error {
+func (d *Sqlite) AddRepoCollab(repo string, user *types.User) error {
 	return d.wrapTransaction(func(tx *sql.Tx) error {
-		_, err := tx.Exec(sqlInsertCollab, repo.ID, user.ID)
+		_, err := tx.Exec(sqlInsertCollabByName, repo, user.ID)
 		return err
 	})
 }
@@ -397,10 +413,10 @@ func (d *Sqlite) DeleteRepoCollab(userID int, repoID int) error {
 }
 
 // ListRepoCollabs returns a list of repo collaborators.
-func (d *Sqlite) ListRepoCollabs(repo *types.Repo) ([]*types.User, error) {
+func (d *Sqlite) ListRepoCollabs(repo string) ([]*types.User, error) {
 	collabs := make([]*types.User, 0)
 	if err := d.wrapTransaction(func(tx *sql.Tx) error {
-		rows, err := tx.Query(sqlSelectRepoCollabs, repo.ID)
+		rows, err := tx.Query(sqlSelectRepoCollabsByName, repo)
 		if err != nil {
 			return err
 		}
@@ -422,6 +438,32 @@ func (d *Sqlite) ListRepoCollabs(repo *types.Repo) ([]*types.User, error) {
 	return collabs, nil
 }
 
+// ListRepoPublicKeys returns a list of repo public keys.
+func (d *Sqlite) ListRepoPublicKeys(repo string) ([]*types.PublicKey, error) {
+	keys := make([]*types.PublicKey, 0)
+	if err := d.wrapTransaction(func(tx *sql.Tx) error {
+		rows, err := tx.Query(sqlSelectRepoPublicKeysByName, repo)
+		if err != nil {
+			return err
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var k types.PublicKey
+			if err := rows.Scan(&k.ID, &k.UserID, &k.PublicKey, &k.CreatedAt, &k.UpdatedAt); err != nil {
+				return err
+			}
+			keys = append(keys, &k)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return keys, nil
+}
+
 // WrapTransaction runs the given function within a transaction.
 func (d *Sqlite) wrapTransaction(f func(tx *sql.Tx) error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
@@ -433,12 +475,17 @@ func (d *Sqlite) wrapTransaction(f func(tx *sql.Tx) error) error {
 	}
 	for {
 		err = f(tx)
-		if err != nil {
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			serr, ok := err.(*sqlite.Error)
-			if ok && serr.Code() == sqlitelib.SQLITE_BUSY {
-				continue
+			if ok {
+				switch serr.Code() {
+				case sqlitelib.SQLITE_BUSY:
+					continue
+				}
+				log.Printf("error in transaction: %d: %s", serr.Code(), serr)
+			} else {
+				log.Printf("error in transaction: %s", err)
 			}
-			log.Printf("error in transaction: %s", err)
 			return err
 		}
 		err = tx.Commit()

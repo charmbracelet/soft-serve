@@ -33,6 +33,7 @@ type Server struct {
 // restricted to that key. If authKey is not provided, the server will be
 // publicly writable until configured otherwise by cloning the `config` repo.
 func NewServer(cfg *config.Config) *Server {
+	s := &Server{Config: cfg}
 	ac, err := appCfg.NewConfig(cfg)
 	if err != nil {
 		log.Fatal(err)
@@ -43,33 +44,37 @@ func NewServer(cfg *config.Config) *Server {
 			// BubbleTea middleware.
 			bm.MiddlewareWithProgramHandler(SessionHandler(ac), termenv.ANSI256),
 			// Command middleware must come after the git middleware.
-			cm.Middleware(ac),
+			cm.Middleware(cfg),
 			// Git middleware.
 			gm.Middleware(cfg.RepoPath(), ac),
 			// Logging middleware must be last to be executed first.
 			lm.Middleware(),
 		),
 	}
-	s, err := wish.NewServer(
-		ssh.PublicKeyAuth(ac.PublicKeyHandler),
-		ssh.KeyboardInteractiveAuth(ac.KeyboardInteractiveHandler),
+
+	opts := []ssh.Option{ssh.PublicKeyAuth(cfg.PublicKeyHandler)}
+	if cfg.SSH.AllowKeyless {
+		opts = append(opts, ssh.KeyboardInteractiveAuth(cfg.KeyboardInteractiveHandler))
+	}
+	if cfg.SSH.AllowPassword {
+		opts = append(opts, ssh.PasswordAuth(cfg.PasswordHandler))
+	}
+	opts = append(opts,
 		wish.WithAddress(fmt.Sprintf("%s:%d", cfg.Host, cfg.SSH.Port)),
 		wish.WithHostKeyPath(cfg.PrivateKeyPath()),
 		wish.WithMiddleware(mw...),
 	)
+	sh, err := wish.NewServer(opts...)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	d, err := daemon.NewDaemon(cfg, ac)
+	s.SSHServer = sh
+	d, err := daemon.NewDaemon(cfg)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	return &Server{
-		SSHServer: s,
-		GitServer: d,
-		Config:    cfg,
-		config:    ac,
-	}
+	s.GitServer = d
+	return s
 }
 
 // Reload reloads the server configuration.

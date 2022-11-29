@@ -8,7 +8,6 @@ import (
 	"os"
 	"testing"
 
-	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
@@ -35,11 +34,7 @@ func TestMain(m *testing.M) {
 			Port:           9418,
 		},
 	}
-	ac, err := appCfg.NewConfig(cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-	d, err := NewDaemon(cfg, ac)
+	d, err := NewDaemon(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}

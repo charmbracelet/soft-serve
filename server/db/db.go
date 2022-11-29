@@ -1,6 +1,7 @@
 package db
 
 import (
+	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/charmbracelet/soft-serve/server/db/types"
 )
 
@@ -29,6 +30,7 @@ type UserStore interface {
 	SetUserEmail(*types.User, string) error
 	SetUserPassword(*types.User, string) error
 	SetUserAdmin(*types.User, bool) error
+	CountUsers() (int, error)
 }
 
 // PublicKeyStore is a public key database storage.
@@ -53,13 +55,16 @@ type RepoStore interface {
 // CollabStore is a collaborator database storage.
 type CollabStore interface {
 	// Collaborators
-	AddRepoCollab(*types.Repo, *types.User) error
+	AddRepoCollab(string, *types.User) error
 	DeleteRepoCollab(int, int) error
-	ListRepoCollabs(*types.Repo) ([]*types.User, error)
+	ListRepoCollabs(string) ([]*types.User, error)
+	ListRepoPublicKeys(string) ([]*types.PublicKey, error)
 }
 
-// DB is a database.
-type DB interface {
+// Store is a database.
+type Store interface {
+	proto.Provider
+
 	ConfigStore
 	UserStore
 	PublicKeyStore

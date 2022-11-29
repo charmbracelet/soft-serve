@@ -10,8 +10,7 @@ var (
 		allow_keyless BOOLEAN NOT NULL,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL
-	);
-	`
+	);`
 
 	sqlCreateUserTable = `CREATE TABLE IF NOT EXISTS user (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,8 +42,8 @@ var (
 		project_name TEXT NOT NULL,
 		description TEXT NOT NULL,
 		private BOOLEAN NOT NULL,
-		create_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME NOT NULL,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL
 	);`
 
 	sqlCreateCollabTable = `CREATE TABLE IF NOT EXISTS collab (
@@ -85,6 +84,7 @@ var (
 	sqlUpdateUserEmail       = `UPDATE user SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`
 	sqlUpdateUserPassword    = `UPDATE user SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`
 	sqlUpdateUserAdmin       = `UPDATE user SET admin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`
+	sqlCountUsers            = `SELECT COUNT(*) FROM user;`
 
 	// Public Key.
 	sqlInsertPublicKey      = `INSERT INTO public_key (user_id, public_key, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP);`
@@ -101,7 +101,12 @@ var (
 	sqlUpdateRepoPrivateByName     = `UPDATE repo SET private = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?;`
 
 	// Collab.
-	sqlInsertCollab      = `INSERT INTO collab (user_id, repo_id, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP);`
-	sqlDeleteCollab      = `DELETE FROM collab WHERE user_id = ? AND repo_id;`
-	sqlSelectRepoCollabs = `SELECT user.id, user.name, user.login, user.email, user.admin, user.created_at, user.updated_at FROM user INNER JOIN collab ON user.id = collab.user_id WHERE collab.repo_id = ?;`
+	sqlInsertCollab               = `INSERT INTO collab (user_id, repo_id, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP);`
+	sqlInsertCollabByName         = `INSERT INTO collab (user_id, repo_id, updated_at) VALUES (?, (SELECT id FROM repo WHERE name = ?), CURRENT_TIMESTAMP);`
+	sqlDeleteCollab               = `DELETE FROM collab WHERE user_id = ? AND repo_id = ?;`
+	sqlDeleteCollabByName         = `DELETE FROM collab WHERE user_id = ? AND repo_id = (SELECT id FROM repo WHERE name = ?);`
+	sqlSelectRepoCollabs          = `SELECT user.id, user.name, user.login, user.email, user.admin, user.created_at, user.updated_at FROM user INNER JOIN collab ON user.id = collab.user_id WHERE collab.repo_id = ?;`
+	sqlSelectRepoCollabsByName    = `SELECT user.id, user.name, user.login, user.email, user.admin, user.created_at, user.updated_at FROM user INNER JOIN collab ON user.id = collab.user_id WHERE collab.repo_id = (SELECT id FROM repo WHERE name = ?);`
+	sqlSelectRepoPublicKeys       = `SELECT public_key.id, public_key.user_id, public_key.public_key, public_key.created_at, public_key.updated_at FROM public_key INNER JOIN collab ON public_key.user_id = collab.user_id WHERE collab.repo_id = ?;`
+	sqlSelectRepoPublicKeysByName = `SELECT public_key.id, public_key.user_id, public_key.public_key, public_key.created_at, public_key.updated_at FROM public_key INNER JOIN collab ON public_key.user_id = collab.user_id WHERE collab.repo_id = (SELECT id FROM repo WHERE name = ?);`
 )

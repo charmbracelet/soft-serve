@@ -23,7 +23,6 @@ var ErrServerClosed = errors.New("git: Server closed")
 
 // Daemon represents a Git daemon.
 type Daemon struct {
-	auth     git.Hooks
 	listener net.Listener
 	addr     string
 	exit     chan struct{}
@@ -34,11 +33,10 @@ type Daemon struct {
 }
 
 // NewDaemon returns a new Git daemon.
-func NewDaemon(cfg *config.Config, auth git.Hooks) (*Daemon, error) {
+func NewDaemon(cfg *config.Config) (*Daemon, error) {
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Git.Port)
 	d := &Daemon{
 		addr:  addr,
-		auth:  auth,
 		exit:  make(chan struct{}),
 		cfg:   cfg,
 		conns: make(map[net.Conn]struct{}),
@@ -159,7 +157,7 @@ func (d *Daemon) handleClient(c net.Conn) {
 	log.Printf("git: connect %s %s %s", c.RemoteAddr(), cmd, repo)
 	defer log.Printf("git: disconnect %s %s %s", c.RemoteAddr(), cmd, repo)
 	repo = strings.TrimPrefix(repo, "/")
-	auth := d.auth.AuthRepo(strings.TrimSuffix(repo, ".git"), nil)
+	auth := d.cfg.AuthRepo(strings.TrimSuffix(repo, ".git"), nil)
 	if auth < proto.ReadOnlyAccess {
 		fatal(c, git.ErrNotAuthed)
 		return

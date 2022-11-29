@@ -1,5 +1,12 @@
 package proto
 
+import (
+	"fmt"
+	"strings"
+
+	"github.com/gliderlabs/ssh"
+)
+
 // AccessLevel is the level of access allowed to a repo.
 type AccessLevel int
 
@@ -31,4 +38,26 @@ func (a AccessLevel) String() string {
 	default:
 		return ""
 	}
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (a *AccessLevel) UnmarshalText(text []byte) error {
+	switch strings.ToLower(string(text)) {
+	case "no-access":
+		*a = NoAccess
+	case "read-only":
+		*a = ReadOnlyAccess
+	case "read-write":
+		*a = ReadWriteAccess
+	case "admin-access":
+		*a = AdminAccess
+	default:
+		return fmt.Errorf("invalid access level: %s", text)
+	}
+	return nil
+}
+
+// Access is an interface that defines the access level for repositories.
+type Access interface {
+	AuthRepo(repo string, pk ssh.PublicKey) AccessLevel
 }
