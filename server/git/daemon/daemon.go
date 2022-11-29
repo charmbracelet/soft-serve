@@ -25,7 +25,7 @@ var ErrServerClosed = errors.New("git: Server closed")
 type Daemon struct {
 	listener net.Listener
 	addr     string
-	exit     chan struct{}
+	finished chan struct{}
 	conns    map[net.Conn]struct{}
 	cfg      *config.Config
 	wg       sync.WaitGroup
@@ -36,24 +36,25 @@ type Daemon struct {
 func NewDaemon(cfg *config.Config) (*Daemon, error) {
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Git.Port)
 	d := &Daemon{
-		addr:  addr,
-		exit:  make(chan struct{}),
-		cfg:   cfg,
-		conns: make(map[net.Conn]struct{}),
+		addr:     addr,
+		finished: make(chan struct{}),
+		cfg:      cfg,
+		conns:    make(map[net.Conn]struct{}),
 	}
 	listener, err := net.Listen("tcp", d.addr)
 	if err != nil {
 		return nil, err
 	}
 	d.listener = listener
-	d.wg.Add(1)
 	return d, nil
 }
 
 // Start starts the Git TCP daemon.
 func (d *Daemon) Start() error {
+	defer d.listener.Close()
 	// set up channel on which to send accepted connections
 	listen := make(chan net.Conn, d.cfg.Git.MaxConnections)
+	d.wg.Add(1)
 	go d.acceptConnection(d.listener, listen)
 
 	// loop work cycle with accept connections or interrupt
@@ -66,10 +67,7 @@ func (d *Daemon) Start() error {
 				d.handleClient(conn)
 				d.wg.Done()
 			}()
-		case <-d.exit:
-			if err := d.Close(); err != nil {
-				return err
-			}
+		case <-d.finished:
 			return ErrServerClosed
 		}
 	}
@@ -89,8 +87,8 @@ func (d *Daemon) acceptConnection(listener net.Listener, listen chan<- net.Conn)
 		conn, err := listener.Accept()
 		if err != nil {
 			select {
-			case <-d.exit:
-				log.Printf("git: listener closed")
+			case <-d.finished:
+				log.Printf("git: %s", ErrServerClosed)
 				return
 			default:
 				log.Printf("git: error accepting connection: %v", err)
@@ -102,7 +100,19 @@ func (d *Daemon) acceptConnection(listener net.Listener, listen chan<- net.Conn)
 }
 
 // handleClient handles a git protocol client.
-func (d *Daemon) handleClient(c net.Conn) {
+func (d *Daemon) handleClient(conn net.Conn) {
+	ctx, cancel := context.WithCancel(context.Background())
+	idleTimeout := time.Duration(d.cfg.Git.IdleTimeout) * time.Second
+	c := &serverConn{
+		Conn:          conn,
+		idleTimeout:   idleTimeout,
+		closeCanceler: cancel,
+	}
+	if d.cfg.Git.MaxTimeout > 0 {
+		dur := time.Duration(d.cfg.Git.MaxTimeout) * time.Second
+		c.maxDeadline = time.Now().Add(dur)
+	}
+	defer c.Close()
 	d.conns[c] = struct{}{}
 	defer delete(d.conns, c)
 
@@ -110,85 +120,99 @@ func (d *Daemon) handleClient(c net.Conn) {
 	if len(d.conns) >= d.cfg.Git.MaxConnections {
 		log.Printf("git: max connections reached, closing %s", c.RemoteAddr())
 		fatal(c, git.ErrMaxConns)
-		return
-	}
-
-	// Set connection timeout.
-	if err := c.SetDeadline(time.Now().Add(time.Duration(d.cfg.Git.MaxTimeout) * time.Second)); err != nil {
-		log.Printf("git: error setting deadline: %v", err)
-		fatal(c, git.ErrSystemMalfunction)
+		c.closeCanceler()
 		return
 	}
 
 	readc := make(chan struct{}, 1)
+	s := pktline.NewScanner(c)
 	go func() {
-		select {
-		case <-time.After(time.Duration(d.cfg.Git.MaxReadTimeout) * time.Second):
-			log.Printf("git: read timeout from %s", c.RemoteAddr())
-			fatal(c, git.ErrMaxTimeout)
-		case <-readc:
+		if !s.Scan() {
+			if err := s.Err(); err != nil {
+				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+					fatal(c, git.ErrTimeout)
+				} else {
+					log.Printf("git: error scanning pktline: %v", err)
+					fatal(c, git.ErrSystemMalfunction)
+				}
+			}
+			return
 		}
+		readc <- struct{}{}
 	}()
 
-	s := pktline.NewScanner(c)
-	if !s.Scan() {
-		if err := s.Err(); err != nil {
-			log.Printf("git: error scanning pktline: %v", err)
-			fatal(c, git.ErrSystemMalfunction)
+	select {
+	case <-ctx.Done():
+		if err := ctx.Err(); err != nil {
+			log.Printf("git: connection context error: %v", err)
 		}
 		return
-	}
-	readc <- struct{}{}
+	case <-readc:
+		line := s.Bytes()
+		split := bytes.SplitN(line, []byte{' '}, 2)
+		if len(split) != 2 {
+			fatal(c, git.ErrInvalidRequest)
+			return
+		}
 
-	line := s.Bytes()
-	split := bytes.SplitN(line, []byte{' '}, 2)
-	if len(split) != 2 {
-		return
-	}
+		var repo string
+		cmd := string(split[0])
+		opts := bytes.Split(split[1], []byte{'\x00'})
+		if len(opts) == 0 {
+			fatal(c, git.ErrInvalidRequest)
+			return
+		}
+		repo = filepath.Clean(string(opts[0]))
 
-	var repo string
-	cmd := string(split[0])
-	opts := bytes.Split(split[1], []byte{'\x00'})
-	if len(opts) == 0 {
-		return
-	}
-	repo = filepath.Clean(string(opts[0]))
+		log.Printf("git: connect %s %s %s", c.RemoteAddr(), cmd, repo)
+		defer log.Printf("git: disconnect %s %s %s", c.RemoteAddr(), cmd, repo)
+		repo = strings.TrimPrefix(repo, "/")
+		auth := d.cfg.AuthRepo(strings.TrimSuffix(repo, ".git"), nil)
+		if auth < proto.ReadOnlyAccess {
+			fatal(c, git.ErrNotAuthed)
+			return
+		}
+		// git bare repositories should end in ".git"
+		// https://git-scm.com/docs/gitrepository-layout
+		if !strings.HasSuffix(repo, ".git") {
+			repo += ".git"
+		}
 
-	log.Printf("git: connect %s %s %s", c.RemoteAddr(), cmd, repo)
-	defer log.Printf("git: disconnect %s %s %s", c.RemoteAddr(), cmd, repo)
-	repo = strings.TrimPrefix(repo, "/")
-	auth := d.cfg.AuthRepo(strings.TrimSuffix(repo, ".git"), nil)
-	if auth < proto.ReadOnlyAccess {
-		fatal(c, git.ErrNotAuthed)
-		return
-	}
-	// git bare repositories should end in ".git"
-	// https://git-scm.com/docs/gitrepository-layout
-	if !strings.HasSuffix(repo, ".git") {
-		repo += ".git"
-	}
-
-	err := git.GitPack(c, c, c, cmd, d.cfg.RepoPath(), repo)
-	if err == git.ErrInvalidRepo {
-		trimmed := strings.TrimSuffix(repo, ".git")
-		log.Printf("git: invalid repo %q trying again %q", repo, trimmed)
-		err = git.GitPack(c, c, c, cmd, d.cfg.RepoPath(), trimmed)
-	}
-	if err != nil {
-		fatal(c, err)
-		return
+		err := git.GitPack(c, c, c, cmd, d.cfg.RepoPath(), repo)
+		if err == git.ErrInvalidRepo {
+			trimmed := strings.TrimSuffix(repo, ".git")
+			log.Printf("git: invalid repo %q trying again %q", repo, trimmed)
+			err = git.GitPack(c, c, c, cmd, d.cfg.RepoPath(), trimmed)
+		}
+		if err != nil {
+			fatal(c, err)
+			return
+		}
 	}
 }
 
 // Close closes the underlying listener.
 func (d *Daemon) Close() error {
-	d.once.Do(func() { close(d.exit) })
+	d.once.Do(func() { close(d.finished) })
+	for c := range d.conns {
+		c.Close()
+		delete(d.conns, c)
+	}
 	return d.listener.Close()
 }
 
 // Shutdown gracefully shuts down the daemon.
-func (d *Daemon) Shutdown(_ context.Context) error {
-	d.once.Do(func() { close(d.exit) })
-	d.wg.Wait()
-	return nil
+func (d *Daemon) Shutdown(ctx context.Context) error {
+	d.once.Do(func() { close(d.finished) })
+	finished := make(chan struct{}, 1)
+	go func() {
+		d.wg.Wait()
+		finished <- struct{}{}
+	}()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-finished:
+		return d.listener.Close()
+	}
 }

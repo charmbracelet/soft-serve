@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	appCfg "github.com/charmbracelet/soft-serve/config"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
@@ -67,6 +68,12 @@ func NewServer(cfg *config.Config) *Server {
 	sh, err := wish.NewServer(opts...)
 	if err != nil {
 		log.Fatalln(err)
+	}
+	if cfg.SSH.MaxTimeout > 0 {
+		sh.MaxTimeout = time.Duration(cfg.SSH.MaxTimeout) * time.Second
+	}
+	if cfg.SSH.IdleTimeout > 0 {
+		sh.IdleTimeout = time.Duration(cfg.SSH.IdleTimeout) * time.Second
 	}
 	s.SSHServer = sh
 	d, err := daemon.NewDaemon(cfg)

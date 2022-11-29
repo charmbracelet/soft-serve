@@ -11,8 +11,11 @@ var ErrSystemMalfunction = errors.New("something went wrong")
 // ErrInvalidRepo represents an attempt to access a non-existent repo.
 var ErrInvalidRepo = errors.New("invalid repo")
 
+// ErrInvalidRequest represents an invalid request.
+var ErrInvalidRequest = errors.New("invalid request")
+
 // ErrMaxConns represents a maximum connection limit being reached.
 var ErrMaxConns = errors.New("too many connections, try again later")
 
-// ErrMaxTimeout is returned when the maximum read timeout is exceeded.
-var ErrMaxTimeout = errors.New("git: max timeout reached")
+// ErrTimeout is returned when the maximum read timeout is exceeded.
+var ErrTimeout = errors.New("I/O timeout reached")

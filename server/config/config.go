@@ -27,14 +27,15 @@ type SSHConfig struct {
 	AllowKeyless  bool   `env:"ALLOW_KEYLESS" envDefault:"true"`
 	AllowPassword bool   `env:"ALLOW_PASSWORD" envDefault:"false"`
 	Password      string `env:"PASSWORD"`
+	MaxTimeout    int    `env:"MAX_TIMEOUT" envDefault:"0"`
+	IdleTimeout   int    `env:"IDLE_TIMEOUT" envDefault:"300"`
 }
 
 // GitConfig is the Git protocol configuration for the server.
 type GitConfig struct {
-	Port       int `env:"PORT" envDefault:"9418"`
-	MaxTimeout int `env:"MAX_TIMEOUT" envDefault:"300"`
-	// MaxReadTimeout is the maximum time a client can take to send a request.
-	MaxReadTimeout int `env:"MAX_READ_TIMEOUT" envDefault:"3"`
+	Port           int `env:"PORT" envDefault:"9418"`
+	MaxTimeout     int `env:"MAX_TIMEOUT" envDefault:"0"`
+	IdleTimeout    int `env:"IDLE_TIMEOUT" envDefault:"3"`
 	MaxConnections int `env:"SOFT_SERVE_GIT_MAX_CONNECTIONS" envDefault:"32"`
 }
 
