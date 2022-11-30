@@ -27,9 +27,11 @@ type Daemon struct {
 	addr     string
 	finished chan struct{}
 	conns    map[net.Conn]struct{}
+	count    int
 	cfg      *config.Config
 	wg       sync.WaitGroup
 	once     sync.Once
+	mtx      sync.RWMutex
 }
 
 // NewDaemon returns a new Git daemon.
@@ -37,7 +39,7 @@ func NewDaemon(cfg *config.Config) (*Daemon, error) {
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Git.Port)
 	d := &Daemon{
 		addr:     addr,
-		finished: make(chan struct{}),
+		finished: make(chan struct{}, 1),
 		cfg:      cfg,
 		conns:    make(map[net.Conn]struct{}),
 	}
@@ -52,24 +54,52 @@ func NewDaemon(cfg *config.Config) (*Daemon, error) {
 // Start starts the Git TCP daemon.
 func (d *Daemon) Start() error {
 	defer d.listener.Close()
-	// set up channel on which to send accepted connections
-	listen := make(chan net.Conn, d.cfg.Git.MaxConnections)
-	d.wg.Add(1)
-	go d.acceptConnection(d.listener, listen)
 
-	// loop work cycle with accept connections or interrupt
-	// by system signal
+	d.wg.Add(1)
+	defer d.wg.Done()
+
+	var tempDelay time.Duration
 	for {
-		select {
-		case conn := <-listen:
-			d.wg.Add(1)
-			go func() {
-				d.handleClient(conn)
-				d.wg.Done()
-			}()
-		case <-d.finished:
-			return ErrServerClosed
+		conn, err := d.listener.Accept()
+		if err != nil {
+			select {
+			case <-d.finished:
+				return ErrServerClosed
+			default:
+				log.Printf("git: error accepting connection: %v", err)
+			}
+			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+				if tempDelay == 0 {
+					tempDelay = 5 * time.Millisecond
+				} else {
+					tempDelay *= 2
+				}
+				if max := 1 * time.Second; tempDelay > max {
+					tempDelay = max
+				}
+				time.Sleep(tempDelay)
+				continue
+			}
+			return err
 		}
+
+		// Close connection if there are too many open connections.
+		var count int
+		d.mtx.RLock()
+		count = d.count
+		d.mtx.RUnlock()
+		log.Printf("count: %d", count)
+		if count+1 >= d.cfg.Git.MaxConnections {
+			log.Printf("git: max connections reached, closing %s", conn.RemoteAddr())
+			fatal(conn, git.ErrMaxConnections)
+			continue
+		}
+
+		d.wg.Add(1)
+		go func() {
+			d.handleClient(conn)
+			d.wg.Done()
+		}()
 	}
 }
 
@@ -77,25 +107,6 @@ func fatal(c net.Conn, err error) {
 	git.WritePktline(c, err)
 	if err := c.Close(); err != nil {
 		log.Printf("git: error closing connection: %v", err)
-	}
-}
-
-// acceptConnection accepts connections on the listener.
-func (d *Daemon) acceptConnection(listener net.Listener, listen chan<- net.Conn) {
-	defer d.wg.Done()
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			select {
-			case <-d.finished:
-				log.Printf("git: %s", ErrServerClosed)
-				return
-			default:
-				log.Printf("git: error accepting connection: %v", err)
-				continue
-			}
-		}
-		listen <- conn
 	}
 }
 
@@ -112,17 +123,13 @@ func (d *Daemon) handleClient(conn net.Conn) {
 		dur := time.Duration(d.cfg.Git.MaxTimeout) * time.Second
 		c.maxDeadline = time.Now().Add(dur)
 	}
-	defer c.Close()
+	d.count++
 	d.conns[c] = struct{}{}
-	defer delete(d.conns, c)
-
-	// Close connection if there are too many open connections.
-	if len(d.conns) >= d.cfg.Git.MaxConnections {
-		log.Printf("git: max connections reached, closing %s", c.RemoteAddr())
-		fatal(c, git.ErrMaxConns)
-		c.closeCanceler()
-		return
-	}
+	defer c.Close()
+	defer func() {
+		d.count--
+		delete(d.conns, c)
+	}()
 
 	readc := make(chan struct{}, 1)
 	s := pktline.NewScanner(c)
@@ -194,16 +201,18 @@ func (d *Daemon) handleClient(conn net.Conn) {
 // Close closes the underlying listener.
 func (d *Daemon) Close() error {
 	d.once.Do(func() { close(d.finished) })
+	err := d.listener.Close()
 	for c := range d.conns {
 		c.Close()
 		delete(d.conns, c)
 	}
-	return d.listener.Close()
+	return err
 }
 
 // Shutdown gracefully shuts down the daemon.
 func (d *Daemon) Shutdown(ctx context.Context) error {
 	d.once.Do(func() { close(d.finished) })
+	err := d.listener.Close()
 	finished := make(chan struct{}, 1)
 	go func() {
 		d.wg.Wait()
@@ -213,6 +222,6 @@ func (d *Daemon) Shutdown(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-finished:
-		return d.listener.Close()
+		return err
 	}
 }

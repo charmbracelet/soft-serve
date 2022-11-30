@@ -14,8 +14,8 @@ var ErrInvalidRepo = errors.New("invalid repo")
 // ErrInvalidRequest represents an invalid request.
 var ErrInvalidRequest = errors.New("invalid request")
 
-// ErrMaxConns represents a maximum connection limit being reached.
-var ErrMaxConns = errors.New("too many connections, try again later")
+// ErrMaxConnections represents a maximum connection limit being reached.
+var ErrMaxConnections = errors.New("too many connections, try again later")
 
 // ErrTimeout is returned when the maximum read timeout is exceeded.
 var ErrTimeout = errors.New("I/O timeout reached")

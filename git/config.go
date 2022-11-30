@@ -5,6 +5,7 @@ type ConfigOptions struct {
 	File string
 	All  bool
 	Add  bool
+	CommandOptions
 }
 
 // Config gets a git configuration.
@@ -19,6 +20,9 @@ func Config(key string, opts ...ConfigOptions) (string, error) {
 	}
 	if opt.All {
 		cmd.AddArgs("--get-all")
+	}
+	for _, a := range opt.Args {
+		cmd.AddArgs(a)
 	}
 	cmd.AddArgs(key)
 	bts, err := cmd.Run()
@@ -37,6 +41,9 @@ func SetConfig(key string, value string, opts ...ConfigOptions) error {
 	cmd := NewCommand("config")
 	if opt.File != "" {
 		cmd.AddArgs("--file", opt.File)
+	}
+	for _, a := range opt.Args {
+		cmd.AddArgs(a)
 	}
 	cmd.AddArgs(key, value)
 	_, err := cmd.Run()
