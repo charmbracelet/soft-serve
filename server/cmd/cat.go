@@ -7,7 +7,6 @@ import (
 	"github.com/alecthomas/chroma/lexers"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/muesli/termenv"
@@ -32,27 +31,35 @@ func CatCommand() *cobra.Command {
 		Short: "Outputs the contents of the file at path.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ac, s := fromContext(cmd)
+			cfg, s := fromContext(cmd)
 			ps := strings.Split(args[0], "/")
-			rn := ps[0]
+			rn := strings.TrimSuffix(ps[0], ".git")
 			fp := strings.Join(ps[1:], "/")
-			auth := ac.AuthRepo(rn, s.PublicKey())
+			auth := cfg.AuthRepo(rn, s.PublicKey())
 			if auth < proto.ReadOnlyAccess {
 				return ErrUnauthorized
 			}
-			var repo *config.Repo
+			var repo proto.Repository
 			repoExists := false
-			for _, rp := range ac.Source.AllRepos() {
-				if rp.Repo() == rn {
+			repos, err := cfg.ListRepos()
+			if err != nil {
+				return err
+			}
+			for _, rp := range repos {
+				if rp.Name() == rn {
+					re, err := rp.Open()
+					if err != nil {
+						continue
+					}
 					repoExists = true
-					repo = rp
+					repo = re
 					break
 				}
 			}
 			if !repoExists {
 				return ErrRepoNotFound
 			}
-			c, _, err := repo.LatestFile(fp)
+			c, _, err := proto.LatestFile(repo, fp)
 			if err != nil {
 				return err
 			}

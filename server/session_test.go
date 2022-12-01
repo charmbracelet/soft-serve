@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	appCfg "github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/proto"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -53,9 +53,8 @@ func TestSession(t *testing.T) {
 }
 
 func setup(tb testing.TB) *gossh.Session {
-	is := is.New(tb)
 	tb.Helper()
-	ac, err := appCfg.NewConfig(&config.Config{
+	cfg := &config.Config{
 		Host:     "",
 		SSH:      config.SSHConfig{Port: randomPort()},
 		Git:      config.GitConfig{Port: 9418},
@@ -63,11 +62,10 @@ func setup(tb testing.TB) *gossh.Session {
 		InitialAdminKeys: []string{
 			"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMJlb/qf2B2kMNdBxfpCQqI2ctPcsOkdZGVh5zTRhKtH",
 		},
-	})
-	ac.AnonAccess = "read-only"
-	is.NoErr(err)
+		AnonAccess: proto.ReadOnlyAccess,
+	}
 	return testsession.New(tb, &ssh.Server{
-		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(ac), termenv.ANSI256)(func(s ssh.Session) {
+		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256)(func(s ssh.Session) {
 			_, _, active := s.Pty()
 			tb.Logf("PTY active %v", active)
 			tb.Log(s.Command())

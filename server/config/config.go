@@ -86,6 +86,7 @@ type Config struct {
 	Git  GitConfig `env:"GIT" envPrefix:"GIT_"`
 	Db   DBConfig  `env:"DB" envPrefix:"DB_"`
 
+	ServerName string            `env:"SERVER_NAME" envDefault:"Soft Serve"`
 	AnonAccess proto.AccessLevel `env:"ANON_ACCESS" envDefault:"read-only"`
 	DataPath   string            `env:"DATA_PATH" envDefault:"data"`
 

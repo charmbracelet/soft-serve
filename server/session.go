@@ -5,9 +5,9 @@ import (
 
 	"github.com/aymanbagabas/go-osc52"
 	tea "github.com/charmbracelet/bubbletea"
-	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/proto"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/ui"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/keymap"
@@ -19,7 +19,7 @@ import (
 )
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
-func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
+func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 	return func(s ssh.Session) *tea.Program {
 		pty, _, active := s.Pty()
 		if !active {
@@ -29,14 +29,14 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 		initialRepo := ""
 		if len(cmd) == 1 {
 			initialRepo = cmd[0]
-			auth := ac.AuthRepo(initialRepo, s.PublicKey())
+			auth := cfg.AuthRepo(initialRepo, s.PublicKey())
 			if auth < proto.ReadOnlyAccess {
 				wish.Fatalln(s, cm.ErrUnauthorized)
 				return nil
 			}
 		}
-		if ac.Cfg.Callbacks != nil {
-			ac.Cfg.Callbacks.Tui("new session")
+		if cfg.Callbacks != nil {
+			cfg.Callbacks.Tui("new session")
 		}
 		envs := s.Environ()
 		envs = append(envs, fmt.Sprintf("TERM=%s", pty.Term))
@@ -50,7 +50,7 @@ func SessionHandler(ac *appCfg.Config) bm.ProgramHandler {
 			Zone:   zone.New(),
 		}
 		m := ui.New(
-			ac,
+			cfg,
 			s,
 			c,
 			initialRepo,

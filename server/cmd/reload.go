@@ -11,12 +11,12 @@ func ReloadCommand() *cobra.Command {
 		Use:   "reload",
 		Short: "Reloads the configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ac, s := fromContext(cmd)
-			auth := ac.AuthRepo("config", s.PublicKey())
+			cfg, s := fromContext(cmd)
+			auth := cfg.AuthRepo("config", s.PublicKey())
 			if auth < proto.AdminAccess {
 				return ErrUnauthorized
 			}
-			return ac.Reload()
+			return nil
 		},
 	}
 	return reloadCmd

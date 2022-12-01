@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	appCfg "github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/gliderlabs/ssh"
 	"github.com/spf13/cobra"
 )
@@ -77,9 +77,9 @@ func RootCommand() *cobra.Command {
 	return rootCmd
 }
 
-func fromContext(cmd *cobra.Command) (*appCfg.Config, ssh.Session) {
+func fromContext(cmd *cobra.Command) (*config.Config, ssh.Session) {
 	ctx := cmd.Context()
-	ac := ctx.Value(ConfigCtxKey).(*appCfg.Config)
+	cfg := ctx.Value(ConfigCtxKey).(*config.Config)
 	s := ctx.Value(SessionCtxKey).(ssh.Session)
-	return ac, s
+	return cfg, s
 }

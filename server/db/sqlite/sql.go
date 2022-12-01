@@ -1,17 +1,6 @@
 package sqlite
 
 var (
-	sqlCreateConfigTable = `CREATE TABLE IF NOT EXISTS config (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		host TEXT NOT NULL,
-		port INTEGER NOT NULL,
-		anon_access TEXT NOT NULL,
-		allow_keyless BOOLEAN NOT NULL,
-		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME NOT NULL
-	);`
-
 	sqlCreateUserTable = `CREATE TABLE IF NOT EXISTS user (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT NOT NULL,
@@ -62,15 +51,6 @@ var (
 		ON DELETE CASCADE
 		ON UPDATE CASCADE
 	);`
-
-	// Config.
-	sqlInsertConfig        = `INSERT INTO config (name, host, port, anon_access, allow_keyless, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`
-	sqlSelectConfig        = `SELECT id, name, host, port, anon_access, allow_keyless, created_at, updated_at FROM config WHERE id = ?;`
-	sqlUpdateConfigName    = `UPDATE config SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`
-	sqlUpdateConfigHost    = `UPDATE config SET host = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`
-	sqlUpdateConfigPort    = `UPDATE config SET port = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`
-	sqlUpdateConfigAnon    = `UPDATE config SET anon_access = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`
-	sqlUpdateConfigKeyless = `UPDATE config SET allow_keyless = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`
 
 	// User.
 	sqlInsertUser            = `INSERT INTO user (name, login, email, password, admin, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`

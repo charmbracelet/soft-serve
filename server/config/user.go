@@ -3,9 +3,12 @@ package config
 import (
 	"net/mail"
 
+	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/charmbracelet/soft-serve/server/db/types"
 	"golang.org/x/crypto/ssh"
 )
+
+var _ proto.User = &user{}
 
 type user struct {
 	user *types.User

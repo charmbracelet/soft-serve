@@ -50,9 +50,6 @@ func (d *Sqlite) Close() error {
 // CreateDB creates the database and tables.
 func (d *Sqlite) CreateDB() error {
 	return d.wrapTransaction(func(tx *sql.Tx) error {
-		if _, err := tx.Exec(sqlCreateConfigTable); err != nil {
-			return err
-		}
 		if _, err := tx.Exec(sqlCreateUserTable); err != nil {
 			return err
 		}
@@ -66,63 +63,6 @@ func (d *Sqlite) CreateDB() error {
 			return err
 		}
 		return nil
-	})
-}
-
-const defaultConfigID = 1
-
-// GetConfig returns the server config.
-func (d *Sqlite) GetConfig() (*types.Config, error) {
-	var c types.Config
-	if err := d.wrapTransaction(func(tx *sql.Tx) error {
-		r := tx.QueryRow(sqlSelectConfig, defaultConfigID)
-		if err := r.Scan(&c.ID, &c.Name, &c.Host, &c.Port, &c.AnonAccess, &c.AllowKeyless, &c.CreatedAt, &c.UpdatedAt); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	return &c, nil
-}
-
-// SetConfigName sets the server config name.
-func (d *Sqlite) SetConfigName(name string) error {
-	return d.wrapTransaction(func(tx *sql.Tx) error {
-		_, err := tx.Exec(sqlUpdateConfigName, name, defaultConfigID)
-		return err
-	})
-}
-
-// SetConfigHost sets the server config host.
-func (d *Sqlite) SetConfigHost(host string) error {
-	return d.wrapTransaction(func(tx *sql.Tx) error {
-		_, err := tx.Exec(sqlUpdateConfigHost, host, defaultConfigID)
-		return err
-	})
-}
-
-// SetConfigPort sets the server config port.
-func (d *Sqlite) SetConfigPort(port int) error {
-	return d.wrapTransaction(func(tx *sql.Tx) error {
-		_, err := tx.Exec(sqlUpdateConfigPort, port, defaultConfigID)
-		return err
-	})
-}
-
-// SetConfigAnonAccess sets the server config anon access.
-func (d *Sqlite) SetConfigAnonAccess(access string) error {
-	return d.wrapTransaction(func(tx *sql.Tx) error {
-		_, err := tx.Exec(sqlUpdateConfigAnon, access, defaultConfigID)
-		return err
-	})
-}
-
-// SetConfigAllowKeyless sets the server config allow keyless.
-func (d *Sqlite) SetConfigAllowKeyless(allow bool) error {
-	return d.wrapTransaction(func(tx *sql.Tx) error {
-		_, err := tx.Exec(sqlUpdateConfigKeyless, allow, defaultConfigID)
-		return err
 	})
 }
 
@@ -475,16 +415,20 @@ func (d *Sqlite) wrapTransaction(f func(tx *sql.Tx) error) error {
 	}
 	for {
 		err = f(tx)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			serr, ok := err.(*sqlite.Error)
-			if ok {
-				switch serr.Code() {
-				case sqlitelib.SQLITE_BUSY:
-					continue
+		if err != nil {
+			switch {
+			case errors.Is(err, sql.ErrNoRows):
+			default:
+				serr, ok := err.(*sqlite.Error)
+				if ok {
+					switch serr.Code() {
+					case sqlitelib.SQLITE_BUSY:
+						continue
+					}
+					log.Printf("error in transaction: %d: %s", serr.Code(), serr)
+				} else {
+					log.Printf("error in transaction: %s", err)
 				}
-				log.Printf("error in transaction: %d: %s", serr.Code(), serr)
-			} else {
-				log.Printf("error in transaction: %s", err)
 			}
 			return err
 		}

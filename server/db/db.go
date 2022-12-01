@@ -1,20 +1,8 @@
 package db
 
 import (
-	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/charmbracelet/soft-serve/server/db/types"
 )
-
-// ConfigStore is a configuration database storage.
-type ConfigStore interface {
-	// Config
-	GetConfig() (*types.Config, error)
-	SetConfigName(string) error
-	SetConfigHost(string) error
-	SetConfigPort(int) error
-	SetConfigAnonAccess(string) error
-	SetConfigAllowKeyless(bool) error
-}
 
 // UserStore is a user database storage.
 type UserStore interface {
@@ -63,9 +51,6 @@ type CollabStore interface {
 
 // Store is a database.
 type Store interface {
-	proto.Provider
-
-	ConfigStore
 	UserStore
 	PublicKeyStore
 	RepoStore

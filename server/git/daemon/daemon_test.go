@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 		DataPath:   tmp,
 		AnonAccess: proto.ReadOnlyAccess,
 		Git: config.GitConfig{
-			// Reduce the max read timeout to 1 second so we can test the timeout.
+			// Reduce the max read timeout to 3 second so we can test the timeout.
 			IdleTimeout: 3,
 			// Reduce the max timeout to 100 second so we can test the timeout.
 			MaxTimeout: 100,

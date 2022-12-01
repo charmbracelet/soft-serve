@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	appCfg "github.com/charmbracelet/soft-serve/config"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git/daemon"
@@ -25,7 +24,6 @@ type Server struct {
 	SSHServer *ssh.Server
 	GitServer *daemon.Daemon
 	Config    *config.Config
-	config    *appCfg.Config
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -35,19 +33,15 @@ type Server struct {
 // publicly writable until configured otherwise by cloning the `config` repo.
 func NewServer(cfg *config.Config) *Server {
 	s := &Server{Config: cfg}
-	ac, err := appCfg.NewConfig(cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
 	mw := []wish.Middleware{
 		rm.MiddlewareWithLogger(
 			cfg.ErrorLog,
 			// BubbleTea middleware.
-			bm.MiddlewareWithProgramHandler(SessionHandler(ac), termenv.ANSI256),
+			bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256),
 			// Command middleware must come after the git middleware.
 			cm.Middleware(cfg),
 			// Git middleware.
-			gm.Middleware(cfg.RepoPath(), ac),
+			gm.Middleware(cfg.RepoPath(), cfg),
 			// Logging middleware must be last to be executed first.
 			lm.Middleware(),
 		),
@@ -86,7 +80,8 @@ func NewServer(cfg *config.Config) *Server {
 
 // Reload reloads the server configuration.
 func (s *Server) Reload() error {
-	return s.config.Reload()
+	return nil
+	// return s.config.Reload()
 }
 
 // Start starts the SSH server.

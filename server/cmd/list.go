@@ -18,36 +18,40 @@ func ListCommand() *cobra.Command {
 		Short:   "List file or directory at path.",
 		Args:    cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ac, s := fromContext(cmd)
+			cfg, s := fromContext(cmd)
 			rn := ""
 			path := ""
 			ps := []string{}
 			if len(args) > 0 {
 				path = filepath.Clean(args[0])
 				ps = strings.Split(path, "/")
-				rn = ps[0]
-				auth := ac.AuthRepo(rn, s.PublicKey())
+				rn = strings.TrimSuffix(ps[0], ".git")
+				auth := cfg.AuthRepo(rn, s.PublicKey())
 				if auth < proto.ReadOnlyAccess {
 					return ErrUnauthorized
 				}
 			}
 			if path == "" || path == "." || path == "/" {
-				for _, r := range ac.Source.AllRepos() {
-					if ac.AuthRepo(r.Repo(), s.PublicKey()) >= proto.ReadOnlyAccess {
-						fmt.Fprintln(s, r.Repo())
+				repos, err := cfg.ListRepos()
+				if err != nil {
+					return err
+				}
+				for _, r := range repos {
+					if cfg.AuthRepo(r.Name(), s.PublicKey()) >= proto.ReadOnlyAccess {
+						fmt.Fprintln(s, r.Name())
 					}
 				}
 				return nil
 			}
-			r, err := ac.Source.GetRepo(rn)
+			r, err := cfg.Open(rn)
 			if err != nil {
 				return err
 			}
-			head, err := r.HEAD()
+			head, err := r.Repository().HEAD()
 			if err != nil {
 				return err
 			}
-			tree, err := r.Tree(head, "")
+			tree, err := r.Repository().TreePath(head, "")
 			if err != nil {
 				return err
 			}

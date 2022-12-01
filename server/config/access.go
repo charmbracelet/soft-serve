@@ -1,8 +1,6 @@
 package config
 
 import (
-	"strings"
-
 	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/gliderlabs/ssh"
 	gossh "golang.org/x/crypto/ssh"
@@ -40,18 +38,24 @@ func (c *Config) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
 // If repo exists, and not private, then access is based on config.AnonAccess.
 func (c *Config) accessForKey(repo string, pk ssh.PublicKey) proto.AccessLevel {
 	anon := c.AnonAccess
-	private := c.isPrivate(repo)
-	// Find user
+	info, err := c.Metadata(repo)
+	if err != nil || info == nil {
+		return anon
+	}
+	private := info.IsPrivate()
+	collabs := info.Collabs()
 	if pk != nil {
-		if u := c.findUser(pk); u != nil {
+		for _, u := range collabs {
 			if u.IsAdmin() {
 				return proto.AdminAccess
 			}
-			if c.isCollab(repo, pk) {
-				if anon > proto.ReadWriteAccess {
-					return anon
+			for _, k := range u.PublicKeys() {
+				if ssh.KeysEqual(pk, k) {
+					if anon > proto.ReadWriteAccess {
+						return anon
+					}
+					return proto.ReadWriteAccess
 				}
-				return proto.ReadWriteAccess
 			}
 			if !private {
 				if anon > proto.ReadOnlyAccess {
@@ -75,45 +79,4 @@ func (c *Config) countUsers() int {
 		return 0
 	}
 	return count
-}
-
-func (c *Config) findUser(pk ssh.PublicKey) proto.User {
-	k := strings.TrimSpace(string(gossh.MarshalAuthorizedKey(pk)))
-	u, err := c.DB().GetUserByPublicKey(k)
-	if err != nil {
-		return nil
-	}
-	ks, err := c.DB().GetUserPublicKeys(u)
-	if err != nil {
-		return nil
-	}
-	return &user{user: u, keys: ks}
-}
-
-func (c *Config) findRepo(repo string) proto.Repository {
-	r, err := c.DB().Open(repo)
-	if err != nil {
-		return nil
-	}
-	return r
-}
-
-func (c *Config) isPrivate(repo string) bool {
-	if r := c.findRepo(repo); r != nil {
-		return r.IsPrivate()
-	}
-	return false
-}
-
-func (c *Config) isCollab(repo string, pk ssh.PublicKey) bool {
-	pks, err := c.DB().ListRepoPublicKeys(repo)
-	if err != nil {
-		return false
-	}
-	for _, k := range pks {
-		if ssh.KeysEqual(pk, k) {
-			return true
-		}
-	}
-	return false
 }
