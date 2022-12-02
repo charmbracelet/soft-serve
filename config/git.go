@@ -225,7 +225,7 @@ func (rs *RepoSource) InitRepo(name string, bare bool) (*Repo, error) {
 		path:       rp,
 		repository: rg,
 		refs: []*git.Reference{
-			git.NewReference(rp, git.RefsHeads+"master"),
+			git.NewReference(rp, git.RefsHeads+"main"),
 		},
 	}
 	rs.repos[name] = r
