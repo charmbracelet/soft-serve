@@ -23,6 +23,8 @@ type Callbacks interface {
 
 // SSHConfig is the SSH configuration for the server.
 type SSHConfig struct {
+	Key           string `env:"KEY"`
+	KeyPath       string `env:"KEY_PATH" envDefault:"soft_serve"`
 	Port          int    `env:"PORT" envDefault:"23231"`
 	AllowKeyless  bool   `env:"ALLOW_KEYLESS" envDefault:"true"`
 	AllowPassword bool   `env:"ALLOW_PASSWORD" envDefault:"false"`
@@ -115,7 +117,12 @@ func (c *Config) SSHPath() string {
 
 // PrivateKeyPath returns the path to the SSH key.
 func (c *Config) PrivateKeyPath() string {
-	return filepath.Join(c.SSHPath(), "soft_serve")
+	return filepath.Join(c.SSHPath(), c.SSH.KeyPath)
+}
+
+// DBPath returns the path to the database.
+func (c *Config) DBPath() string {
+	return filepath.Join(c.DataPath, "db", "soft-serve.db")
 }
 
 // DefaultConfig returns a Config with the values populated with the defaults
@@ -142,20 +149,27 @@ func DefaultConfig() *Config {
 		migrateWarn = true
 	}
 	if migrateWarn {
-		log.Printf("warning: please run `soft serve --migrate` to migrate your server and configuration.")
+		log.Printf("warning: please run `soft serve migrate` to migrate your server and configuration.")
+	}
+	// init data path and db
+	if err := os.MkdirAll(cfg.RepoPath(), 0755); err != nil {
+		log.Fatalln(err)
+	}
+	if err := cfg.createDefaultConfigRepo(); err != nil {
+		log.Fatalln(err)
 	}
 	var db db.Store
 	switch cfg.Db.Driver {
 	case "sqlite":
-		if err := os.MkdirAll(filepath.Join(cfg.DataPath, "db"), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(cfg.DBPath()), 0755); err != nil {
 			log.Fatalln(err)
 		}
-		db, err = sqlite.New(filepath.Join(cfg.DataPath, "db", "soft-serve.db"))
+		db, err = sqlite.New(cfg.DBPath())
 		if err != nil {
 			log.Fatalln(err)
 		}
 	}
-	return cfg.WithDB(db)
+	return cfg.WithDB(db).WithDataPath(cfg.DataPath)
 }
 
 // DB returns the database for the configuration.
@@ -172,5 +186,11 @@ func (c *Config) WithCallbacks(callbacks Callbacks) *Config {
 // WithDB sets the database for the configuration.
 func (c *Config) WithDB(db db.Store) *Config {
 	c.db = db
+	return c
+}
+
+// WithDataPath sets the data path for the configuration.
+func (c *Config) WithDataPath(path string) *Config {
+	c.DataPath = path
 	return c
 }

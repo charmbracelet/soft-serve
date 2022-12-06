@@ -47,18 +47,23 @@ func NewServer(cfg *config.Config) *Server {
 		),
 	}
 
-	opts := []ssh.Option{ssh.PublicKeyAuth(cfg.PublicKeyHandler)}
+	opts := []ssh.Option{
+		wish.WithAddress(fmt.Sprintf("%s:%d", cfg.Host, cfg.SSH.Port)),
+		wish.WithPublicKeyAuth(cfg.PublicKeyHandler),
+		wish.WithMiddleware(mw...),
+	}
 	if cfg.SSH.AllowKeyless {
 		opts = append(opts, ssh.KeyboardInteractiveAuth(cfg.KeyboardInteractiveHandler))
 	}
 	if cfg.SSH.AllowPassword {
 		opts = append(opts, ssh.PasswordAuth(cfg.PasswordHandler))
 	}
-	opts = append(opts,
-		wish.WithAddress(fmt.Sprintf("%s:%d", cfg.Host, cfg.SSH.Port)),
-		wish.WithHostKeyPath(cfg.PrivateKeyPath()),
-		wish.WithMiddleware(mw...),
-	)
+	if cfg.SSH.Key != "" {
+		opts = append(opts, wish.WithHostKeyPEM([]byte(cfg.SSH.Key)))
+	} else {
+		opts = append(opts, wish.WithHostKeyPath(cfg.PrivateKeyPath()))
+	}
+	opts = append(opts)
 	sh, err := wish.NewServer(opts...)
 	if err != nil {
 		log.Fatalln(err)
