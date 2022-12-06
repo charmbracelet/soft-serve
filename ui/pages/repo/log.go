@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -47,7 +48,7 @@ type Log struct {
 	selector       *selector.Selector
 	vp             *viewport.Viewport
 	activeView     logView
-	repo           git.GitRepo
+	repo           *git.Repository
 	ref            *ggit.Reference
 	count          int64
 	nextPage       int
@@ -77,9 +78,8 @@ func NewLog(common common.Common) *Log {
 	selector.KeyMap.NextPage = common.KeyMap.NextPage
 	selector.KeyMap.PrevPage = common.KeyMap.PrevPage
 	l.selector = selector
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = common.Styles.Spinner
+	s := spinner.New(spinner.WithSpinner(spinner.Dot),
+		spinner.WithStyle(common.Styles.Spinner))
 	l.spinner = s
 	return l
 }
@@ -189,8 +189,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case RepoMsg:
-		l.repo = git.GitRepo(msg)
-		cmds = append(cmds, l.Init())
+		l.repo = msg
 	case RefMsg:
 		l.ref = msg
 		cmds = append(cmds, l.Init())
@@ -245,6 +244,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if l.activeView == logViewDiff {
 			l.activeView = logViewCommits
 			l.selectedCommit = nil
+			cmds = append(cmds, updateStatusBarCmd)
 		}
 	case selector.ActiveMsg:
 		switch sel := msg.IdentifiableItem.(type) {
@@ -326,7 +326,9 @@ func (l *Log) View() string {
 			msg += "s"
 		}
 		msg += "…"
-		return msg
+		return l.common.Styles.SpinnerContainer.Copy().
+			Height(l.common.Height).
+			Render(msg)
 	}
 	switch l.activeView {
 	case logViewCommits:
@@ -374,10 +376,12 @@ func (l *Log) StatusBarInfo() string {
 
 func (l *Log) countCommitsCmd() tea.Msg {
 	if l.ref == nil {
+		log.Printf("ui: log: ref is nil")
 		return common.ErrorMsg(errNoRef)
 	}
-	count, err := l.repo.CountCommits(l.ref)
+	count, err := l.repo.Repo.Repository().CountCommits(l.ref)
 	if err != nil {
+		log.Printf("ui: error counting commits: %v", err)
 		return common.ErrorMsg(err)
 	}
 	return LogCountMsg(count)
@@ -394,6 +398,7 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 		}
 	}
 	if l.ref == nil {
+		log.Printf("ui: log: ref is nil")
 		return common.ErrorMsg(errNoRef)
 	}
 	items := make([]selector.IdentifiableItem, count)
@@ -401,8 +406,9 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 	limit := l.selector.PerPage()
 	skip := page * limit
 	// CommitsByPage pages start at 1
-	cc, err := l.repo.CommitsByPage(l.ref, page+1, limit)
+	cc, err := l.repo.Repo.Repository().CommitsByPage(l.ref, page+1, limit)
 	if err != nil {
+		log.Printf("ui: error loading commits: %v", err)
 		return common.ErrorMsg(err)
 	}
 	for i, c := range cc {
@@ -422,8 +428,9 @@ func (l *Log) selectCommitCmd(commit *ggit.Commit) tea.Cmd {
 }
 
 func (l *Log) loadDiffCmd() tea.Msg {
-	diff, err := l.repo.Diff(l.selectedCommit)
+	diff, err := l.repo.Repo.Repository().Diff(l.selectedCommit)
 	if err != nil {
+		log.Printf("ui: error loading diff: %v", err)
 		return common.ErrorMsg(err)
 	}
 	return LogDiffMsg(diff)

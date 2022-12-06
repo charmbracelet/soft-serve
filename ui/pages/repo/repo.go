@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/config"
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/footer"
@@ -56,10 +55,7 @@ type ResetURLMsg struct{}
 type UpdateStatusBarMsg struct{}
 
 // RepoMsg is a message that contains a git.Repository.
-type RepoMsg git.GitRepo
-
-// RefMsg is a message that contains a git.Reference.
-type RefMsg *ggit.Reference
+type RepoMsg *git.Repository
 
 // BackMsg is a message to go back to the previous view.
 type BackMsg struct{}
@@ -67,18 +63,20 @@ type BackMsg struct{}
 // Repo is a view for a git repository.
 type Repo struct {
 	common       common.Common
-	cfg          *config.Config
-	selectedRepo git.GitRepo
+	selectedRepo *git.Repository
 	activeTab    tab
 	tabs         *tabs.Tabs
 	statusbar    *statusbar.StatusBar
 	panes        []common.Component
 	ref          *ggit.Reference
 	copyURL      time.Time
+	state        state
+	spinner      spinner.Model
+	panesReady   [lastTab]bool
 }
 
 // New returns a new Repo.
-func New(cfg *config.Config, c common.Common) *Repo {
+func New(c common.Common) *Repo {
 	sb := statusbar.New(c)
 	ts := make([]string, lastTab)
 	// Tabs must match the order of tab constants above.
@@ -99,12 +97,15 @@ func New(cfg *config.Config, c common.Common) *Repo {
 		branches,
 		tags,
 	}
+	s := spinner.New(spinner.WithSpinner(spinner.Dot),
+		spinner.WithStyle(c.Styles.Spinner))
 	r := &Repo{
-		cfg:       cfg,
 		common:    c,
 		tabs:      tb,
 		statusbar: sb,
 		panes:     panes,
+		state:     loadingState,
+		spinner:   s,
 	}
 	return r
 }
@@ -162,16 +163,20 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case RepoMsg:
+		// Set the state to loading when we get a new repository.
+		r.state = loadingState
+		r.panesReady = [lastTab]bool{}
 		r.activeTab = 0
-		r.selectedRepo = git.GitRepo(msg)
+		r.selectedRepo = msg
 		cmds = append(cmds,
 			r.tabs.Init(),
-			r.updateRefCmd,
+			// This will set the selected repo in each pane's model.
 			r.updateModels(msg),
 		)
 	case RefMsg:
 		r.ref = msg
 		for _, p := range r.panes {
+			// Init will initiate each pane's model with its contents.
 			cmds = append(cmds, p.Init())
 		}
 		cmds = append(cmds,
@@ -200,7 +205,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if r.selectedRepo != nil {
 			cmds = append(cmds, r.updateStatusBarCmd)
-			urlID := fmt.Sprintf("%s-url", r.selectedRepo.Repo())
+			urlID := fmt.Sprintf("%s-url", r.selectedRepo.Info.Name())
 			if msg, ok := msg.(tea.MouseMsg); ok && r.common.Zone.Get(urlID).InBounds(msg) {
 				cmds = append(cmds, r.copyURLCmd())
 			}
@@ -221,41 +226,32 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case CopyURLMsg:
-		r.common.Copy.Copy(
-			git.RepoURL(r.cfg.Host, r.cfg.Port, r.selectedRepo.Repo()),
-		)
+		if cfg := r.common.Config(); cfg != nil {
+			host := cfg.Host
+			port := cfg.SSH.Port
+			r.common.Copy.Copy(
+				git.RepoURL(host, port, r.selectedRepo.Info.Name()),
+			)
+		}
 	case ResetURLMsg:
 		r.copyURL = time.Time{}
-	case ReadmeMsg:
-	case FileItemsMsg:
-		f, cmd := r.panes[filesTab].Update(msg)
-		r.panes[filesTab] = f.(*Files)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
-	// The Log bubble is the only bubble that uses a spinner, so this is fine
-	// for now. We need to pass the TickMsg to the Log bubble when the Log is
-	// loading but not the current selected tab so that the spinner works.
-	case LogCountMsg, LogItemsMsg, spinner.TickMsg:
-		l, cmd := r.panes[commitsTab].Update(msg)
-		r.panes[commitsTab] = l.(*Log)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
-	case RefItemsMsg:
-		switch msg.prefix {
-		case ggit.RefsHeads:
-			b, cmd := r.panes[branchesTab].Update(msg)
-			r.panes[branchesTab] = b.(*Refs)
-			if cmd != nil {
-				cmds = append(cmds, cmd)
+	case ReadmeMsg, FileItemsMsg, LogCountMsg, LogItemsMsg, RefItemsMsg:
+		cmds = append(cmds, r.updateRepo(msg))
+	// We have two spinners, one is used to when loading the repository and the
+	// other is used when loading the log.
+	// Check if the spinner ID matches the spinner model.
+	case spinner.TickMsg:
+		switch msg.ID {
+		case r.spinner.ID():
+			if r.state == loadingState {
+				s, cmd := r.spinner.Update(msg)
+				r.spinner = s
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
 			}
-		case ggit.RefsTags:
-			t, cmd := r.panes[tagsTab].Update(msg)
-			r.panes[tagsTab] = t.(*Refs)
-			if cmd != nil {
-				cmds = append(cmds, cmd)
-			}
+		default:
+			cmds = append(cmds, r.updateRepo(msg))
 		}
 	case UpdateStatusBarMsg:
 		cmds = append(cmds, r.updateStatusBarCmd)
@@ -289,15 +285,24 @@ func (r *Repo) View() string {
 		r.common.Styles.Tabs.GetVerticalFrameSize()
 	mainStyle := repoBodyStyle.
 		Height(r.common.Height - hm)
-	main := r.common.Zone.Mark(
+	var main string
+	var statusbar string
+	switch r.state {
+	case loadingState:
+		main = fmt.Sprintf("%s loading…", r.spinner.View())
+	case loadedState:
+		main = r.panes[r.activeTab].View()
+		statusbar = r.statusbar.View()
+	}
+	main = r.common.Zone.Mark(
 		"repo-main",
-		mainStyle.Render(r.panes[r.activeTab].View()),
+		mainStyle.Render(main),
 	)
 	view := lipgloss.JoinVertical(lipgloss.Top,
 		r.headerView(),
 		r.tabs.View(),
 		main,
-		r.statusbar.View(),
+		statusbar,
 	)
 	return s.Render(view)
 }
@@ -306,10 +311,9 @@ func (r *Repo) headerView() string {
 	if r.selectedRepo == nil {
 		return ""
 	}
-	cfg := r.cfg
 	truncate := lipgloss.NewStyle().MaxWidth(r.common.Width)
-	name := r.common.Styles.Repo.HeaderName.Render(r.selectedRepo.Name())
-	desc := r.selectedRepo.Description()
+	name := r.common.Styles.Repo.HeaderName.Render(r.selectedRepo.Info.Name())
+	desc := r.selectedRepo.Info.Description()
 	if desc == "" {
 		desc = name
 		name = ""
@@ -319,13 +323,16 @@ func (r *Repo) headerView() string {
 	urlStyle := r.common.Styles.URLStyle.Copy().
 		Width(r.common.Width - lipgloss.Width(desc) - 1).
 		Align(lipgloss.Right)
-	url := git.RepoURL(cfg.Host, cfg.Port, r.selectedRepo.Repo())
+	var url string
+	if cfg := r.common.Config(); cfg != nil {
+		url = git.RepoURL(cfg.Host, cfg.SSH.Port, r.selectedRepo.Info.Name())
+	}
 	if !r.copyURL.IsZero() && r.copyURL.Add(time.Second).After(time.Now()) {
 		url = "copied!"
 	}
 	url = common.TruncateString(url, r.common.Width-lipgloss.Width(desc)-1)
 	url = r.common.Zone.Mark(
-		fmt.Sprintf("%s-url", r.selectedRepo.Repo()),
+		fmt.Sprintf("%s-url", r.selectedRepo.Info.Name()),
 		urlStyle.Render(url),
 	)
 	style := r.common.Styles.Repo.Header.Copy().Width(r.common.Width)
@@ -351,22 +358,11 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 		ref = r.ref.Name().Short()
 	}
 	return statusbar.StatusBarMsg{
-		Key:    r.selectedRepo.Repo(),
+		Key:    r.selectedRepo.Info.Name(),
 		Value:  value,
 		Info:   info,
 		Branch: fmt.Sprintf("* %s", ref),
 	}
-}
-
-func (r *Repo) updateRefCmd() tea.Msg {
-	if r.selectedRepo == nil {
-		return nil
-	}
-	head, err := r.selectedRepo.HEAD()
-	if err != nil {
-		return common.ErrorMsg(err)
-	}
-	return RefMsg(head)
 }
 
 func (r *Repo) updateModels(msg tea.Msg) tea.Cmd {
@@ -379,6 +375,67 @@ func (r *Repo) updateModels(msg tea.Msg) tea.Cmd {
 		}
 	}
 	return tea.Batch(cmds...)
+}
+
+func (r *Repo) updateRepo(msg tea.Msg) tea.Cmd {
+	cmds := make([]tea.Cmd, 0)
+	switch msg := msg.(type) {
+	case LogCountMsg, LogItemsMsg, spinner.TickMsg:
+		switch msg.(type) {
+		case LogItemsMsg:
+			r.panesReady[commitsTab] = true
+		}
+		l, cmd := r.panes[commitsTab].Update(msg)
+		r.panes[commitsTab] = l.(*Log)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case FileItemsMsg:
+		r.panesReady[filesTab] = true
+		f, cmd := r.panes[filesTab].Update(msg)
+		r.panes[filesTab] = f.(*Files)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case RefItemsMsg:
+		switch msg.prefix {
+		case ggit.RefsHeads:
+			r.panesReady[branchesTab] = true
+			b, cmd := r.panes[branchesTab].Update(msg)
+			r.panes[branchesTab] = b.(*Refs)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		case ggit.RefsTags:
+			r.panesReady[tagsTab] = true
+			t, cmd := r.panes[tagsTab].Update(msg)
+			r.panes[tagsTab] = t.(*Refs)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+	case ReadmeMsg:
+		r.panesReady[readmeTab] = true
+	}
+	if r.isReady() {
+		r.state = loadedState
+	}
+	return tea.Batch(cmds...)
+}
+
+func (r *Repo) isReady() bool {
+	ready := true
+	// We purposely ignore the log pane here because it has its own spinner.
+	for _, b := range []bool{
+		r.panesReady[filesTab], r.panesReady[branchesTab],
+		r.panesReady[tagsTab], r.panesReady[readmeTab],
+	} {
+		if !b {
+			ready = false
+			break
+		}
+	}
+	return ready
 }
 
 func (r *Repo) copyURLCmd() tea.Cmd {

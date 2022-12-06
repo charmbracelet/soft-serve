@@ -3,6 +3,8 @@ package selection
 import (
 	"fmt"
 	"io"
+	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -10,29 +12,77 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/proto"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/dustin/go-humanize"
 )
 
+var _ sort.Interface = Items{}
+
+// Items is a list of Item.
+type Items []Item
+
+// Len implements sort.Interface.
+func (it Items) Len() int {
+	return len(it)
+}
+
+// Less implements sort.Interface.
+func (it Items) Less(i int, j int) bool {
+	return it[i].lastUpdate.After(it[j].lastUpdate)
+}
+
+// Swap implements sort.Interface.
+func (it Items) Swap(i int, j int) {
+	it[i], it[j] = it[j], it[i]
+}
+
 // Item represents a single item in the selector.
 type Item struct {
-	repo       git.GitRepo
+	repo       proto.Repository
+	info       proto.Metadata
 	lastUpdate time.Time
 	cmd        string
 	copied     time.Time
 }
 
+// New creates a new Item.
+func NewItem(info proto.Metadata, cfg *config.Config) (Item, error) {
+	repo, err := info.Open()
+	if err != nil {
+		log.Printf("error opening repo: %v", err)
+		return Item{}, err
+	}
+	lu, err := repo.Repository().LatestCommitTime()
+	if err != nil {
+		log.Printf("error getting latest commit time: %v", err)
+		return Item{}, err
+	}
+	return Item{
+		repo:       repo,
+		info:       info,
+		lastUpdate: lu,
+		cmd:        git.RepoURL(cfg.Host, cfg.SSH.Port, info.Name()),
+	}, nil
+}
+
 // ID implements selector.IdentifiableItem.
 func (i Item) ID() string {
-	return i.repo.Repo()
+	return i.info.Name()
 }
 
 // Title returns the item title. Implements list.DefaultItem.
-func (i Item) Title() string { return i.repo.Name() }
+func (i Item) Title() string {
+	if pn := i.info.ProjectName(); pn != "" {
+		return pn
+	}
+	return i.info.Name()
+}
 
 // Description returns the item description. Implements list.DefaultItem.
-func (i Item) Description() string { return i.repo.Description() }
+func (i Item) Description() string { return i.info.Description() }
 
 // FilterValue implements list.Item.
 func (i Item) FilterValue() string { return i.Title() }
@@ -101,7 +151,7 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 	title := i.Title()
 	title = common.TruncateString(title, m.Width()-styles.Base.GetHorizontalFrameSize())
-	if i.repo.IsPrivate() {
+	if i.info.IsPrivate() {
 		title += " 🔒"
 	}
 	if isSelected {

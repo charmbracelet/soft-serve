@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"errors"
+	"log"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/ui/components/header"
@@ -13,7 +15,6 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/charmbracelet/soft-serve/ui/pages/repo"
 	"github.com/charmbracelet/soft-serve/ui/pages/selection"
-	"github.com/gliderlabs/ssh"
 )
 
 type page int
@@ -33,9 +34,7 @@ const (
 
 // UI is the main UI model.
 type UI struct {
-	cfg         *config.Config
-	session     ssh.Session
-	rs          git.GitRepoSource
+	serverName  string
 	initialRepo string
 	common      common.Common
 	pages       []common.Component
@@ -48,13 +47,14 @@ type UI struct {
 }
 
 // New returns a new UI model.
-func New(cfg *config.Config, s ssh.Session, c common.Common, initialRepo string) *UI {
-	src := &source{cfg.Source}
-	h := header.New(c, cfg.Name)
+func New(c common.Common, initialRepo string) *UI {
+	var serverName string
+	if cfg := c.Config(); cfg != nil {
+		serverName = cfg.ServerName
+	}
+	h := header.New(c, serverName)
 	ui := &UI{
-		cfg:         cfg,
-		session:     s,
-		rs:          src,
+		serverName:  serverName,
 		common:      c,
 		pages:       make([]common.Component, 2), // selection & repo
 		activePage:  selectionPage,
@@ -136,15 +136,8 @@ func (ui *UI) SetSize(width, height int) {
 
 // Init implements tea.Model.
 func (ui *UI) Init() tea.Cmd {
-	ui.pages[selectionPage] = selection.New(
-		ui.cfg,
-		ui.session.PublicKey(),
-		ui.common,
-	)
-	ui.pages[repoPage] = repo.New(
-		ui.cfg,
-		ui.common,
-	)
+	ui.pages[selectionPage] = selection.New(ui.common)
+	ui.pages[repoPage] = repo.New(ui.common)
 	ui.SetSize(ui.common.Width, ui.common.Height)
 	cmds := make([]tea.Cmd, 0)
 	cmds = append(cmds,
@@ -171,6 +164,7 @@ func (ui *UI) IsFiltering() bool {
 
 // Update implements tea.Model.
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	log.Printf("msg received: %T", msg)
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -220,9 +214,11 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ui.showFooter = !ui.showFooter
 		}
 	case repo.RepoMsg:
+		ui.common.SetValue(common.RepoKey, msg)
 		ui.activePage = repoPage
 		// Show the footer on repo page if show all is set.
 		ui.showFooter = ui.footer.ShowAll()
+		cmds = append(cmds, repo.UpdateRefCmd(msg))
 	case common.ErrorMsg:
 		ui.error = msg
 		ui.state = errorState
@@ -292,24 +288,48 @@ func (ui *UI) View() string {
 	)
 }
 
+func (ui *UI) openRepo(rn string) (*git.Repository, error) {
+	cfg := ui.common.Config()
+	if cfg == nil {
+		return nil, errors.New("config is nil")
+	}
+	repos, err := cfg.ListRepos()
+	if err != nil {
+		log.Printf("ui: failed to list repos: %v", err)
+		return nil, err
+	}
+	for _, r := range repos {
+		if r.Name() == rn {
+			re, err := cfg.Open(rn)
+			if err != nil {
+				log.Printf("ui: failed to open repo: %v", err)
+				return nil, err
+			}
+			return &git.Repository{
+				Info: r,
+				Repo: re,
+			}, nil
+		}
+	}
+	return nil, git.ErrMissingRepo
+}
+
 func (ui *UI) setRepoCmd(rn string) tea.Cmd {
 	return func() tea.Msg {
-		for _, r := range ui.rs.AllRepos() {
-			if r.Repo() == rn {
-				return repo.RepoMsg(r)
-			}
+		r, err := ui.openRepo(rn)
+		if err != nil {
+			return common.ErrorMsg(err)
 		}
-		return common.ErrorMsg(git.ErrMissingRepo)
+		return repo.RepoMsg(r)
 	}
 }
 
 func (ui *UI) initialRepoCmd(rn string) tea.Cmd {
 	return func() tea.Msg {
-		for _, r := range ui.rs.AllRepos() {
-			if r.Repo() == rn {
-				return repo.RepoMsg(r)
-			}
+		r, err := ui.openRepo(rn)
+		if err != nil {
+			return nil
 		}
-		return nil
+		return repo.RepoMsg(r)
 	}
 }

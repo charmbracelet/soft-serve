@@ -3,6 +3,7 @@ package repo
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 
@@ -19,6 +20,9 @@ var (
 	errNoRef = errors.New("no reference specified")
 )
 
+// RefMsg is a message that contains a git.Reference.
+type RefMsg *ggit.Reference
+
 // RefItemsMsg is a message that contains a list of RefItem.
 type RefItemsMsg struct {
 	prefix string
@@ -29,7 +33,7 @@ type RefItemsMsg struct {
 type Refs struct {
 	common    common.Common
 	selector  *selector.Selector
-	repo      git.GitRepo
+	repo      *git.Repository
 	ref       *ggit.Reference
 	activeRef *ggit.Reference
 	refPrefix string
@@ -104,8 +108,7 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case RepoMsg:
 		r.selector.Select(0)
-		r.repo = git.GitRepo(msg)
-		cmds = append(cmds, r.Init())
+		r.repo = msg
 	case RefMsg:
 		r.ref = msg
 		cmds = append(cmds, r.Init())
@@ -169,8 +172,9 @@ func (r *Refs) StatusBarInfo() string {
 
 func (r *Refs) updateItemsCmd() tea.Msg {
 	its := make(RefItems, 0)
-	refs, err := r.repo.References()
+	refs, err := r.repo.Repo.Repository().References()
 	if err != nil {
+		log.Printf("ui: error getting references: %v", err)
 		return common.ErrorMsg(err)
 	}
 	for _, ref := range refs {
@@ -191,6 +195,19 @@ func (r *Refs) updateItemsCmd() tea.Msg {
 
 func switchRefCmd(ref *ggit.Reference) tea.Cmd {
 	return func() tea.Msg {
+		return RefMsg(ref)
+	}
+}
+
+// UpdateRefCmd gets the repository's HEAD reference and sends a RefMsg.
+func UpdateRefCmd(repo *git.Repository) tea.Cmd {
+	return func() tea.Msg {
+		ref, err := repo.Repo.Repository().HEAD()
+		if err != nil {
+			log.Printf("ui: error getting HEAD reference: %v", err)
+			return common.ErrorMsg(err)
+		}
+		log.Printf("HEAD: %s", ref.Name())
 		return RefMsg(ref)
 	}
 }

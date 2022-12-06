@@ -4,32 +4,28 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/proto"
 )
 
 // ErrMissingRepo indicates that the requested repository could not be found.
 var ErrMissingRepo = errors.New("missing repo")
 
-// GitRepo is an interface for Git repositories.
-type GitRepo interface {
-	Repo() string
-	Name() string
-	Description() string
-	Readme() (string, string)
-	HEAD() (*git.Reference, error)
-	Commit(string) (*git.Commit, error)
-	CommitsByPage(*git.Reference, int, int) (git.Commits, error)
-	CountCommits(*git.Reference) (int64, error)
-	Diff(*git.Commit) (*git.Diff, error)
-	References() ([]*git.Reference, error)
-	Tree(*git.Reference, string) (*git.Tree, error)
-	IsPrivate() bool
+// Repository is a Git repository with its metadata.
+type Repository struct {
+	Repo proto.Repository
+	Info proto.Metadata
 }
 
-// GitRepoSource is an interface for Git repository factory.
-type GitRepoSource interface {
-	GetRepo(string) (GitRepo, error)
-	AllRepos() []GitRepo
+// Readme returns the repository's README.
+func (r *Repository) Readme() (readme string, path string) {
+	readme, path, _ = r.LatestFile("README*")
+	return
+}
+
+// LatestFile returns the contents of the latest file at the specified path in
+// the repository and its file path.
+func (r *Repository) LatestFile(pattern string) (string, string, error) {
+	return proto.LatestFile(r.Repo, pattern)
 }
 
 // RepoURL returns the URL of the repository.

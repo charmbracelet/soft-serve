@@ -10,14 +10,17 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/git"
 )
 
-type ReadmeMsg struct{}
+// ReadmeMsg is a message sent when the readme is loaded.
+type ReadmeMsg struct {
+	Msg tea.Msg
+}
 
 // Readme is the readme component page.
 type Readme struct {
 	common common.Common
 	code   *code.Code
 	ref    RefMsg
-	repo   git.GitRepo
+	repo   *git.Repository
 }
 
 // NewReadme creates a new readme model.
@@ -64,15 +67,7 @@ func (r *Readme) FullHelp() [][]key.Binding {
 
 // Init implements tea.Model.
 func (r *Readme) Init() tea.Cmd {
-	if r.repo == nil {
-		return common.ErrorCmd(git.ErrMissingRepo)
-	}
-	rm, rp := r.repo.Readme()
-	r.code.GotoTop()
-	return tea.Batch(
-		r.code.SetContent(rm, rp),
-		r.updateReadmeCmd,
-	)
+	return r.updateReadmeCmd
 }
 
 // Update implements tea.Model.
@@ -80,8 +75,7 @@ func (r *Readme) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case RepoMsg:
-		r.repo = git.GitRepo(msg)
-		cmds = append(cmds, r.Init())
+		r.repo = msg
 	case RefMsg:
 		r.ref = msg
 		cmds = append(cmds, r.Init())
@@ -110,5 +104,15 @@ func (r *Readme) StatusBarInfo() string {
 }
 
 func (r *Readme) updateReadmeCmd() tea.Msg {
-	return ReadmeMsg{}
+	m := ReadmeMsg{}
+	if r.repo == nil {
+		return common.ErrorCmd(git.ErrMissingRepo)
+	}
+	rm, rp := r.repo.Readme()
+	r.code.GotoTop()
+	cmd := r.code.SetContent(rm, rp)
+	if cmd != nil {
+		m.Msg = cmd()
+	}
+	return m
 }
