@@ -99,7 +99,6 @@ type Config struct {
 
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEY" envSeparator:"\n"`
 	Callbacks        Callbacks
-	ErrorLog         *log.Logger
 
 	db db.Store
 }
@@ -124,8 +123,8 @@ func (c *Config) PrivateKeyPath() string {
 func DefaultConfig() *Config {
 	var err error
 	var migrateWarn bool
-	cfg := &Config{ErrorLog: log.Default()}
-	if err = env.Parse(cfg, env.Options{
+	var cfg Config
+	if err = env.Parse(&cfg, env.Options{
 		Prefix: "SOFT_SERVE_",
 	}); err != nil {
 		log.Fatalln(err)
@@ -167,12 +166,6 @@ func (c *Config) DB() db.Store {
 // WithCallbacks applies the given Callbacks to the configuration.
 func (c *Config) WithCallbacks(callbacks Callbacks) *Config {
 	c.Callbacks = callbacks
-	return c
-}
-
-// WithErrorLogger sets the error logger for the configuration.
-func (c *Config) WithErrorLogger(logger *log.Logger) *Config {
-	c.ErrorLog = logger
 	return c
 }
 

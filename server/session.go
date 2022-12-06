@@ -10,12 +10,9 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/ui"
 	"github.com/charmbracelet/soft-serve/ui/common"
-	"github.com/charmbracelet/soft-serve/ui/keymap"
-	"github.com/charmbracelet/soft-serve/ui/styles"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
 	"github.com/gliderlabs/ssh"
-	zone "github.com/lrstanley/bubblezone"
 )
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
@@ -41,20 +38,9 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 		envs := s.Environ()
 		envs = append(envs, fmt.Sprintf("TERM=%s", pty.Term))
 		output := osc52.NewOutput(s, envs)
-		c := common.Common{
-			Copy:   output,
-			Styles: styles.DefaultStyles(),
-			KeyMap: keymap.DefaultKeyMap(),
-			Width:  pty.Window.Width,
-			Height: pty.Window.Height,
-			Zone:   zone.New(),
-		}
-		m := ui.New(
-			cfg,
-			s,
-			c,
-			initialRepo,
-		)
+		c := common.NewCommon(s.Context(), output, pty.Window.Width, pty.Window.Height)
+		c.SetValue(common.ConfigKey, cfg)
+		m := ui.New(c, initialRepo)
 		p := tea.NewProgram(m,
 			tea.WithInput(s),
 			tea.WithOutput(s),

@@ -35,7 +35,7 @@ func NewServer(cfg *config.Config) *Server {
 	s := &Server{Config: cfg}
 	mw := []wish.Middleware{
 		rm.MiddlewareWithLogger(
-			cfg.ErrorLog,
+			log.Default(),
 			// BubbleTea middleware.
 			bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256),
 			// Command middleware must come after the git middleware.
