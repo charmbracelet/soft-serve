@@ -60,4 +60,6 @@ func (a *AccessLevel) UnmarshalText(text []byte) error {
 // Access is an interface that defines the access level for repositories.
 type Access interface {
 	AuthRepo(repo string, pk ssh.PublicKey) AccessLevel
+	IsCollab(repo string, pk ssh.PublicKey) bool
+	IsAdmin(pk ssh.PublicKey) bool
 }

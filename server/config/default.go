@@ -17,7 +17,7 @@ const (
 	defaultReadme     = "# Soft Serve\n\n Welcome! You can configure your Soft Serve server by cloning this repo and pushing changes.\n\n```\ngit clone ssh://localhost:23231/config\n```"
 )
 
-func (cfg *Config) createDefaultConfigRepo() error {
+func (cfg *Config) createDefaultConfigRepoAndUsers() error {
 	rp := filepath.Join(cfg.RepoPath(), defaultConfigRepo) + ".git"
 	_, err := gogit.PlainOpen(rp)
 	if errors.Is(err, gogit.ErrRepositoryNotExists) {

@@ -18,26 +18,44 @@ type user struct {
 }
 
 func (u *user) Name() string {
+	if u.user == nil {
+		return ""
+	}
 	return u.user.Name
 }
 
 func (u *user) Email() *mail.Address {
+	if u.user == nil {
+		return nil
+	}
 	return u.user.Address()
 }
 
 func (u *user) Login() *string {
+	if u.user == nil {
+		return nil
+	}
 	return u.user.Login
 }
 
 func (u *user) Password() *string {
+	if u.user == nil {
+		return nil
+	}
 	return u.user.Password
 }
 
 func (u *user) IsAdmin() bool {
+	if u.user == nil {
+		return false
+	}
 	return u.user.Admin
 }
 
 func (u *user) PublicKeys() []ssh.PublicKey {
+	if u.user == nil {
+		return nil
+	}
 	keys := u.keys
 	if keys == nil || len(keys) == 0 {
 		ks, err := u.cfg.db.GetUserPublicKeys(u.user)

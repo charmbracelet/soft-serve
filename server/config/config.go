@@ -7,11 +7,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/caarlos0/env/v6"
 	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/sqlite"
+	"github.com/gliderlabs/ssh"
 )
 
 // Callbacks provides an interface that can be used to run callbacks on different events.
@@ -33,7 +35,7 @@ type SSHConfig struct {
 	IdleTimeout   int    `env:"IDLE_TIMEOUT" envDefault:"300"`
 }
 
-// GitConfig is the Git protocol configuration for the server.
+// GitConfig is the Git daemon configuration for the server.
 type GitConfig struct {
 	Port           int `env:"PORT" envDefault:"9418"`
 	MaxTimeout     int `env:"MAX_TIMEOUT" envDefault:"0"`
@@ -83,10 +85,11 @@ func (d *DBConfig) URL() *url.URL {
 
 // Config is the configuration for Soft Serve.
 type Config struct {
-	Host string    `env:"HOST" envDefault:"localhost"`
-	SSH  SSHConfig `env:"SSH" envPrefix:"SSH_"`
-	Git  GitConfig `env:"GIT" envPrefix:"GIT_"`
-	Db   DBConfig  `env:"DB" envPrefix:"DB_"`
+	Host string `env:"HOST" envDefault:"localhost"`
+
+	SSH SSHConfig `env:"SSH" envPrefix:"SSH_"`
+	Git GitConfig `env:"GIT" envPrefix:"GIT_"`
+	Db  DBConfig  `env:"DB" envPrefix:"DB_"`
 
 	ServerName string            `env:"SERVER_NAME" envDefault:"Soft Serve"`
 	AnonAccess proto.AccessLevel `env:"ANON_ACCESS" envDefault:"read-only"`
@@ -151,11 +154,30 @@ func DefaultConfig() *Config {
 	if migrateWarn {
 		log.Printf("warning: please run `soft serve migrate` to migrate your server and configuration.")
 	}
+	// initialize admin keys
+	for i, k := range cfg.InitialAdminKeys {
+		if bts, err := os.ReadFile(k); err == nil {
+			// k is a file path, read the file
+			k = string(bts)
+		}
+		pk := strings.TrimSpace(k)
+		if pk == "" {
+			// ignore empty keys
+			continue
+		}
+		if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(k)); err != nil {
+			// Fatal if the key is invalid
+			log.Fatalf("invalid initial admin key %q: %v", k, err)
+		}
+		// store the key in the config
+		cfg.InitialAdminKeys[i] = pk
+	}
+	log.Printf("initial admin keys are: %v", cfg.InitialAdminKeys)
 	// init data path and db
 	if err := os.MkdirAll(cfg.RepoPath(), 0755); err != nil {
 		log.Fatalln(err)
 	}
-	if err := cfg.createDefaultConfigRepo(); err != nil {
+	if err := cfg.createDefaultConfigRepoAndUsers(); err != nil {
 		log.Fatalln(err)
 	}
 	var db db.Store
