@@ -150,14 +150,9 @@ func (r *repo) Collabs() []proto.User {
 		return collabs
 	}
 	for i, c := range cs {
-		ks, err := r.cfg.db.GetUserPublicKeys(c)
-		if err != nil {
-			log.Printf("error getting public keys for %q: %v", c.Name, err)
-			continue
-		}
 		u := &user{
+			cfg:  r.cfg,
 			user: c,
-			keys: ks,
 		}
 		collabs[i] = u
 	}
