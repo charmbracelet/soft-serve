@@ -35,6 +35,7 @@ type RepoStore interface {
 	AddRepo(name, projectName, description string, isPrivate bool) error
 	DeleteRepo(string) error
 	GetRepo(string) (*types.Repo, error)
+	SetRepoName(string, string) error
 	SetRepoProjectName(string, string) error
 	SetRepoDescription(string, string) error
 	SetRepoPrivate(string, bool) error

@@ -308,6 +308,16 @@ func (d *Sqlite) GetRepo(name string) (*types.Repo, error) {
 	return &r, nil
 }
 
+// SetRepoName sets the repo name.
+func (d *Sqlite) SetRepoName(name string, newName string) error {
+	name = strings.ToLower(name)
+	newName = strings.ToLower(newName)
+	return d.wrapTransaction(func(tx *sql.Tx) error {
+		_, err := tx.Exec(sqlUpdateRepoNameByName, newName, name)
+		return err
+	})
+}
+
 // SetRepoProjectName sets the repo project name.
 func (d *Sqlite) SetRepoProjectName(name string, projectName string) error {
 	name = strings.ToLower(name)

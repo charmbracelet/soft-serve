@@ -130,6 +130,11 @@ func (*FakeDB) GetRepo(string) (*types.Repo, error) {
 	return nil, nil
 }
 
+// SetRepoName implements db.Store.
+func (*FakeDB) SetRepoName(string, string) error {
+	return nil
+}
+
 // SetRepoDescription implements db.Store.
 func (*FakeDB) SetRepoDescription(string, string) error {
 	return nil

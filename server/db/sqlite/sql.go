@@ -76,6 +76,7 @@ var (
 	sqlDeleteRepo                  = `DELETE FROM repo WHERE id = ?;`
 	sqlDeleteRepoWithName          = `DELETE FROM repo WHERE name = ?;`
 	sqlSelectRepoByName            = `SELECT id, name, project_name, description, private, created_at, updated_at FROM repo WHERE name = ?;`
+	sqlUpdateRepoNameByName        = `UPDATE repo SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?;`
 	sqlUpdateRepoProjectNameByName = `UPDATE repo SET project_name = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?;`
 	sqlUpdateRepoDescriptionByName = `UPDATE repo SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?;`
 	sqlUpdateRepoPrivateByName     = `UPDATE repo SET private = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?;`
