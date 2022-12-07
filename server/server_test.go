@@ -24,9 +24,7 @@ import (
 
 func TestPushRepo(t *testing.T) {
 	is := is.New(t)
-	s, cfg, pkPath := setupServer(t)
-	err := s.Reload()
-	is.NoErr(err)
+	_, cfg, pkPath := setupServer(t)
 	rp := t.TempDir()
 	r, err := git.PlainInit(rp, false)
 	is.NoErr(err)
@@ -65,11 +63,8 @@ func TestPushRepo(t *testing.T) {
 
 func TestCloneRepo(t *testing.T) {
 	is := is.New(t)
-	s, cfg, pkPath := setupServer(t)
+	_, cfg, pkPath := setupServer(t)
 	t.Log("starting server")
-	err := s.Reload()
-	t.Log("reloaded server")
-	is.NoErr(err)
 	dst := t.TempDir()
 	t.Cleanup(func() { is.NoErr(os.RemoveAll(dst)) })
 	url := fmt.Sprintf("ssh://localhost:%d/config", cfg.SSH.Port)

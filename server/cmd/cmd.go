@@ -68,10 +68,7 @@ func RootCommand() *cobra.Command {
 	rootCmd.SetUsageTemplate(usageTemplate)
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(
-		ReloadCommand(),
-		CatCommand(),
-		ListCommand(),
-		GitCommand(),
+		RepoCommand(),
 	)
 
 	return rootCmd

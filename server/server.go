@@ -85,12 +85,6 @@ func NewServer(cfg *config.Config) *Server {
 	return s
 }
 
-// Reload reloads the server configuration.
-func (s *Server) Reload() error {
-	return nil
-	// return s.config.Reload()
-}
-
 // Start starts the SSH server.
 func (s *Server) Start() error {
 	var errg errgroup.Group

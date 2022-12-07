@@ -22,7 +22,7 @@ func Middleware(cfg *config.Config) wish.Middleware {
 				ctx = context.WithValue(ctx, SessionCtxKey, s)
 
 				use := "ssh"
-				port := cfg.Port
+				port := cfg.SSH.Port
 				if port != 22 {
 					use += fmt.Sprintf(" -p%d", port)
 				}
