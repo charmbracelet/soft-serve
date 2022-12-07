@@ -75,11 +75,13 @@ func NewServer(cfg *config.Config) *Server {
 		sh.IdleTimeout = time.Duration(cfg.SSH.IdleTimeout) * time.Second
 	}
 	s.SSHServer = sh
-	d, err := daemon.NewDaemon(cfg)
-	if err != nil {
-		log.Fatalln(err)
+	if cfg.Git.Enabled {
+		d, err := daemon.NewDaemon(cfg)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		s.GitServer = d
 	}
-	s.GitServer = d
 	return s
 }
 
@@ -92,13 +94,15 @@ func (s *Server) Reload() error {
 // Start starts the SSH server.
 func (s *Server) Start() error {
 	var errg errgroup.Group
-	errg.Go(func() error {
-		log.Printf("Starting Git server on %s:%d", s.Config.Host, s.Config.Git.Port)
-		if err := s.GitServer.Start(); err != daemon.ErrServerClosed {
-			return err
-		}
-		return nil
-	})
+	if s.Config.Git.Enabled {
+		errg.Go(func() error {
+			log.Printf("Starting Git server on %s:%d", s.Config.Host, s.Config.Git.Port)
+			if err := s.GitServer.Start(); err != daemon.ErrServerClosed {
+				return err
+			}
+			return nil
+		})
+	}
 	errg.Go(func() error {
 		log.Printf("Starting SSH server on %s:%d", s.Config.Host, s.Config.SSH.Port)
 		if err := s.SSHServer.ListenAndServe(); err != ssh.ErrServerClosed {
@@ -112,11 +116,13 @@ func (s *Server) Start() error {
 // Shutdown lets the server gracefully shutdown.
 func (s *Server) Shutdown(ctx context.Context) error {
 	var errg errgroup.Group
+	if s.Config.Git.Enabled {
+		errg.Go(func() error {
+			return s.GitServer.Shutdown(ctx)
+		})
+	}
 	errg.Go(func() error {
 		return s.SSHServer.Shutdown(ctx)
-	})
-	errg.Go(func() error {
-		return s.GitServer.Shutdown(ctx)
 	})
 	return errg.Wait()
 }
@@ -127,8 +133,10 @@ func (s *Server) Close() error {
 	errg.Go(func() error {
 		return s.SSHServer.Close()
 	})
-	errg.Go(func() error {
-		return s.GitServer.Close()
-	})
+	if s.Config.Git.Enabled {
+		errg.Go(func() error {
+			return s.GitServer.Close()
+		})
+	}
 	return errg.Wait()
 }

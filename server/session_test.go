@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/soft-serve/proto"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -28,6 +28,12 @@ func TestSession(t *testing.T) {
 		defer s.Close()
 		err := s.RequestPty("xterm", 80, 40, nil)
 		is.NoErr(err)
+		go func() {
+			time.Sleep(1 * time.Second)
+			s.Signal(gossh.SIGTERM)
+			// FIXME: exit with code 0 instead of forcibly closing the session
+			s.Close()
+		}()
 		err = s.Run("config")
 		// Session writes error and exits
 		is.True(strings.Contains(out.String(), cm.ErrUnauthorized.Error()))
@@ -54,16 +60,20 @@ func TestSession(t *testing.T) {
 
 func setup(tb testing.TB) *gossh.Session {
 	tb.Helper()
-	cfg := &config.Config{
-		Host:     "",
-		SSH:      config.SSHConfig{Port: randomPort()},
-		Git:      config.GitConfig{Port: 9418},
-		DataPath: tb.TempDir(),
-		InitialAdminKeys: []string{
-			"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMJlb/qf2B2kMNdBxfpCQqI2ctPcsOkdZGVh5zTRhKtH",
-		},
-		AnonAccess: proto.ReadOnlyAccess,
-	}
+	is := is.New(tb)
+	dp := tb.TempDir()
+	is.NoErr(os.Setenv("SOFT_SERVE_DATA_PATH", dp))
+	is.NoErr(os.Setenv("SOFT_SERVE_ANON_ACCESS", "read-only"))
+	is.NoErr(os.Setenv("SOFT_SERVE_GIT_PORT", "9418"))
+	is.NoErr(os.Setenv("SOFT_SERVE_SSH_PORT", strconv.Itoa(randomPort())))
+	tb.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_DATA_PATH"))
+		is.NoErr(os.Unsetenv("SOFT_SERVE_ANON_ACCESS"))
+		is.NoErr(os.Unsetenv("SOFT_SERVE_GIT_PORT"))
+		is.NoErr(os.Unsetenv("SOFT_SERVE_SSH_PORT"))
+		is.NoErr(os.RemoveAll(dp))
+	})
+	cfg := config.DefaultConfig()
 	return testsession.New(tb, &ssh.Server{
 		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256)(func(s ssh.Session) {
 			_, _, active := s.Pty()
