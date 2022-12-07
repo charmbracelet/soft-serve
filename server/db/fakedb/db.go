@@ -57,22 +57,22 @@ func (*FakeDB) DeleteUser(int) error {
 
 // GetUser implements db.Store.
 func (*FakeDB) GetUser(int) (*types.User, error) {
-	return nil, nil
+	return &types.User{}, nil
 }
 
 // GetUserByEmail implements db.Store.
 func (*FakeDB) GetUserByEmail(string) (*types.User, error) {
-	return nil, nil
+	return &types.User{}, nil
 }
 
 // GetUserByLogin implements db.Store.
 func (*FakeDB) GetUserByLogin(string) (*types.User, error) {
-	return nil, nil
+	return &types.User{}, nil
 }
 
 // GetUserByPublicKey implements db.Store.
 func (*FakeDB) GetUserByPublicKey(string) (*types.User, error) {
-	return nil, nil
+	return &types.User{}, nil
 }
 
 // SetUserAdmin implements db.Store.
@@ -127,7 +127,7 @@ func (*FakeDB) DeleteRepo(string) error {
 
 // GetRepo implements db.Store.
 func (*FakeDB) GetRepo(string) (*types.Repo, error) {
-	return nil, nil
+	return &types.Repo{}, nil
 }
 
 // SetRepoName implements db.Store.
