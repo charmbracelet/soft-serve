@@ -27,7 +27,6 @@ type Daemon struct {
 	addr     string
 	finished chan struct{}
 	conns    map[net.Conn]struct{}
-	count    int
 	cfg      *config.Config
 	wg       sync.WaitGroup
 	once     sync.Once
@@ -84,12 +83,7 @@ func (d *Daemon) Start() error {
 		}
 
 		// Close connection if there are too many open connections.
-		var count int
-		d.mtx.RLock()
-		count = d.count
-		d.mtx.RUnlock()
-		log.Printf("count: %d", count)
-		if count+1 >= d.cfg.Git.MaxConnections {
+		if len(d.conns)+1 >= d.cfg.Git.MaxConnections {
 			log.Printf("git: max connections reached, closing %s", conn.RemoteAddr())
 			fatal(conn, git.ErrMaxConnections)
 			continue
@@ -123,11 +117,9 @@ func (d *Daemon) handleClient(conn net.Conn) {
 		dur := time.Duration(d.cfg.Git.MaxTimeout) * time.Second
 		c.maxDeadline = time.Now().Add(dur)
 	}
-	d.count++
 	d.conns[c] = struct{}{}
-	defer c.Close()
 	defer func() {
-		d.count--
+		c.Close()
 		delete(d.conns, c)
 	}()
 
