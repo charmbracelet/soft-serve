@@ -119,7 +119,6 @@ type Styles struct {
 		Selector    lipgloss.Style
 		FileContent lipgloss.Style
 		Paginator   lipgloss.Style
-		NoItems     lipgloss.Style
 	}
 
 	Spinner          lipgloss.Style
@@ -405,8 +404,6 @@ func DefaultStyles() *Styles {
 
 	s.Tree.Paginator = s.Log.Paginator.Copy()
 
-	s.Tree.NoItems = s.AboutNoReadme.Copy()
-
 	s.Spinner = lipgloss.NewStyle().
 		MarginTop(1).
 		MarginLeft(2).
@@ -420,9 +417,7 @@ func DefaultStyles() *Styles {
 		MarginLeft(2).
 		Foreground(lipgloss.Color("242"))
 
-	s.NoItems = lipgloss.NewStyle().
-		MarginLeft(2).
-		Foreground(lipgloss.Color("242"))
+	s.NoItems = s.AboutNoReadme.Copy()
 
 	s.StatusBar = lipgloss.NewStyle().
 		Height(1)

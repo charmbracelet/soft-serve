@@ -27,9 +27,9 @@ const (
 type sessionState int
 
 const (
-	startState sessionState = iota
+	loadingState sessionState = iota
 	errorState
-	loadedState
+	readyState
 )
 
 // UI is the main UI model.
@@ -58,7 +58,7 @@ func New(c common.Common, initialRepo string) *UI {
 		common:      c,
 		pages:       make([]common.Component, 2), // selection & repo
 		activePage:  selectionPage,
-		state:       startState,
+		state:       loadingState,
 		header:      h,
 		initialRepo: initialRepo,
 		showFooter:  true,
@@ -92,7 +92,7 @@ func (ui *UI) ShortHelp() []key.Binding {
 	switch ui.state {
 	case errorState:
 		b = append(b, ui.common.KeyMap.Back)
-	case loadedState:
+	case readyState:
 		b = append(b, ui.pages[ui.activePage].ShortHelp()...)
 	}
 	if !ui.IsFiltering() {
@@ -108,7 +108,7 @@ func (ui *UI) FullHelp() [][]key.Binding {
 	switch ui.state {
 	case errorState:
 		b = append(b, []key.Binding{ui.common.KeyMap.Back})
-	case loadedState:
+	case readyState:
 		b = append(b, ui.pages[ui.activePage].FullHelp()...)
 	}
 	h := []key.Binding{
@@ -147,7 +147,7 @@ func (ui *UI) Init() tea.Cmd {
 	if ui.initialRepo != "" {
 		cmds = append(cmds, ui.initialRepoCmd(ui.initialRepo))
 	}
-	ui.state = loadedState
+	ui.state = readyState
 	ui.SetSize(ui.common.Width, ui.common.Height)
 	return tea.Batch(cmds...)
 }
@@ -182,7 +182,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, ui.common.KeyMap.Back) && ui.error != nil:
 				ui.error = nil
-				ui.state = loadedState
+				ui.state = readyState
 				// Always show the footer on error.
 				ui.showFooter = ui.footer.ShowAll()
 			case key.Matches(msg, ui.common.KeyMap.Help):
@@ -223,7 +223,6 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ui.error = msg
 		ui.state = errorState
 		ui.showFooter = true
-		return ui, nil
 	case selector.SelectMsg:
 		switch msg.IdentifiableItem.(type) {
 		case selection.Item:
@@ -242,7 +241,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
-	if ui.state == loadedState {
+	if ui.state != loadingState {
 		m, cmd := ui.pages[ui.activePage].Update(msg)
 		ui.pages[ui.activePage] = m.(common.Component)
 		if cmd != nil {
@@ -259,7 +258,7 @@ func (ui *UI) View() string {
 	var view string
 	wm, hm := ui.getMargins()
 	switch ui.state {
-	case startState:
+	case loadingState:
 		view = "Loading..."
 	case errorState:
 		err := ui.common.Styles.ErrorTitle.Render("Bummer")
@@ -272,7 +271,7 @@ func (ui *UI) View() string {
 				hm -
 				ui.common.Styles.Error.GetVerticalFrameSize()).
 			Render(err)
-	case loadedState:
+	case readyState:
 		view = ui.pages[ui.activePage].View()
 	default:
 		view = "Unknown state :/ this is a bug!"

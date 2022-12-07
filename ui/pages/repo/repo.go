@@ -21,7 +21,7 @@ type state int
 
 const (
 	loadingState state = iota
-	loadedState
+	readyState
 )
 
 type tab int
@@ -44,6 +44,9 @@ func (t tab) String() string {
 		"Tags",
 	}[t]
 }
+
+// EmptyRepoMsg is a message to indicate that the repository is empty.
+type EmptyRepoMsg struct{}
 
 // CopyURLMsg is a message to copy the URL of the current repository.
 type CopyURLMsg struct{}
@@ -257,6 +260,11 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, r.updateStatusBarCmd)
 	case tea.WindowSizeMsg:
 		cmds = append(cmds, r.updateModels(msg))
+	case EmptyRepoMsg:
+		r.state = readyState
+		cmds = append(cmds, r.updateStatusBarCmd)
+	case common.ErrorMsg:
+		r.state = readyState
 	}
 	s, cmd := r.statusbar.Update(msg)
 	r.statusbar = s.(*statusbar.StatusBar)
@@ -290,7 +298,7 @@ func (r *Repo) View() string {
 	switch r.state {
 	case loadingState:
 		main = fmt.Sprintf("%s loading…", r.spinner.View())
-	case loadedState:
+	case readyState:
 		main = r.panes[r.activeTab].View()
 		statusbar = r.statusbar.View()
 	}
@@ -353,15 +361,15 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 	}
 	value := r.panes[r.activeTab].(statusbar.Model).StatusBarValue()
 	info := r.panes[r.activeTab].(statusbar.Model).StatusBarInfo()
-	ref := ""
+	branch := "*"
 	if r.ref != nil {
-		ref = r.ref.Name().Short()
+		branch += " " + r.ref.Name().Short()
 	}
 	return statusbar.StatusBarMsg{
 		Key:    r.selectedRepo.Info.Name(),
 		Value:  value,
 		Info:   info,
-		Branch: fmt.Sprintf("* %s", ref),
+		Branch: branch,
 	}
 }
 
@@ -418,7 +426,7 @@ func (r *Repo) updateRepo(msg tea.Msg) tea.Cmd {
 		r.panesReady[readmeTab] = true
 	}
 	if r.isReady() {
-		r.state = loadedState
+		r.state = readyState
 	}
 	return tea.Batch(cmds...)
 }

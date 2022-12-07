@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,10 +18,11 @@ type ReadmeMsg struct {
 
 // Readme is the readme component page.
 type Readme struct {
-	common common.Common
-	code   *code.Code
-	ref    RefMsg
-	repo   *git.Repository
+	common     common.Common
+	code       *code.Code
+	ref        RefMsg
+	repo       *git.Repository
+	readmePath string
 }
 
 // NewReadme creates a new readme model.
@@ -79,6 +81,9 @@ func (r *Readme) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RefMsg:
 		r.ref = msg
 		cmds = append(cmds, r.Init())
+	case EmptyRepoMsg:
+		r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(),
+			r.repo.Info.Name()), ".md")
 	}
 	c, cmd := r.code.Update(msg)
 	r.code = c.(*code.Code)
@@ -95,7 +100,11 @@ func (r *Readme) View() string {
 
 // StatusBarValue implements statusbar.StatusBar.
 func (r *Readme) StatusBarValue() string {
-	return ""
+	dir := filepath.Dir(r.readmePath)
+	if dir == "." {
+		return ""
+	}
+	return dir
 }
 
 // StatusBarInfo implements statusbar.StatusBar.
@@ -109,6 +118,7 @@ func (r *Readme) updateReadmeCmd() tea.Msg {
 		return common.ErrorCmd(git.ErrMissingRepo)
 	}
 	rm, rp := r.repo.Readme()
+	r.readmePath = rp
 	r.code.GotoTop()
 	cmd := r.code.SetContent(rm, rp)
 	if cmd != nil {

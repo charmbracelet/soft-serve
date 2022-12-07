@@ -204,6 +204,9 @@ func UpdateRefCmd(repo *git.Repository) tea.Cmd {
 	return func() tea.Msg {
 		ref, err := repo.Repo.Repository().HEAD()
 		if err != nil {
+			if bs, err := repo.Repo.Repository().Branches(); err != nil && len(bs) == 0 {
+				return EmptyRepoMsg{}
+			}
 			log.Printf("ui: error getting HEAD reference: %v", err)
 			return common.ErrorMsg(err)
 		}

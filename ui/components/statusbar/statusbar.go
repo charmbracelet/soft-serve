@@ -86,3 +86,15 @@ func (s *StatusBar) View() string {
 			),
 		)
 }
+
+// StatusBarCmd returns a command that sets the status bar information.
+func StatusBarCmd(key, value, info, branch string) tea.Cmd {
+	return func() tea.Msg {
+		return StatusBarMsg{
+			Key:    key,
+			Value:  value,
+			Info:   info,
+			Branch: branch,
+		}
+	}
+}
