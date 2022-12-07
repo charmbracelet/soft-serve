@@ -16,10 +16,11 @@ var _ proto.MetadataProvider = &Config{}
 
 // Metadata returns the repository's metadata.
 func (c *Config) Metadata(name string) (proto.Metadata, error) {
-	i, err := c.db.GetRepo(name)
+	i, err := c.DB().GetRepo(name)
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("info for %q: %v", name, i.Private)
 	return &repo{
 		cfg:  c,
 		info: i,
@@ -52,7 +53,7 @@ func (c *Config) ListRepos() ([]proto.Metadata, error) {
 	}
 	for _, d := range ds {
 		name := strings.TrimSuffix(d.Name(), ".git")
-		r, err := c.db.GetRepo(name)
+		r, err := c.DB().GetRepo(name)
 		if err != nil || r == nil {
 			md = append(md, &emptyMetadata{
 				name: name,
@@ -75,7 +76,7 @@ func (c *Config) Create(name string, projectName string, description string, isP
 	if _, err := git.Init(filepath.Join(c.RepoPath(), name+".git"), true); err != nil {
 		return err
 	}
-	if err := c.db.AddRepo(name, projectName, description, isPrivate); err != nil {
+	if err := c.DB().AddRepo(name, projectName, description, isPrivate); err != nil {
 		return err
 	}
 	return nil
@@ -87,7 +88,7 @@ func (c *Config) Delete(name string) error {
 	if err := os.RemoveAll(filepath.Join(c.RepoPath(), name+".git")); err != nil {
 		return err
 	}
-	if err := c.db.DeleteRepo(name); err != nil {
+	if err := c.DB().DeleteRepo(name); err != nil {
 		return err
 	}
 	return nil
@@ -100,7 +101,7 @@ func (c *Config) Rename(name string, newName string) error {
 	if err := os.Rename(filepath.Join(c.RepoPath(), name+".git"), filepath.Join(c.RepoPath(), newName+".git")); err != nil {
 		return err
 	}
-	if err := c.db.SetRepoName(name, newName); err != nil {
+	if err := c.DB().SetRepoName(name, newName); err != nil {
 		return err
 	}
 	return nil
@@ -109,7 +110,7 @@ func (c *Config) Rename(name string, newName string) error {
 // SetProjectName sets the repository's project name.
 func (c *Config) SetProjectName(name string, projectName string) error {
 	name = strings.TrimSuffix(name, ".git")
-	if err := c.db.SetRepoProjectName(name, projectName); err != nil {
+	if err := c.DB().SetRepoProjectName(name, projectName); err != nil {
 		return err
 	}
 	return nil
@@ -118,7 +119,7 @@ func (c *Config) SetProjectName(name string, projectName string) error {
 // SetDescription sets the repository's description.
 func (c *Config) SetDescription(name string, description string) error {
 	name = strings.TrimSuffix(name, ".git")
-	if err := c.db.SetRepoDescription(name, description); err != nil {
+	if err := c.DB().SetRepoDescription(name, description); err != nil {
 		return err
 	}
 	return nil
@@ -127,7 +128,7 @@ func (c *Config) SetDescription(name string, description string) error {
 // SetPrivate sets the repository's privacy.
 func (c *Config) SetPrivate(name string, isPrivate bool) error {
 	name = strings.TrimSuffix(name, ".git")
-	if err := c.db.SetRepoPrivate(name, isPrivate); err != nil {
+	if err := c.DB().SetRepoPrivate(name, isPrivate); err != nil {
 		return err
 	}
 	return nil
@@ -223,7 +224,7 @@ func (r *repo) IsPrivate() bool {
 // Collabs returns the repository's collaborators.
 func (r *repo) Collabs() []proto.User {
 	collabs := make([]proto.User, 0)
-	cs, err := r.cfg.db.ListRepoCollabs(r.Name())
+	cs, err := r.cfg.DB().ListRepoCollabs(r.Name())
 	if err != nil {
 		return collabs
 	}

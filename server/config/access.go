@@ -20,7 +20,7 @@ func (c *Config) AuthRepo(repo string, pk ssh.PublicKey) proto.AccessLevel {
 // found.
 func (c *Config) User(pk ssh.PublicKey) (proto.User, error) {
 	k := authorizedKey(pk)
-	u, err := c.db.GetUserByPublicKey(k)
+	u, err := c.DB().GetUserByPublicKey(k)
 	if err != nil {
 		log.Printf("error getting user for key: %s", err)
 		return nil, err
@@ -41,7 +41,7 @@ func (c *Config) IsCollab(repo string, pk ssh.PublicKey) bool {
 		return true
 	}
 
-	isCollab, err := c.db.IsRepoPublicKeyCollab(repo, authorizedKey(pk))
+	isCollab, err := c.DB().IsRepoPublicKeyCollab(repo, authorizedKey(pk))
 	if err != nil {
 		log.Printf("error checking if key is repo collab: %v", err)
 		return false
@@ -101,6 +101,7 @@ func (c *Config) accessForKey(repo string, pk ssh.PublicKey) proto.AccessLevel {
 		return anon
 	}
 	private := info.IsPrivate()
+	log.Printf("auth key %s", authorizedKey(pk))
 	if pk != nil {
 		isAdmin := c.IsAdmin(pk)
 		if isAdmin {
@@ -122,14 +123,14 @@ func (c *Config) accessForKey(repo string, pk ssh.PublicKey) proto.AccessLevel {
 	}
 	// Don't restrict access to private repos if no users are configured.
 	// Return anon access level.
-	if private && c.countUsers() > 0 {
+	if private {
 		return proto.NoAccess
 	}
 	return anon
 }
 
 func (c *Config) countUsers() int {
-	count, err := c.db.CountUsers()
+	count, err := c.DB().CountUsers()
 	if err != nil {
 		return 0
 	}
@@ -151,5 +152,8 @@ func (c *Config) isInitialAdminKey(key ssh.PublicKey) bool {
 }
 
 func authorizedKey(key ssh.PublicKey) string {
+	if key == nil {
+		return ""
+	}
 	return strings.TrimSpace(string(gossh.MarshalAuthorizedKey(key)))
 }

@@ -21,11 +21,10 @@ func (cfg *Config) createDefaultConfigRepoAndUsers() error {
 	rp := filepath.Join(cfg.RepoPath(), defaultConfigRepo) + ".git"
 	_, err := gogit.PlainOpen(rp)
 	if errors.Is(err, gogit.ErrRepositoryNotExists) {
-		repo, err := gogit.PlainInit(rp, true)
-		if err != nil {
+		if err := cfg.Create(defaultConfigRepo, "Config", "Soft Serve Config", true); err != nil {
 			return err
 		}
-		repo, err = gogit.Clone(memory.NewStorage(), memfs.New(), &gogit.CloneOptions{
+		repo, err := gogit.Clone(memory.NewStorage(), memfs.New(), &gogit.CloneOptions{
 			URL: rp,
 		})
 		if err != nil && err != transport.ErrEmptyRemoteRepository {

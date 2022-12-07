@@ -58,7 +58,7 @@ func (u *user) PublicKeys() []ssh.PublicKey {
 	}
 	keys := u.keys
 	if keys == nil || len(keys) == 0 {
-		ks, err := u.cfg.db.GetUserPublicKeys(u.user)
+		ks, err := u.cfg.DB().GetUserPublicKeys(u.user)
 		if err != nil {
 			log.Printf("error getting public keys for %q: %v", u.Name(), err)
 			return nil

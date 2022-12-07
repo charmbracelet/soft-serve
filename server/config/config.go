@@ -37,10 +37,11 @@ type SSHConfig struct {
 
 // GitConfig is the Git daemon configuration for the server.
 type GitConfig struct {
-	Port           int `env:"PORT" envDefault:"9418"`
-	MaxTimeout     int `env:"MAX_TIMEOUT" envDefault:"0"`
-	IdleTimeout    int `env:"IDLE_TIMEOUT" envDefault:"3"`
-	MaxConnections int `env:"SOFT_SERVE_GIT_MAX_CONNECTIONS" envDefault:"32"`
+	Enabled        bool `env:"ENABLED" envDefault:"true"`
+	Port           int  `env:"PORT" envDefault:"9418"`
+	MaxTimeout     int  `env:"MAX_TIMEOUT" envDefault:"0"`
+	IdleTimeout    int  `env:"IDLE_TIMEOUT" envDefault:"3"`
+	MaxConnections int  `env:"SOFT_SERVE_GIT_MAX_CONNECTIONS" envDefault:"32"`
 }
 
 // DBConfig is the database configuration for the server.
@@ -172,26 +173,25 @@ func DefaultConfig() *Config {
 		// store the key in the config
 		cfg.InitialAdminKeys[i] = pk
 	}
-	log.Printf("initial admin keys are: %v", cfg.InitialAdminKeys)
 	// init data path and db
 	if err := os.MkdirAll(cfg.RepoPath(), 0755); err != nil {
 		log.Fatalln(err)
 	}
-	if err := cfg.createDefaultConfigRepoAndUsers(); err != nil {
-		log.Fatalln(err)
-	}
-	var db db.Store
 	switch cfg.Db.Driver {
 	case "sqlite":
 		if err := os.MkdirAll(filepath.Dir(cfg.DBPath()), 0755); err != nil {
 			log.Fatalln(err)
 		}
-		db, err = sqlite.New(cfg.DBPath())
+		db, err := sqlite.New(cfg.DBPath())
 		if err != nil {
 			log.Fatalln(err)
 		}
+		cfg.WithDB(db)
 	}
-	return cfg.WithDB(db).WithDataPath(cfg.DataPath)
+	if err := cfg.createDefaultConfigRepoAndUsers(); err != nil {
+		log.Fatalln(err)
+	}
+	return &cfg
 }
 
 // DB returns the database for the configuration.
