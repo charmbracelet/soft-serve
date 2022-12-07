@@ -265,6 +265,14 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+	case EmptyRepoMsg:
+		f.ref = nil
+		f.path = ""
+		f.currentItem = nil
+		f.activeView = filesViewFiles
+		f.lastSelected = make([]int, 0)
+		f.selector.Select(0)
+		cmds = append(cmds, f.setItems([]selector.IdentifiableItem{}))
 	}
 	switch f.activeView {
 	case filesViewFiles:
@@ -397,4 +405,10 @@ func (f *Files) deselectItemCmd() tea.Msg {
 	}
 	f.selector.Select(index)
 	return msg
+}
+
+func (f *Files) setItems(items []selector.IdentifiableItem) tea.Cmd {
+	return func() tea.Msg {
+		return FileItemsMsg(items)
+	}
 }

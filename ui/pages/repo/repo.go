@@ -261,8 +261,12 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		cmds = append(cmds, r.updateModels(msg))
 	case EmptyRepoMsg:
+		r.ref = nil
 		r.state = readyState
-		cmds = append(cmds, r.updateStatusBarCmd)
+		cmds = append(cmds,
+			r.updateModels(msg),
+			r.updateStatusBarCmd,
+		)
 	case common.ErrorMsg:
 		r.state = readyState
 	}

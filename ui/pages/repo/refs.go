@@ -139,6 +139,9 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, r.common.KeyMap.SelectItem):
 			cmds = append(cmds, r.selector.SelectItem)
 		}
+	case EmptyRepoMsg:
+		r.ref = nil
+		cmds = append(cmds, r.setItems([]selector.IdentifiableItem{}))
 	}
 	m, cmd := r.selector.Update(msg)
 	r.selector = m.(*selector.Selector)
@@ -190,6 +193,15 @@ func (r *Refs) updateItemsCmd() tea.Msg {
 	return RefItemsMsg{
 		items:  items,
 		prefix: r.refPrefix,
+	}
+}
+
+func (r *Refs) setItems(items []selector.IdentifiableItem) tea.Cmd {
+	return func() tea.Msg {
+		return RefItemsMsg{
+			items:  items,
+			prefix: r.refPrefix,
+		}
 	}
 }
 

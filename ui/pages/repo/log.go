@@ -299,6 +299,16 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				l.startLoading(),
 			)
 		}
+	case EmptyRepoMsg:
+		l.ref = nil
+		l.loading = false
+		l.activeView = logViewCommits
+		l.nextPage = 0
+		l.count = 0
+		l.activeCommit = nil
+		l.selectedCommit = nil
+		l.selector.Select(0)
+		cmds = append(cmds, l.setItems([]selector.IdentifiableItem{}))
 	}
 	if l.loading {
 		s, cmd := l.spinner.Update(msg)
@@ -485,4 +495,10 @@ func (l *Log) renderDiff(diff *ggit.Diff) string {
 		s.WriteString(fmt.Sprintf("\n%s", pr.String()))
 	}
 	return wrap.String(s.String(), l.common.Width)
+}
+
+func (l *Log) setItems(items []selector.IdentifiableItem) tea.Cmd {
+	return func() tea.Msg {
+		return LogItemsMsg(items)
+	}
 }
