@@ -12,12 +12,18 @@ import (
 	"github.com/gliderlabs/ssh"
 )
 
+// Auth is the interface that wraps both Access and Provider interfaces.
+type Auth interface {
+	proto.Access
+	proto.Provider
+}
+
 // Middleware adds Git server functionality to the ssh.Server. Repos are stored
 // in the specified repo directory. The provided Hooks implementation will be
 // checked for access on a per repo basis for a ssh.Session public key.
 // Hooks.Push and Hooks.Fetch will be called on successful completion of
 // their commands.
-func Middleware(repoDir string, auth proto.Access) wish.Middleware {
+func Middleware(repoDir string, auth Auth) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			func() {
@@ -27,24 +33,29 @@ func Middleware(repoDir string, auth proto.Access) wish.Middleware {
 					// repo should be in the form of "repo.git"
 					repo := strings.TrimPrefix(cmd[1], "/")
 					repo = filepath.Clean(repo)
+					name := repo
 					if strings.Contains(repo, "/") {
 						log.Printf("invalid repo: %s", repo)
 						Fatal(s, fmt.Errorf("%s: %s", git.ErrInvalidRepo, "user repos not supported"))
 						return
 					}
 					pk := s.PublicKey()
-					access := auth.AuthRepo(strings.TrimSuffix(repo, ".git"), pk)
+					access := auth.AuthRepo(name, pk)
 					// git bare repositories should end in ".git"
 					// https://git-scm.com/docs/gitrepository-layout
-					if !strings.HasSuffix(repo, ".git") {
-						repo += ".git"
-					}
+					repo = strings.TrimSuffix(repo, ".git") + ".git"
 					switch gc {
 					case "git-receive-pack":
 						switch access {
 						case proto.ReadWriteAccess, proto.AdminAccess:
-							err := git.GitPack(s, s, s.Stderr(), gc, repoDir, repo)
-							if err != nil {
+							if _, err := auth.Open(name); err != nil {
+								if err := auth.Create(name, "", "", false); err != nil {
+									log.Printf("failed to create repo: %s", err)
+									Fatal(s, err)
+									return
+								}
+							}
+							if err := git.GitPack(s, s, s.Stderr(), gc, repoDir, repo); err != nil {
 								Fatal(s, git.ErrSystemMalfunction)
 							}
 						default:
@@ -52,6 +63,7 @@ func Middleware(repoDir string, auth proto.Access) wish.Middleware {
 						}
 						return
 					case "git-upload-archive", "git-upload-pack":
+						log.Printf("access %s", access)
 						switch access {
 						case proto.ReadOnlyAccess, proto.ReadWriteAccess, proto.AdminAccess:
 							// try to upload <repo>.git first, then <repo>

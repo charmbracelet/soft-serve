@@ -6,11 +6,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"testing"
 
-	"github.com/charmbracelet/soft-serve/proto"
 	"github.com/charmbracelet/soft-serve/server/config"
-	"github.com/charmbracelet/soft-serve/server/db/fakedb"
 	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 )
@@ -23,21 +22,13 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 	defer os.RemoveAll(tmp)
-	cfg := &config.Config{
-		Host:       "",
-		DataPath:   tmp,
-		AnonAccess: proto.ReadOnlyAccess,
-		Git: config.GitConfig{
-			// Reduce the max read timeout to 3 second so we can test the timeout.
-			IdleTimeout: 3,
-			// Reduce the max timeout to 100 second so we can test the timeout.
-			MaxTimeout: 100,
-			// Reduce the max connections to 3 so we can test the timeout.
-			MaxConnections: 3,
-			Port:           9418,
-		},
-	}
-	cfg = cfg.WithDB(&fakedb.FakeDB{})
+	os.Setenv("SOFT_SERVE_DATA_PATH", tmp)
+	os.Setenv("SOFT_SERVE_ANON_ACCESS", "read-only")
+	os.Setenv("SOFT_SERVE_GIT_MAX_CONNECTIONS", "3")
+	os.Setenv("SOFT_SERVE_GIT_MAX_TIMEOUT", "100")
+	os.Setenv("SOFT_SERVE_GIT_IDLE_TIMEOUT", "3")
+	os.Setenv("SOFT_SERVE_GIT_PORT", strconv.Itoa(randomPort()))
+	cfg := config.DefaultConfig()
 	d, err := NewDaemon(cfg)
 	if err != nil {
 		log.Fatal(err)
@@ -50,6 +41,12 @@ func TestMain(m *testing.M) {
 	}()
 	defer d.Close()
 	os.Exit(m.Run())
+	os.Unsetenv("SOFT_SERVE_DATA_PATH")
+	os.Unsetenv("SOFT_SERVE_ANON_ACCESS")
+	os.Unsetenv("SOFT_SERVE_GIT_MAX_CONNECTIONS")
+	os.Unsetenv("SOFT_SERVE_GIT_MAX_TIMEOUT")
+	os.Unsetenv("SOFT_SERVE_GIT_IDLE_TIMEOUT")
+	os.Unsetenv("SOFT_SERVE_GIT_PORT")
 }
 
 func TestIdleTimeout(t *testing.T) {
@@ -93,4 +90,10 @@ func readPktline(c net.Conn) (string, error) {
 		return "", pktout.Err()
 	}
 	return string(pktout.Bytes()), nil
+}
+
+func randomPort() int {
+	addr, _ := net.Listen("tcp", ":0") //nolint:gosec
+	_ = addr.Close()
+	return addr.Addr().(*net.TCPAddr).Port
 }
