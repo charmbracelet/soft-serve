@@ -31,7 +31,16 @@ func (it Items) Len() int {
 
 // Less implements sort.Interface.
 func (it Items) Less(i int, j int) bool {
-	return it[i].lastUpdate.After(it[j].lastUpdate)
+	if it[i].lastUpdate == nil && it[j].lastUpdate != nil {
+		return false
+	}
+	if it[i].lastUpdate != nil && it[j].lastUpdate == nil {
+		return true
+	}
+	if it[i].lastUpdate == nil && it[j].lastUpdate == nil {
+		return it[i].info.Name() < it[j].info.Name()
+	}
+	return it[i].lastUpdate.After(*it[j].lastUpdate)
 }
 
 // Swap implements sort.Interface.
@@ -43,7 +52,7 @@ func (it Items) Swap(i int, j int) {
 type Item struct {
 	repo       proto.Repository
 	info       proto.Metadata
-	lastUpdate time.Time
+	lastUpdate *time.Time
 	cmd        string
 	copied     time.Time
 }
@@ -55,15 +64,15 @@ func NewItem(info proto.Metadata, cfg *config.Config) (Item, error) {
 		log.Printf("error opening repo: %v", err)
 		return Item{}, err
 	}
+	var lastUpdate *time.Time
 	lu, err := repo.Repository().LatestCommitTime()
-	if err != nil {
-		log.Printf("error getting latest commit time: %v", err)
-		return Item{}, err
+	if err == nil {
+		lastUpdate = &lu
 	}
 	return Item{
 		repo:       repo,
 		info:       info,
-		lastUpdate: lu,
+		lastUpdate: lastUpdate,
 		cmd:        git.RepoURL(cfg.Host, cfg.SSH.Port, info.Name()),
 	}, nil
 }
@@ -157,7 +166,10 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if isSelected {
 		title += " "
 	}
-	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.lastUpdate))
+	var updatedStr string
+	if i.lastUpdate != nil {
+		updatedStr = fmt.Sprintf(" Updated %s", humanize.Time(*i.lastUpdate))
+	}
 	if m.Width()-styles.Base.GetHorizontalFrameSize()-lipgloss.Width(updatedStr)-lipgloss.Width(title) <= 0 {
 		updatedStr = ""
 	}
