@@ -74,7 +74,7 @@ func (r *Repository) Name() string {
 
 // HEAD returns the HEAD reference for a repository.
 func (r *Repository) HEAD() (*Reference, error) {
-	rn, err := r.SymbolicRef(git.SymbolicRefOptions{Name: "HEAD"})
+	rn, err := r.Repository.SymbolicRef(git.SymbolicRefOptions{Name: "HEAD"})
 	if err != nil {
 		return nil, err
 	}
@@ -234,4 +234,14 @@ func (r *Repository) SetConfig(key, value string, opts ...ConfigOptions) error {
 	}
 	opt.File = filepath.Join(dir, "config")
 	return SetConfig(key, value, opt)
+}
+
+// SymbolicRef returns or updates the symbolic reference for the given name.
+// Both name and ref can be empty.
+func (r *Repository) SymbolicRef(name string, ref string) (string, error) {
+	opt := git.SymbolicRefOptions{
+		Name: name,
+		Ref:  ref,
+	}
+	return r.Repository.SymbolicRef(opt)
 }
