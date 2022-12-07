@@ -47,6 +47,7 @@ type CollabStore interface {
 	DeleteRepoCollab(int, int) error
 	ListRepoCollabs(string) ([]*types.User, error)
 	ListRepoPublicKeys(string) ([]*types.PublicKey, error)
+	IsRepoPublicKeyCollab(string, string) (bool, error)
 }
 
 // Store is a database.

@@ -165,6 +165,11 @@ func (*FakeDB) ListRepoPublicKeys(string) ([]*types.PublicKey, error) {
 	return nil, nil
 }
 
+// IsRepoPublicKeyCollab implements db.Store.
+func (*FakeDB) IsRepoPublicKeyCollab(string, string) (bool, error) {
+	return false, nil
+}
+
 // Close implements db.Store.
 func (*FakeDB) Close() error {
 	return nil

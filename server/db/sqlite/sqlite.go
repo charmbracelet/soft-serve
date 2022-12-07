@@ -404,6 +404,24 @@ func (d *Sqlite) ListRepoPublicKeys(repo string) ([]*types.PublicKey, error) {
 	return keys, nil
 }
 
+// IsRepoPublicKeyCollab returns true if the public key is a collaborator for the repository.
+func (d *Sqlite) IsRepoPublicKeyCollab(repo string, key string) (bool, error) {
+	var count int
+	if err := d.wrapTransaction(func(tx *sql.Tx) error {
+		rows := tx.QueryRow(sqlSelectRepoPublicKeyCollabByName, repo, key)
+		if err := rows.Scan(&count); err != nil {
+			return err
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // WrapTransaction runs the given function within a transaction.
 func (d *Sqlite) wrapTransaction(f func(tx *sql.Tx) error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
