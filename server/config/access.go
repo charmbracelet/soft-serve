@@ -94,13 +94,13 @@ func (c *Config) accessForKey(repo string, pk ssh.PublicKey) proto.AccessLevel {
 		return proto.AdminAccess
 	}
 
+	var private bool
 	anon := c.AnonAccess
 	info, err := c.Metadata(repo)
-	if err != nil || info == nil {
-		log.Printf("error getting repo info: %v", err)
-		return anon
+	if err == nil && info != nil {
+		private = info.IsPrivate()
 	}
-	private := info.IsPrivate()
+
 	log.Printf("auth key %s", authorizedKey(pk))
 	if pk != nil {
 		isAdmin := c.IsAdmin(pk)
