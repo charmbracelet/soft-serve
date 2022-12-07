@@ -47,7 +47,7 @@ func New(c common.Common, content, extension string) *Code {
 		content:        content,
 		extension:      extension,
 		Viewport:       vp.New(c),
-		NoContentStyle: c.Styles.CodeNoContent.Copy(),
+		NoContentStyle: c.Styles.NoContent.Copy(),
 		LineDigitStyle: lineDigitStyle,
 		LineBarStyle:   lineBarStyle,
 	}

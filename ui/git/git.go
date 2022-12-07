@@ -18,7 +18,7 @@ type Repository struct {
 
 // Readme returns the repository's README.
 func (r *Repository) Readme() (readme string, path string) {
-	readme, path, _ = r.LatestFile("README*")
+	readme, path, _ = proto.Readme(r.Repo)
 	return
 }
 

@@ -38,7 +38,7 @@ func (it Items) Less(i int, j int) bool {
 		return true
 	}
 	if it[i].lastUpdate == nil && it[j].lastUpdate == nil {
-		return it[i].info.Name() < it[j].info.Name()
+		return it[i].repo.Info.Name() < it[j].repo.Info.Name()
 	}
 	return it[i].lastUpdate.After(*it[j].lastUpdate)
 }
@@ -50,8 +50,7 @@ func (it Items) Swap(i int, j int) {
 
 // Item represents a single item in the selector.
 type Item struct {
-	repo       proto.Repository
-	info       proto.Metadata
+	repo       git.Repository
 	lastUpdate *time.Time
 	cmd        string
 	copied     time.Time
@@ -70,8 +69,7 @@ func NewItem(info proto.Metadata, cfg *config.Config) (Item, error) {
 		lastUpdate = &lu
 	}
 	return Item{
-		repo:       repo,
-		info:       info,
+		repo:       git.Repository{repo, info},
 		lastUpdate: lastUpdate,
 		cmd:        git.RepoURL(cfg.Host, cfg.SSH.Port, info.Name()),
 	}, nil
@@ -79,19 +77,19 @@ func NewItem(info proto.Metadata, cfg *config.Config) (Item, error) {
 
 // ID implements selector.IdentifiableItem.
 func (i Item) ID() string {
-	return i.info.Name()
+	return i.repo.Info.Name()
 }
 
 // Title returns the item title. Implements list.DefaultItem.
 func (i Item) Title() string {
-	if pn := i.info.ProjectName(); pn != "" {
+	if pn := i.repo.Info.ProjectName(); pn != "" {
 		return pn
 	}
-	return i.info.Name()
+	return i.repo.Info.Name()
 }
 
 // Description returns the item description. Implements list.DefaultItem.
-func (i Item) Description() string { return i.info.Description() }
+func (i Item) Description() string { return i.repo.Info.Description() }
 
 // FilterValue implements list.Item.
 func (i Item) FilterValue() string { return i.Title() }
@@ -160,7 +158,7 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 	title := i.Title()
 	title = common.TruncateString(title, m.Width()-styles.Base.GetHorizontalFrameSize())
-	if i.info.IsPrivate() {
+	if i.repo.Info.IsPrivate() {
 		title += " 🔒"
 	}
 	if isSelected {

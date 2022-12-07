@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -42,27 +43,27 @@ type Selection struct {
 }
 
 // New creates a new selection model.
-func New(common common.Common) *Selection {
+func New(c common.Common) *Selection {
 	ts := make([]string, lastPane)
 	for i, b := range []pane{selectorPane, readmePane} {
 		ts[i] = b.String()
 	}
-	t := tabs.New(common, ts)
+	t := tabs.New(c, ts)
 	t.TabSeparator = lipgloss.NewStyle()
-	t.TabInactive = common.Styles.TopLevelNormalTab.Copy()
-	t.TabActive = common.Styles.TopLevelActiveTab.Copy()
-	t.TabDot = common.Styles.TopLevelActiveTabDot.Copy()
+	t.TabInactive = c.Styles.TopLevelNormalTab.Copy()
+	t.TabActive = c.Styles.TopLevelActiveTab.Copy()
+	t.TabDot = c.Styles.TopLevelActiveTabDot.Copy()
 	t.UseDot = true
 	sel := &Selection{
-		common:     common,
+		common:     c,
 		activePane: selectorPane, // start with the selector focused
 		tabs:       t,
 	}
-	readme := code.New(common, "", "")
-	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
-	selector := selector.New(common,
+	readme := code.New(c, "", "")
+	readme.NoContentStyle = c.Styles.NoContent.Copy().SetString("No readme found.")
+	selector := selector.New(c,
 		[]selector.IdentifiableItem{},
-		ItemDelegate{&common, &sel.activePane})
+		ItemDelegate{&c, &sel.activePane})
 	selector.SetShowTitle(false)
 	selector.SetShowHelp(false)
 	selector.SetShowStatusBar(false)
@@ -191,6 +192,16 @@ func (s *Selection) Init() tea.Cmd {
 	// Put configured repos first
 	for _, r := range repos {
 		log.Printf("adding configured repo %s", r.Name())
+		if r.Name() == "config" {
+			repo, err := r.Open()
+			if err != nil {
+				log.Printf("failed to open config repo: %v", err)
+				continue
+			}
+			rm, rp, _ := proto.Readme(repo)
+			s.readmeHeight = strings.Count(rm, "\n")
+			readmeCmd = s.readme.SetContent(rm, rp)
+		}
 		acc := cfg.AuthRepo(r.Name(), pk)
 		if r.IsPrivate() && acc < proto.ReadOnlyAccess {
 			continue
