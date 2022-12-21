@@ -21,20 +21,22 @@ import (
 // ErrServerClosed indicates that the server has been closed.
 var ErrServerClosed = errors.New("git: Server closed")
 
+// connections synchronizes access to to a net.Conn pool.
 type connections struct {
 	m  map[net.Conn]struct{}
 	mu sync.Mutex
 }
 
-func (m *connections) Push(c net.Conn) {
+func (m *connections) Add(c net.Conn) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.m[c] = struct{}{}
 }
 
-func (m *connections) Delete(c net.Conn) {
+func (m *connections) Close(c net.Conn) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	_ = c.Close()
 	delete(m.m, c)
 }
 
@@ -148,10 +150,9 @@ func (d *Daemon) handleClient(conn net.Conn) {
 		dur := time.Duration(d.cfg.Git.MaxTimeout) * time.Second
 		c.maxDeadline = time.Now().Add(dur)
 	}
-	d.conns.Push(c)
+	d.conns.Add(c)
 	defer func() {
-		_ = c.Close()
-		d.conns.Delete(c)
+		d.conns.Close(c)
 	}()
 
 	readc := make(chan struct{}, 1)
