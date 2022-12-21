@@ -55,6 +55,13 @@ type DBConfig struct {
 	SSLMode  bool   `env:"SSL_MODE" envDefault:"false"`
 }
 
+// HTTPConfig is the HTTP server config.
+type HTTPConfig struct {
+	Enabled bool   `env:"ENABLED" envDefault:"true"`
+	Port    int    `env:"PORT" envDefault:"8080"`
+	Domain  string `env:"DOMAIN" envDefault:"localhost"` // used for go get
+}
+
 // URL returns a database URL for the configuration.
 func (d *DBConfig) URL() *url.URL {
 	switch d.Driver {
@@ -88,9 +95,10 @@ func (d *DBConfig) URL() *url.URL {
 type Config struct {
 	Host string `env:"HOST" envDefault:"localhost"`
 
-	SSH SSHConfig `env:"SSH" envPrefix:"SSH_"`
-	Git GitConfig `env:"GIT" envPrefix:"GIT_"`
-	Db  DBConfig  `env:"DB" envPrefix:"DB_"`
+	SSH  SSHConfig  `env:"SSH" envPrefix:"SSH_"`
+	Git  GitConfig  `env:"GIT" envPrefix:"GIT_"`
+	HTTP HTTPConfig `env:"HTTP" envPrefix:"HTTP_"`
+	Db   DBConfig   `env:"DB" envPrefix:"DB_"`
 
 	ServerName string            `env:"SERVER_NAME" envDefault:"Soft Serve"`
 	AnonAccess proto.AccessLevel `env:"ANON_ACCESS" envDefault:"read-only"`
@@ -174,12 +182,12 @@ func DefaultConfig() *Config {
 		cfg.InitialAdminKeys[i] = pk
 	}
 	// init data path and db
-	if err := os.MkdirAll(cfg.RepoPath(), 0755); err != nil {
+	if err := os.MkdirAll(cfg.RepoPath(), 0o755); err != nil {
 		log.Fatalln(err)
 	}
 	switch cfg.Db.Driver {
 	case "sqlite":
-		if err := os.MkdirAll(filepath.Dir(cfg.DBPath()), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(cfg.DBPath()), 0o755); err != nil {
 			log.Fatalln(err)
 		}
 		db, err := sqlite.New(cfg.DBPath())
