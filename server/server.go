@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
@@ -21,9 +22,10 @@ import (
 
 // Server is the Soft Serve server.
 type Server struct {
-	SSHServer *ssh.Server
-	GitServer *daemon.Daemon
-	Config    *config.Config
+	SSHServer  *ssh.Server
+	GitServer  *daemon.Daemon
+	HTTPServer *http.Server
+	Config     *config.Config
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -63,7 +65,6 @@ func NewServer(cfg *config.Config) *Server {
 	} else {
 		opts = append(opts, wish.WithHostKeyPath(cfg.PrivateKeyPath()))
 	}
-	opts = append(opts)
 	sh, err := wish.NewServer(opts...)
 	if err != nil {
 		log.Fatalln(err)
@@ -82,6 +83,9 @@ func NewServer(cfg *config.Config) *Server {
 		}
 		s.GitServer = d
 	}
+	if cfg.HTTP.Enabled {
+		s.HTTPServer = newHTTPServer(cfg)
+	}
 	return s
 }
 
@@ -92,6 +96,15 @@ func (s *Server) Start() error {
 		errg.Go(func() error {
 			log.Printf("Starting Git server on %s:%d", s.Config.Host, s.Config.Git.Port)
 			if err := s.GitServer.Start(); err != daemon.ErrServerClosed {
+				return err
+			}
+			return nil
+		})
+	}
+	if s.Config.HTTP.Enabled {
+		errg.Go(func() error {
+			log.Printf("Starting HTTP server on %s:%d", s.Config.Host, s.Config.HTTP.Port)
+			if err := s.HTTPServer.ListenAndServe(); err != http.ErrServerClosed {
 				return err
 			}
 			return nil
@@ -115,6 +128,11 @@ func (s *Server) Shutdown(ctx context.Context) error {
 			return s.GitServer.Shutdown(ctx)
 		})
 	}
+	if s.Config.HTTP.Enabled {
+		errg.Go(func() error {
+			return s.HTTPServer.Shutdown(ctx)
+		})
+	}
 	errg.Go(func() error {
 		return s.SSHServer.Shutdown(ctx)
 	})
@@ -130,6 +148,11 @@ func (s *Server) Close() error {
 	if s.Config.Git.Enabled {
 		errg.Go(func() error {
 			return s.GitServer.Close()
+		})
+	}
+	if s.Config.HTTP.Enabled {
+		errg.Go(func() error {
+			return s.HTTPServer.Close()
 		})
 	}
 	return errg.Wait()
