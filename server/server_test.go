@@ -64,11 +64,10 @@ func TestPushRepo(t *testing.T) {
 func TestCloneRepo(t *testing.T) {
 	is := is.New(t)
 	_, cfg, pkPath := setupServer(t)
-	t.Log("starting server")
 	dst := t.TempDir()
 	t.Cleanup(func() { is.NoErr(os.RemoveAll(dst)) })
 	url := fmt.Sprintf("ssh://localhost:%d/config", cfg.SSH.Port)
-	t.Log("cloning repo")
+	t.Log("cloning repo", url)
 	pk, err := gssh.NewPublicKeysFromFile("git", pkPath, "")
 	is.NoErr(err)
 	pk.HostKeyCallbackHelper = gssh.HostKeyCallbackHelper{
@@ -87,40 +86,31 @@ func randomPort() int {
 	return addr.Addr().(*net.TCPAddr).Port
 }
 
-func setupServer(t *testing.T) (*Server, *config.Config, string) {
-	t.Helper()
-	is := is.New(t)
-	pub, pkPath := createKeyPair(t)
-	dp := t.TempDir()
-	is.NoErr(os.Setenv("SOFT_SERVE_DATA_PATH", dp))
-	is.NoErr(os.Setenv("SOFT_SERVE_INITIAL_ADMIN_KEY", authorizedKey(pub)))
-	is.NoErr(os.Setenv("SOFT_SERVE_GIT_ENABLED", "false"))
-	is.NoErr(os.Setenv("SOFT_SERVE_SSH_PORT", strconv.Itoa(randomPort())))
-	// is.NoErr(os.Setenv("SOFT_SERVE_DB_DRIVER", "fake"))
-	t.Cleanup(func() {
-		is.NoErr(os.Unsetenv("SOFT_SERVE_DATA_PATH"))
-		is.NoErr(os.Unsetenv("SOFT_SERVE_SSH_PORT"))
-		is.NoErr(os.Unsetenv("SOFT_SERVE_INITIAL_ADMIN_KEY"))
-		is.NoErr(os.Unsetenv("SOFT_SERVE_GIT_ENABLED"))
-		// is.NoErr(os.Unsetenv("SOFT_SERVE_DB_DRIVER"))
-		is.NoErr(os.RemoveAll(dp))
-	})
+func setupServer(tb testing.TB) (*Server, *config.Config, string) {
+	tb.Helper()
+	pub, pkPath := createKeyPair(tb)
+	dp := tb.TempDir()
+	tb.Setenv("SOFT_SERVE_DATA_PATH", dp)
+	tb.Setenv("SOFT_SERVE_INITIAL_ADMIN_KEY", authorizedKey(pub))
+	tb.Setenv("SOFT_SERVE_GIT_ENABLED", "false")
+	tb.Setenv("SOFT_SERVE_SSH_PORT", strconv.Itoa(randomPort()))
+	// tb.Setenv("SOFT_SERVE_DB_DRIVER", "fake")
 	cfg := config.DefaultConfig() //.WithDB(&fakedb.FakeDB{})
 	s := NewServer(cfg)
 	go func() {
-		t.Log("starting server")
+		tb.Log("starting server")
 		s.Start()
 	}()
-	t.Cleanup(func() {
+	tb.Cleanup(func() {
 		s.Close()
 	})
 	return s, cfg, pkPath
 }
 
-func createKeyPair(t *testing.T) (ssh.PublicKey, string) {
-	t.Helper()
-	is := is.New(t)
-	keyDir := t.TempDir()
+func createKeyPair(tb testing.TB) (ssh.PublicKey, string) {
+	tb.Helper()
+	is := is.New(tb)
+	keyDir := tb.TempDir()
 	kp, err := keygen.NewWithWrite(filepath.Join(keyDir, "id"), nil, keygen.Ed25519)
 	is.NoErr(err)
 	pubkey, _, _, _, err := ssh.ParseAuthorizedKey(kp.PublicKey())
