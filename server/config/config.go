@@ -176,7 +176,8 @@ func DefaultConfig() *Config {
 		}
 		if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(k)); err != nil {
 			// Fatal if the key is invalid
-			log.Fatalf("invalid initial admin key %q: %v", k, err)
+			cwd, _ := os.Getwd()
+			log.Fatalf("invalid initial admin key %q: %v", filepath.Join(cwd, k), err)
 		}
 		// store the key in the config
 		cfg.InitialAdminKeys[i] = pk
@@ -197,7 +198,7 @@ func DefaultConfig() *Config {
 		cfg.WithDB(db)
 	}
 	if err := cfg.createDefaultConfigRepoAndUsers(); err != nil {
-		log.Fatalln(err)
+		log.Fatalln("create default config and users", err)
 	}
 	return &cfg
 }

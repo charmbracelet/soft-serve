@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -64,8 +63,6 @@ func TestPushRepo(t *testing.T) {
 func TestCloneRepo(t *testing.T) {
 	is := is.New(t)
 	_, cfg, pkPath := setupServer(t)
-	dst := t.TempDir()
-	t.Cleanup(func() { is.NoErr(os.RemoveAll(dst)) })
 	url := fmt.Sprintf("ssh://localhost:%d/config", cfg.SSH.Port)
 	t.Log("cloning repo", url)
 	pk, err := gssh.NewPublicKeysFromFile("git", pkPath, "")
