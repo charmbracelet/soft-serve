@@ -2,12 +2,14 @@ package daemon
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"log"
 	"net"
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
@@ -26,7 +28,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("SOFT_SERVE_ANON_ACCESS", "read-only")
 	os.Setenv("SOFT_SERVE_GIT_MAX_CONNECTIONS", "3")
 	os.Setenv("SOFT_SERVE_GIT_MAX_TIMEOUT", "100")
-	os.Setenv("SOFT_SERVE_GIT_IDLE_TIMEOUT", "3")
+	os.Setenv("SOFT_SERVE_GIT_IDLE_TIMEOUT", "1")
 	os.Setenv("SOFT_SERVE_GIT_PORT", strconv.Itoa(randomPort()))
 	cfg := config.DefaultConfig()
 	d, err := NewDaemon(cfg)
@@ -39,14 +41,15 @@ func TestMain(m *testing.M) {
 			log.Fatal(err)
 		}
 	}()
-	defer d.Close()
-	os.Exit(m.Run())
+	code := m.Run()
 	os.Unsetenv("SOFT_SERVE_DATA_PATH")
 	os.Unsetenv("SOFT_SERVE_ANON_ACCESS")
 	os.Unsetenv("SOFT_SERVE_GIT_MAX_CONNECTIONS")
 	os.Unsetenv("SOFT_SERVE_GIT_MAX_TIMEOUT")
 	os.Unsetenv("SOFT_SERVE_GIT_IDLE_TIMEOUT")
 	os.Unsetenv("SOFT_SERVE_GIT_PORT")
+	_ = d.Close()
+	os.Exit(code)
 }
 
 func TestIdleTimeout(t *testing.T) {
@@ -54,8 +57,9 @@ func TestIdleTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	time.Sleep(2 * time.Second)
 	out, err := readPktline(c)
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
 	if out != git.ErrTimeout.Error() {

@@ -21,16 +21,49 @@ import (
 // ErrServerClosed indicates that the server has been closed.
 var ErrServerClosed = errors.New("git: Server closed")
 
+// connections synchronizes access to to a net.Conn pool.
+type connections struct {
+	m  map[net.Conn]struct{}
+	mu sync.Mutex
+}
+
+func (m *connections) Add(c net.Conn) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.m[c] = struct{}{}
+}
+
+func (m *connections) Close(c net.Conn) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	_ = c.Close()
+	delete(m.m, c)
+}
+
+func (m *connections) Size() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.m)
+}
+
+func (m *connections) CloseAll() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for c := range m.m {
+		_ = c.Close()
+		delete(m.m, c)
+	}
+}
+
 // Daemon represents a Git daemon.
 type Daemon struct {
 	listener net.Listener
 	addr     string
 	finished chan struct{}
-	conns    map[net.Conn]struct{}
+	conns    connections
 	cfg      *config.Config
 	wg       sync.WaitGroup
 	once     sync.Once
-	mtx      sync.RWMutex
 }
 
 // NewDaemon returns a new Git daemon.
@@ -40,7 +73,7 @@ func NewDaemon(cfg *config.Config) (*Daemon, error) {
 		addr:     addr,
 		finished: make(chan struct{}, 1),
 		cfg:      cfg,
-		conns:    make(map[net.Conn]struct{}),
+		conns:    connections{m: make(map[net.Conn]struct{})},
 	}
 	listener, err := net.Listen("tcp", d.addr)
 	if err != nil {
@@ -83,7 +116,7 @@ func (d *Daemon) Start() error {
 		}
 
 		// Close connection if there are too many open connections.
-		if len(d.conns)+1 >= d.cfg.Git.MaxConnections {
+		if d.conns.Size()+1 >= d.cfg.Git.MaxConnections {
 			log.Printf("git: max connections reached, closing %s", conn.RemoteAddr())
 			fatal(conn, git.ErrMaxConnections)
 			continue
@@ -117,10 +150,9 @@ func (d *Daemon) handleClient(conn net.Conn) {
 		dur := time.Duration(d.cfg.Git.MaxTimeout) * time.Second
 		c.maxDeadline = time.Now().Add(dur)
 	}
-	d.conns[c] = struct{}{}
+	d.conns.Add(c)
 	defer func() {
-		c.Close()
-		delete(d.conns, c)
+		d.conns.Close(c)
 	}()
 
 	readc := make(chan struct{}, 1)
@@ -194,10 +226,7 @@ func (d *Daemon) handleClient(conn net.Conn) {
 func (d *Daemon) Close() error {
 	d.once.Do(func() { close(d.finished) })
 	err := d.listener.Close()
-	for c := range d.conns {
-		c.Close()
-		delete(d.conns, c)
-	}
+	d.conns.CloseAll()
 	return err
 }
 
