@@ -187,21 +187,6 @@ func (s *Selection) Init() tea.Cmd {
 	items := make([]selector.IdentifiableItem, 0)
 	cfg := s.cfg
 	pk := s.pk
-	// Put configured repos first
-	for _, r := range cfg.Repos {
-		acc := cfg.AuthRepo(r.Repo, pk)
-		if r.Private && acc < wgit.ReadOnlyAccess {
-			continue
-		}
-		repo, err := cfg.Source.GetRepo(r.Repo)
-		if err != nil {
-			continue
-		}
-		items = append(items, Item{
-			repo: repo,
-			cmd:  git.RepoURL(cfg.Host, cfg.Port, r.Repo),
-		})
-	}
 	for _, r := range cfg.Source.AllRepos() {
 		if r.Repo() == "config" {
 			rm, rp := r.Readme()
@@ -234,7 +219,7 @@ func (s *Selection) Init() tea.Cmd {
 			items = append(items, Item{
 				repo:       r,
 				lastUpdate: lastUpdate,
-				cmd:        git.RepoURL(cfg.Host, cfg.Port, r.Name()),
+				cmd:        git.RepoURL(cfg.Host, cfg.Port, r.Repo()),
 			})
 		}
 	}

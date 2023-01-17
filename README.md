@@ -117,6 +117,12 @@ anon-access: read-write
 # You can grant read-only access to users without private keys.
 allow-keyless: false
 
+# You can select the order in which repositories are shown:
+# 'alphabetical': alphabetical order
+# 'commit': repositories with latest commits show first
+# 'config': keep the order of config.yaml -> this is the default option
+repos-order: config
+
 # Customize repos in the menu
 repos:
   - name: Home

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 
 	"github.com/charmbracelet/soft-serve/git"
@@ -14,6 +15,12 @@ import (
 
 // ErrMissingRepo indicates that the requested repository could not be found.
 var ErrMissingRepo = errors.New("missing repo")
+
+const (
+	AscendingAlphabetical  = "alphabetical"
+	DescendingLatestCommit = "commit"
+	MimicConfig            = "config"
+)
 
 // Repo represents a Git repository.
 type Repo struct {
@@ -174,31 +181,71 @@ func (r *Repo) Push(remote, branch string) error {
 
 // RepoSource is a reference to an on-disk repositories.
 type RepoSource struct {
-	Path  string
-	mtx   sync.Mutex
-	repos map[string]*Repo
+	Path   string
+	mtx    sync.Mutex
+	repos  map[string]*Repo
+	sorted []*Repo
 }
 
 // NewRepoSource creates a new RepoSource.
-func NewRepoSource(repoPath string) *RepoSource {
+func NewRepoSource(repoPath string) (*RepoSource, error) {
 	err := os.MkdirAll(repoPath, os.ModeDir|os.FileMode(0700))
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	rs := &RepoSource{Path: repoPath}
 	rs.repos = make(map[string]*Repo, 0)
-	return rs
+
+	return rs, nil
+}
+
+// sort sorts the slice of repositories in the RepoSource
+func (rs *RepoSource) Sort(order string, rc []RepoConfig) {
+	repos := make([]*Repo, 0, len(rs.repos))
+	switch order {
+	case AscendingAlphabetical:
+		for _, v := range rs.repos {
+			repos = append(repos, v)
+		}
+		sort.Slice(repos, func(i, j int) bool {
+			rci := repos[i].Repo()
+			rcj := repos[j].Repo()
+			return rci < rcj
+		})
+	case DescendingLatestCommit:
+		for _, v := range rs.repos {
+			repos = append(repos, v)
+		}
+		sort.Slice(repos, func(i, j int) bool {
+			lci, err := repos[i].Commit("HEAD")
+			lcj, err := repos[j].Commit("HEAD")
+			if err != nil {
+				log.Fatal(err)
+			}
+			return lci.Committer.When.After(lcj.Committer.When)
+		})
+	case MimicConfig:
+		isInConfig := map[string]bool{}
+		for _, r := range rc {
+			repos = append(repos, rs.repos[r.Repo])
+			isInConfig[r.Repo] = true
+		}
+		for _, r := range rs.repos {
+			if !isInConfig[r.Repo()] {
+				repos = append(repos, r)
+			}
+		}
+	}
+
+	rs.sorted = repos
 }
 
 // AllRepos returns all repositories for the given RepoSource.
 func (rs *RepoSource) AllRepos() []*Repo {
 	rs.mtx.Lock()
 	defer rs.mtx.Unlock()
-	repos := make([]*Repo, 0, len(rs.repos))
-	for _, r := range rs.repos {
-		repos = append(repos, r)
-	}
-	return repos
+
+	return rs.sorted
 }
 
 // GetRepo returns a repository by name.
