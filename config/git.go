@@ -2,10 +2,11 @@ package config
 
 import (
 	"errors"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/charmbracelet/log"
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/gobwas/glob"
@@ -239,7 +240,7 @@ func (rs *RepoSource) LoadRepo(name string) error {
 	rp := filepath.Join(rs.Path, name)
 	r, err := rs.open(rp)
 	if err != nil {
-		log.Printf("error opening repository %q: %s", rp, err)
+		log.Error("error opening repository", "path", rp, "err", err)
 		return err
 	}
 	rs.repos[name] = r
@@ -254,7 +255,7 @@ func (rs *RepoSource) LoadRepos() error {
 	}
 	for _, de := range rd {
 		if !de.IsDir() {
-			log.Printf("warning: %q is not a directory", filepath.Join(rs.Path, de.Name()))
+			log.Warn("not a directory", "path", filepath.Join(rs.Path, de.Name()))
 			continue
 		}
 		err = rs.LoadRepo(de.Name())

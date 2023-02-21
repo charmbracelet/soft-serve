@@ -1,9 +1,9 @@
 package main
 
 import (
-	"log"
 	"runtime/debug"
 
+	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 )
 
@@ -49,6 +49,6 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 }
