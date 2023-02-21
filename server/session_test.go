@@ -40,15 +40,15 @@ func TestSession(t *testing.T) {
 		defer s.Close()
 		err := s.RequestPty("xterm", 80, 40, nil)
 		is.NoErr(err)
+		in, err := s.StdinPipe()
+		is.NoErr(err)
 		go func() {
-			time.Sleep(1 * time.Second)
-			s.Signal(gossh.SIGTERM)
-			// FIXME: exit with code 0 instead of forcibly closing the session
-			s.Close()
+			<-time.After(time.Second)
+			// Send "q" to exit the config command
+			in.Write([]byte("q"))
 		}()
-		err = s.Run("test")
-		var ee *gossh.ExitMissingError
-		is.True(errors.As(err, &ee))
+		err = s.Shell()
+		is.NoErr(err)
 	})
 }
 
