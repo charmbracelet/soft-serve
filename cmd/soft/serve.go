@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/charmbracelet/log"
 
 	"github.com/charmbracelet/soft-serve/server"
 	"github.com/charmbracelet/soft-serve/server/config"
@@ -23,7 +25,7 @@ var (
 			cfg := config.DefaultConfig()
 			s := server.NewServer(cfg)
 
-			log.Printf("Starting SSH server on %s:%d", cfg.BindAddr, cfg.Port)
+			log.Print("Starting SSH server", "addr", fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port))
 
 			done := make(chan os.Signal, 1)
 			lch := make(chan error, 1)
@@ -36,7 +38,7 @@ var (
 			signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 			<-done
 
-			log.Printf("Stopping SSH server on %s:%d", cfg.BindAddr, cfg.Port)
+			log.Print("Stopping SSH server", "addr", fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port))
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 			if err := s.Shutdown(ctx); err != nil {

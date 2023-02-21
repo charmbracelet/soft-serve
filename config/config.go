@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"log"
 	"path/filepath"
 	"strings"
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/charmbracelet/log"
 
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
@@ -192,7 +193,7 @@ func (cfg *Config) Reload() error {
 		}
 		if err := cfg.readConfig(repo, &rc); err != nil {
 			if !errors.Is(err, ErrNoConfig) {
-				log.Printf("error reading config: %v", err)
+				log.Error("error reading config", "err", err)
 			}
 			continue
 		}
@@ -208,7 +209,7 @@ func (cfg *Config) Reload() error {
 		repo := r.Repo()
 		err = r.UpdateServerInfo()
 		if err != nil {
-			log.Printf("error updating server info for %s: %s", repo, err)
+			log.Error("error updating server info", "repo", repo, "err", err)
 		}
 		pat := "README*"
 		rp := ""

@@ -3,10 +3,11 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"path/filepath"
 	"strings"
+
+	"github.com/charmbracelet/log"
 
 	appCfg "github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/server/config"
@@ -63,7 +64,7 @@ func NewServer(cfg *config.Config) *Server {
 					sh(s)
 				}
 			},
-			lm.Middleware(),
+			lm.MiddlewareWithLogger(log.StandardLog(log.StandardLogOption{ForceLevel: log.DebugLevel})),
 		),
 	}
 	s, err := wish.NewServer(
@@ -74,7 +75,7 @@ func NewServer(cfg *config.Config) *Server {
 		wish.WithMiddleware(mw...),
 	)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	return &Server{
 		SSHServer: s,

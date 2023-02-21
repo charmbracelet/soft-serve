@@ -1,8 +1,9 @@
 package config
 
 import (
-	"log"
 	"strings"
+
+	"github.com/charmbracelet/log"
 
 	gm "github.com/charmbracelet/wish/git"
 	"github.com/gliderlabs/ssh"
@@ -14,19 +15,19 @@ func (cfg *Config) Push(repo string, pk ssh.PublicKey) {
 	go func() {
 		err := cfg.Reload()
 		if err != nil {
-			log.Printf("error reloading after push: %s", err)
+			log.Error("error reloading after push", "err", err)
 		}
 		if cfg.Cfg.Callbacks != nil {
 			cfg.Cfg.Callbacks.Push(repo)
 		}
 		r, err := cfg.Source.GetRepo(repo)
 		if err != nil {
-			log.Printf("error getting repo after push: %s", err)
+			log.Error("error getting repo after push", "err", err)
 			return
 		}
 		err = r.UpdateServerInfo()
 		if err != nil {
-			log.Printf("error updating server info after push: %s", err)
+			log.Error("error updating server info after push", "err", err)
 		}
 	}()
 }
@@ -88,7 +89,7 @@ func (cfg *Config) accessForKey(repo string, pk ssh.PublicKey) gm.AccessLevel {
 		for _, k := range user.PublicKeys {
 			apk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(k)))
 			if err != nil {
-				log.Printf("error: malformed authorized key: '%s'", k)
+				log.Error("malformed authorized key", "key", k)
 				return gm.NoAccess
 			}
 			if ssh.KeysEqual(pk, apk) {
