@@ -22,6 +22,7 @@ type Config struct {
 	Port             int      `env:"SOFT_SERVE_PORT" envDefault:"23231"`
 	KeyPath          string   `env:"SOFT_SERVE_KEY_PATH"`
 	RepoPath         string   `env:"SOFT_SERVE_REPO_PATH" envDefault:".repos"`
+	Debug            bool     `env:"SOFT_SERVE_DEBUG" envDefault:"false"`
 	InitialAdminKeys []string `env:"SOFT_SERVE_INITIAL_ADMIN_KEY" envSeparator:"\n"`
 	Callbacks        Callbacks
 	ErrorLog         *glog.Logger
@@ -33,6 +34,9 @@ func DefaultConfig() *Config {
 	cfg := &Config{ErrorLog: log.StandardLog(log.StandardLogOption{ForceLevel: log.ErrorLevel})}
 	if err := env.Parse(cfg); err != nil {
 		log.Fatal(err)
+	}
+	if cfg.Debug {
+		log.SetLevel(log.DebugLevel)
 	}
 	if cfg.KeyPath == "" {
 		// NB: cross-platform-compatible path
