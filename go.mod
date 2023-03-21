@@ -21,7 +21,7 @@ require (
 )
 
 require (
-	github.com/aymanbagabas/go-osc52 v1.2.1
+	github.com/aymanbagabas/go-osc52 v1.2.2
 	github.com/charmbracelet/keygen v0.3.0
 	github.com/charmbracelet/log v0.2.0
 	github.com/gobwas/glob v0.2.3
