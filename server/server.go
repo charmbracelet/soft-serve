@@ -64,7 +64,7 @@ func NewServer(cfg *config.Config) *Server {
 					sh(s)
 				}
 			},
-			lm.MiddlewareWithLogger(log.StandardLog(log.StandardLogOption{ForceLevel: log.DebugLevel})),
+			lm.MiddlewareWithLogger(log.StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})),
 		),
 	}
 	s, err := wish.NewServer(

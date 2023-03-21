@@ -31,7 +31,7 @@ type Config struct {
 // DefaultConfig returns a Config with the values populated with the defaults
 // or specified environment variables.
 func DefaultConfig() *Config {
-	cfg := &Config{ErrorLog: log.StandardLog(log.StandardLogOption{ForceLevel: log.ErrorLevel})}
+	cfg := &Config{ErrorLog: log.StandardLog(log.StandardLogOptions{ForceLevel: log.ErrorLevel})}
 	if err := env.Parse(cfg); err != nil {
 		log.Fatal(err)
 	}
