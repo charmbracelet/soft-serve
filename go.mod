@@ -8,7 +8,7 @@ require (
 	github.com/charmbracelet/bubbles v0.15.0
 	github.com/charmbracelet/bubbletea v0.23.2
 	github.com/charmbracelet/glamour v0.5.1-0.20221015050842-c4cd9ed13e4c
-	github.com/charmbracelet/lipgloss v0.6.0
+	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/charmbracelet/wish v0.7.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gliderlabs/ssh v0.3.5
@@ -16,7 +16,7 @@ require (
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/matryer/is v1.4.0
 	github.com/muesli/reflow v0.3.0
-	github.com/muesli/termenv v0.14.0
+	github.com/muesli/termenv v0.15.1
 	github.com/sergi/go-diff v1.1.0
 )
 
@@ -41,6 +41,7 @@ require (
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
+	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/caarlos0/sshmarshal v0.1.0 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
@@ -76,7 +77,7 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
