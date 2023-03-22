@@ -17,7 +17,7 @@ require (
 	github.com/matryer/is v1.4.1
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.15.1
-	github.com/sergi/go-diff v1.1.0
+	github.com/sergi/go-diff v1.3.1
 )
 
 require (
