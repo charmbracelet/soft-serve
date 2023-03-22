@@ -53,6 +53,14 @@ const (
 
 var (
 	logger = log.WithPrefix("backend.file")
+
+	defaults = map[string]string{
+		serverName:   "Soft Serve",
+		serverHost:   "localhost",
+		serverPort:   "23231",
+		anonAccess:   backend.ReadOnlyAccess.String(),
+		allowKeyless: "true",
+	}
 )
 
 var _ backend.Backend = &FileBackend{}
@@ -114,8 +122,17 @@ func NewFileBackend(path string) (*FileBackend, error) {
 		}
 	}
 	for _, file := range []string{admins, anonAccess, allowKeyless, serverHost, serverName, serverPort} {
-		if _, err := os.OpenFile(filepath.Join(path, file), os.O_RDONLY|os.O_CREATE, 0644); err != nil {
-			return nil, err
+		fp := filepath.Join(path, file)
+		_, err := os.Stat(fp)
+		if errors.Is(err, fs.ErrNotExist) {
+			f, err := os.Create(fp)
+			if err != nil {
+				return nil, err
+			}
+			if c, ok := defaults[file]; ok {
+				io.WriteString(f, c) // nolint:errcheck
+			}
+			_ = f.Close()
 		}
 	}
 	return fb, nil
@@ -127,6 +144,7 @@ func NewFileBackend(path string) (*FileBackend, error) {
 func (fb *FileBackend) AccessLevel(repo string, pk gossh.PublicKey) backend.AccessLevel {
 	private := fb.IsPrivate(repo)
 	anon := fb.AnonAccess()
+	log.Debugf("anon access: %s", anon)
 	if pk != nil {
 		// Check if the key is an admin.
 		if fb.IsAdmin(pk) {
@@ -586,7 +604,7 @@ func (fb *FileBackend) SetDefaultBranch(repo string, branch string) error {
 		return err
 	}
 
-	if _, err := r.SymbolicRef("HEAD",gitm.RefsHeads + branch); err != nil {
+	if _, err := r.SymbolicRef("HEAD", gitm.RefsHeads+branch); err != nil {
 		logger.Debug("failed to set default branch", "err", err)
 		return err
 	}
