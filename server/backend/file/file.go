@@ -32,7 +32,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/gliderlabs/ssh"
+	"github.com/charmbracelet/ssh"
 	gitm "github.com/gogs/git-module"
 	gossh "golang.org/x/crypto/ssh"
 )
@@ -586,10 +586,7 @@ func (fb *FileBackend) SetDefaultBranch(repo string, branch string) error {
 		return err
 	}
 
-	if _, err := r.SymbolicRef(gitm.SymbolicRefOptions{
-		Name: "HEAD",
-		Ref:  gitm.RefsHeads + branch,
-	}); err != nil {
+	if _, err := r.SymbolicRef("HEAD",gitm.RefsHeads + branch); err != nil {
 		logger.Debug("failed to set default branch", "err", err)
 		return err
 	}
