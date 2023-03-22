@@ -2,13 +2,13 @@ package server
 
 import (
 	"context"
-	"net"
 
 	"github.com/charmbracelet/log"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/git/daemon"
 	gm "github.com/charmbracelet/soft-serve/server/git/ssh"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -17,11 +17,13 @@ import (
 	rm "github.com/charmbracelet/wish/recover"
 	"github.com/muesli/termenv"
 	gossh "golang.org/x/crypto/ssh"
+	"golang.org/x/sync/errgroup"
 )
 
 // Server is the Soft Serve server.
 type Server struct {
 	SSHServer *ssh.Server
+	GitDaemon *daemon.Daemon
 	Config    *config.Config
 	Backend   backend.Backend
 	Access    backend.AccessMethod
@@ -50,17 +52,24 @@ func NewServer(cfg *config.Config) (*Server, error) {
 			lm.MiddlewareWithLogger(log.StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})),
 		),
 	}
-	s, err := wish.NewServer(
+
+	var err error
+	srv.SSHServer, err = wish.NewServer(
 		ssh.PublicKeyAuth(srv.PublicKeyHandler),
 		ssh.KeyboardInteractiveAuth(srv.KeyboardInteractiveHandler),
 		wish.WithAddress(cfg.SSH.ListenAddr),
-		wish.WithHostKeyPath(cfg.KeyPath),
+		wish.WithHostKeyPath(cfg.SSH.KeyPath),
 		wish.WithMiddleware(mw...),
 	)
 	if err != nil {
 		return nil, err
 	}
-	srv.SSHServer = s
+
+	srv.GitDaemon, err = daemon.NewDaemon(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return srv, nil
 }
 
@@ -75,27 +84,45 @@ func (srv *Server) KeyboardInteractiveHandler(_ ssh.Context, _ gossh.KeyboardInt
 }
 
 // Start starts the SSH server.
-func (srv *Server) Start() error {
-	if err := srv.SSHServer.ListenAndServe(); err != ssh.ErrServerClosed {
-		return err
-	}
-	return nil
-}
-
-// Serve serves the SSH server using the provided listener.
-func (srv *Server) Serve(l net.Listener) error {
-	if err := srv.SSHServer.Serve(l); err != ssh.ErrServerClosed {
-		return err
-	}
-	return nil
+func (s *Server) Start() error {
+	var errg errgroup.Group
+	errg.Go(func() error {
+		log.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
+		if err := s.GitDaemon.Start(); err != daemon.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+	errg.Go(func() error {
+		log.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
+		if err := s.SSHServer.ListenAndServe(); err != ssh.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+	return errg.Wait()
 }
 
 // Shutdown lets the server gracefully shutdown.
-func (srv *Server) Shutdown(ctx context.Context) error {
-	return srv.SSHServer.Shutdown(ctx)
+func (s *Server) Shutdown(ctx context.Context) error {
+	var errg errgroup.Group
+	errg.Go(func() error {
+		return s.GitDaemon.Shutdown(ctx)
+	})
+	errg.Go(func() error {
+		return s.SSHServer.Shutdown(ctx)
+	})
+	return errg.Wait()
 }
 
 // Close closes the SSH server.
-func (srv *Server) Close() error {
-	return srv.SSHServer.Close()
+func (s *Server) Close() error {
+	var errg errgroup.Group
+	errg.Go(func() error {
+		return s.SSHServer.Close()
+	})
+	errg.Go(func() error {
+		return s.GitDaemon.Close()
+	})
+	return errg.Wait()
 }

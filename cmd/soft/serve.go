@@ -7,8 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/log"
-
 	"github.com/charmbracelet/soft-serve/server"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/spf13/cobra"
@@ -27,8 +25,6 @@ var (
 				return err
 			}
 
-			log.Print("Starting SSH server", "addr", cfg.SSH.ListenAddr)
-
 			done := make(chan os.Signal, 1)
 			lch := make(chan error, 1)
 			go func() {
@@ -40,7 +36,6 @@ var (
 			signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 			<-done
 
-			log.Print("Stopping SSH server", "addr", cfg.SSH.ListenAddr)
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 			if err := s.Shutdown(ctx); err != nil {

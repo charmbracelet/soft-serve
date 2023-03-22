@@ -18,10 +18,28 @@ type SSHConfig struct {
 	KeyPath string `env:"KEY_PATH" envDefault:"soft_serve"`
 }
 
+// GitConfig is the Git daemon configuration for the server.
+type GitConfig struct {
+	// ListenAddr is the address on which the Git daemon will listen.
+	ListenAddr string `env:"LISTEN_ADDR" envDefault:":9418"`
+
+	// MaxTimeout is the maximum number of seconds a connection can take.
+	MaxTimeout int `env:"MAX_TIMEOUT" envDefault:"0"`
+
+	// IdleTimeout is the number of seconds a connection can be idle before it is closed.
+	IdleTimeout int `env:"IDLE_TIMEOUT" envDefault:"3"`
+
+	// MaxConnections is the maximum number of concurrent connections.
+	MaxConnections int `env:"MAX_CONNECTIONS" envDefault:"32"`
+}
+
 // Config is the configuration for Soft Serve.
 type Config struct {
 	// SSH is the configuration for the SSH server.
 	SSH SSHConfig `env:"SSH", envPrefix:"SSH_"`
+
+	// Git is the configuration for the Git daemon.
+	Git GitConfig `env:"GIT", envPrefix:"GIT_"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEY" envSeparator:"\n"`
