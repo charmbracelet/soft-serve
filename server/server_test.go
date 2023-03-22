@@ -8,7 +8,7 @@ import (
 
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/soft-serve/server/config"
-	"github.com/gliderlabs/ssh"
+	"github.com/charmbracelet/ssh"
 	"github.com/go-git/go-git/v5"
 	gconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
