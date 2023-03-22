@@ -2,22 +2,27 @@ package repo
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
-	"github.com/charmbracelet/soft-serve/ui/git"
 )
 
-type ReadmeMsg struct{}
+// ReadmeMsg is a message sent when the readme is loaded.
+type ReadmeMsg struct {
+	Msg tea.Msg
+}
 
 // Readme is the readme component page.
 type Readme struct {
-	common common.Common
-	code   *code.Code
-	ref    RefMsg
-	repo   git.GitRepo
+	common     common.Common
+	code       *code.Code
+	ref        RefMsg
+	repo       backend.Repository
+	readmePath string
 }
 
 // NewReadme creates a new readme model.
@@ -64,15 +69,7 @@ func (r *Readme) FullHelp() [][]key.Binding {
 
 // Init implements tea.Model.
 func (r *Readme) Init() tea.Cmd {
-	if r.repo == nil {
-		return common.ErrorCmd(git.ErrMissingRepo)
-	}
-	rm, rp := r.repo.Readme()
-	r.code.GotoTop()
-	return tea.Batch(
-		r.code.SetContent(rm, rp),
-		r.updateReadmeCmd,
-	)
+	return r.updateReadmeCmd
 }
 
 // Update implements tea.Model.
@@ -80,11 +77,13 @@ func (r *Readme) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case RepoMsg:
-		r.repo = git.GitRepo(msg)
-		cmds = append(cmds, r.Init())
+		r.repo = msg
 	case RefMsg:
 		r.ref = msg
 		cmds = append(cmds, r.Init())
+	case EmptyRepoMsg:
+		r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(),
+			r.repo.Name()), ".md")
 	}
 	c, cmd := r.code.Update(msg)
 	r.code = c.(*code.Code)
@@ -101,7 +100,11 @@ func (r *Readme) View() string {
 
 // StatusBarValue implements statusbar.StatusBar.
 func (r *Readme) StatusBarValue() string {
-	return ""
+	dir := filepath.Dir(r.readmePath)
+	if dir == "." {
+		return ""
+	}
+	return dir
 }
 
 // StatusBarInfo implements statusbar.StatusBar.
@@ -110,5 +113,19 @@ func (r *Readme) StatusBarInfo() string {
 }
 
 func (r *Readme) updateReadmeCmd() tea.Msg {
-	return ReadmeMsg{}
+	m := ReadmeMsg{}
+	if r.repo == nil {
+		return common.ErrorCmd(common.ErrMissingRepo)
+	}
+	rm, rp, err := backend.Readme(r.repo)
+	if err != nil {
+		return common.ErrorCmd(err)
+	}
+	r.readmePath = rp
+	r.code.GotoTop()
+	cmd := r.code.SetContent(rm, rp)
+	if cmd != nil {
+		m.Msg = cmd()
+	}
+	return m
 }

@@ -3,6 +3,7 @@ package selection
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -10,26 +11,76 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/ui/common"
-	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/dustin/go-humanize"
 )
 
+var _ sort.Interface = Items{}
+
+// Items is a list of Item.
+type Items []Item
+
+// Len implements sort.Interface.
+func (it Items) Len() int {
+	return len(it)
+}
+
+// Less implements sort.Interface.
+func (it Items) Less(i int, j int) bool {
+	if it[i].lastUpdate == nil && it[j].lastUpdate != nil {
+		return false
+	}
+	if it[i].lastUpdate != nil && it[j].lastUpdate == nil {
+		return true
+	}
+	if it[i].lastUpdate == nil && it[j].lastUpdate == nil {
+		return it[i].repo.Name() < it[j].repo.Name()
+	}
+	return it[i].lastUpdate.After(*it[j].lastUpdate)
+}
+
+// Swap implements sort.Interface.
+func (it Items) Swap(i int, j int) {
+	it[i], it[j] = it[j], it[i]
+}
+
 // Item represents a single item in the selector.
 type Item struct {
-	repo       git.GitRepo
-	lastUpdate time.Time
+	repo       backend.Repository
+	lastUpdate *time.Time
 	cmd        string
 	copied     time.Time
 }
 
+// New creates a new Item.
+func NewItem(repo backend.Repository, cfg *config.Config) (Item, error) {
+	r, err := repo.Repository()
+	if err != nil {
+		return Item{}, err
+	}
+	var lastUpdate *time.Time
+	lu, err := r.LatestCommitTime()
+	if err == nil {
+		lastUpdate = &lu
+	}
+	return Item{
+		repo:       repo,
+		lastUpdate: lastUpdate,
+		cmd:        common.RepoURL(cfg.Backend.ServerHost(), cfg.Backend.ServerPort(), repo.Name()),
+	}, nil
+}
+
 // ID implements selector.IdentifiableItem.
 func (i Item) ID() string {
-	return i.repo.Repo()
+	return i.repo.Name()
 }
 
 // Title returns the item title. Implements list.DefaultItem.
-func (i Item) Title() string { return i.repo.Name() }
+func (i Item) Title() string {
+	return i.repo.Name()
+}
 
 // Description returns the item description. Implements list.DefaultItem.
 func (i Item) Description() string { return i.repo.Description() }
@@ -107,7 +158,10 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if isSelected {
 		title += " "
 	}
-	updatedStr := fmt.Sprintf(" Updated %s", humanize.Time(i.lastUpdate))
+	var updatedStr string
+	if i.lastUpdate != nil {
+		updatedStr = fmt.Sprintf(" Updated %s", humanize.Time(*i.lastUpdate))
+	}
 	if m.Width()-styles.Base.GetHorizontalFrameSize()-lipgloss.Width(updatedStr)-lipgloss.Width(title) <= 0 {
 		updatedStr = ""
 	}
