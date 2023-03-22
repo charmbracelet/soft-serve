@@ -14,7 +14,7 @@ require (
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/go-git/go-git/v5 v5.6.1
-	github.com/matryer/is v1.4.0
+	github.com/matryer/is v1.4.1
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.15.1
 	github.com/sergi/go-diff v1.1.0
