@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -88,20 +87,21 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 				if len(cmd) >= 2 && strings.HasPrefix(cmd[0], "git") {
 					gc := cmd[0]
 					// repo should be in the form of "repo.git"
-					repo := sanitizeRepoName(cmd[1])
-					name := repo
-					if strings.Contains(repo, "/") {
-						log.Printf("invalid repo: %s", repo)
-						sshFatal(s, fmt.Errorf("%s: %s", ErrInvalidRepo, "user repos not supported"))
-						return
-					}
+					name := sanitizeRepoName(cmd[1])
 					pk := s.PublicKey()
 					access := cfg.Access.AccessLevel(name, pk)
 					// git bare repositories should end in ".git"
 					// https://git-scm.com/docs/gitrepository-layout
-					repo = strings.TrimSuffix(repo, ".git") + ".git"
+					repo := name + ".git"
+
 					// FIXME: determine repositories path
-					repoDir := filepath.Join(cfg.DataPath, "repos", repo)
+					reposDir := filepath.Join(cfg.DataPath, "repos")
+					if err := ensureWithin(reposDir, repo); err != nil {
+						sshFatal(s, err)
+						return
+					}
+
+					repoDir := filepath.Join(reposDir, repo)
 					switch gc {
 					case ReceivePackBin:
 						if access < backend.ReadWriteAccess {
