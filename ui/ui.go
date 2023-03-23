@@ -2,12 +2,12 @@ package ui
 
 import (
 	"errors"
-	"log"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/footer"
@@ -15,6 +15,10 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/pages/repo"
 	"github.com/charmbracelet/soft-serve/ui/pages/selection"
+)
+
+var (
+	logger = log.WithPrefix("ui")
 )
 
 type page int
@@ -164,7 +168,7 @@ func (ui *UI) IsFiltering() bool {
 
 // Update implements tea.Model.
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	log.Printf("msg received: %T", msg)
+	logger.Debugf("msg received: %T", msg)
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -294,7 +298,7 @@ func (ui *UI) openRepo(rn string) (backend.Repository, error) {
 	}
 	repos, err := cfg.Backend.Repositories()
 	if err != nil {
-		log.Printf("ui: failed to list repos: %v", err)
+		logger.Debugf("ui: failed to list repos: %v", err)
 		return nil, err
 	}
 	for _, r := range repos {

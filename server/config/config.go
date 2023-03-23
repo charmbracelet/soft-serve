@@ -51,9 +51,6 @@ type Config struct {
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" envDefault:"data"`
 
-	// Debug enables debug logging.
-	Debug bool `env:"DEBUG" envDefault:"false"`
-
 	// Backend is the Git backend to use.
 	Backend backend.Backend
 
@@ -69,9 +66,6 @@ func DefaultConfig() *Config {
 		Prefix: "SOFT_SERVE_",
 	}); err != nil {
 		log.Fatal(err)
-	}
-	if cfg.Debug {
-		log.SetLevel(log.DebugLevel)
 	}
 	fb, err := file.NewFileBackend(cfg.DataPath)
 	if err != nil {

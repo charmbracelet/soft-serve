@@ -3,7 +3,6 @@ package repo
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 
@@ -182,7 +181,7 @@ func (r *Refs) updateItemsCmd() tea.Msg {
 	}
 	refs, err := rr.References()
 	if err != nil {
-		log.Printf("ui: error getting references: %v", err)
+		logger.Debugf("ui: error getting references: %v", err)
 		return common.ErrorMsg(err)
 	}
 	for _, ref := range refs {
@@ -228,10 +227,10 @@ func UpdateRefCmd(repo backend.Repository) tea.Cmd {
 			if bs, err := r.Branches(); err != nil && len(bs) == 0 {
 				return EmptyRepoMsg{}
 			}
-			log.Printf("ui: error getting HEAD reference: %v", err)
+			logger.Debugf("ui: error getting HEAD reference: %v", err)
 			return common.ErrorMsg(err)
 		}
-		log.Printf("HEAD: %s", ref.Name())
+		logger.Debugf("HEAD: %s", ref.Name())
 		return RefMsg(ref)
 	}
 }

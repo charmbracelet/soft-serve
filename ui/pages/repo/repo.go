@@ -9,12 +9,17 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/ui/components/statusbar"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
+)
+
+var (
+	logger = log.WithPrefix("ui.repo")
 )
 
 type state int

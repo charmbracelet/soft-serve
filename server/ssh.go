@@ -40,6 +40,7 @@ func NewSSHServer(cfg *config.Config) (*SSHServer, error) {
 			cm.Middleware(cfg),
 			// Git middleware.
 			s.Middleware(cfg),
+			// Logging middleware.
 			lm.MiddlewareWithLogger(logger),
 		),
 	}
@@ -66,9 +67,7 @@ func NewSSHServer(cfg *config.Config) (*SSHServer, error) {
 
 // PublicKeyAuthHandler handles public key authentication.
 func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
-	al := s.cfg.Access.AccessLevel("", pk)
-	logger.Debug("publickey handler", "level", al)
-	return al > backend.NoAccess
+	return s.cfg.Access.AccessLevel("", pk) > backend.NoAccess
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
