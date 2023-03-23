@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/spf13/cobra"
@@ -24,10 +23,6 @@ var (
 			s, err := server.NewServer(cfg)
 			if err != nil {
 				return err
-			}
-
-			if cfg.Debug {
-				log.SetLevel(log.DebugLevel)
 			}
 
 			done := make(chan os.Signal, 1)

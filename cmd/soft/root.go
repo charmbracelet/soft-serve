@@ -4,6 +4,7 @@ import (
 	"runtime/debug"
 
 	"github.com/charmbracelet/log"
+	_ "github.com/charmbracelet/soft-serve/log"
 	"github.com/spf13/cobra"
 )
 
