@@ -24,7 +24,7 @@ func Middleware(cfg *config.Config) wish.Middleware {
 				use := "ssh"
 				port := cfg.Backend.ServerPort()
 				if port != "22" {
-					use += fmt.Sprintf(" -p%d", port)
+					use += fmt.Sprintf(" -p%s", port)
 				}
 				use += fmt.Sprintf(" %s", cfg.Backend.ServerHost())
 				cmd := RootCommand()

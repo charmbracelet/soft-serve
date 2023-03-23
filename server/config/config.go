@@ -36,10 +36,10 @@ type GitConfig struct {
 // Config is the configuration for Soft Serve.
 type Config struct {
 	// SSH is the configuration for the SSH server.
-	SSH SSHConfig `env:"SSH", envPrefix:"SSH_"`
+	SSH SSHConfig `envPrefix:"SSH_"`
 
 	// Git is the configuration for the Git daemon.
-	Git GitConfig `env:"GIT", envPrefix:"GIT_"`
+	Git GitConfig `envPrefix:"GIT_"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEY" envSeparator:"\n"`

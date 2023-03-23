@@ -3,11 +3,11 @@ package daemon
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -26,11 +26,10 @@ func TestMain(m *testing.M) {
 	}
 	defer os.RemoveAll(tmp)
 	os.Setenv("SOFT_SERVE_DATA_PATH", tmp)
-	os.Setenv("SOFT_SERVE_ANON_ACCESS", "read-only")
 	os.Setenv("SOFT_SERVE_GIT_MAX_CONNECTIONS", "3")
 	os.Setenv("SOFT_SERVE_GIT_MAX_TIMEOUT", "100")
 	os.Setenv("SOFT_SERVE_GIT_IDLE_TIMEOUT", "1")
-	os.Setenv("SOFT_SERVE_GIT_PORT", strconv.Itoa(randomPort()))
+	os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", randomPort()))
 	cfg := config.DefaultConfig()
 	d, err := NewDaemon(cfg)
 	if err != nil {
@@ -44,11 +43,10 @@ func TestMain(m *testing.M) {
 	}()
 	code := m.Run()
 	os.Unsetenv("SOFT_SERVE_DATA_PATH")
-	os.Unsetenv("SOFT_SERVE_ANON_ACCESS")
 	os.Unsetenv("SOFT_SERVE_GIT_MAX_CONNECTIONS")
 	os.Unsetenv("SOFT_SERVE_GIT_MAX_TIMEOUT")
 	os.Unsetenv("SOFT_SERVE_GIT_IDLE_TIMEOUT")
-	os.Unsetenv("SOFT_SERVE_GIT_PORT")
+	os.Unsetenv("SOFT_SERVE_GIT_LISTEN_ADDR")
 	_ = d.Close()
 	os.Exit(code)
 }

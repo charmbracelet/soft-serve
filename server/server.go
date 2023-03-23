@@ -75,7 +75,9 @@ func NewServer(cfg *config.Config) (*Server, error) {
 
 // PublicKeyAuthHandler handles public key authentication.
 func (srv *Server) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
-	return srv.Access.AccessLevel("", pk) > backend.NoAccess
+	al := srv.Access.AccessLevel("", pk)
+	log.Debug("publickey handler", "level", al)
+	return al > backend.NoAccess
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.

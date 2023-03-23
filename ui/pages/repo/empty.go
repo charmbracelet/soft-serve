@@ -10,7 +10,7 @@ import (
 func defaultEmptyRepoMsg(cfg *config.Config, repo string) string {
 	host := cfg.Backend.ServerHost()
 	if cfg.Backend.ServerPort() != "22" {
-		host = fmt.Sprintf("%s:%d", host, cfg.Backend.ServerPort())
+		host = fmt.Sprintf("%s:%s", host, cfg.Backend.ServerPort())
 	}
 	repo = strings.TrimSuffix(repo, ".git")
 	return fmt.Sprintf(`# Quick Start
