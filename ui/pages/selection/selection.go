@@ -2,20 +2,17 @@ package selection
 
 import (
 	"fmt"
-	"strings"
+	"log"
+	"sort"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/config"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
-	"github.com/charmbracelet/soft-serve/ui/git"
-	wgit "github.com/charmbracelet/wish/git"
-	"github.com/gliderlabs/ssh"
 )
 
 type pane int
@@ -35,8 +32,6 @@ func (p pane) String() string {
 
 // Selection is the model for the selection screen/page.
 type Selection struct {
-	cfg          *config.Config
-	pk           ssh.PublicKey
 	common       common.Common
 	readme       *code.Code
 	readmeHeight int
@@ -46,29 +41,27 @@ type Selection struct {
 }
 
 // New creates a new selection model.
-func New(cfg *config.Config, pk ssh.PublicKey, common common.Common) *Selection {
+func New(c common.Common) *Selection {
 	ts := make([]string, lastPane)
 	for i, b := range []pane{selectorPane, readmePane} {
 		ts[i] = b.String()
 	}
-	t := tabs.New(common, ts)
+	t := tabs.New(c, ts)
 	t.TabSeparator = lipgloss.NewStyle()
-	t.TabInactive = common.Styles.TopLevelNormalTab.Copy()
-	t.TabActive = common.Styles.TopLevelActiveTab.Copy()
-	t.TabDot = common.Styles.TopLevelActiveTabDot.Copy()
+	t.TabInactive = c.Styles.TopLevelNormalTab.Copy()
+	t.TabActive = c.Styles.TopLevelActiveTab.Copy()
+	t.TabDot = c.Styles.TopLevelActiveTabDot.Copy()
 	t.UseDot = true
 	sel := &Selection{
-		cfg:        cfg,
-		pk:         pk,
-		common:     common,
+		common:     c,
 		activePane: selectorPane, // start with the selector focused
 		tabs:       t,
 	}
-	readme := code.New(common, "", "")
-	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
-	selector := selector.New(common,
+	readme := code.New(c, "", "")
+	readme.NoContentStyle = c.Styles.NoContent.Copy().SetString("No readme found.")
+	selector := selector.New(c,
 		[]selector.IdentifiableItem{},
-		ItemDelegate{&common, &sel.activePane})
+		ItemDelegate{&c, &sel.activePane})
 	selector.SetShowTitle(false)
 	selector.SetShowHelp(false)
 	selector.SetShowStatusBar(false)
@@ -184,59 +177,29 @@ func (s *Selection) FullHelp() [][]key.Binding {
 // Init implements tea.Model.
 func (s *Selection) Init() tea.Cmd {
 	var readmeCmd tea.Cmd
-	items := make([]selector.IdentifiableItem, 0)
-	cfg := s.cfg
-	pk := s.pk
-	// Put configured repos first
-	for _, r := range cfg.Repos {
-		acc := cfg.AuthRepo(r.Repo, pk)
-		if r.Private && acc < wgit.ReadOnlyAccess {
-			continue
-		}
-		repo, err := cfg.Source.GetRepo(r.Repo)
-		if err != nil {
-			continue
-		}
-		items = append(items, Item{
-			repo: repo,
-			cmd:  git.RepoURL(cfg.Host, cfg.Port, r.Repo),
-		})
+	cfg := s.common.Config()
+	pk := s.common.PublicKey()
+	if cfg == nil || pk == nil {
+		return nil
 	}
-	for _, r := range cfg.Source.AllRepos() {
-		if r.Repo() == "config" {
-			rm, rp := r.Readme()
-			s.readmeHeight = strings.Count(rm, "\n")
-			readmeCmd = s.readme.SetContent(rm, rp)
-		}
-		acc := cfg.AuthRepo(r.Repo(), pk)
-		if r.IsPrivate() && acc < wgit.ReadOnlyAccess {
+	repos, err := cfg.Backend.Repositories()
+	if err != nil {
+		return common.ErrorCmd(err)
+	}
+	sortedItems := make(Items, 0)
+	// Put configured repos first
+	for _, r := range repos {
+		item, err := NewItem(r, cfg)
+		if err != nil {
+			log.Printf("ui: failed to create item for %s: %v", r.Name(), err)
 			continue
 		}
-		exists := false
-		lc, err := r.Commit("HEAD")
-		if err != nil {
-			return common.ErrorCmd(err)
-		}
-		lastUpdate := lc.Committer.When
-		if lastUpdate.IsZero() {
-			lastUpdate = lc.Author.When
-		}
-		for i, item := range items {
-			item := item.(Item)
-			if item.repo.Repo() == r.Repo() {
-				exists = true
-				item.lastUpdate = lastUpdate
-				items[i] = item
-				break
-			}
-		}
-		if !exists {
-			items = append(items, Item{
-				repo:       r,
-				lastUpdate: lastUpdate,
-				cmd:        git.RepoURL(cfg.Host, cfg.Port, r.Name()),
-			})
-		}
+		sortedItems = append(sortedItems, item)
+	}
+	sort.Sort(sortedItems)
+	items := make([]selector.IdentifiableItem, len(sortedItems))
+	for i, it := range sortedItems {
+		items[i] = it
 	}
 	return tea.Batch(
 		s.selector.Init(),

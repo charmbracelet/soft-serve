@@ -20,7 +20,7 @@ var (
 				return err
 			}
 
-			manPage = manPage.WithSection("Copyright", "(C) 2021-2022 Charmbracelet, Inc.\n"+
+			manPage = manPage.WithSection("Copyright", "(C) 2021-2023 Charmbracelet, Inc.\n"+
 				"Released under MIT license.")
 			fmt.Println(manPage.Build(roff.NewDocument()))
 			return nil
