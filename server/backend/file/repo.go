@@ -16,6 +16,7 @@ var _ backend.Repository = (*Repo)(nil)
 //
 // It implemenets backend.Repository.
 type Repo struct {
+	root string
 	path string
 }
 
@@ -23,14 +24,15 @@ type Repo struct {
 //
 // It implements backend.Repository.
 func (r *Repo) Name() string {
-	return strings.TrimSuffix(filepath.Base(r.path), ".git")
+	name := strings.TrimSuffix(strings.TrimPrefix(r.path, r.root), ".git")
+	return strings.TrimPrefix(name, "/")
 }
 
 // Description returns the repository's description.
 //
 // It implements backend.Repository.
 func (r *Repo) Description() string {
-	desc, err := readAll(r.path)
+	desc, err := readAll(filepath.Join(r.path, description))
 	if err != nil {
 		logger.Debug("failed to read description file", "err", err,
 			"path", filepath.Join(r.path, description))
@@ -44,7 +46,7 @@ func (r *Repo) Description() string {
 //
 // It implements backend.Repository.
 func (r *Repo) IsPrivate() bool {
-	_, err := os.Stat(filepath.Join(r.path, private))
+	_, err := os.Stat(filepath.Join(r.path, exportOk))
 	return errors.Is(err, os.ErrExist)
 }
 

@@ -48,7 +48,7 @@ const (
 	repos        = "repos"
 	collabs      = "collaborators"
 	description  = "description"
-	private      = "private"
+	exportOk     = "git-daemon-export-ok"
 	settings     = "settings"
 )
 
@@ -264,7 +264,7 @@ func (fb *FileBackend) AnonAccess() backend.AccessLevel {
 // It implements backend.Backend.
 func (fb *FileBackend) Description(repo string) string {
 	repo = sanatizeRepo(repo) + ".git"
-	r := &Repo{path: filepath.Join(fb.reposPath(), repo)}
+	r := &Repo{path: filepath.Join(fb.reposPath(), repo), root: fb.reposPath()}
 	return r.Description()
 }
 
@@ -307,7 +307,15 @@ func (fb *FileBackend) IsAdmin(pk gossh.PublicKey) bool {
 // It implements backend.Backend.
 func (fb *FileBackend) IsCollaborator(pk gossh.PublicKey, repo string) bool {
 	repo = sanatizeRepo(repo) + ".git"
+	_, err := os.Stat(filepath.Join(fb.reposPath(), repo))
+	if errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+
 	f, err := os.Open(fb.collabsPath(repo))
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		return false
+	}
 	if err != nil {
 		logger.Debug("failed to open collaborators file", "err", err, "path", fb.collabsPath(repo))
 		return false
@@ -333,7 +341,7 @@ func (fb *FileBackend) IsCollaborator(pk gossh.PublicKey, repo string) bool {
 // It implements backend.Backend.
 func (fb *FileBackend) IsPrivate(repo string) bool {
 	repo = sanatizeRepo(repo) + ".git"
-	r := &Repo{path: filepath.Join(fb.reposPath(), repo)}
+	r := &Repo{path: filepath.Join(fb.reposPath(), repo), root: fb.reposPath()}
 	return r.IsPrivate()
 }
 
@@ -428,15 +436,9 @@ func (fb *FileBackend) SetDescription(repo string, desc string) error {
 // It implements backend.Backend.
 func (fb *FileBackend) SetPrivate(repo string, priv bool) error {
 	repo = sanatizeRepo(repo) + ".git"
-	daemonExport := filepath.Join(fb.reposPath(), repo, "git-daemon-export-ok")
+	daemonExport := filepath.Join(fb.reposPath(), repo, exportOk)
 	if priv {
 		_ = os.Remove(daemonExport)
-		f, err := os.Create(filepath.Join(fb.reposPath(), repo, private))
-		if err != nil {
-			return fmt.Errorf("failed to create private file: %w", err)
-		}
-
-		_ = f.Close() //nolint:errcheck
 	} else {
 		// Create git-daemon-export-ok file if repo is public.
 		f, err := os.Create(daemonExport)
@@ -505,8 +507,9 @@ func (fb *FileBackend) CreateRepository(name string, private bool) (backend.Repo
 	}
 
 	fb.SetPrivate(name, private)
+	fb.SetDescription(name, "")
 
-	return &Repo{path: rp}, nil
+	return &Repo{path: rp, root: fb.reposPath()}, nil
 }
 
 // DeleteRepository deletes the given repository.
@@ -537,7 +540,7 @@ func (fb *FileBackend) Repository(repo string) (backend.Repository, error) {
 		return nil, err
 	}
 
-	return &Repo{path: rp}, nil
+	return &Repo{path: rp, root: fb.reposPath()}, nil
 }
 
 // Repositories returns a list of all repositories.
@@ -556,7 +559,7 @@ func (fb *FileBackend) Repositories() ([]backend.Repository, error) {
 			return nil
 		}
 
-		repos = append(repos, &Repo{path: path})
+		repos = append(repos, &Repo{path: path, root: fb.reposPath()})
 
 		return nil
 	})
