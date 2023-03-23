@@ -70,8 +70,8 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
-func (s *SSHServer) KeyboardInteractiveHandler(_ ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
-	return true
+func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
+	return s.cfg.Backend.AllowKeyless() && s.PublicKeyHandler(ctx, nil)
 }
 
 // Middleware adds Git server functionality to the ssh.Server. Repos are stored
