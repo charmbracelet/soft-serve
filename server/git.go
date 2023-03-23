@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 )
@@ -90,11 +91,34 @@ func WritePktline(w io.Writer, v ...interface{}) {
 	msg := fmt.Sprintln(v...)
 	pkt := pktline.NewEncoder(w)
 	if err := pkt.EncodeString(msg); err != nil {
-		log.Printf("git: error writing pkt-line message: %s", err)
+		log.Debugf("git: error writing pkt-line message: %s", err)
 	}
 	if err := pkt.Flush(); err != nil {
-		log.Printf("git: error flushing pkt-line message: %s", err)
+		log.Debugf("git: error flushing pkt-line message: %s", err)
 	}
+}
+
+// ensureWithin ensures the given repo is within the repos directory.
+func ensureWithin(reposDir string, repo string) error {
+	repoDir := filepath.Join(reposDir, repo)
+	absRepos, err := filepath.Abs(reposDir)
+	if err != nil {
+		log.Debugf("failed to get absolute path for repo: %s", err)
+		return ErrSystemMalfunction
+	}
+	absRepo, err := filepath.Abs(repoDir)
+	if err != nil {
+		log.Debugf("failed to get absolute path for repos: %s", err)
+		return ErrSystemMalfunction
+	}
+
+	// ensure the repo is within the repos directory
+	if !strings.HasPrefix(absRepo, absRepos) {
+		log.Debugf("repo path is outside of repos directory: %s", absRepo)
+		return ErrInvalidRepo
+	}
+
+	return nil
 }
 
 func fileExists(path string) (bool, error) {
