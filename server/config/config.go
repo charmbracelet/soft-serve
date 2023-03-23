@@ -76,6 +76,8 @@ func DefaultConfig() *Config {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Add the initial admin keys to the list of admins.
+	fb.AdditionalAdmins = cfg.InitialAdminKeys
 	return cfg.WithBackend(fb).WithAccessMethod(fb)
 }
 
