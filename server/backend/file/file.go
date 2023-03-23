@@ -144,7 +144,6 @@ func NewFileBackend(path string) (*FileBackend, error) {
 func (fb *FileBackend) AccessLevel(repo string, pk gossh.PublicKey) backend.AccessLevel {
 	private := fb.IsPrivate(repo)
 	anon := fb.AnonAccess()
-	log.Debugf("anon access: %s", anon)
 	if pk != nil {
 		// Check if the key is an admin.
 		if fb.IsAdmin(pk) {

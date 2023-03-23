@@ -2,6 +2,7 @@ package git
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/gogs/git-module"
 )
@@ -29,6 +30,10 @@ func Clone(src, dst string, opts ...git.CloneOptions) error {
 
 // Init initializes and opens a new git repository.
 func Init(path string, bare bool) (*Repository, error) {
+	if bare {
+		path = strings.TrimSuffix(path, ".git") + ".git"
+	}
+
 	err := git.Init(path, git.InitOptions{Bare: bare})
 	if err != nil {
 		return nil, err
