@@ -1,19 +1,20 @@
 package ui
 
 import (
+	"errors"
+	"log"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/ui/components/header"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
-	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/charmbracelet/soft-serve/ui/pages/repo"
 	"github.com/charmbracelet/soft-serve/ui/pages/selection"
-	"github.com/gliderlabs/ssh"
 )
 
 type page int
@@ -26,16 +27,14 @@ const (
 type sessionState int
 
 const (
-	startState sessionState = iota
+	loadingState sessionState = iota
 	errorState
-	loadedState
+	readyState
 )
 
 // UI is the main UI model.
 type UI struct {
-	cfg         *config.Config
-	session     ssh.Session
-	rs          git.GitRepoSource
+	serverName  string
 	initialRepo string
 	common      common.Common
 	pages       []common.Component
@@ -48,17 +47,18 @@ type UI struct {
 }
 
 // New returns a new UI model.
-func New(cfg *config.Config, s ssh.Session, c common.Common, initialRepo string) *UI {
-	src := &source{cfg.Source}
-	h := header.New(c, cfg.Name)
+func New(c common.Common, initialRepo string) *UI {
+	var serverName string
+	if cfg := c.Config(); cfg != nil {
+		serverName = cfg.Backend.ServerName()
+	}
+	h := header.New(c, serverName)
 	ui := &UI{
-		cfg:         cfg,
-		session:     s,
-		rs:          src,
+		serverName:  serverName,
 		common:      c,
 		pages:       make([]common.Component, 2), // selection & repo
 		activePage:  selectionPage,
-		state:       startState,
+		state:       loadingState,
 		header:      h,
 		initialRepo: initialRepo,
 		showFooter:  true,
@@ -92,7 +92,7 @@ func (ui *UI) ShortHelp() []key.Binding {
 	switch ui.state {
 	case errorState:
 		b = append(b, ui.common.KeyMap.Back)
-	case loadedState:
+	case readyState:
 		b = append(b, ui.pages[ui.activePage].ShortHelp()...)
 	}
 	if !ui.IsFiltering() {
@@ -108,7 +108,7 @@ func (ui *UI) FullHelp() [][]key.Binding {
 	switch ui.state {
 	case errorState:
 		b = append(b, []key.Binding{ui.common.KeyMap.Back})
-	case loadedState:
+	case readyState:
 		b = append(b, ui.pages[ui.activePage].FullHelp()...)
 	}
 	h := []key.Binding{
@@ -136,15 +136,8 @@ func (ui *UI) SetSize(width, height int) {
 
 // Init implements tea.Model.
 func (ui *UI) Init() tea.Cmd {
-	ui.pages[selectionPage] = selection.New(
-		ui.cfg,
-		ui.session.PublicKey(),
-		ui.common,
-	)
-	ui.pages[repoPage] = repo.New(
-		ui.cfg,
-		ui.common,
-	)
+	ui.pages[selectionPage] = selection.New(ui.common)
+	ui.pages[repoPage] = repo.New(ui.common)
 	ui.SetSize(ui.common.Width, ui.common.Height)
 	cmds := make([]tea.Cmd, 0)
 	cmds = append(cmds,
@@ -154,7 +147,7 @@ func (ui *UI) Init() tea.Cmd {
 	if ui.initialRepo != "" {
 		cmds = append(cmds, ui.initialRepoCmd(ui.initialRepo))
 	}
-	ui.state = loadedState
+	ui.state = readyState
 	ui.SetSize(ui.common.Width, ui.common.Height)
 	return tea.Batch(cmds...)
 }
@@ -171,6 +164,7 @@ func (ui *UI) IsFiltering() bool {
 
 // Update implements tea.Model.
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	log.Printf("msg received: %T", msg)
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -188,7 +182,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, ui.common.KeyMap.Back) && ui.error != nil:
 				ui.error = nil
-				ui.state = loadedState
+				ui.state = readyState
 				// Always show the footer on error.
 				ui.showFooter = ui.footer.ShowAll()
 			case key.Matches(msg, ui.common.KeyMap.Help):
@@ -220,14 +214,15 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ui.showFooter = !ui.showFooter
 		}
 	case repo.RepoMsg:
+		ui.common.SetValue(common.RepoKey, msg)
 		ui.activePage = repoPage
 		// Show the footer on repo page if show all is set.
 		ui.showFooter = ui.footer.ShowAll()
+		cmds = append(cmds, repo.UpdateRefCmd(msg))
 	case common.ErrorMsg:
 		ui.error = msg
 		ui.state = errorState
 		ui.showFooter = true
-		return ui, nil
 	case selector.SelectMsg:
 		switch msg.IdentifiableItem.(type) {
 		case selection.Item:
@@ -246,7 +241,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
-	if ui.state == loadedState {
+	if ui.state != loadingState {
 		m, cmd := ui.pages[ui.activePage].Update(msg)
 		ui.pages[ui.activePage] = m.(common.Component)
 		if cmd != nil {
@@ -263,7 +258,7 @@ func (ui *UI) View() string {
 	var view string
 	wm, hm := ui.getMargins()
 	switch ui.state {
-	case startState:
+	case loadingState:
 		view = "Loading..."
 	case errorState:
 		err := ui.common.Styles.ErrorTitle.Render("Bummer")
@@ -276,7 +271,7 @@ func (ui *UI) View() string {
 				hm -
 				ui.common.Styles.Error.GetVerticalFrameSize()).
 			Render(err)
-	case loadedState:
+	case readyState:
 		view = ui.pages[ui.activePage].View()
 	default:
 		view = "Unknown state :/ this is a bug!"
@@ -292,24 +287,40 @@ func (ui *UI) View() string {
 	)
 }
 
+func (ui *UI) openRepo(rn string) (backend.Repository, error) {
+	cfg := ui.common.Config()
+	if cfg == nil {
+		return nil, errors.New("config is nil")
+	}
+	repos, err := cfg.Backend.Repositories()
+	if err != nil {
+		log.Printf("ui: failed to list repos: %v", err)
+		return nil, err
+	}
+	for _, r := range repos {
+		if r.Name() == rn {
+			return r, nil
+		}
+	}
+	return nil, common.ErrMissingRepo
+}
+
 func (ui *UI) setRepoCmd(rn string) tea.Cmd {
 	return func() tea.Msg {
-		for _, r := range ui.rs.AllRepos() {
-			if r.Repo() == rn {
-				return repo.RepoMsg(r)
-			}
+		r, err := ui.openRepo(rn)
+		if err != nil {
+			return common.ErrorMsg(err)
 		}
-		return common.ErrorMsg(git.ErrMissingRepo)
+		return repo.RepoMsg(r)
 	}
 }
 
 func (ui *UI) initialRepoCmd(rn string) tea.Cmd {
 	return func() tea.Msg {
-		for _, r := range ui.rs.AllRepos() {
-			if r.Repo() == rn {
-				return repo.RepoMsg(r)
-			}
+		r, err := ui.openRepo(rn)
+		if err != nil {
+			return nil
 		}
-		return nil
+		return repo.RepoMsg(r)
 	}
 }

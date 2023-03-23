@@ -3,21 +3,26 @@ package repo
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/soft-serve/git"
 	ggit "github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
-	"github.com/charmbracelet/soft-serve/ui/git"
 )
 
 var (
 	errNoRef = errors.New("no reference specified")
 )
+
+// RefMsg is a message that contains a git.Reference.
+type RefMsg *ggit.Reference
 
 // RefItemsMsg is a message that contains a list of RefItem.
 type RefItemsMsg struct {
@@ -29,9 +34,9 @@ type RefItemsMsg struct {
 type Refs struct {
 	common    common.Common
 	selector  *selector.Selector
-	repo      git.GitRepo
-	ref       *ggit.Reference
-	activeRef *ggit.Reference
+	repo      backend.Repository
+	ref       *git.Reference
+	activeRef *git.Reference
 	refPrefix string
 }
 
@@ -104,8 +109,7 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case RepoMsg:
 		r.selector.Select(0)
-		r.repo = git.GitRepo(msg)
-		cmds = append(cmds, r.Init())
+		r.repo = msg
 	case RefMsg:
 		r.ref = msg
 		cmds = append(cmds, r.Init())
@@ -136,6 +140,9 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, r.common.KeyMap.SelectItem):
 			cmds = append(cmds, r.selector.SelectItem)
 		}
+	case EmptyRepoMsg:
+		r.ref = nil
+		cmds = append(cmds, r.setItems([]selector.IdentifiableItem{}))
 	}
 	m, cmd := r.selector.Update(msg)
 	r.selector = m.(*selector.Selector)
@@ -169,8 +176,13 @@ func (r *Refs) StatusBarInfo() string {
 
 func (r *Refs) updateItemsCmd() tea.Msg {
 	its := make(RefItems, 0)
-	refs, err := r.repo.References()
+	rr, err := r.repo.Repository()
 	if err != nil {
+		return common.ErrorMsg(err)
+	}
+	refs, err := rr.References()
+	if err != nil {
+		log.Printf("ui: error getting references: %v", err)
 		return common.ErrorMsg(err)
 	}
 	for _, ref := range refs {
@@ -189,8 +201,37 @@ func (r *Refs) updateItemsCmd() tea.Msg {
 	}
 }
 
+func (r *Refs) setItems(items []selector.IdentifiableItem) tea.Cmd {
+	return func() tea.Msg {
+		return RefItemsMsg{
+			items:  items,
+			prefix: r.refPrefix,
+		}
+	}
+}
+
 func switchRefCmd(ref *ggit.Reference) tea.Cmd {
 	return func() tea.Msg {
+		return RefMsg(ref)
+	}
+}
+
+// UpdateRefCmd gets the repository's HEAD reference and sends a RefMsg.
+func UpdateRefCmd(repo backend.Repository) tea.Cmd {
+	return func() tea.Msg {
+		r, err := repo.Repository()
+		if err != nil {
+			return common.ErrorMsg(err)
+		}
+		ref, err := r.HEAD()
+		if err != nil {
+			if bs, err := r.Branches(); err != nil && len(bs) == 0 {
+				return EmptyRepoMsg{}
+			}
+			log.Printf("ui: error getting HEAD reference: %v", err)
+			return common.ErrorMsg(err)
+		}
+		log.Printf("HEAD: %s", ref.Name())
 		return RefMsg(ref)
 	}
 }

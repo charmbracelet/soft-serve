@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -10,12 +11,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
-	ggit "github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/ui/components/viewport"
-	"github.com/charmbracelet/soft-serve/ui/git"
 	"github.com/muesli/reflow/wrap"
 	"github.com/muesli/termenv"
 )
@@ -36,10 +37,10 @@ type LogCountMsg int64
 type LogItemsMsg []selector.IdentifiableItem
 
 // LogCommitMsg is a message that contains a git commit.
-type LogCommitMsg *ggit.Commit
+type LogCommitMsg *git.Commit
 
 // LogDiffMsg is a message that contains a git diff.
-type LogDiffMsg *ggit.Diff
+type LogDiffMsg *git.Diff
 
 // Log is a model that displays a list of commits and their diffs.
 type Log struct {
@@ -47,13 +48,13 @@ type Log struct {
 	selector       *selector.Selector
 	vp             *viewport.Viewport
 	activeView     logView
-	repo           git.GitRepo
-	ref            *ggit.Reference
+	repo           backend.Repository
+	ref            *git.Reference
 	count          int64
 	nextPage       int
-	activeCommit   *ggit.Commit
-	selectedCommit *ggit.Commit
-	currentDiff    *ggit.Diff
+	activeCommit   *git.Commit
+	selectedCommit *git.Commit
+	currentDiff    *git.Diff
 	loadingTime    time.Time
 	loading        bool
 	spinner        spinner.Model
@@ -77,9 +78,8 @@ func NewLog(common common.Common) *Log {
 	selector.KeyMap.NextPage = common.KeyMap.NextPage
 	selector.KeyMap.PrevPage = common.KeyMap.PrevPage
 	l.selector = selector
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = common.Styles.Spinner
+	s := spinner.New(spinner.WithSpinner(spinner.Dot),
+		spinner.WithStyle(common.Styles.Spinner))
 	l.spinner = s
 	return l
 }
@@ -189,8 +189,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case RepoMsg:
-		l.repo = git.GitRepo(msg)
-		cmds = append(cmds, l.Init())
+		l.repo = msg
 	case RefMsg:
 		l.ref = msg
 		cmds = append(cmds, l.Init())
@@ -245,6 +244,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if l.activeView == logViewDiff {
 			l.activeView = logViewCommits
 			l.selectedCommit = nil
+			cmds = append(cmds, updateStatusBarCmd)
 		}
 	case selector.ActiveMsg:
 		switch sel := msg.IdentifiableItem.(type) {
@@ -299,6 +299,16 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				l.startLoading(),
 			)
 		}
+	case EmptyRepoMsg:
+		l.ref = nil
+		l.loading = false
+		l.activeView = logViewCommits
+		l.nextPage = 0
+		l.count = 0
+		l.activeCommit = nil
+		l.selectedCommit = nil
+		l.selector.Select(0)
+		cmds = append(cmds, l.setItems([]selector.IdentifiableItem{}))
 	}
 	if l.loading {
 		s, cmd := l.spinner.Update(msg)
@@ -326,7 +336,9 @@ func (l *Log) View() string {
 			msg += "s"
 		}
 		msg += "…"
-		return msg
+		return l.common.Styles.SpinnerContainer.Copy().
+			Height(l.common.Height).
+			Render(msg)
 	}
 	switch l.activeView {
 	case logViewCommits:
@@ -374,10 +386,16 @@ func (l *Log) StatusBarInfo() string {
 
 func (l *Log) countCommitsCmd() tea.Msg {
 	if l.ref == nil {
+		log.Printf("ui: log: ref is nil")
 		return common.ErrorMsg(errNoRef)
 	}
-	count, err := l.repo.CountCommits(l.ref)
+	r, err := l.repo.Repository()
 	if err != nil {
+		return common.ErrorMsg(err)
+	}
+	count, err := r.CountCommits(l.ref)
+	if err != nil {
+		log.Printf("ui: error counting commits: %v", err)
 		return common.ErrorMsg(err)
 	}
 	return LogCountMsg(count)
@@ -394,15 +412,21 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 		}
 	}
 	if l.ref == nil {
+		log.Printf("ui: log: ref is nil")
 		return common.ErrorMsg(errNoRef)
 	}
 	items := make([]selector.IdentifiableItem, count)
 	page := l.nextPage
 	limit := l.selector.PerPage()
 	skip := page * limit
-	// CommitsByPage pages start at 1
-	cc, err := l.repo.CommitsByPage(l.ref, page+1, limit)
+	r, err := l.repo.Repository()
 	if err != nil {
+		return common.ErrorMsg(err)
+	}
+	// CommitsByPage pages start at 1
+	cc, err := r.CommitsByPage(l.ref, page+1, limit)
+	if err != nil {
+		log.Printf("ui: error loading commits: %v", err)
 		return common.ErrorMsg(err)
 	}
 	for i, c := range cc {
@@ -415,15 +439,21 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 	return LogItemsMsg(items)
 }
 
-func (l *Log) selectCommitCmd(commit *ggit.Commit) tea.Cmd {
+func (l *Log) selectCommitCmd(commit *git.Commit) tea.Cmd {
 	return func() tea.Msg {
 		return LogCommitMsg(commit)
 	}
 }
 
 func (l *Log) loadDiffCmd() tea.Msg {
-	diff, err := l.repo.Diff(l.selectedCommit)
+	r, err := l.repo.Repository()
 	if err != nil {
+		log.Printf("ui: error loading diff repository: %v", err)
+		return common.ErrorMsg(err)
+	}
+	diff, err := r.Diff(l.selectedCommit)
+	if err != nil {
+		log.Printf("ui: error loading diff: %v", err)
 		return common.ErrorMsg(err)
 	}
 	return LogDiffMsg(diff)
@@ -436,7 +466,7 @@ func renderCtx() gansi.RenderContext {
 	})
 }
 
-func (l *Log) renderCommit(c *ggit.Commit) string {
+func (l *Log) renderCommit(c *git.Commit) string {
 	s := strings.Builder{}
 	// FIXME: lipgloss prints empty lines when CRLF is used
 	// sanitize commit message from CRLF
@@ -450,7 +480,7 @@ func (l *Log) renderCommit(c *ggit.Commit) string {
 	return wrap.String(s.String(), l.common.Width-2)
 }
 
-func (l *Log) renderSummary(diff *ggit.Diff) string {
+func (l *Log) renderSummary(diff *git.Diff) string {
 	stats := strings.Split(diff.Stats().String(), "\n")
 	for i, line := range stats {
 		ch := strings.Split(line, "|")
@@ -464,7 +494,7 @@ func (l *Log) renderSummary(diff *ggit.Diff) string {
 	return wrap.String(strings.Join(stats, "\n"), l.common.Width-2)
 }
 
-func (l *Log) renderDiff(diff *ggit.Diff) string {
+func (l *Log) renderDiff(diff *git.Diff) string {
 	var s strings.Builder
 	var pr strings.Builder
 	diffChroma := &gansi.CodeBlockElement{
@@ -478,4 +508,10 @@ func (l *Log) renderDiff(diff *ggit.Diff) string {
 		s.WriteString(fmt.Sprintf("\n%s", pr.String()))
 	}
 	return wrap.String(s.String(), l.common.Width)
+}
+
+func (l *Log) setItems(items []selector.IdentifiableItem) tea.Cmd {
+	return func() tea.Msg {
+		return LogItemsMsg(items)
+	}
 }

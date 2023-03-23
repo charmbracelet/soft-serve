@@ -1,6 +1,13 @@
 package common
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"errors"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+// ErrMissingRepo indicates that the requested repository could not be found.
+var ErrMissingRepo = errors.New("missing repo")
 
 // ErrorMsg is a Bubble Tea message that represents an error.
 type ErrorMsg error

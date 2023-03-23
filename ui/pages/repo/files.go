@@ -3,16 +3,17 @@ package repo
 import (
 	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 
 	"github.com/alecthomas/chroma/lexers"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	ggit "github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
-	"github.com/charmbracelet/soft-serve/ui/git"
 )
 
 type filesView int
@@ -49,9 +50,9 @@ type FileContentMsg struct {
 type Files struct {
 	common         common.Common
 	selector       *selector.Selector
-	ref            *ggit.Reference
+	ref            *git.Reference
 	activeView     filesView
-	repo           git.GitRepo
+	repo           backend.Repository
 	code           *code.Code
 	path           string
 	currentItem    *FileItem
@@ -200,8 +201,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case RepoMsg:
-		f.repo = git.GitRepo(msg)
-		cmds = append(cmds, f.Init())
+		f.repo = msg
 	case RefMsg:
 		f.ref = msg
 		cmds = append(cmds, f.Init())
@@ -265,6 +265,14 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+	case EmptyRepoMsg:
+		f.ref = nil
+		f.path = ""
+		f.currentItem = nil
+		f.activeView = filesViewFiles
+		f.lastSelected = make([]int, 0)
+		f.selector.Select(0)
+		cmds = append(cmds, f.setItems([]selector.IdentifiableItem{}))
 	}
 	switch f.activeView {
 	case filesViewFiles:
@@ -320,14 +328,21 @@ func (f *Files) updateFilesCmd() tea.Msg {
 	files := make([]selector.IdentifiableItem, 0)
 	dirs := make([]selector.IdentifiableItem, 0)
 	if f.ref == nil {
+		log.Printf("ui: files: ref is nil")
 		return common.ErrorMsg(errNoRef)
 	}
-	t, err := f.repo.Tree(f.ref, f.path)
+	r, err := f.repo.Repository()
 	if err != nil {
+		return common.ErrorMsg(err)
+	}
+	t, err := r.TreePath(f.ref, f.path)
+	if err != nil {
+		log.Printf("ui: files: error getting tree %v", err)
 		return common.ErrorMsg(err)
 	}
 	ents, err := t.Entries()
 	if err != nil {
+		log.Printf("ui: files: error listing files %v", err)
 		return common.ErrorMsg(err)
 	}
 	ents.Sort()
@@ -347,6 +362,7 @@ func (f *Files) selectTreeCmd() tea.Msg {
 		f.selector.Select(0)
 		return f.updateFilesCmd()
 	}
+	log.Printf("ui: files: current item is not a tree")
 	return common.ErrorMsg(errNoFileSelected)
 }
 
@@ -355,25 +371,30 @@ func (f *Files) selectFileCmd() tea.Msg {
 	if i != nil && !i.entry.IsTree() {
 		fi := i.entry.File()
 		if i.Mode().IsDir() || f == nil {
+			log.Printf("ui: files: current item is not a file")
 			return common.ErrorMsg(errInvalidFile)
 		}
 		bin, err := fi.IsBinary()
 		if err != nil {
 			f.path = filepath.Dir(f.path)
+			log.Printf("ui: files: error checking if file is binary %v", err)
 			return common.ErrorMsg(err)
 		}
 		if bin {
 			f.path = filepath.Dir(f.path)
+			log.Printf("ui: files: file is binary")
 			return common.ErrorMsg(errBinaryFile)
 		}
 		c, err := fi.Bytes()
 		if err != nil {
 			f.path = filepath.Dir(f.path)
+			log.Printf("ui: files: error reading file %v", err)
 			return common.ErrorMsg(err)
 		}
 		f.lastSelected = append(f.lastSelected, f.selector.Index())
 		return FileContentMsg{string(c), i.entry.Name()}
 	}
+	log.Printf("ui: files: current item is not a file")
 	return common.ErrorMsg(errNoFileSelected)
 }
 
@@ -388,4 +409,10 @@ func (f *Files) deselectItemCmd() tea.Msg {
 	}
 	f.selector.Select(index)
 	return msg
+}
+
+func (f *Files) setItems(items []selector.IdentifiableItem) tea.Cmd {
+	return func() tea.Msg {
+		return FileItemsMsg(items)
+	}
 }

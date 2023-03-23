@@ -2,29 +2,26 @@ package server
 
 import (
 	"context"
-	"fmt"
-	"net"
-	"path/filepath"
-	"strings"
 
 	"github.com/charmbracelet/log"
 
-	appCfg "github.com/charmbracelet/soft-serve/config"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
-	"github.com/charmbracelet/wish"
-	bm "github.com/charmbracelet/wish/bubbletea"
-	gm "github.com/charmbracelet/wish/git"
-	lm "github.com/charmbracelet/wish/logging"
-	rm "github.com/charmbracelet/wish/recover"
-	"github.com/gliderlabs/ssh"
-	"github.com/muesli/termenv"
+	"github.com/charmbracelet/ssh"
+	"golang.org/x/sync/errgroup"
+)
+
+var (
+	logger = log.WithPrefix("server")
 )
 
 // Server is the Soft Serve server.
 type Server struct {
-	SSHServer *ssh.Server
+	SSHServer *SSHServer
+	GitDaemon *GitDaemon
 	Config    *config.Config
-	config    *appCfg.Config
+	Backend   backend.Backend
+	Access    backend.AccessMethod
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -32,85 +29,66 @@ type Server struct {
 // key can be provided with authKey. If authKey is provided, access will be
 // restricted to that key. If authKey is not provided, the server will be
 // publicly writable until configured otherwise by cloning the `config` repo.
-func NewServer(cfg *config.Config) *Server {
-	ac, err := appCfg.NewConfig(cfg)
+func NewServer(cfg *config.Config) (*Server, error) {
+	var err error
+	srv := &Server{
+		Config:  cfg,
+		Backend: cfg.Backend,
+		Access:  cfg.Access,
+	}
+	srv.SSHServer, err = NewSSHServer(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	mw := []wish.Middleware{
-		rm.MiddlewareWithLogger(
-			cfg.ErrorLog,
-			softMiddleware(ac),
-			bm.MiddlewareWithProgramHandler(SessionHandler(ac), termenv.ANSI256),
-			gm.Middleware(cfg.RepoPath, ac),
-			// Note: disable pushing to subdirectories as it can create
-			// conflicts with existing repos. This only affects the git
-			// middleware.
-			//
-			// This is related to
-			// https://github.com/charmbracelet/soft-serve/issues/120
-			// https://github.com/charmbracelet/wish/commit/8808de520d3ea21931f13113c6b0b6d0141272d4
-			func(sh ssh.Handler) ssh.Handler {
-				return func(s ssh.Session) {
-					cmds := s.Command()
-					if len(cmds) == 2 && strings.HasPrefix(cmds[0], "git") {
-						repo := strings.TrimSuffix(strings.TrimPrefix(cmds[1], "/"), "/")
-						repo = filepath.Clean(repo)
-						if n := strings.Count(repo, "/"); n != 0 {
-							wish.Fatalln(s, fmt.Errorf("invalid repo path: subdirectories not allowed"))
-							return
-						}
-					}
-					sh(s)
-				}
-			},
-			lm.MiddlewareWithLogger(log.StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})),
-		),
-	}
-	s, err := wish.NewServer(
-		ssh.PublicKeyAuth(ac.PublicKeyHandler),
-		ssh.KeyboardInteractiveAuth(ac.KeyboardInteractiveHandler),
-		wish.WithAddress(fmt.Sprintf("%s:%d", cfg.BindAddr, cfg.Port)),
-		wish.WithHostKeyPath(cfg.KeyPath),
-		wish.WithMiddleware(mw...),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return &Server{
-		SSHServer: s,
-		Config:    cfg,
-		config:    ac,
-	}
-}
 
-// Reload reloads the server configuration.
-func (srv *Server) Reload() error {
-	return srv.config.Reload()
+	srv.GitDaemon, err = NewGitDaemon(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return srv, nil
 }
 
 // Start starts the SSH server.
-func (srv *Server) Start() error {
-	if err := srv.SSHServer.ListenAndServe(); err != ssh.ErrServerClosed {
-		return err
-	}
-	return nil
-}
-
-// Serve serves the SSH server using the provided listener.
-func (srv *Server) Serve(l net.Listener) error {
-	if err := srv.SSHServer.Serve(l); err != ssh.ErrServerClosed {
-		return err
-	}
-	return nil
+func (s *Server) Start() error {
+	var errg errgroup.Group
+	errg.Go(func() error {
+		log.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
+		if err := s.GitDaemon.Start(); err != ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+	errg.Go(func() error {
+		log.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
+		if err := s.SSHServer.ListenAndServe(); err != ssh.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+	return errg.Wait()
 }
 
 // Shutdown lets the server gracefully shutdown.
-func (srv *Server) Shutdown(ctx context.Context) error {
-	return srv.SSHServer.Shutdown(ctx)
+func (s *Server) Shutdown(ctx context.Context) error {
+	var errg errgroup.Group
+	errg.Go(func() error {
+		return s.GitDaemon.Shutdown(ctx)
+	})
+	errg.Go(func() error {
+		return s.SSHServer.Shutdown(ctx)
+	})
+	return errg.Wait()
 }
 
 // Close closes the SSH server.
-func (srv *Server) Close() error {
-	return srv.SSHServer.Close()
+func (s *Server) Close() error {
+	var errg errgroup.Group
+	errg.Go(func() error {
+		return s.SSHServer.Close()
+	})
+	errg.Go(func() error {
+		return s.GitDaemon.Close()
+	})
+	return errg.Wait()
 }
