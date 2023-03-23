@@ -49,6 +49,7 @@ const (
 	collabs      = "collaborators"
 	description  = "description"
 	private      = "private"
+	settings     = "settings"
 )
 
 var (
@@ -80,8 +81,12 @@ func (fb *FileBackend) reposPath() string {
 	return filepath.Join(fb.path, repos)
 }
 
+func (fb *FileBackend) settingsPath() string {
+	return filepath.Join(fb.path, settings)
+}
+
 func (fb *FileBackend) adminsPath() string {
-	return filepath.Join(fb.path, admins)
+	return filepath.Join(fb.settingsPath(), admins)
 }
 
 func (fb *FileBackend) collabsPath(repo string) string {
@@ -116,13 +121,13 @@ func readAll(path string) (string, error) {
 // NewFileBackend creates a new FileBackend.
 func NewFileBackend(path string) (*FileBackend, error) {
 	fb := &FileBackend{path: path}
-	for _, dir := range []string{repos} {
+	for _, dir := range []string{repos, settings} {
 		if err := os.MkdirAll(filepath.Join(path, dir), 0755); err != nil {
 			return nil, err
 		}
 	}
 	for _, file := range []string{admins, anonAccess, allowKeyless, serverHost, serverName, serverPort} {
-		fp := filepath.Join(path, file)
+		fp := filepath.Join(fb.settingsPath(), file)
 		_, err := os.Stat(fp)
 		if errors.Is(err, fs.ErrNotExist) {
 			f, err := os.Create(fp)
@@ -221,7 +226,7 @@ func (fb *FileBackend) AddCollaborator(pk gossh.PublicKey, repo string) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) AllowKeyless() bool {
-	line, err := readOneLine(filepath.Join(fb.path, allowKeyless))
+	line, err := readOneLine(filepath.Join(fb.settingsPath(), allowKeyless))
 	if err != nil {
 		logger.Debug("failed to read allow-keyless file", "err", err)
 		return false
@@ -234,7 +239,7 @@ func (fb *FileBackend) AllowKeyless() bool {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) AnonAccess() backend.AccessLevel {
-	line, err := readOneLine(filepath.Join(fb.path, anonAccess))
+	line, err := readOneLine(filepath.Join(fb.settingsPath(), anonAccess))
 	if err != nil {
 		logger.Debug("failed to read anon-access file", "err", err)
 		return backend.NoAccess
@@ -336,7 +341,7 @@ func (fb *FileBackend) IsPrivate(repo string) bool {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) ServerHost() string {
-	line, err := readOneLine(filepath.Join(fb.path, serverHost))
+	line, err := readOneLine(filepath.Join(fb.settingsPath(), serverHost))
 	if err != nil {
 		logger.Debug("failed to read server-host file", "err", err)
 		return ""
@@ -349,7 +354,7 @@ func (fb *FileBackend) ServerHost() string {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) ServerName() string {
-	line, err := readOneLine(filepath.Join(fb.path, serverName))
+	line, err := readOneLine(filepath.Join(fb.settingsPath(), serverName))
 	if err != nil {
 		logger.Debug("failed to read server-name file", "err", err)
 		return ""
@@ -362,7 +367,7 @@ func (fb *FileBackend) ServerName() string {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) ServerPort() string {
-	line, err := readOneLine(filepath.Join(fb.path, serverPort))
+	line, err := readOneLine(filepath.Join(fb.settingsPath(), serverPort))
 	if err != nil {
 		logger.Debug("failed to read server-port file", "err", err)
 		return ""
@@ -380,7 +385,7 @@ func (fb *FileBackend) ServerPort() string {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) SetAllowKeyless(allow bool) error {
-	f, err := os.OpenFile(filepath.Join(fb.path, allowKeyless), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	f, err := os.OpenFile(filepath.Join(fb.settingsPath(), allowKeyless), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to open allow-keyless file: %w", err)
 	}
@@ -394,7 +399,7 @@ func (fb *FileBackend) SetAllowKeyless(allow bool) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) SetAnonAccess(level backend.AccessLevel) error {
-	f, err := os.OpenFile(filepath.Join(fb.path, anonAccess), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	f, err := os.OpenFile(filepath.Join(fb.settingsPath(), anonAccess), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to open anon-access file: %w", err)
 	}
@@ -448,7 +453,7 @@ func (fb *FileBackend) SetPrivate(repo string, priv bool) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) SetServerHost(host string) error {
-	f, err := os.Create(filepath.Join(fb.path, serverHost))
+	f, err := os.Create(filepath.Join(fb.settingsPath(), serverHost))
 	if err != nil {
 		return fmt.Errorf("failed to create server-host file: %w", err)
 	}
@@ -462,7 +467,7 @@ func (fb *FileBackend) SetServerHost(host string) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) SetServerName(name string) error {
-	f, err := os.Create(filepath.Join(fb.path, serverName))
+	f, err := os.Create(filepath.Join(fb.settingsPath(), serverName))
 	if err != nil {
 		return fmt.Errorf("failed to create server-name file: %w", err)
 	}
@@ -476,7 +481,7 @@ func (fb *FileBackend) SetServerName(name string) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) SetServerPort(port string) error {
-	f, err := os.Create(filepath.Join(fb.path, serverPort))
+	f, err := os.Create(filepath.Join(fb.settingsPath(), serverPort))
 	if err != nil {
 		return fmt.Errorf("failed to create server-port file: %w", err)
 	}

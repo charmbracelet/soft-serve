@@ -1,6 +1,8 @@
 package config
 
 import (
+	"path/filepath"
+
 	"github.com/caarlos0/env/v6"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
@@ -13,7 +15,7 @@ type SSHConfig struct {
 	ListenAddr string `env:"LISTEN_ADDR" envDefault:":23231"`
 
 	// KeyPath is the path to the SSH server's private key.
-	KeyPath string `env:"KEY_PATH" envDefault:"soft_serve"`
+	KeyPath string `env:"KEY_PATH"`
 
 	// MaxTimeout is the maximum number of seconds a connection can take.
 	MaxTimeout int `env:"MAX_TIMEOUT" envDefault:"0"`
@@ -66,6 +68,9 @@ func DefaultConfig() *Config {
 		Prefix: "SOFT_SERVE_",
 	}); err != nil {
 		log.Fatal(err)
+	}
+	if cfg.SSH.KeyPath == "" {
+		cfg.SSH.KeyPath = filepath.Join(cfg.DataPath, "ssh", "soft_serve")
 	}
 	fb, err := file.NewFileBackend(cfg.DataPath)
 	if err != nil {
