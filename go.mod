@@ -7,7 +7,7 @@ require (
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/charmbracelet/bubbles v0.15.0
 	github.com/charmbracelet/bubbletea v0.23.2
-	github.com/charmbracelet/glamour v0.5.1-0.20221015050842-c4cd9ed13e4c
+	github.com/charmbracelet/glamour v0.6.0
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/charmbracelet/wish v0.7.0
 	github.com/dustin/go-humanize v1.0.1
