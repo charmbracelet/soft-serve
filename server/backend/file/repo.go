@@ -1,7 +1,6 @@
 package file
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,7 +38,7 @@ func (r *Repo) Description() string {
 		return ""
 	}
 
-	return desc
+	return strings.TrimSpace(desc)
 }
 
 // IsPrivate returns whether the repository is private.
@@ -47,12 +46,12 @@ func (r *Repo) Description() string {
 // It implements backend.Repository.
 func (r *Repo) IsPrivate() bool {
 	_, err := os.Stat(filepath.Join(r.path, exportOk))
-	return errors.Is(err, os.ErrExist)
+	return err != nil
 }
 
-// Repository returns the underlying git.Repository.
+// Open returns the underlying git.Repository.
 //
 // It implements backend.Repository.
-func (r *Repo) Repository() (*git.Repository, error) {
+func (r *Repo) Open() (*git.Repository, error) {
 	return git.Open(r.path)
 }

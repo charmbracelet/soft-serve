@@ -41,10 +41,6 @@ type Backend interface {
 	DeleteRepository(name string) error
 	// RenameRepository renames a repository.
 	RenameRepository(oldName, newName string) error
-	// DefaultBranch returns the repository's default branch.
-	DefaultBranch(repo string) (string, error)
-	// SetDefaultBranch sets the default branch for a repository.
-	SetDefaultBranch(repo string, branch string) error
 
 	// Description returns the repo's description.
 	Description(repo string) string

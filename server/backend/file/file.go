@@ -33,7 +33,6 @@ import (
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/ssh"
-	gitm "github.com/gogs/git-module"
 	gossh "golang.org/x/crypto/ssh"
 )
 
@@ -421,6 +420,7 @@ func (fb *FileBackend) SetAnonAccess(level backend.AccessLevel) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) SetDescription(repo string, desc string) error {
+	repo = sanatizeRepo(repo) + ".git"
 	f, err := os.OpenFile(filepath.Join(fb.reposPath(), repo, description), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to open description file: %w", err)
@@ -501,6 +501,10 @@ func (fb *FileBackend) SetServerPort(port string) error {
 func (fb *FileBackend) CreateRepository(name string, private bool) (backend.Repository, error) {
 	name = sanatizeRepo(name) + ".git"
 	rp := filepath.Join(fb.reposPath(), name)
+	if _, err := os.Stat(rp); err == nil {
+		return nil, os.ErrExist
+	}
+
 	if _, err := git.Init(rp, true); err != nil {
 		logger.Debug("failed to create repository", "err", err)
 		return nil, err
@@ -524,9 +528,16 @@ func (fb *FileBackend) DeleteRepository(name string) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) RenameRepository(oldName string, newName string) error {
-	oldName = sanatizeRepo(oldName) + ".git"
-	newName = sanatizeRepo(newName) + ".git"
-	return os.Rename(filepath.Join(fb.reposPath(), oldName), filepath.Join(fb.reposPath(), newName))
+	oldName = filepath.Join(fb.reposPath(), sanatizeRepo(oldName)+".git")
+	newName = filepath.Join(fb.reposPath(), sanatizeRepo(newName)+".git")
+	if _, err := os.Stat(oldName); errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("repository %q does not exist", strings.TrimSuffix(filepath.Base(oldName), ".git"))
+	}
+	if _, err := os.Stat(newName); err == nil {
+		return fmt.Errorf("repository %q already exists", strings.TrimSuffix(filepath.Base(newName), ".git"))
+	}
+
+	return os.Rename(oldName, newName)
 }
 
 // Repository finds the given repository.
@@ -536,7 +547,10 @@ func (fb *FileBackend) Repository(repo string) (backend.Repository, error) {
 	repo = sanatizeRepo(repo) + ".git"
 	rp := filepath.Join(fb.reposPath(), repo)
 	_, err := os.Stat(rp)
-	if !errors.Is(err, os.ErrExist) {
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, os.ErrNotExist
+		}
 		return nil, err
 	}
 
@@ -568,53 +582,4 @@ func (fb *FileBackend) Repositories() ([]backend.Repository, error) {
 	}
 
 	return repos, nil
-}
-
-// DefaultBranch returns the default branch of the given repository.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) DefaultBranch(repo string) (string, error) {
-	rr, err := fb.Repository(repo)
-	if err != nil {
-		logger.Debug("failed to get default branch", "err", err)
-		return "", err
-	}
-
-	r, err := rr.Repository()
-	if err != nil {
-		logger.Debug("failed to open repository for default branch", "err", err)
-		return "", err
-	}
-
-	head, err := r.HEAD()
-	if err != nil {
-		logger.Debug("failed to get HEAD for default branch", "err", err)
-		return "", err
-	}
-
-	return head.Name().Short(), nil
-}
-
-// SetDefaultBranch sets the default branch for the given repository.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) SetDefaultBranch(repo string, branch string) error {
-	rr, err := fb.Repository(repo)
-	if err != nil {
-		logger.Debug("failed to get repository for default branch", "err", err)
-		return err
-	}
-
-	r, err := rr.Repository()
-	if err != nil {
-		logger.Debug("failed to open repository for default branch", "err", err)
-		return err
-	}
-
-	if _, err := r.SymbolicRef("HEAD", gitm.RefsHeads+branch); err != nil {
-		logger.Debug("failed to set default branch", "err", err)
-		return err
-	}
-
-	return nil
 }

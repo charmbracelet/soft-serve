@@ -10,6 +10,6 @@ type Repository interface {
 	Description() string
 	// IsPrivate returns whether the repository is private.
 	IsPrivate() bool
-	// Repository returns the underlying git.Repository.
-	Repository() (*git.Repository, error)
+	// Open returns the underlying git.Repository.
+	Open() (*git.Repository, error)
 }
