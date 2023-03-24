@@ -388,7 +388,7 @@ func (l *Log) countCommitsCmd() tea.Msg {
 		logger.Debugf("ui: log: ref is nil")
 		return common.ErrorMsg(errNoRef)
 	}
-	r, err := l.repo.Repository()
+	r, err := l.repo.Open()
 	if err != nil {
 		return common.ErrorMsg(err)
 	}
@@ -418,7 +418,7 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 	page := l.nextPage
 	limit := l.selector.PerPage()
 	skip := page * limit
-	r, err := l.repo.Repository()
+	r, err := l.repo.Open()
 	if err != nil {
 		return common.ErrorMsg(err)
 	}
@@ -445,7 +445,7 @@ func (l *Log) selectCommitCmd(commit *git.Commit) tea.Cmd {
 }
 
 func (l *Log) loadDiffCmd() tea.Msg {
-	r, err := l.repo.Repository()
+	r, err := l.repo.Open()
 	if err != nil {
 		logger.Debugf("ui: error loading diff repository: %v", err)
 		return common.ErrorMsg(err)

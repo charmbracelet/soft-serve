@@ -175,7 +175,7 @@ func (r *Refs) StatusBarInfo() string {
 
 func (r *Refs) updateItemsCmd() tea.Msg {
 	its := make(RefItems, 0)
-	rr, err := r.repo.Repository()
+	rr, err := r.repo.Open()
 	if err != nil {
 		return common.ErrorMsg(err)
 	}
@@ -218,7 +218,7 @@ func switchRefCmd(ref *ggit.Reference) tea.Cmd {
 // UpdateRefCmd gets the repository's HEAD reference and sends a RefMsg.
 func UpdateRefCmd(repo backend.Repository) tea.Cmd {
 	return func() tea.Msg {
-		r, err := repo.Repository()
+		r, err := repo.Open()
 		if err != nil {
 			return common.ErrorMsg(err)
 		}
