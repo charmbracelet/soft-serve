@@ -331,7 +331,7 @@ func (f *Files) updateFilesCmd() tea.Msg {
 		log.Printf("ui: files: ref is nil")
 		return common.ErrorMsg(errNoRef)
 	}
-	r, err := f.repo.Repository()
+	r, err := f.repo.Open()
 	if err != nil {
 		return common.ErrorMsg(err)
 	}

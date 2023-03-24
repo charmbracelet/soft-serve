@@ -1,10 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"strings"
 
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/ssh"
+	"github.com/charmbracelet/wish"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +17,7 @@ type ContextKey string
 
 // String returns the string representation of the ContextKey.
 func (c ContextKey) String() string {
-	return "soft-serve cli context key " + string(c)
+	return string(c) + "ContextKey"
 }
 
 var (
@@ -30,45 +34,27 @@ var (
 	ErrRepoNotFound = fmt.Errorf("Repository not found")
 	// ErrFileNotFound is returned when the file is not found.
 	ErrFileNotFound = fmt.Errorf("File not found")
-
-	usageTemplate = `Usage:{{if .Runnable}}{{if .HasParent }}
-  {{.Parent.Use}} {{end}}{{.Use}}{{if .HasAvailableFlags }} [flags]{{end}}{{end}}{{if .HasAvailableSubCommands}}
-  {{if .HasParent }}{{.Parent.Use}} {{end}}{{.Use}} [command]{{end}}{{if gt (len .Aliases) 0}}
-
-Aliases:
-  {{.NameAndAliases}}{{end}}{{if .HasExample}}
-
-Examples:
-{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
-
-Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
-
-Flags:
-{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
-
-Global Flags:
-{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
-
-Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
-  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
-
-Use "{{.UseLine}} [command] --help" for more information about a command.{{end}}
-`
 )
 
-// RootCommand is the root command for the server.
-func RootCommand() *cobra.Command {
+// rootCommand is the root command for the server.
+func rootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:                   "ssh [-p PORT] HOST",
-		Long:                  "Soft Serve is a self-hostable Git server for the command line.",
-		Args:                  cobra.MinimumNArgs(1),
-		DisableFlagsInUseLine: true,
+		Use:          "soft",
+		Short:        "Soft Serve is a self-hostable Git server for the command line.",
+		SilenceUsage: true,
 	}
-	rootCmd.SetUsageTemplate(usageTemplate)
+	// TODO: use command usage template to include hostname and port
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(
-		RepoCommand(),
+		branchCommand(),
+		createCommand(),
+		deleteCommand(),
+		descriptionCommand(),
+		listCommand(),
+		privateCommand(),
+		renameCommand(),
+		showCommand(),
+		tagCommand(),
 	)
 
 	return rootCmd
@@ -79,4 +65,71 @@ func fromContext(cmd *cobra.Command) (*config.Config, ssh.Session) {
 	cfg := ctx.Value(ConfigCtxKey).(*config.Config)
 	s := ctx.Value(SessionCtxKey).(ssh.Session)
 	return cfg, s
+}
+
+func checkIfReadable(cmd *cobra.Command, args []string) error {
+	var repo string
+	if len(args) > 0 {
+		repo = args[0]
+	}
+	cfg, s := fromContext(cmd)
+	rn := strings.TrimSuffix(repo, ".git")
+	auth := cfg.Access.AccessLevel(rn, s.PublicKey())
+	if auth < backend.ReadOnlyAccess {
+		return ErrUnauthorized
+	}
+	return nil
+}
+
+func checkIfAdmin(cmd *cobra.Command, args []string) error {
+	cfg, s := fromContext(cmd)
+	if !cfg.Backend.IsAdmin(s.PublicKey()) {
+		return ErrUnauthorized
+	}
+	return nil
+}
+
+func checkIfCollab(cmd *cobra.Command, args []string) error {
+	var repo string
+	if len(args) > 0 {
+		repo = args[0]
+	}
+	cfg, s := fromContext(cmd)
+	rn := strings.TrimSuffix(repo, ".git")
+	auth := cfg.Access.AccessLevel(rn, s.PublicKey())
+	if auth < backend.ReadWriteAccess {
+		return ErrUnauthorized
+	}
+	return nil
+}
+
+// Middleware is the Soft Serve middleware that handles SSH commands.
+func Middleware(cfg *config.Config) wish.Middleware {
+	return func(sh ssh.Handler) ssh.Handler {
+		return func(s ssh.Session) {
+			func() {
+				_, _, active := s.Pty()
+				if active {
+					return
+				}
+				ctx := context.WithValue(s.Context(), ConfigCtxKey, cfg)
+				ctx = context.WithValue(ctx, SessionCtxKey, s)
+
+				rootCmd := rootCommand()
+				rootCmd.SetArgs(s.Command())
+				if len(s.Command()) == 0 {
+					// otherwise it'll default to os.Args, which is not what we want.
+					rootCmd.SetArgs([]string{"--help"})
+				}
+				rootCmd.SetIn(s)
+				rootCmd.SetOut(s)
+				rootCmd.CompletionOptions.DisableDefaultCmd = true
+				rootCmd.SetErr(s.Stderr())
+				if err := rootCmd.ExecuteContext(ctx); err != nil {
+					_ = s.Exit(1)
+				}
+			}()
+			sh(s)
+		}
+	}
 }
