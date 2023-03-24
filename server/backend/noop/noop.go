@@ -62,11 +62,6 @@ func (*Noop) CreateRepository(name string, private bool) (backend.Repository, er
 	return &repo{path: rp}, nil
 }
 
-// DefaultBranch implements backend.Backend
-func (*Noop) DefaultBranch(repo string) (string, error) {
-	return "", ErrNotImpl
-}
-
 // DeleteRepository implements backend.Backend
 func (*Noop) DeleteRepository(name string) error {
 	return ErrNotImpl
@@ -129,11 +124,6 @@ func (*Noop) SetAllowKeyless(allow bool) error {
 
 // SetAnonAccess implements backend.Backend
 func (*Noop) SetAnonAccess(level backend.AccessLevel) error {
-	return ErrNotImpl
-}
-
-// SetDefaultBranch implements backend.Backend
-func (*Noop) SetDefaultBranch(repo string, branch string) error {
 	return ErrNotImpl
 }
 

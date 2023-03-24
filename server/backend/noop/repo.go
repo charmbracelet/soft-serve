@@ -27,6 +27,6 @@ func (*repo) Name() string {
 }
 
 // Repository implements backend.Repository
-func (r *repo) Repository() (*git.Repository, error) {
+func (r *repo) Open() (*git.Repository, error) {
 	return git.Open(r.path)
 }

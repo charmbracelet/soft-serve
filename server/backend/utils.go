@@ -12,7 +12,7 @@ import (
 func LatestFile(r Repository, pattern string) (string, string, error) {
 	g := glob.MustCompile(pattern)
 	dir := filepath.Dir(pattern)
-	repo, err := r.Repository()
+	repo, err := r.Open()
 	if err != nil {
 		return "", "", err
 	}
