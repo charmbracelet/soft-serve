@@ -21,18 +21,38 @@ type Noop struct {
 	Port string
 }
 
+// Admins implements backend.Backend
+func (*Noop) Admins() ([]string, error) {
+	return nil, nil
+}
+
+// Collaborators implements backend.Backend
+func (*Noop) Collaborators(repo string) ([]string, error) {
+	return nil, nil
+}
+
+// RemoveAdmin implements backend.Backend
+func (*Noop) RemoveAdmin(pk ssh.PublicKey) error {
+	return nil
+}
+
+// RemoveCollaborator implements backend.Backend
+func (*Noop) RemoveCollaborator(pk ssh.PublicKey, repo string) error {
+	return nil
+}
+
 // AccessLevel implements backend.AccessMethod
 func (*Noop) AccessLevel(repo string, pk ssh.PublicKey) backend.AccessLevel {
 	return backend.AdminAccess
 }
 
 // AddAdmin implements backend.Backend
-func (*Noop) AddAdmin(pk ssh.PublicKey) error {
+func (*Noop) AddAdmin(pk ssh.PublicKey, memo string) error {
 	return ErrNotImpl
 }
 
 // AddCollaborator implements backend.Backend
-func (*Noop) AddCollaborator(pk ssh.PublicKey, repo string) error {
+func (*Noop) AddCollaborator(pk ssh.PublicKey, memo string, repo string) error {
 	return ErrNotImpl
 }
 
