@@ -80,6 +80,11 @@ func (fb *FileBackend) reposPath() string {
 	return filepath.Join(fb.path, repos)
 }
 
+// RepositoryStorePath returns the path to the repository store.
+func (fb *FileBackend) RepositoryStorePath() string {
+	return fb.reposPath()
+}
+
 func (fb *FileBackend) settingsPath() string {
 	return filepath.Join(fb.path, settings)
 }
