@@ -207,8 +207,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		// git bare repositories should end in ".git"
 		// https://git-scm.com/docs/gitrepository-layout
 		repo := name + ".git"
-		// FIXME: determine repositories path
-		reposDir := filepath.Join(d.cfg.DataPath, "repos")
+		reposDir := d.cfg.Backend.RepositoryStorePath()
 		if err := ensureWithin(reposDir, repo); err != nil {
 			fatal(c, err)
 			return

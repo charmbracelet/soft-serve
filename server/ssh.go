@@ -94,8 +94,7 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 					// https://git-scm.com/docs/gitrepository-layout
 					repo := name + ".git"
 
-					// FIXME: determine repositories path
-					reposDir := filepath.Join(cfg.DataPath, "repos")
+					reposDir := cfg.Backend.RepositoryStorePath()
 					if err := ensureWithin(reposDir, repo); err != nil {
 						sshFatal(s, err)
 						return
