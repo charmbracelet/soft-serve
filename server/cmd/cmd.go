@@ -46,7 +46,9 @@ func rootCommand() *cobra.Command {
 	// TODO: use command usage template to include hostname and port
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(
+		adminCommand(),
 		branchCommand(),
+		collabCommand(),
 		createCommand(),
 		deleteCommand(),
 		descriptionCommand(),
