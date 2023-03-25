@@ -89,7 +89,7 @@ func (fb *FileBackend) adminsPath() string {
 }
 
 func (fb *FileBackend) collabsPath(repo string) string {
-	return filepath.Join(fb.reposPath(), repo, collabs)
+	return filepath.Join(fb.path, collabs, repo)
 }
 
 func sanatizeRepo(repo string) string {
@@ -117,10 +117,16 @@ func readAll(path string) (string, error) {
 	return string(bts), err
 }
 
+// exists returns true if the given path exists.
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 // NewFileBackend creates a new FileBackend.
 func NewFileBackend(path string) (*FileBackend, error) {
 	fb := &FileBackend{path: path}
-	for _, dir := range []string{repos, settings} {
+	for _, dir := range []string{repos, settings, collabs} {
 		if err := os.MkdirAll(filepath.Join(path, dir), 0755); err != nil {
 			return nil, err
 		}
@@ -181,10 +187,10 @@ func (fb *FileBackend) AccessLevel(repo string, pk gossh.PublicKey) backend.Acce
 // AddAdmin adds a public key to the list of server admins.
 //
 // It implements backend.Backend.
-func (fb *FileBackend) AddAdmin(pk gossh.PublicKey) error {
+func (fb *FileBackend) AddAdmin(pk gossh.PublicKey, memo string) error {
 	// Skip if the key already exists.
 	if fb.IsAdmin(pk) {
-		return nil
+		return fmt.Errorf("key already exists")
 	}
 
 	ak := backend.MarshalAuthorizedKey(pk)
@@ -195,30 +201,204 @@ func (fb *FileBackend) AddAdmin(pk gossh.PublicKey) error {
 	}
 
 	defer f.Close() //nolint:errcheck
-	_, err = fmt.Fprintln(f, ak)
+	if memo != "" {
+		memo = " " + memo
+	}
+	_, err = fmt.Fprintf(f, "%s%s\n", ak, memo)
 	return err
 }
 
 // AddCollaborator adds a public key to the list of collaborators for the given repo.
 //
 // It implements backend.Backend.
-func (fb *FileBackend) AddCollaborator(pk gossh.PublicKey, repo string) error {
+func (fb *FileBackend) AddCollaborator(pk gossh.PublicKey, memo string, name string) error {
+	// Check if repo exists
+	if !exists(filepath.Join(fb.reposPath(), sanatizeRepo(name)+".git")) {
+		return fmt.Errorf("repository %s does not exist", name)
+	}
+
 	// Skip if the key already exists.
-	if fb.IsCollaborator(pk, repo) {
-		return nil
+	if fb.IsCollaborator(pk, name) {
+		return fmt.Errorf("key already exists")
 	}
 
 	ak := backend.MarshalAuthorizedKey(pk)
-	repo = sanatizeRepo(repo) + ".git"
-	f, err := os.OpenFile(fb.collabsPath(repo), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	name = sanatizeRepo(name)
+	if err := os.MkdirAll(filepath.Dir(fb.collabsPath(name)), 0755); err != nil {
+		logger.Debug("failed to create collaborators directory",
+			"err", err, "path", filepath.Dir(fb.collabsPath(name)))
+		return err
+	}
+
+	f, err := os.OpenFile(fb.collabsPath(name), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		logger.Debug("failed to open collaborators file", "err", err, "path", fb.collabsPath(name))
+		return err
+	}
+
+	defer f.Close() //nolint:errcheck
+	if memo != "" {
+		memo = " " + memo
+	}
+	_, err = fmt.Fprintf(f, "%s%s\n", ak, memo)
+	return err
+}
+
+// Admins returns a list of public keys that are admins.
+//
+// It implements backend.Backend.
+func (fb *FileBackend) Admins() ([]string, error) {
+	admins := make([]string, 0)
+	f, err := os.Open(fb.adminsPath())
+	if err != nil {
+		logger.Debug("failed to open admin keys file", "err", err, "path", fb.adminsPath())
+		return nil, err
+	}
+
+	defer f.Close() //nolint:errcheck
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		admins = append(admins, s.Text())
+	}
+
+	return admins, s.Err()
+}
+
+// Collaborators returns a list of public keys that are collaborators for the given repo.
+//
+// It implements backend.Backend.
+func (fb *FileBackend) Collaborators(repo string) ([]string, error) {
+	// Check if repo exists
+	if !exists(filepath.Join(fb.reposPath(), sanatizeRepo(repo)+".git")) {
+		return nil, fmt.Errorf("repository %s does not exist", repo)
+	}
+
+	collabs := make([]string, 0)
+	f, err := os.Open(fb.collabsPath(repo))
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		return collabs, nil
+	}
+	if err != nil {
+		logger.Debug("failed to open collaborators file", "err", err, "path", fb.collabsPath(repo))
+		return nil, err
+	}
+
+	defer f.Close() //nolint:errcheck
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		collabs = append(collabs, s.Text())
+	}
+
+	return collabs, s.Err()
+}
+
+// RemoveAdmin implements backend.Backend
+func (fb *FileBackend) RemoveAdmin(pk gossh.PublicKey) error {
+	f, err := os.OpenFile(fb.adminsPath(), os.O_RDWR, 0644)
+	if err != nil {
+		logger.Debug("failed to open admin keys file", "err", err, "path", fb.adminsPath())
+		return err
+	}
+
+	defer f.Close() //nolint:errcheck
+	s := bufio.NewScanner(f)
+	lines := make([]string, 0)
+	for s.Scan() {
+		apk, _, err := backend.ParseAuthorizedKey(s.Text())
+		if err != nil {
+			logger.Debug("failed to parse admin key", "err", err, "path", fb.adminsPath())
+			continue
+		}
+
+		if !ssh.KeysEqual(apk, pk) {
+			lines = append(lines, s.Text())
+		}
+	}
+
+	if err := s.Err(); err != nil {
+		logger.Debug("failed to scan admin keys file", "err", err, "path", fb.adminsPath())
+		return err
+	}
+
+	if err := f.Truncate(0); err != nil {
+		logger.Debug("failed to truncate admin keys file", "err", err, "path", fb.adminsPath())
+		return err
+	}
+
+	if _, err := f.Seek(0, 0); err != nil {
+		logger.Debug("failed to seek admin keys file", "err", err, "path", fb.adminsPath())
+		return err
+	}
+
+	w := bufio.NewWriter(f)
+	for _, line := range lines {
+		if _, err := fmt.Fprintln(w, line); err != nil {
+			logger.Debug("failed to write admin keys file", "err", err, "path", fb.adminsPath())
+			return err
+		}
+	}
+
+	return w.Flush()
+}
+
+// RemoveCollaborator removes a public key from the list of collaborators for the given repo.
+//
+// It implements backend.Backend.
+func (fb *FileBackend) RemoveCollaborator(pk gossh.PublicKey, repo string) error {
+	// Check if repo exists
+	if !exists(filepath.Join(fb.reposPath(), sanatizeRepo(repo)+".git")) {
+		return fmt.Errorf("repository %s does not exist", repo)
+	}
+
+	f, err := os.OpenFile(fb.collabsPath(repo), os.O_RDWR, 0644)
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+
 	if err != nil {
 		logger.Debug("failed to open collaborators file", "err", err, "path", fb.collabsPath(repo))
 		return err
 	}
 
 	defer f.Close() //nolint:errcheck
-	_, err = fmt.Fprintln(f, ak)
-	return err
+	s := bufio.NewScanner(f)
+	lines := make([]string, 0)
+	for s.Scan() {
+		apk, _, err := backend.ParseAuthorizedKey(s.Text())
+		if err != nil {
+			logger.Debug("failed to parse collaborator key", "err", err, "path", fb.collabsPath(repo))
+			continue
+		}
+
+		if !ssh.KeysEqual(apk, pk) {
+			lines = append(lines, s.Text())
+		}
+	}
+
+	if err := s.Err(); err != nil {
+		logger.Debug("failed to scan collaborators file", "err", err, "path", fb.collabsPath(repo))
+		return err
+	}
+
+	if err := f.Truncate(0); err != nil {
+		logger.Debug("failed to truncate collaborators file", "err", err, "path", fb.collabsPath(repo))
+		return err
+	}
+
+	if _, err := f.Seek(0, 0); err != nil {
+		logger.Debug("failed to seek collaborators file", "err", err, "path", fb.collabsPath(repo))
+		return err
+	}
+
+	w := bufio.NewWriter(f)
+	for _, line := range lines {
+		if _, err := fmt.Fprintln(w, line); err != nil {
+			logger.Debug("failed to write collaborators file", "err", err, "path", fb.collabsPath(repo))
+			return err
+		}
+	}
+
+	return w.Flush()
 }
 
 // AllowKeyless returns true if keyless access is allowed.
@@ -304,19 +484,16 @@ func (fb *FileBackend) IsAdmin(pk gossh.PublicKey) bool {
 // given repo.
 //
 // It implements backend.Backend.
-func (fb *FileBackend) IsCollaborator(pk gossh.PublicKey, repo string) bool {
-	repo = sanatizeRepo(repo) + ".git"
-	_, err := os.Stat(filepath.Join(fb.reposPath(), repo))
-	if errors.Is(err, os.ErrNotExist) {
+func (fb *FileBackend) IsCollaborator(pk gossh.PublicKey, name string) bool {
+	name = sanatizeRepo(name)
+	_, err := os.Stat(fb.collabsPath(name))
+	if err != nil {
 		return false
 	}
 
-	f, err := os.Open(fb.collabsPath(repo))
-	if err != nil && errors.Is(err, os.ErrNotExist) {
-		return false
-	}
+	f, err := os.Open(fb.collabsPath(name))
 	if err != nil {
-		logger.Debug("failed to open collaborators file", "err", err, "path", fb.collabsPath(repo))
+		logger.Debug("failed to open collaborators file", "err", err, "path", fb.collabsPath(name))
 		return false
 	}
 
