@@ -68,7 +68,7 @@ func NewItem(repo backend.Repository, cfg *config.Config) (Item, error) {
 	return Item{
 		repo:       repo,
 		lastUpdate: lastUpdate,
-		cmd:        common.RepoURL(cfg.Backend.ServerHost(), cfg.Backend.ServerPort(), repo.Name()),
+		cmd:        common.RepoURL(cfg.SSH.PublicURL, repo.Name()),
 	}, nil
 }
 

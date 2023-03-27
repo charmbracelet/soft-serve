@@ -52,10 +52,7 @@ type UI struct {
 
 // New returns a new UI model.
 func New(c common.Common, initialRepo string) *UI {
-	var serverName string
-	if cfg := c.Config(); cfg != nil {
-		serverName = cfg.Backend.ServerName()
-	}
+	serverName := c.Config().Name
 	h := header.New(c, serverName)
 	ui := &UI{
 		serverName:  serverName,

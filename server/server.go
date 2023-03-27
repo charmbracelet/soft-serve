@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/charmbracelet/log"
 
@@ -17,11 +18,12 @@ var (
 
 // Server is the Soft Serve server.
 type Server struct {
-	SSHServer *SSHServer
-	GitDaemon *GitDaemon
-	Config    *config.Config
-	Backend   backend.Backend
-	Access    backend.AccessMethod
+	SSHServer  *SSHServer
+	GitDaemon  *GitDaemon
+	HTTPServer *HTTPServer
+	Config     *config.Config
+	Backend    backend.Backend
+	Access     backend.AccessMethod
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -46,6 +48,11 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		return nil, err
 	}
 
+	srv.HTTPServer, err = NewHTTPServer(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return srv, nil
 }
 
@@ -55,6 +62,13 @@ func (s *Server) Start() error {
 	errg.Go(func() error {
 		log.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
 		if err := s.GitDaemon.Start(); err != ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+	errg.Go(func() error {
+		log.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
+		if err := s.HTTPServer.ListenAndServe(); err != http.ErrServerClosed {
 			return err
 		}
 		return nil
@@ -76,6 +90,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		return s.GitDaemon.Shutdown(ctx)
 	})
 	errg.Go(func() error {
+		return s.HTTPServer.Shutdown(ctx)
+	})
+	errg.Go(func() error {
 		return s.SSHServer.Shutdown(ctx)
 	})
 	return errg.Wait()
@@ -84,11 +101,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 // Close closes the SSH server.
 func (s *Server) Close() error {
 	var errg errgroup.Group
-	errg.Go(func() error {
-		return s.SSHServer.Close()
-	})
-	errg.Go(func() error {
-		return s.GitDaemon.Close()
-	})
+	errg.Go(s.GitDaemon.Close)
+	errg.Go(s.HTTPServer.Close)
+	errg.Go(s.SSHServer.Close)
 	return errg.Wait()
 }

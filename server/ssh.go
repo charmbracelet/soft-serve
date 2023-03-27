@@ -1,7 +1,9 @@
 package server
 
 import (
+	"context"
 	"errors"
+	"net"
 	"path/filepath"
 	"strings"
 	"time"
@@ -21,7 +23,7 @@ import (
 
 // SSHServer is a SSH server that implements the git protocol.
 type SSHServer struct {
-	*ssh.Server
+	srv *ssh.Server
 	cfg *config.Config
 }
 
@@ -35,7 +37,7 @@ func NewSSHServer(cfg *config.Config) (*SSHServer, error) {
 			logger,
 			// BubbleTea middleware.
 			bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256),
-			// Command middleware must come after the git middleware.
+			// CLI middleware.
 			cm.Middleware(cfg),
 			// Git middleware.
 			s.Middleware(cfg),
@@ -43,7 +45,7 @@ func NewSSHServer(cfg *config.Config) (*SSHServer, error) {
 			lm.MiddlewareWithLogger(logger),
 		),
 	}
-	s.Server, err = wish.NewServer(
+	s.srv, err = wish.NewServer(
 		ssh.PublicKeyAuth(s.PublicKeyHandler),
 		ssh.KeyboardInteractiveAuth(s.KeyboardInteractiveHandler),
 		wish.WithAddress(cfg.SSH.ListenAddr),
@@ -55,13 +57,33 @@ func NewSSHServer(cfg *config.Config) (*SSHServer, error) {
 	}
 
 	if cfg.SSH.MaxTimeout > 0 {
-		s.Server.MaxTimeout = time.Duration(cfg.SSH.MaxTimeout) * time.Second
+		s.srv.MaxTimeout = time.Duration(cfg.SSH.MaxTimeout) * time.Second
 	}
 	if cfg.SSH.IdleTimeout > 0 {
-		s.Server.IdleTimeout = time.Duration(cfg.SSH.IdleTimeout) * time.Second
+		s.srv.IdleTimeout = time.Duration(cfg.SSH.IdleTimeout) * time.Second
 	}
 
 	return s, nil
+}
+
+// ListenAndServe starts the SSH server.
+func (s *SSHServer) ListenAndServe() error {
+	return s.srv.ListenAndServe()
+}
+
+// Serve starts the SSH server on the given net.Listener.
+func (s *SSHServer) Serve(l net.Listener) error {
+	return s.srv.Serve(l)
+}
+
+// Close closes the SSH server.
+func (s *SSHServer) Close() error {
+	return s.srv.Close()
+}
+
+// Shutdown gracefully shuts down the SSH server.
+func (s *SSHServer) Shutdown(ctx context.Context) error {
+	return s.srv.Shutdown(ctx)
 }
 
 // PublicKeyAuthHandler handles public key authentication.
