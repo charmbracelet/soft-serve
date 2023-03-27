@@ -21,6 +21,11 @@ type Noop struct {
 	Port string
 }
 
+// RepositoryStorePath implements backend.Backend
+func (*Noop) RepositoryStorePath() string {
+	return ""
+}
+
 // Admins implements backend.Backend
 func (*Noop) Admins() ([]string, error) {
 	return nil, nil
@@ -122,21 +127,6 @@ func (*Noop) Repository(repo string) (backend.Repository, error) {
 	return nil, ErrNotImpl
 }
 
-// ServerHost implements backend.Backend
-func (*Noop) ServerHost() string {
-	return "localhost"
-}
-
-// ServerName implements backend.Backend
-func (*Noop) ServerName() string {
-	return "Soft Serve"
-}
-
-// ServerPort implements backend.Backend
-func (n *Noop) ServerPort() string {
-	return n.Port
-}
-
 // SetAllowKeyless implements backend.Backend
 func (*Noop) SetAllowKeyless(allow bool) error {
 	return ErrNotImpl
@@ -154,20 +144,5 @@ func (*Noop) SetDescription(repo string, desc string) error {
 
 // SetPrivate implements backend.Backend
 func (*Noop) SetPrivate(repo string, priv bool) error {
-	return ErrNotImpl
-}
-
-// SetServerHost implements backend.Backend
-func (*Noop) SetServerHost(host string) error {
-	return ErrNotImpl
-}
-
-// SetServerName implements backend.Backend
-func (*Noop) SetServerName(name string) error {
-	return ErrNotImpl
-}
-
-// SetServerPort implements backend.Backend
-func (*Noop) SetServerPort(port string) error {
 	return ErrNotImpl
 }
