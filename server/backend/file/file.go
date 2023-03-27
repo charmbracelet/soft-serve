@@ -26,7 +26,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/log"
@@ -41,13 +40,11 @@ const (
 	anonAccess   = "anon-access"
 	allowKeyless = "allow-keyless"
 	admins       = "admins"
-	serverHost   = "host"
-	serverName   = "name"
-	serverPort   = "port"
 	repos        = "repos"
 	collabs      = "collaborators"
 	description  = "description"
 	exportOk     = "git-daemon-export-ok"
+	private      = "private"
 	settings     = "settings"
 )
 
@@ -55,9 +52,6 @@ var (
 	logger = log.WithPrefix("backend.file")
 
 	defaults = map[string]string{
-		serverName:   "Soft Serve",
-		serverHost:   "localhost",
-		serverPort:   "23231",
 		anonAccess:   backend.ReadOnlyAccess.String(),
 		allowKeyless: "true",
 	}
@@ -94,7 +88,7 @@ func (fb *FileBackend) adminsPath() string {
 }
 
 func (fb *FileBackend) collabsPath(repo string) string {
-	return filepath.Join(fb.path, collabs, repo)
+	return filepath.Join(fb.path, collabs, repo, collabs)
 }
 
 func sanatizeRepo(repo string) string {
@@ -136,7 +130,8 @@ func NewFileBackend(path string) (*FileBackend, error) {
 			return nil, err
 		}
 	}
-	for _, file := range []string{admins, anonAccess, allowKeyless, serverHost, serverName, serverPort} {
+
+	for _, file := range []string{admins, anonAccess, allowKeyless} {
 		fp := filepath.Join(fb.settingsPath(), file)
 		_, err := os.Stat(fp)
 		if errors.Is(err, fs.ErrNotExist) {
@@ -216,28 +211,29 @@ func (fb *FileBackend) AddAdmin(pk gossh.PublicKey, memo string) error {
 // AddCollaborator adds a public key to the list of collaborators for the given repo.
 //
 // It implements backend.Backend.
-func (fb *FileBackend) AddCollaborator(pk gossh.PublicKey, memo string, name string) error {
+func (fb *FileBackend) AddCollaborator(pk gossh.PublicKey, memo string, repo string) error {
+	name := sanatizeRepo(repo)
+	repo = name + ".git"
 	// Check if repo exists
-	if !exists(filepath.Join(fb.reposPath(), sanatizeRepo(name)+".git")) {
-		return fmt.Errorf("repository %s does not exist", name)
+	if !exists(filepath.Join(fb.reposPath(), repo)) {
+		return fmt.Errorf("repository %s does not exist", repo)
 	}
 
 	// Skip if the key already exists.
-	if fb.IsCollaborator(pk, name) {
+	if fb.IsCollaborator(pk, repo) {
 		return fmt.Errorf("key already exists")
 	}
 
 	ak := backend.MarshalAuthorizedKey(pk)
-	name = sanatizeRepo(name)
-	if err := os.MkdirAll(filepath.Dir(fb.collabsPath(name)), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(fb.collabsPath(repo)), 0755); err != nil {
 		logger.Debug("failed to create collaborators directory",
-			"err", err, "path", filepath.Dir(fb.collabsPath(name)))
+			"err", err, "path", filepath.Dir(fb.collabsPath(repo)))
 		return err
 	}
 
-	f, err := os.OpenFile(fb.collabsPath(name), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile(fb.collabsPath(repo), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		logger.Debug("failed to open collaborators file", "err", err, "path", fb.collabsPath(name))
+		logger.Debug("failed to open collaborators file", "err", err, "path", fb.collabsPath(repo))
 		return err
 	}
 
@@ -273,8 +269,10 @@ func (fb *FileBackend) Admins() ([]string, error) {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) Collaborators(repo string) ([]string, error) {
+	name := sanatizeRepo(repo)
+	repo = name + ".git"
 	// Check if repo exists
-	if !exists(filepath.Join(fb.reposPath(), sanatizeRepo(repo)+".git")) {
+	if !exists(filepath.Join(fb.reposPath(), repo)) {
 		return nil, fmt.Errorf("repository %s does not exist", repo)
 	}
 
@@ -297,7 +295,9 @@ func (fb *FileBackend) Collaborators(repo string) ([]string, error) {
 	return collabs, s.Err()
 }
 
-// RemoveAdmin implements backend.Backend
+// RemoveAdmin removes a public key from the list of server admins.
+//
+// It implements backend.Backend.
 func (fb *FileBackend) RemoveAdmin(pk gossh.PublicKey) error {
 	f, err := os.OpenFile(fb.adminsPath(), os.O_RDWR, 0644)
 	if err != nil {
@@ -350,8 +350,10 @@ func (fb *FileBackend) RemoveAdmin(pk gossh.PublicKey) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) RemoveCollaborator(pk gossh.PublicKey, repo string) error {
+	name := sanatizeRepo(repo)
+	repo = name + ".git"
 	// Check if repo exists
-	if !exists(filepath.Join(fb.reposPath(), sanatizeRepo(repo)+".git")) {
+	if !exists(filepath.Join(fb.reposPath(), repo)) {
 		return fmt.Errorf("repository %s does not exist", repo)
 	}
 
@@ -489,16 +491,16 @@ func (fb *FileBackend) IsAdmin(pk gossh.PublicKey) bool {
 // given repo.
 //
 // It implements backend.Backend.
-func (fb *FileBackend) IsCollaborator(pk gossh.PublicKey, name string) bool {
-	name = sanatizeRepo(name)
-	_, err := os.Stat(fb.collabsPath(name))
+func (fb *FileBackend) IsCollaborator(pk gossh.PublicKey, repo string) bool {
+	repo = sanatizeRepo(repo) + ".git"
+	_, err := os.Stat(fb.collabsPath(repo))
 	if err != nil {
 		return false
 	}
 
-	f, err := os.Open(fb.collabsPath(name))
+	f, err := os.Open(fb.collabsPath(repo))
 	if err != nil {
-		logger.Debug("failed to open collaborators file", "err", err, "path", fb.collabsPath(name))
+		logger.Debug("failed to open collaborators file", "err", err, "path", fb.collabsPath(repo))
 		return false
 	}
 
@@ -524,50 +526,6 @@ func (fb *FileBackend) IsPrivate(repo string) bool {
 	repo = sanatizeRepo(repo) + ".git"
 	r := &Repo{path: filepath.Join(fb.reposPath(), repo), root: fb.reposPath()}
 	return r.IsPrivate()
-}
-
-// ServerHost returns the server host.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) ServerHost() string {
-	line, err := readOneLine(filepath.Join(fb.settingsPath(), serverHost))
-	if err != nil {
-		logger.Debug("failed to read server-host file", "err", err)
-		return ""
-	}
-
-	return line
-}
-
-// ServerName returns the server name.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) ServerName() string {
-	line, err := readOneLine(filepath.Join(fb.settingsPath(), serverName))
-	if err != nil {
-		logger.Debug("failed to read server-name file", "err", err)
-		return ""
-	}
-
-	return line
-}
-
-// ServerPort returns the server port.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) ServerPort() string {
-	line, err := readOneLine(filepath.Join(fb.settingsPath(), serverPort))
-	if err != nil {
-		logger.Debug("failed to read server-port file", "err", err)
-		return ""
-	}
-
-	if _, err := strconv.Atoi(line); err != nil {
-		logger.Debug("failed to parse server-port file", "err", err)
-		return ""
-	}
-
-	return line
 }
 
 // SetAllowKeyless sets whether or not to allow keyless access.
@@ -621,6 +579,12 @@ func (fb *FileBackend) SetPrivate(repo string, priv bool) error {
 	daemonExport := filepath.Join(fb.reposPath(), repo, exportOk)
 	if priv {
 		_ = os.Remove(daemonExport)
+		f, err := os.Create(filepath.Join(fb.reposPath(), repo, private))
+		if err != nil {
+			return fmt.Errorf("failed to create private file: %w", err)
+		}
+
+		_ = f.Close() //nolint:errcheck
 	} else {
 		// Create git-daemon-export-ok file if repo is public.
 		f, err := os.Create(daemonExport)
@@ -631,48 +595,6 @@ func (fb *FileBackend) SetPrivate(repo string, priv bool) error {
 		}
 	}
 	return nil
-}
-
-// SetServerHost sets the server host.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) SetServerHost(host string) error {
-	f, err := os.Create(filepath.Join(fb.settingsPath(), serverHost))
-	if err != nil {
-		return fmt.Errorf("failed to create server-host file: %w", err)
-	}
-
-	defer f.Close() //nolint:errcheck
-	_, err = fmt.Fprintln(f, host)
-	return err
-}
-
-// SetServerName sets the server name.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) SetServerName(name string) error {
-	f, err := os.Create(filepath.Join(fb.settingsPath(), serverName))
-	if err != nil {
-		return fmt.Errorf("failed to create server-name file: %w", err)
-	}
-
-	defer f.Close() //nolint:errcheck
-	_, err = fmt.Fprintln(f, name)
-	return err
-}
-
-// SetServerPort sets the server port.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) SetServerPort(port string) error {
-	f, err := os.Create(filepath.Join(fb.settingsPath(), serverPort))
-	if err != nil {
-		return fmt.Errorf("failed to create server-port file: %w", err)
-	}
-
-	defer f.Close() //nolint:errcheck
-	_, err = fmt.Fprintln(f, port)
-	return err
 }
 
 // CreateRepository creates a new repository.

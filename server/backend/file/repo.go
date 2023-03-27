@@ -45,8 +45,8 @@ func (r *Repo) Description() string {
 //
 // It implements backend.Repository.
 func (r *Repo) IsPrivate() bool {
-	_, err := os.Stat(filepath.Join(r.path, exportOk))
-	return err != nil
+	_, err := os.Stat(filepath.Join(r.path, private))
+	return err == nil
 }
 
 // Open returns the underlying git.Repository.
