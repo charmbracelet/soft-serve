@@ -235,10 +235,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case CopyURLMsg:
 		if cfg := r.common.Config(); cfg != nil {
-			host := cfg.Backend.ServerHost()
-			port := cfg.Backend.ServerPort()
 			r.common.Copy.Copy(
-				common.RepoURL(host, port, r.selectedRepo.Name()),
+				common.RepoURL(cfg.SSH.PublicURL, r.selectedRepo.Name()),
 			)
 		}
 	case ResetURLMsg:
@@ -342,7 +340,7 @@ func (r *Repo) headerView() string {
 		Align(lipgloss.Right)
 	var url string
 	if cfg := r.common.Config(); cfg != nil {
-		url = common.RepoURL(cfg.Backend.ServerHost(), cfg.Backend.ServerPort(), r.selectedRepo.Name())
+		url = common.RepoURL(cfg.SSH.PublicURL, r.selectedRepo.Name())
 	}
 	if !r.copyURL.IsZero() && r.copyURL.Add(time.Second).After(time.Now()) {
 		url = "copied!"

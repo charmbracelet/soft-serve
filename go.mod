@@ -29,6 +29,7 @@ require (
 	github.com/muesli/mango-cobra v1.2.0
 	github.com/muesli/roff v0.1.0
 	github.com/spf13/cobra v1.6.1
+	goji.io v2.0.2+incompatible
 	golang.org/x/crypto v0.7.0
 	golang.org/x/sync v0.1.0
 )

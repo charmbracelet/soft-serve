@@ -3,7 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"net"
 	"path/filepath"
@@ -16,7 +16,7 @@ import (
 )
 
 // ErrServerClosed indicates that the server has been closed.
-var ErrServerClosed = errors.New("git: Server closed")
+var ErrServerClosed = fmt.Errorf("git: %w", net.ErrClosed)
 
 // connections synchronizes access to to a net.Conn pool.
 type connections struct {

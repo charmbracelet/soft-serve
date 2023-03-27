@@ -14,6 +14,9 @@ type SSHConfig struct {
 	// ListenAddr is the address on which the SSH server will listen.
 	ListenAddr string `env:"LISTEN_ADDR" envDefault:":23231"`
 
+	// PublicURL is the public URL of the SSH server.
+	PublicURL string `env:"PUBLIC_URL" envDefault:"ssh://localhost:23231"`
+
 	// KeyPath is the path to the SSH server's private key.
 	KeyPath string `env:"KEY_PATH"`
 
@@ -39,13 +42,28 @@ type GitConfig struct {
 	MaxConnections int `env:"MAX_CONNECTIONS" envDefault:"32"`
 }
 
+// HTTPConfig is the HTTP configuration for the server.
+type HTTPConfig struct {
+	// ListenAddr is the address on which the HTTP server will listen.
+	ListenAddr string `env:"LISTEN_ADDR" envDefault:":8080"`
+
+	// PublicURL is the public URL of the HTTP server.
+	PublicURL string `env:"PUBLIC_URL" envDefault:"http://localhost:8080"`
+}
+
 // Config is the configuration for Soft Serve.
 type Config struct {
+	// Name is the name of the server.
+	Name string `env:"NAME" envDefault:"Soft Serve"`
+
 	// SSH is the configuration for the SSH server.
 	SSH SSHConfig `envPrefix:"SSH_"`
 
 	// Git is the configuration for the Git daemon.
 	Git GitConfig `envPrefix:"GIT_"`
+
+	// HTTP is the configuration for the HTTP server.
+	HTTP HTTPConfig `envPrefix:"HTTP_"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEY" envSeparator:"\n"`
