@@ -114,12 +114,23 @@ func Middleware(cfg *config.Config) wish.Middleware {
 				if active {
 					return
 				}
+
+				// Ignore git server commands.
+				args := s.Command()
+				if len(args) > 0 {
+					if args[0] == "git-receive-pack" ||
+						args[0] == "git-upload-pack" ||
+						args[0] == "git-upload-archive" {
+						return
+					}
+				}
+
 				ctx := context.WithValue(s.Context(), ConfigCtxKey, cfg)
 				ctx = context.WithValue(ctx, SessionCtxKey, s)
 
 				rootCmd := rootCommand()
-				rootCmd.SetArgs(s.Command())
-				if len(s.Command()) == 0 {
+				rootCmd.SetArgs(args)
+				if len(args) == 0 {
 					// otherwise it'll default to os.Args, which is not what we want.
 					rootCmd.SetArgs([]string{"--help"})
 				}
