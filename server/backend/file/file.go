@@ -66,6 +66,10 @@ type FileBackend struct { // nolint:revive
 	// path is the path to the directory containing the repositories and config
 	// files.
 	path string
+
+	// repos is a map of repositories.
+	repos map[string]*Repo
+
 	// AdditionalAdmins additional admins to the server.
 	AdditionalAdmins []string
 }
@@ -145,6 +149,11 @@ func NewFileBackend(path string) (*FileBackend, error) {
 			_ = f.Close()
 		}
 	}
+
+	if err := fb.initRepos(); err != nil {
+		return nil, err
+	}
+
 	return fb, nil
 }
 
@@ -602,9 +611,10 @@ func (fb *FileBackend) SetPrivate(repo string, priv bool) error {
 // Created repositories are always bare.
 //
 // It implements backend.Backend.
-func (fb *FileBackend) CreateRepository(name string, private bool) (backend.Repository, error) {
-	name = sanatizeRepo(name) + ".git"
-	rp := filepath.Join(fb.reposPath(), name)
+func (fb *FileBackend) CreateRepository(repo string, private bool) (backend.Repository, error) {
+	name := sanatizeRepo(repo)
+	repo = name + ".git"
+	rp := filepath.Join(fb.reposPath(), repo)
 	if _, err := os.Stat(rp); err == nil {
 		return nil, os.ErrExist
 	}
@@ -614,18 +624,23 @@ func (fb *FileBackend) CreateRepository(name string, private bool) (backend.Repo
 		return nil, err
 	}
 
-	fb.SetPrivate(name, private)
-	fb.SetDescription(name, "")
+	fb.SetPrivate(repo, private)
+	fb.SetDescription(repo, "")
 
-	return &Repo{path: rp, root: fb.reposPath()}, nil
+	r := &Repo{path: rp, root: fb.reposPath()}
+	// Add to cache.
+	fb.repos[name] = r
+	return r, nil
 }
 
 // DeleteRepository deletes the given repository.
 //
 // It implements backend.Backend.
-func (fb *FileBackend) DeleteRepository(name string) error {
-	name = sanatizeRepo(name) + ".git"
-	return os.RemoveAll(filepath.Join(fb.reposPath(), name))
+func (fb *FileBackend) DeleteRepository(repo string) error {
+	name := sanatizeRepo(repo)
+	delete(fb.repos, name)
+	repo = name + ".git"
+	return os.RemoveAll(filepath.Join(fb.reposPath(), repo))
 }
 
 // RenameRepository renames the given repository.
@@ -648,7 +663,12 @@ func (fb *FileBackend) RenameRepository(oldName string, newName string) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) Repository(repo string) (backend.Repository, error) {
-	repo = sanatizeRepo(repo) + ".git"
+	name := sanatizeRepo(repo)
+	if r, ok := fb.repos[name]; ok {
+		return r, nil
+	}
+
+	repo = name + ".git"
 	rp := filepath.Join(fb.reposPath(), repo)
 	_, err := os.Stat(rp)
 	if err != nil {
@@ -661,10 +681,31 @@ func (fb *FileBackend) Repository(repo string) (backend.Repository, error) {
 	return &Repo{path: rp, root: fb.reposPath()}, nil
 }
 
-// Repositories returns a list of all repositories.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) Repositories() ([]backend.Repository, error) {
+// Returns true if path is a directory containing an `objects` directory and a
+// `HEAD` file.
+func isGitDir(path string) bool {
+	stat, err := os.Stat(filepath.Join(path, "objects"))
+	if err != nil {
+		return false
+	}
+	if !stat.IsDir() {
+		return false
+	}
+
+	stat, err = os.Stat(filepath.Join(path, "HEAD"))
+	if err != nil {
+		return false
+	}
+	if stat.IsDir() {
+		return false
+	}
+
+	return true
+}
+
+// initRepos initializes the repository cache.
+func (fb *FileBackend) initRepos() error {
+	fb.repos = make(map[string]*Repo)
 	repos := make([]backend.Repository, 0)
 	err := filepath.WalkDir(fb.reposPath(), func(path string, d fs.DirEntry, _ error) error {
 		// Skip non-directories.
@@ -677,12 +718,28 @@ func (fb *FileBackend) Repositories() ([]backend.Repository, error) {
 			return nil
 		}
 
-		repos = append(repos, &Repo{path: path, root: fb.reposPath()})
+		if isGitDir(path) {
+			r := &Repo{path: path, root: fb.reposPath()}
+			fb.repos[r.Name()] = r
+			repos = append(repos, r)
+		}
 
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	return nil
+}
+
+// Repositories returns a list of all repositories.
+//
+// It implements backend.Backend.
+func (fb *FileBackend) Repositories() ([]backend.Repository, error) {
+	repos := make([]backend.Repository, 0)
+	for _, r := range fb.repos {
+		repos = append(repos, r)
 	}
 
 	return repos, nil
