@@ -8,10 +8,12 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/soft-serve/server/backend/file"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 )
@@ -29,7 +31,11 @@ func TestMain(m *testing.M) {
 	os.Setenv("SOFT_SERVE_GIT_MAX_TIMEOUT", "100")
 	os.Setenv("SOFT_SERVE_GIT_IDLE_TIMEOUT", "1")
 	os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", randomPort()))
-	cfg := config.DefaultConfig()
+	fb, err := file.NewFileBackend(filepath.Join(tmp, "repos"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg := config.DefaultConfig().WithBackend(fb).WithAccessMethod(fb)
 	d, err := NewGitDaemon(cfg)
 	if err != nil {
 		log.Fatal(err)

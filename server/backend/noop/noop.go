@@ -14,16 +14,9 @@ var ErrNotImpl = fmt.Errorf("not implemented")
 
 var _ backend.Backend = (*Noop)(nil)
 
-var _ backend.AccessMethod = (*Noop)(nil)
-
 // Noop is a backend that does nothing. It's used for testing.
 type Noop struct {
 	Port string
-}
-
-// RepositoryStorePath implements backend.Backend
-func (*Noop) RepositoryStorePath() string {
-	return ""
 }
 
 // Admins implements backend.Backend

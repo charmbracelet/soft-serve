@@ -3,10 +3,13 @@ package server
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/soft-serve/server/backend/file"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/ssh"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -49,7 +52,11 @@ func setup(tb testing.TB) *gossh.Session {
 		is.NoErr(os.Unsetenv("SOFT_SERVE_SSH_LISTEN_ADDR"))
 		is.NoErr(os.RemoveAll(dp))
 	})
-	cfg := config.DefaultConfig()
+	fb, err := file.NewFileBackend(filepath.Join(dp, "repos"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg := config.DefaultConfig().WithBackend(fb).WithAccessMethod(fb)
 	return testsession.New(tb, &ssh.Server{
 		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256)(func(s ssh.Session) {
 			_, _, active := s.Pty()

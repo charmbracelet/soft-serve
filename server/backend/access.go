@@ -1,7 +1,5 @@
 package backend
 
-import "golang.org/x/crypto/ssh"
-
 // AccessLevel is the level of access allowed to a repo.
 type AccessLevel int
 
@@ -33,10 +31,4 @@ func (a AccessLevel) String() string {
 	default:
 		return "unknown"
 	}
-}
-
-// AccessMethod is an interface that handles repository authorization.
-type AccessMethod interface {
-	// AccessLevel returns the access level for the given repository and key.
-	AccessLevel(repo string, pk ssh.PublicKey) AccessLevel
 }

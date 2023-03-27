@@ -6,7 +6,6 @@ import (
 	"github.com/caarlos0/env/v6"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/backend/file"
 )
 
 // SSHConfig is the configuration for the SSH server.
@@ -19,6 +18,9 @@ type SSHConfig struct {
 
 	// KeyPath is the path to the SSH server's private key.
 	KeyPath string `env:"KEY_PATH"`
+
+	// InternalKeyPath is the path to the SSH server's internal private key.
+	InternalKeyPath string `env:"INTERNAL_KEY_PATH"`
 
 	// MaxTimeout is the maximum number of seconds a connection can take.
 	MaxTimeout int `env:"MAX_TIMEOUT" envDefault:"0"`
@@ -73,9 +75,6 @@ type Config struct {
 
 	// Backend is the Git backend to use.
 	Backend backend.Backend
-
-	// Access is the access control backend to use.
-	Access backend.AccessMethod
 }
 
 // DefaultConfig returns a Config with the values populated with the defaults
@@ -90,23 +89,14 @@ func DefaultConfig() *Config {
 	if cfg.SSH.KeyPath == "" {
 		cfg.SSH.KeyPath = filepath.Join(cfg.DataPath, "ssh", "soft_serve")
 	}
-	fb, err := file.NewFileBackend(cfg.DataPath)
-	if err != nil {
-		log.Fatal(err)
+	if cfg.SSH.InternalKeyPath == "" {
+		cfg.SSH.InternalKeyPath = filepath.Join(cfg.DataPath, "ssh", "soft_serve_internal")
 	}
-	// Add the initial admin keys to the list of admins.
-	fb.AdditionalAdmins = cfg.InitialAdminKeys
-	return cfg.WithBackend(fb).WithAccessMethod(fb)
+	return cfg
 }
 
 // WithBackend sets the backend for the configuration.
 func (c *Config) WithBackend(backend backend.Backend) *Config {
 	c.Backend = backend
-	return c
-}
-
-// WithAccessMethod sets the access control method for the configuration.
-func (c *Config) WithAccessMethod(access backend.AccessMethod) *Config {
-	c.Access = access
 	return c
 }

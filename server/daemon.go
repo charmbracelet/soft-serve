@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 )
 
@@ -201,19 +202,19 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		name := sanitizeRepoName(string(opts[0]))
+		name := utils.SanitizeRepo(string(opts[0]))
 		logger.Debugf("git: connect %s %s %s", c.RemoteAddr(), cmd, name)
 		defer logger.Debugf("git: disconnect %s %s %s", c.RemoteAddr(), cmd, name)
 		// git bare repositories should end in ".git"
 		// https://git-scm.com/docs/gitrepository-layout
 		repo := name + ".git"
-		reposDir := d.cfg.Backend.RepositoryStorePath()
+		reposDir := filepath.Join(d.cfg.DataPath, "repos")
 		if err := ensureWithin(reposDir, repo); err != nil {
 			fatal(c, err)
 			return
 		}
 
-		auth := d.cfg.Access.AccessLevel(name, nil)
+		auth := d.cfg.Backend.AccessLevel(name, nil)
 		if auth < backend.ReadOnlyAccess {
 			fatal(c, ErrNotAuthed)
 			return

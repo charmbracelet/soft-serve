@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -88,7 +89,7 @@ func (s *SSHServer) Shutdown(ctx context.Context) error {
 
 // PublicKeyAuthHandler handles public key authentication.
 func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
-	return s.cfg.Access.AccessLevel("", pk) > backend.NoAccess
+	return s.cfg.Backend.AccessLevel("", pk) > backend.NoAccess
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
@@ -109,14 +110,14 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 				if len(cmd) >= 2 && strings.HasPrefix(cmd[0], "git") {
 					gc := cmd[0]
 					// repo should be in the form of "repo.git"
-					name := sanitizeRepoName(cmd[1])
+					name := utils.SanitizeRepo(cmd[1])
 					pk := s.PublicKey()
-					access := cfg.Access.AccessLevel(name, pk)
+					access := cfg.Backend.AccessLevel(name, pk)
 					// git bare repositories should end in ".git"
 					// https://git-scm.com/docs/gitrepository-layout
 					repo := name + ".git"
 
-					reposDir := cfg.Backend.RepositoryStorePath()
+					reposDir := filepath.Join(cfg.DataPath, "repos")
 					if err := ensureWithin(reposDir, repo); err != nil {
 						sshFatal(s, err)
 						return
@@ -167,11 +168,4 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 func sshFatal(s ssh.Session, v ...interface{}) {
 	WritePktline(s, v...)
 	s.Exit(1) // nolint: errcheck
-}
-
-func sanitizeRepoName(repo string) string {
-	repo = strings.TrimPrefix(repo, "/")
-	repo = filepath.Clean(repo)
-	repo = strings.TrimSuffix(repo, ".git")
-	return repo
 }

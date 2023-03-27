@@ -13,21 +13,21 @@ import (
 // listCommand returns a command that list file or directory at path.
 func listCommand() *cobra.Command {
 	listCmd := &cobra.Command{
-		Use:               "list PATH",
-		Aliases:           []string{"ls"},
-		Short:             "List files at repository.",
-		Args:              cobra.RangeArgs(0, 1),
-		PersistentPreRunE: checkIfReadable,
+		Use:     "list PATH",
+		Aliases: []string{"ls"},
+		Short:   "List files at repository.",
+		Args:    cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, s := fromContext(cmd)
 			rn := ""
 			path := ""
 			ps := []string{}
 			if len(args) > 0 {
+				// FIXME: nested repos are not supported.
 				path = filepath.Clean(args[0])
 				ps = strings.Split(path, "/")
 				rn = strings.TrimSuffix(ps[0], ".git")
-				auth := cfg.Access.AccessLevel(rn, s.PublicKey())
+				auth := cfg.Backend.AccessLevel(rn, s.PublicKey())
 				if auth < backend.ReadOnlyAccess {
 					return ErrUnauthorized
 				}
@@ -38,7 +38,7 @@ func listCommand() *cobra.Command {
 					return err
 				}
 				for _, r := range repos {
-					if cfg.Access.AccessLevel(r.Name(), s.PublicKey()) >= backend.ReadOnlyAccess {
+					if cfg.Backend.AccessLevel(r.Name(), s.PublicKey()) >= backend.ReadOnlyAccess {
 						cmd.Println(r.Name())
 					}
 				}

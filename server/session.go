@@ -26,7 +26,7 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 		initialRepo := ""
 		if len(cmd) == 1 {
 			initialRepo = cmd[0]
-			auth := cfg.Access.AccessLevel(initialRepo, s.PublicKey())
+			auth := cfg.Backend.AccessLevel(initialRepo, s.PublicKey())
 			if auth < backend.ReadOnlyAccess {
 				wish.Fatalln(s, cm.ErrUnauthorized)
 				return nil

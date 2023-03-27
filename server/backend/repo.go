@@ -11,8 +11,6 @@ type RepositoryStore interface {
 	Repository(repo string) (Repository, error)
 	// Repositories returns a list of all repositories.
 	Repositories() ([]Repository, error)
-	// RepositoryStorePath returns the path to the repository store.
-	RepositoryStorePath() string
 	// CreateRepository creates a new repository.
 	CreateRepository(name string, private bool) (Repository, error)
 	// DeleteRepository deletes a repository.
@@ -35,6 +33,8 @@ type RepositoryMetadata interface {
 
 // RepositoryAccess is an interface for managing repository access.
 type RepositoryAccess interface {
+	// AccessLevel returns the access level for the given repository and key.
+	AccessLevel(repo string, pk ssh.PublicKey) AccessLevel
 	// IsCollaborator returns true if the authorized key is a collaborator on the repository.
 	IsCollaborator(pk ssh.PublicKey, repo string) bool
 	// AddCollaborator adds the authorized key as a collaborator on the repository.
