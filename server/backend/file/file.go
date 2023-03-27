@@ -31,6 +31,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	gossh "golang.org/x/crypto/ssh"
 )
@@ -59,8 +60,6 @@ var (
 
 var _ backend.Backend = &FileBackend{}
 
-var _ backend.AccessMethod = &FileBackend{}
-
 // FileBackend is a backend that uses the filesystem.
 type FileBackend struct { // nolint:revive
 	// path is the path to the directory containing the repositories and config
@@ -78,11 +77,6 @@ func (fb *FileBackend) reposPath() string {
 	return filepath.Join(fb.path, repos)
 }
 
-// RepositoryStorePath returns the path to the repository store.
-func (fb *FileBackend) RepositoryStorePath() string {
-	return fb.reposPath()
-}
-
 func (fb *FileBackend) settingsPath() string {
 	return filepath.Join(fb.path, settings)
 }
@@ -93,10 +87,6 @@ func (fb *FileBackend) adminsPath() string {
 
 func (fb *FileBackend) collabsPath(repo string) string {
 	return filepath.Join(fb.path, collabs, repo, collabs)
-}
-
-func sanatizeRepo(repo string) string {
-	return strings.TrimSuffix(repo, ".git")
 }
 
 func readOneLine(path string) (string, error) {
@@ -221,7 +211,7 @@ func (fb *FileBackend) AddAdmin(pk gossh.PublicKey, memo string) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) AddCollaborator(pk gossh.PublicKey, memo string, repo string) error {
-	name := sanatizeRepo(repo)
+	name := utils.SanitizeRepo(repo)
 	repo = name + ".git"
 	// Check if repo exists
 	if !exists(filepath.Join(fb.reposPath(), repo)) {
@@ -278,7 +268,7 @@ func (fb *FileBackend) Admins() ([]string, error) {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) Collaborators(repo string) ([]string, error) {
-	name := sanatizeRepo(repo)
+	name := utils.SanitizeRepo(repo)
 	repo = name + ".git"
 	// Check if repo exists
 	if !exists(filepath.Join(fb.reposPath(), repo)) {
@@ -359,7 +349,7 @@ func (fb *FileBackend) RemoveAdmin(pk gossh.PublicKey) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) RemoveCollaborator(pk gossh.PublicKey, repo string) error {
-	name := sanatizeRepo(repo)
+	name := utils.SanitizeRepo(repo)
 	repo = name + ".git"
 	// Check if repo exists
 	if !exists(filepath.Join(fb.reposPath(), repo)) {
@@ -458,7 +448,7 @@ func (fb *FileBackend) AnonAccess() backend.AccessLevel {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) Description(repo string) string {
-	repo = sanatizeRepo(repo) + ".git"
+	repo = utils.SanitizeRepo(repo) + ".git"
 	r := &Repo{path: filepath.Join(fb.reposPath(), repo), root: fb.reposPath()}
 	return r.Description()
 }
@@ -501,7 +491,7 @@ func (fb *FileBackend) IsAdmin(pk gossh.PublicKey) bool {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) IsCollaborator(pk gossh.PublicKey, repo string) bool {
-	repo = sanatizeRepo(repo) + ".git"
+	repo = utils.SanitizeRepo(repo) + ".git"
 	_, err := os.Stat(fb.collabsPath(repo))
 	if err != nil {
 		return false
@@ -532,7 +522,7 @@ func (fb *FileBackend) IsCollaborator(pk gossh.PublicKey, repo string) bool {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) IsPrivate(repo string) bool {
-	repo = sanatizeRepo(repo) + ".git"
+	repo = utils.SanitizeRepo(repo) + ".git"
 	r := &Repo{path: filepath.Join(fb.reposPath(), repo), root: fb.reposPath()}
 	return r.IsPrivate()
 }
@@ -569,7 +559,7 @@ func (fb *FileBackend) SetAnonAccess(level backend.AccessLevel) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) SetDescription(repo string, desc string) error {
-	repo = sanatizeRepo(repo) + ".git"
+	repo = utils.SanitizeRepo(repo) + ".git"
 	f, err := os.OpenFile(filepath.Join(fb.reposPath(), repo, description), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to open description file: %w", err)
@@ -584,7 +574,7 @@ func (fb *FileBackend) SetDescription(repo string, desc string) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) SetPrivate(repo string, priv bool) error {
-	repo = sanatizeRepo(repo) + ".git"
+	repo = utils.SanitizeRepo(repo) + ".git"
 	daemonExport := filepath.Join(fb.reposPath(), repo, exportOk)
 	if priv {
 		_ = os.Remove(daemonExport)
@@ -612,7 +602,7 @@ func (fb *FileBackend) SetPrivate(repo string, priv bool) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) CreateRepository(repo string, private bool) (backend.Repository, error) {
-	name := sanatizeRepo(repo)
+	name := utils.SanitizeRepo(repo)
 	repo = name + ".git"
 	rp := filepath.Join(fb.reposPath(), repo)
 	if _, err := os.Stat(rp); err == nil {
@@ -637,7 +627,7 @@ func (fb *FileBackend) CreateRepository(repo string, private bool) (backend.Repo
 //
 // It implements backend.Backend.
 func (fb *FileBackend) DeleteRepository(repo string) error {
-	name := sanatizeRepo(repo)
+	name := utils.SanitizeRepo(repo)
 	delete(fb.repos, name)
 	repo = name + ".git"
 	return os.RemoveAll(filepath.Join(fb.reposPath(), repo))
@@ -647,8 +637,8 @@ func (fb *FileBackend) DeleteRepository(repo string) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) RenameRepository(oldName string, newName string) error {
-	oldName = filepath.Join(fb.reposPath(), sanatizeRepo(oldName)+".git")
-	newName = filepath.Join(fb.reposPath(), sanatizeRepo(newName)+".git")
+	oldName = filepath.Join(fb.reposPath(), utils.SanitizeRepo(oldName)+".git")
+	newName = filepath.Join(fb.reposPath(), utils.SanitizeRepo(newName)+".git")
 	if _, err := os.Stat(oldName); errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("repository %q does not exist", strings.TrimSuffix(filepath.Base(oldName), ".git"))
 	}
@@ -663,7 +653,7 @@ func (fb *FileBackend) RenameRepository(oldName string, newName string) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) Repository(repo string) (backend.Repository, error) {
-	name := sanatizeRepo(repo)
+	name := utils.SanitizeRepo(repo)
 	if r, ok := fb.repos[name]; ok {
 		return r, nil
 	}

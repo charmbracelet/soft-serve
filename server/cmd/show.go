@@ -33,14 +33,11 @@ func showCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, s := fromContext(cmd)
+			cfg, _ := fromContext(cmd)
+			// FIXME: nested repos are not supported.
 			ps := strings.Split(args[0], "/")
 			rn := strings.TrimSuffix(ps[0], ".git")
 			fp := strings.Join(ps[1:], "/")
-			auth := cfg.Access.AccessLevel(rn, s.PublicKey())
-			if auth < backend.ReadOnlyAccess {
-				return ErrUnauthorized
-			}
 			var repo backend.Repository
 			repoExists := false
 			repos, err := cfg.Backend.Repositories()

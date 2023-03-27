@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/log"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/backend/file"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/ssh"
 	"golang.org/x/sync/errgroup"
@@ -23,7 +24,6 @@ type Server struct {
 	HTTPServer *HTTPServer
 	Config     *config.Config
 	Backend    backend.Backend
-	Access     backend.AccessMethod
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -33,10 +33,19 @@ type Server struct {
 // publicly writable until configured otherwise by cloning the `config` repo.
 func NewServer(cfg *config.Config) (*Server, error) {
 	var err error
+	if cfg.Backend == nil {
+		fb, err := file.NewFileBackend(cfg.DataPath)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		// Add the initial admin keys to the list of admins.
+		fb.AdditionalAdmins = cfg.InitialAdminKeys
+		cfg = cfg.WithBackend(fb)
+	}
+
 	srv := &Server{
 		Config:  cfg,
 		Backend: cfg.Backend,
-		Access:  cfg.Access,
 	}
 	srv.SSHServer, err = NewSSHServer(cfg)
 	if err != nil {

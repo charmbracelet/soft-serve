@@ -13,6 +13,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/dustin/go-humanize"
 	"goji.io"
 	"goji.io/pat"
@@ -68,7 +69,7 @@ func NewHTTPServer(cfg *config.Config) (*HTTPServer, error) {
 	mux := goji.NewMux()
 	s := &HTTPServer{
 		cfg:        cfg,
-		dirHandler: http.FileServer(http.Dir(cfg.Backend.RepositoryStorePath())),
+		dirHandler: http.FileServer(http.Dir(filepath.Join(cfg.DataPath, "repos"))),
 		server: &http.Server{
 			Addr:              cfg.HTTP.ListenAddr,
 			Handler:           mux,
@@ -114,7 +115,7 @@ Redirecting to docs at <a href="https://godoc.org/{{.ImportRoot}}/{{.Repo}}">god
 
 func (s *HTTPServer) repoIndexHandler(w http.ResponseWriter, r *http.Request) {
 	repo := pat.Param(r, "repo")
-	repo = sanitizeRepoName(repo)
+	repo = utils.SanitizeRepo(repo)
 
 	// Only respond to go-get requests
 	if r.URL.Query().Get("go-get") != "1" {
@@ -122,7 +123,7 @@ func (s *HTTPServer) repoIndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	access := s.cfg.Access.AccessLevel(repo, nil)
+	access := s.cfg.Backend.AccessLevel(repo, nil)
 	if access < backend.ReadOnlyAccess {
 		http.NotFound(w, r)
 		return
@@ -149,16 +150,16 @@ func (s *HTTPServer) repoIndexHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *HTTPServer) dumbGitHandler(w http.ResponseWriter, r *http.Request) {
 	repo := pat.Param(r, "repo")
-	repo = sanitizeRepoName(repo) + ".git"
+	repo = utils.SanitizeRepo(repo) + ".git"
 
-	access := s.cfg.Access.AccessLevel(repo, nil)
+	access := s.cfg.Backend.AccessLevel(repo, nil)
 	if access < backend.ReadOnlyAccess || !s.cfg.Backend.AllowKeyless() {
 		httpStatusError(w, http.StatusUnauthorized)
 		return
 	}
 
 	path := pattern.Path(r.Context())
-	stat, err := os.Stat(filepath.Join(s.cfg.Backend.RepositoryStorePath(), repo, path))
+	stat, err := os.Stat(filepath.Join(s.cfg.DataPath, "repos", repo, path))
 	// Restrict access to files
 	if err != nil || stat.IsDir() {
 		http.NotFound(w, r)

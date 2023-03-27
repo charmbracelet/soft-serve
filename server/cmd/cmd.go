@@ -3,10 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/spf13/cobra"
@@ -75,8 +75,8 @@ func checkIfReadable(cmd *cobra.Command, args []string) error {
 		repo = args[0]
 	}
 	cfg, s := fromContext(cmd)
-	rn := strings.TrimSuffix(repo, ".git")
-	auth := cfg.Access.AccessLevel(rn, s.PublicKey())
+	rn := utils.SanitizeRepo(repo)
+	auth := cfg.Backend.AccessLevel(rn, s.PublicKey())
 	if auth < backend.ReadOnlyAccess {
 		return ErrUnauthorized
 	}
@@ -97,8 +97,8 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 		repo = args[0]
 	}
 	cfg, s := fromContext(cmd)
-	rn := strings.TrimSuffix(repo, ".git")
-	auth := cfg.Access.AccessLevel(rn, s.PublicKey())
+	rn := utils.SanitizeRepo(repo)
+	auth := cfg.Backend.AccessLevel(rn, s.PublicKey())
 	if auth < backend.ReadWriteAccess {
 		return ErrUnauthorized
 	}
