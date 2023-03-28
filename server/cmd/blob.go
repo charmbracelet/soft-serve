@@ -7,7 +7,7 @@ import (
 	"github.com/alecthomas/chroma/lexers"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
@@ -21,60 +21,99 @@ var (
 	filemodeStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#777777"))
 )
 
-// showCommand returns a command that prints the contents of a file.
-func showCommand() *cobra.Command {
+// blobCommand returns a command that prints the contents of a file.
+func blobCommand() *cobra.Command {
 	var linenumber bool
 	var color bool
+	var raw bool
 
-	showCmd := &cobra.Command{
-		Use:               "show PATH",
-		Aliases:           []string{"cat"},
-		Short:             "Read the contents of file at path.",
-		Args:              cobra.ExactArgs(1),
+	cmd := &cobra.Command{
+		Use:               "blob REPOSITORY [REFERENCE] [PATH]",
+		Aliases:           []string{"cat", "show"},
+		Short:             "Print out the contents of file at path.",
+		Args:              cobra.RangeArgs(1, 3),
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := fromContext(cmd)
-			// FIXME: nested repos are not supported.
-			ps := strings.Split(args[0], "/")
-			rn := strings.TrimSuffix(ps[0], ".git")
-			fp := strings.Join(ps[1:], "/")
-			var repo backend.Repository
-			repoExists := false
-			repos, err := cfg.Backend.Repositories()
+			rn := args[0]
+			ref := ""
+			fp := ""
+			switch len(args) {
+			case 2:
+				fp = args[1]
+			case 3:
+				ref = args[1]
+				fp = args[2]
+			}
+
+			repo, err := cfg.Backend.Repository(rn)
 			if err != nil {
 				return err
 			}
-			for _, rp := range repos {
-				if rp.Name() == rn {
-					repoExists = true
-					repo = rp
-					break
-				}
-			}
-			if !repoExists {
-				return ErrRepoNotFound
-			}
-			c, _, err := backend.LatestFile(repo, fp)
+
+			r, err := repo.Open()
 			if err != nil {
 				return err
 			}
-			if color {
-				c, err = withFormatting(fp, c)
+
+			if ref == "" {
+				head, err := r.HEAD()
 				if err != nil {
 					return err
 				}
+				ref = head.Hash.String()
 			}
-			if linenumber {
-				c = withLineNumber(c, color)
+
+			tree, err := r.LsTree(ref)
+			if err != nil {
+				return err
 			}
-			cmd.Println(c)
+
+			te, err := tree.TreeEntry(fp)
+			if err != nil {
+				return err
+			}
+
+			if te.Type() != "blob" {
+				return git.ErrFileNotFound
+			}
+
+			bts, err := te.Contents()
+			if err != nil {
+				return err
+			}
+
+			c := string(bts)
+			isBin, _ := te.File().IsBinary()
+			if isBin {
+				if raw {
+					cmd.Println(c)
+				} else {
+					return fmt.Errorf("binary file: use --raw to print")
+				}
+			} else {
+				if color {
+					c, err = withFormatting(fp, c)
+					if err != nil {
+						return err
+					}
+				}
+
+				if linenumber {
+					c = withLineNumber(c, color)
+				}
+
+				cmd.Println(c)
+			}
 			return nil
 		},
 	}
-	showCmd.Flags().BoolVarP(&linenumber, "linenumber", "l", false, "Print line numbers")
-	showCmd.Flags().BoolVarP(&color, "color", "c", false, "Colorize output")
 
-	return showCmd
+	cmd.Flags().BoolVarP(&raw, "raw", "r", false, "Print raw contents")
+	cmd.Flags().BoolVarP(&linenumber, "linenumber", "l", false, "Print line numbers")
+	cmd.Flags().BoolVarP(&color, "color", "c", false, "Colorize output")
+
+	return cmd
 }
 
 func withLineNumber(s string, color bool) string {

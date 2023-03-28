@@ -114,6 +114,19 @@ func (r *Repository) References() ([]*Reference, error) {
 	return rrefs, nil
 }
 
+// LsTree returns the tree for the given reference.
+func (r *Repository) LsTree(ref string) (*Tree, error) {
+	tree, err := r.Repository.LsTree(ref)
+	if err != nil {
+		return nil, err
+	}
+	return &Tree{
+		Tree:       tree,
+		Path:       "",
+		Repository: r,
+	}, nil
+}
+
 // Tree returns the tree for the given reference.
 func (r *Repository) Tree(ref *Reference) (*Tree, error) {
 	if ref == nil {
@@ -123,15 +136,7 @@ func (r *Repository) Tree(ref *Reference) (*Tree, error) {
 		}
 		ref = rref
 	}
-	tree, err := r.LsTree(ref.Hash.String())
-	if err != nil {
-		return nil, err
-	}
-	return &Tree{
-		Tree:       tree,
-		Path:       "",
-		Repository: r,
-	}, nil
+	return r.LsTree(ref.Hash.String())
 }
 
 // TreePath returns the tree for the given path.
