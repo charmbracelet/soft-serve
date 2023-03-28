@@ -240,7 +240,6 @@ func (rs *RepoSource) LoadRepo(name string) error {
 	rp := filepath.Join(rs.Path, name)
 	r, err := rs.open(rp)
 	if err != nil {
-		log.Error("error opening repository", "path", rp, "err", err)
 		return err
 	}
 	rs.repos[name] = r
@@ -263,7 +262,8 @@ func (rs *RepoSource) LoadRepos() error {
 			continue
 		}
 		if err != nil {
-			return err
+			log.Warn("error loading repository", "path", filepath.Join(rs.Path, de.Name()), "err", err)
+			continue
 		}
 	}
 	return nil
