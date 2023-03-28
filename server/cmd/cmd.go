@@ -55,8 +55,9 @@ func rootCommand() *cobra.Command {
 		listCommand(),
 		privateCommand(),
 		renameCommand(),
-		showCommand(),
+		blobCommand(),
 		tagCommand(),
+		treeCommand(),
 	)
 
 	return rootCmd
