@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
 	"github.com/charmbracelet/soft-serve/ui/components/selector"
@@ -182,23 +183,30 @@ func (s *Selection) FullHelp() [][]key.Binding {
 func (s *Selection) Init() tea.Cmd {
 	var readmeCmd tea.Cmd
 	cfg := s.common.Config()
-	pk := s.common.PublicKey()
-	if cfg == nil || pk == nil {
+	if cfg == nil {
 		return nil
 	}
+
+	pk := s.common.PublicKey()
+	if pk == nil && !cfg.Backend.AllowKeyless() {
+		return nil
+	}
+
 	repos, err := cfg.Backend.Repositories()
 	if err != nil {
 		return common.ErrorCmd(err)
 	}
 	sortedItems := make(Items, 0)
-	// Put configured repos first
 	for _, r := range repos {
-		item, err := NewItem(r, cfg)
-		if err != nil {
-			logger.Debugf("ui: failed to create item for %s: %v", r.Name(), err)
-			continue
+		al := cfg.Backend.AccessLevel(r.Name(), pk)
+		if al >= backend.ReadOnlyAccess {
+			item, err := NewItem(r, cfg)
+			if err != nil {
+				logger.Debugf("ui: failed to create item for %s: %v", r.Name(), err)
+				continue
+			}
+			sortedItems = append(sortedItems, item)
 		}
-		sortedItems = append(sortedItems, item)
 	}
 	sort.Sort(sortedItems)
 	items := make([]selector.IdentifiableItem, len(sortedItems))

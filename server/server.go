@@ -41,6 +41,16 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		// Add the initial admin keys to the list of admins.
 		fb.AdditionalAdmins = cfg.InitialAdminKeys
 		cfg = cfg.WithBackend(fb)
+
+		// Create internal key.
+		_, err = keygen.NewWithWrite(
+			filepath.Join(cfg.DataPath, cfg.SSH.InternalKeyPath),
+			nil,
+			keygen.Ed25519,
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	srv := &Server{
