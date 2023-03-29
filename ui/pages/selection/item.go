@@ -79,7 +79,12 @@ func (i Item) ID() string {
 
 // Title returns the item title. Implements list.DefaultItem.
 func (i Item) Title() string {
-	return i.repo.Name()
+	name := i.repo.ProjectName()
+	if name == "" {
+		name = i.repo.Name()
+	}
+
+	return name
 }
 
 // Description returns the item description. Implements list.DefaultItem.

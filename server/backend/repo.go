@@ -21,6 +21,10 @@ type RepositoryStore interface {
 
 // RepositoryMetadata is an interface for managing repository metadata.
 type RepositoryMetadata interface {
+	// ProjectName returns the repository's project name.
+	ProjectName(repo string) string
+	// SetProjectName sets the repository's project name.
+	SetProjectName(repo, name string) error
 	// Description returns the repository's description.
 	Description(repo string) string
 	// SetDescription sets the repository's description.
@@ -57,6 +61,8 @@ type RepositoryAccess interface {
 type Repository interface {
 	// Name returns the repository's name.
 	Name() string
+	// ProjectName returns the repository's project name.
+	ProjectName() string
 	// Description returns the repository's description.
 	Description() string
 	// IsPrivate returns whether the repository is private.
