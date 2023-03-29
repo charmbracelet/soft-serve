@@ -1,97 +1,148 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/caarlos0/env/v6"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"gopkg.in/yaml.v3"
 )
 
 // SSHConfig is the configuration for the SSH server.
 type SSHConfig struct {
 	// ListenAddr is the address on which the SSH server will listen.
-	ListenAddr string `env:"LISTEN_ADDR" envDefault:":23231"`
+	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 
 	// PublicURL is the public URL of the SSH server.
-	PublicURL string `env:"PUBLIC_URL" envDefault:"ssh://localhost:23231"`
+	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
 
 	// KeyPath is the path to the SSH server's private key.
-	KeyPath string `env:"KEY_PATH"`
+	KeyPath string `env:"KEY_PATH" yaml:"key_path"`
 
 	// InternalKeyPath is the path to the SSH server's internal private key.
-	InternalKeyPath string `env:"INTERNAL_KEY_PATH"`
+	InternalKeyPath string `env:"INTERNAL_KEY_PATH" yaml:"internal_key_path"`
 
 	// MaxTimeout is the maximum number of seconds a connection can take.
-	MaxTimeout int `env:"MAX_TIMEOUT" envDefault:"0"`
+	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout`
 
 	// IdleTimeout is the number of seconds a connection can be idle before it is closed.
-	IdleTimeout int `env:"IDLE_TIMEOUT" envDefault:"120"`
+	IdleTimeout int `env:"IDLE_TIMEOUT" yaml:"idle_timeout"`
 }
 
 // GitConfig is the Git daemon configuration for the server.
 type GitConfig struct {
 	// ListenAddr is the address on which the Git daemon will listen.
-	ListenAddr string `env:"LISTEN_ADDR" envDefault:":9418"`
+	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 
 	// MaxTimeout is the maximum number of seconds a connection can take.
-	MaxTimeout int `env:"MAX_TIMEOUT" envDefault:"0"`
+	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout"`
 
 	// IdleTimeout is the number of seconds a connection can be idle before it is closed.
-	IdleTimeout int `env:"IDLE_TIMEOUT" envDefault:"3"`
+	IdleTimeout int `env:"IDLE_TIMEOUT" yaml:"idle_timeout"`
 
 	// MaxConnections is the maximum number of concurrent connections.
-	MaxConnections int `env:"MAX_CONNECTIONS" envDefault:"32"`
+	MaxConnections int `env:"MAX_CONNECTIONS" yaml:"max_connections"`
 }
 
 // HTTPConfig is the HTTP configuration for the server.
 type HTTPConfig struct {
 	// ListenAddr is the address on which the HTTP server will listen.
-	ListenAddr string `env:"LISTEN_ADDR" envDefault:":8080"`
+	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 
 	// PublicURL is the public URL of the HTTP server.
-	PublicURL string `env:"PUBLIC_URL" envDefault:"http://localhost:8080"`
+	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
 }
 
 // Config is the configuration for Soft Serve.
 type Config struct {
 	// Name is the name of the server.
-	Name string `env:"NAME" envDefault:"Soft Serve"`
+	Name string `env:"NAME" yaml:"name"`
 
 	// SSH is the configuration for the SSH server.
-	SSH SSHConfig `envPrefix:"SSH_"`
+	SSH SSHConfig `envPrefix:"SSH_" yaml:"ssh"`
 
 	// Git is the configuration for the Git daemon.
-	Git GitConfig `envPrefix:"GIT_"`
+	Git GitConfig `envPrefix:"GIT_" yaml:"git"`
 
 	// HTTP is the configuration for the HTTP server.
-	HTTP HTTPConfig `envPrefix:"HTTP_"`
+	HTTP HTTPConfig `envPrefix:"HTTP_" yaml:"http"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
-	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEY" envSeparator:"\n"`
+	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEY" envSeparator:"\n" yaml:"initial_admin_keys"`
 
 	// DataPath is the path to the directory where Soft Serve will store its data.
-	DataPath string `env:"DATA_PATH" envDefault:"data"`
+	DataPath string `env:"DATA_PATH" envDefault:"data" yaml:"-"`
 
 	// Backend is the Git backend to use.
-	Backend backend.Backend
+	Backend backend.Backend `yaml:"-"`
+}
+
+// ParseConfig parses the configuration from the given file.
+func ParseConfig(path string) (*Config, error) {
+	cfg := &Config{}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
 
 // DefaultConfig returns a Config with the values populated with the defaults
 // or specified environment variables.
 func DefaultConfig() *Config {
-	cfg := &Config{}
+	dataPath := os.Getenv("SOFT_SERVE_DATA_PATH")
+	if dataPath == "" {
+		dataPath = "data"
+	}
+
+	cfg := &Config{
+		Name:     "Soft Serve",
+		DataPath: dataPath,
+		SSH: SSHConfig{
+			ListenAddr:      ":23231",
+			PublicURL:       "ssh://localhost:23231",
+			KeyPath:         filepath.Join("ssh", "soft_serve"),
+			InternalKeyPath: filepath.Join("ssh", "soft_serve_internal"),
+			MaxTimeout:      0,
+			IdleTimeout:     120,
+		},
+		Git: GitConfig{
+			ListenAddr:     ":9418",
+			MaxTimeout:     0,
+			IdleTimeout:    3,
+			MaxConnections: 32,
+		},
+		HTTP: HTTPConfig{
+			ListenAddr: ":8080",
+			PublicURL:  "http://localhost:8080",
+		},
+	}
+	cp := filepath.Join(cfg.DataPath, "config.yaml")
+	f, err := os.Open(cp)
+	if err == nil {
+		defer f.Close()
+		if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
+			log.Error("failed to decode config", "err", err)
+		}
+	} else {
+		defer func() {
+			os.WriteFile(cp, []byte(newConfigFile(cfg)), 0o600) // nolint: errcheck
+		}()
+	}
+
 	if err := env.Parse(cfg, env.Options{
 		Prefix: "SOFT_SERVE_",
 	}); err != nil {
 		log.Fatal(err)
 	}
-	if cfg.SSH.KeyPath == "" {
-		cfg.SSH.KeyPath = filepath.Join(cfg.DataPath, "ssh", "soft_serve")
-	}
-	if cfg.SSH.InternalKeyPath == "" {
-		cfg.SSH.InternalKeyPath = filepath.Join(cfg.DataPath, "ssh", "soft_serve_internal")
-	}
+
 	return cfg
 }
 
