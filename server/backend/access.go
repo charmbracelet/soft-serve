@@ -32,3 +32,19 @@ func (a AccessLevel) String() string {
 		return "unknown"
 	}
 }
+
+// ParseAccessLevel parses an access level string.
+func ParseAccessLevel(s string) AccessLevel {
+	switch s {
+	case "no-access":
+		return NoAccess
+	case "read-only":
+		return ReadOnlyAccess
+	case "read-write":
+		return ReadWriteAccess
+	case "admin-access":
+		return AdminAccess
+	default:
+		return AccessLevel(-1)
+	}
+}
