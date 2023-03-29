@@ -10,8 +10,4 @@ type ServerBackend interface {
 	AllowKeyless() bool
 	// SetAllowKeyless sets whether or not keyless access is allowed.
 	SetAllowKeyless(allow bool) error
-	// DefaultBranch returns the default branch for new repositories.
-	DefaultBranch() string
-	// SetDefaultBranch sets the default branch for new repositories.
-	SetDefaultBranch(branch string) error
 }

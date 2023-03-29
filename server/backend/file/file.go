@@ -39,16 +39,15 @@ import (
 
 // sub file and directory names.
 const (
-	anonAccess    = "anon-access"
-	defaultBranch = "default-branch"
-	allowKeyless  = "allow-keyless"
-	admins        = "admins"
-	repos         = "repos"
-	collabs       = "collaborators"
-	description   = "description"
-	exportOk      = "git-daemon-export-ok"
-	private       = "private"
-	settings      = "settings"
+	anonAccess   = "anon-access"
+	allowKeyless = "allow-keyless"
+	admins       = "admins"
+	repos        = "repos"
+	collabs      = "collaborators"
+	description  = "description"
+	exportOk     = "git-daemon-export-ok"
+	private      = "private"
+	settings     = "settings"
 )
 
 var (
@@ -128,7 +127,7 @@ func NewFileBackend(path string) (*FileBackend, error) {
 		}
 	}
 
-	for _, file := range []string{admins, anonAccess, allowKeyless, defaultBranch} {
+	for _, file := range []string{admins, anonAccess, allowKeyless} {
 		fp := filepath.Join(fb.settingsPath(), file)
 		_, err := os.Stat(fp)
 		if errors.Is(err, fs.ErrNotExist) {
@@ -433,38 +432,12 @@ func (fb *FileBackend) AnonAccess() backend.AccessLevel {
 		return backend.NoAccess
 	}
 
-	switch line {
-	case backend.NoAccess.String():
-		return backend.NoAccess
-	case backend.ReadOnlyAccess.String():
-		return backend.ReadOnlyAccess
-	case backend.ReadWriteAccess.String():
-		return backend.ReadWriteAccess
-	case backend.AdminAccess.String():
-		return backend.AdminAccess
-	default:
+	al := backend.ParseAccessLevel(line)
+	if al < 0 {
 		return backend.NoAccess
 	}
-}
 
-// DefaultBranch returns the default branch for new repositories.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) DefaultBranch() string {
-	line, err := readOneLine(filepath.Join(fb.settingsPath(), defaultBranch))
-	if err != nil {
-		logger.Debug("failed to read default-branch file", "err", err)
-		return defaults[defaultBranch]
-	}
-
-	return line
-}
-
-// SetDefaultBranch sets the default branch for new repositories.
-//
-// It implements backend.Backend.
-func (fb *FileBackend) SetDefaultBranch(branch string) error {
-	return os.WriteFile(filepath.Join(fb.settingsPath(), defaultBranch), []byte(branch), 0600)
+	return al
 }
 
 // Description returns the description of the given repo.
