@@ -650,16 +650,29 @@ func (fb *FileBackend) DeleteRepository(repo string) error {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) RenameRepository(oldName string, newName string) error {
-	oldName = filepath.Join(fb.reposPath(), utils.SanitizeRepo(oldName)+".git")
-	newName = filepath.Join(fb.reposPath(), utils.SanitizeRepo(newName)+".git")
-	if _, err := os.Stat(oldName); errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("repository %q does not exist", strings.TrimSuffix(filepath.Base(oldName), ".git"))
+	oldName = utils.SanitizeRepo(oldName)
+	oldRepo := filepath.Join(fb.reposPath(), oldName+".git")
+	newName = utils.SanitizeRepo(newName)
+	newRepo := filepath.Join(fb.reposPath(), newName+".git")
+	if _, err := os.Stat(oldRepo); errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("repository %q does not exist", strings.TrimSuffix(filepath.Base(oldRepo), ".git"))
 	}
-	if _, err := os.Stat(newName); err == nil {
-		return fmt.Errorf("repository %q already exists", strings.TrimSuffix(filepath.Base(newName), ".git"))
+	if _, err := os.Stat(newRepo); err == nil {
+		return fmt.Errorf("repository %q already exists", strings.TrimSuffix(filepath.Base(newRepo), ".git"))
 	}
 
-	return os.Rename(oldName, newName)
+	if err := os.Rename(oldRepo, newRepo); err != nil {
+		return err
+	}
+
+	// Update cache.
+	if r, ok := fb.repos[oldName]; ok {
+		r.path = newRepo
+		delete(fb.repos, oldName)
+		fb.repos[newName] = r
+	}
+
+	return nil
 }
 
 // Repository finds the given repository.
