@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -29,7 +30,7 @@ type SSHServer struct {
 }
 
 // NewSSHServer returns a new SSHServer.
-func NewSSHServer(cfg *config.Config) (*SSHServer, error) {
+func NewSSHServer(cfg *config.Config, hooks hooks.Hooks) (*SSHServer, error) {
 	var err error
 	s := &SSHServer{cfg: cfg}
 	logger := logger.StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})
@@ -39,7 +40,7 @@ func NewSSHServer(cfg *config.Config) (*SSHServer, error) {
 			// BubbleTea middleware.
 			bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256),
 			// CLI middleware.
-			cm.Middleware(cfg),
+			cm.Middleware(cfg, hooks),
 			// Git middleware.
 			s.Middleware(cfg),
 			// Logging middleware.
@@ -50,7 +51,7 @@ func NewSSHServer(cfg *config.Config) (*SSHServer, error) {
 		ssh.PublicKeyAuth(s.PublicKeyHandler),
 		ssh.KeyboardInteractiveAuth(s.KeyboardInteractiveHandler),
 		wish.WithAddress(cfg.SSH.ListenAddr),
-		wish.WithHostKeyPath(cfg.SSH.KeyPath),
+		wish.WithHostKeyPath(filepath.Join(cfg.DataPath, cfg.SSH.KeyPath)),
 		wish.WithMiddleware(mw...),
 	)
 	if err != nil {
@@ -89,7 +90,7 @@ func (s *SSHServer) Shutdown(ctx context.Context) error {
 
 // PublicKeyAuthHandler handles public key authentication.
 func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
-	return s.cfg.Backend.AccessLevel("", pk) > backend.NoAccess
+	return s.cfg.Backend.AccessLevel("", pk) >= backend.ReadOnlyAccess
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
@@ -116,7 +117,6 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 					// git bare repositories should end in ".git"
 					// https://git-scm.com/docs/gitrepository-layout
 					repo := name + ".git"
-
 					reposDir := filepath.Join(cfg.DataPath, "repos")
 					if err := ensureWithin(reposDir, repo); err != nil {
 						sshFatal(s, err)
@@ -125,30 +125,30 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 
 					repoDir := filepath.Join(reposDir, repo)
 					switch gc {
-					case ReceivePackBin:
+					case receivePackBin:
 						if access < backend.ReadWriteAccess {
 							sshFatal(s, ErrNotAuthed)
 							return
 						}
 						if _, err := cfg.Backend.Repository(name); err != nil {
 							if _, err := cfg.Backend.CreateRepository(name, false); err != nil {
-								log.Printf("failed to create repo: %s", err)
+								log.Errorf("failed to create repo: %s", err)
 								sshFatal(s, err)
 								return
 							}
 						}
-						if err := ReceivePack(s, s, s.Stderr(), repoDir); err != nil {
+						if err := receivePack(s, s, s.Stderr(), repoDir); err != nil {
 							sshFatal(s, ErrSystemMalfunction)
 						}
 						return
-					case UploadPackBin, UploadArchiveBin:
+					case uploadPackBin, uploadArchiveBin:
 						if access < backend.ReadOnlyAccess {
 							sshFatal(s, ErrNotAuthed)
 							return
 						}
-						gitPack := UploadPack
-						if gc == UploadArchiveBin {
-							gitPack = UploadArchive
+						gitPack := uploadPack
+						if gc == uploadArchiveBin {
+							gitPack = uploadArchive
 						}
 						err := gitPack(s, s, s.Stderr(), repoDir)
 						if errors.Is(err, ErrInvalidRepo) {
@@ -166,6 +166,6 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 
 // sshFatal prints to the session's STDOUT as a git response and exit 1.
 func sshFatal(s ssh.Session, v ...interface{}) {
-	WritePktline(s, v...)
+	writePktline(s, v...)
 	s.Exit(1) // nolint: errcheck
 }

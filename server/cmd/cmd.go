@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -25,6 +27,8 @@ var (
 	ConfigCtxKey = ContextKey("config")
 	// SessionCtxKey is the key for the session in the context.
 	SessionCtxKey = ContextKey("session")
+	// HooksCtxKey is the key for the git hooks in the context.
+	HooksCtxKey = ContextKey("hooks")
 )
 
 var (
@@ -34,6 +38,10 @@ var (
 	ErrRepoNotFound = fmt.Errorf("Repository not found")
 	// ErrFileNotFound is returned when the file is not found.
 	ErrFileNotFound = fmt.Errorf("File not found")
+)
+
+var (
+	logger = log.WithPrefix("server.cmd")
 )
 
 // rootCommand is the root command for the server.
@@ -47,15 +55,17 @@ func rootCommand() *cobra.Command {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(
 		adminCommand(),
+		blobCommand(),
 		branchCommand(),
 		collabCommand(),
 		createCommand(),
 		deleteCommand(),
 		descriptionCommand(),
+		hookCommand(),
 		listCommand(),
 		privateCommand(),
 		renameCommand(),
-		blobCommand(),
+		settingCommand(),
 		tagCommand(),
 		treeCommand(),
 	)
@@ -107,7 +117,7 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 }
 
 // Middleware is the Soft Serve middleware that handles SSH commands.
-func Middleware(cfg *config.Config) wish.Middleware {
+func Middleware(cfg *config.Config, hooks hooks.Hooks) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			func() {
@@ -128,6 +138,7 @@ func Middleware(cfg *config.Config) wish.Middleware {
 
 				ctx := context.WithValue(s.Context(), ConfigCtxKey, cfg)
 				ctx = context.WithValue(ctx, SessionCtxKey, s)
+				ctx = context.WithValue(ctx, HooksCtxKey, hooks)
 
 				rootCmd := rootCommand()
 				rootCmd.SetArgs(args)

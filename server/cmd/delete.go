@@ -6,7 +6,7 @@ func deleteCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "delete REPOSITORY",
 		Aliases:           []string{"del", "remove", "rm"},
-		Short:             "Delete a repository.",
+		Short:             "Delete a repository",
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {

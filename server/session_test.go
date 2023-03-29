@@ -56,7 +56,7 @@ func setup(tb testing.TB) *gossh.Session {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cfg := config.DefaultConfig().WithBackend(fb).WithAccessMethod(fb)
+	cfg := config.DefaultConfig().WithBackend(fb)
 	return testsession.New(tb, &ssh.Server{
 		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256)(func(s ssh.Session) {
 			_, _, active := s.Pty()

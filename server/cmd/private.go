@@ -10,7 +10,7 @@ import (
 func privateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "private REPOSITORY [true|false]",
-		Short: "Set or get a repository private property.",
+		Short: "Set or get a repository private property",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := fromContext(cmd)

@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cfg := config.DefaultConfig().WithBackend(fb).WithAccessMethod(fb)
+	cfg := config.DefaultConfig().WithBackend(fb)
 	d, err := NewGitDaemon(cfg)
 	if err != nil {
 		log.Fatal(err)
