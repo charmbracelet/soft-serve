@@ -30,7 +30,7 @@ func blobCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "blob REPOSITORY [REFERENCE] [PATH]",
 		Aliases:           []string{"cat", "show"},
-		Short:             "Print out the contents of file at path.",
+		Short:             "Print out the contents of file at path",
 		Args:              cobra.RangeArgs(1, 3),
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {

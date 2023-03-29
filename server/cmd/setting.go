@@ -11,7 +11,7 @@ import (
 func settingCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setting",
-		Short: "Manage settings",
+		Short: "Manage server settings",
 	}
 
 	cmd.AddCommand(
@@ -37,12 +37,13 @@ func settingCommand() *cobra.Command {
 		},
 	)
 
+	als := []string{backend.NoAccess.String(), backend.ReadOnlyAccess.String(), backend.ReadWriteAccess.String(), backend.AdminAccess.String()}
 	cmd.AddCommand(
 		&cobra.Command{
 			Use:               "anon-access [ACCESS_LEVEL]",
 			Short:             "Set or get the default access level for anonymous users",
 			Args:              cobra.RangeArgs(0, 1),
-			ValidArgs:         []string{backend.NoAccess.String(), backend.ReadOnlyAccess.String(), backend.ReadWriteAccess.String(), backend.AdminAccess.String()},
+			ValidArgs:         als,
 			PersistentPreRunE: checkIfAdmin,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				cfg, _ := fromContext(cmd)
@@ -52,7 +53,7 @@ func settingCommand() *cobra.Command {
 				case 1:
 					al := backend.ParseAccessLevel(args[0])
 					if al < 0 {
-						return fmt.Errorf("invalid access level: %s", args[0])
+						return fmt.Errorf("invalid access level: %s. Please choose one of the following: %s", args[0], als)
 					}
 					if err := cfg.Backend.SetAnonAccess(al); err != nil {
 						return err

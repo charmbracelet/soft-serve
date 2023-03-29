@@ -10,7 +10,7 @@ func descriptionCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "description REPOSITORY [DESCRIPTION]",
 		Aliases: []string{"desc"},
-		Short:   "Set or get the description for a repository.",
+		Short:   "Set or get the description for a repository",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := fromContext(cmd)

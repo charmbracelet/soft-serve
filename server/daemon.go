@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"path/filepath"
 	"sync"
@@ -129,7 +128,7 @@ func (d *GitDaemon) Start() error {
 }
 
 func fatal(c net.Conn, err error) {
-	WritePktline(c, err)
+	writePktline(c, err)
 	if err := c.Close(); err != nil {
 		logger.Debugf("git: error closing connection: %v", err)
 	}
@@ -184,13 +183,13 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		var gitPack func(io.Reader, io.Writer, io.Writer, string) error
+		gitPack := uploadPack
 		cmd := string(split[0])
 		switch cmd {
-		case UploadPackBin:
-			gitPack = UploadPack
-		case UploadArchiveBin:
-			gitPack = UploadArchive
+		case uploadPackBin:
+			gitPack = uploadPack
+		case uploadArchiveBin:
+			gitPack = uploadArchive
 		default:
 			fatal(c, ErrInvalidRequest)
 			return

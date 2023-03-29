@@ -10,7 +10,7 @@ func listCommand() *cobra.Command {
 	listCmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "List repositories.",
+		Short:   "List repositories",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, s := fromContext(cmd)

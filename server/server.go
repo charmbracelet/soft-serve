@@ -3,7 +3,9 @@ package server
 import (
 	"context"
 	"net/http"
+	"path/filepath"
 
+	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
@@ -57,7 +59,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		Config:  cfg,
 		Backend: cfg.Backend,
 	}
-	srv.SSHServer, err = NewSSHServer(cfg)
+	srv.SSHServer, err = NewSSHServer(cfg, srv)
 	if err != nil {
 		return nil, err
 	}

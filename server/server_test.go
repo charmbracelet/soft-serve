@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/keygen"
-	"github.com/charmbracelet/soft-serve/server/backend/noop"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/ssh"
 	"github.com/matryer/is"
@@ -32,9 +31,7 @@ func setupServer(tb testing.TB) (*Server, *config.Config, string) {
 	tb.Setenv("SOFT_SERVE_SSH_LISTEN_ADDR", sshPort)
 	tb.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", randomPort()))
 	cfg := config.DefaultConfig()
-	nop := &noop.Noop{Port: sshPort[1:]}
 	tb.Log("configuring server")
-	cfg = cfg.WithBackend(nop).WithAccessMethod(nop)
 	s, err := NewServer(cfg)
 	if err != nil {
 		tb.Fatal(err)

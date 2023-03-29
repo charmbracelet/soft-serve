@@ -12,7 +12,7 @@ import (
 func treeCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "tree REPOSITORY [REFERENCE] [PATH]",
-		Short:             "Print repository tree at path.",
+		Short:             "Print repository tree at path",
 		Args:              cobra.RangeArgs(1, 3),
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
