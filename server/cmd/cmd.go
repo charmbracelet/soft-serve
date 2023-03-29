@@ -64,6 +64,7 @@ func rootCommand() *cobra.Command {
 		hookCommand(),
 		listCommand(),
 		privateCommand(),
+		projectName(),
 		renameCommand(),
 		settingCommand(),
 		tagCommand(),

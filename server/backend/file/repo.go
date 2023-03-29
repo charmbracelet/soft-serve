@@ -27,14 +27,22 @@ func (r *Repo) Name() string {
 	return strings.TrimPrefix(name, "/")
 }
 
+// ProjectName returns the repository's project name.
+func (r *Repo) ProjectName() string {
+	pn, err := readOneLine(filepath.Join(r.path, projectName))
+	if err != nil {
+		return ""
+	}
+
+	return strings.TrimSpace(pn)
+}
+
 // Description returns the repository's description.
 //
 // It implements backend.Repository.
 func (r *Repo) Description() string {
 	desc, err := readAll(filepath.Join(r.path, description))
 	if err != nil {
-		logger.Debug("failed to read description file", "err", err,
-			"path", filepath.Join(r.path, description))
 		return ""
 	}
 

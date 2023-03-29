@@ -49,6 +49,7 @@ const (
 	description  = "description"
 	exportOk     = "git-daemon-export-ok"
 	private      = "private"
+	projectName  = "project-name"
 	settings     = "settings"
 )
 
@@ -573,6 +574,23 @@ func (fb *FileBackend) SetPrivate(repo string, priv bool) error {
 	return nil
 }
 
+// ProjectName returns the project name.
+//
+// It implements backend.Backend.
+func (fb *FileBackend) ProjectName(repo string) string {
+	repo = utils.SanitizeRepo(repo) + ".git"
+	r := &Repo{path: filepath.Join(fb.reposPath(), repo), root: fb.reposPath()}
+	return r.ProjectName()
+}
+
+// SetProjectName sets the project name of the given repo.
+//
+// It implements backend.Backend.
+func (fb *FileBackend) SetProjectName(repo string, name string) error {
+	repo = utils.SanitizeRepo(repo) + ".git"
+	return os.WriteFile(filepath.Join(fb.reposPath(), repo, projectName), []byte(name), 0600)
+}
+
 // CreateRepository creates a new repository.
 //
 // Created repositories are always bare.
@@ -604,6 +622,11 @@ func (fb *FileBackend) CreateRepository(repo string, private bool) (backend.Repo
 
 	if err := fb.SetDescription(repo, ""); err != nil {
 		logger.Debug("failed to set description", "err", err)
+		return nil, err
+	}
+
+	if err := fb.SetProjectName(repo, name); err != nil {
+		logger.Debug("failed to set project name", "err", err)
 		return nil, err
 	}
 
