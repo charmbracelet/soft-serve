@@ -26,6 +26,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/log"
@@ -38,15 +39,16 @@ import (
 
 // sub file and directory names.
 const (
-	anonAccess   = "anon-access"
-	allowKeyless = "allow-keyless"
-	admins       = "admins"
-	repos        = "repos"
-	collabs      = "collaborators"
-	description  = "description"
-	exportOk     = "git-daemon-export-ok"
-	private      = "private"
-	settings     = "settings"
+	anonAccess    = "anon-access"
+	defaultBranch = "default-branch"
+	allowKeyless  = "allow-keyless"
+	admins        = "admins"
+	repos         = "repos"
+	collabs       = "collaborators"
+	description   = "description"
+	exportOk      = "git-daemon-export-ok"
+	private       = "private"
+	settings      = "settings"
 )
 
 var (
@@ -86,7 +88,8 @@ func (fb *FileBackend) adminsPath() string {
 }
 
 func (fb *FileBackend) collabsPath(repo string) string {
-	return filepath.Join(fb.path, collabs, repo, collabs)
+	repo = utils.SanitizeRepo(repo) + ".git"
+	return filepath.Join(fb.reposPath(), repo, collabs)
 }
 
 func readOneLine(path string) (string, error) {
@@ -125,7 +128,7 @@ func NewFileBackend(path string) (*FileBackend, error) {
 		}
 	}
 
-	for _, file := range []string{admins, anonAccess, allowKeyless} {
+	for _, file := range []string{admins, anonAccess, allowKeyless, defaultBranch} {
 		fp := filepath.Join(fb.settingsPath(), file)
 		_, err := os.Stat(fp)
 		if errors.Is(err, fs.ErrNotExist) {
@@ -444,6 +447,26 @@ func (fb *FileBackend) AnonAccess() backend.AccessLevel {
 	}
 }
 
+// DefaultBranch returns the default branch for new repositories.
+//
+// It implements backend.Backend.
+func (fb *FileBackend) DefaultBranch() string {
+	line, err := readOneLine(filepath.Join(fb.settingsPath(), defaultBranch))
+	if err != nil {
+		logger.Debug("failed to read default-branch file", "err", err)
+		return defaults[defaultBranch]
+	}
+
+	return line
+}
+
+// SetDefaultBranch sets the default branch for new repositories.
+//
+// It implements backend.Backend.
+func (fb *FileBackend) SetDefaultBranch(branch string) error {
+	return os.WriteFile(filepath.Join(fb.settingsPath(), defaultBranch), []byte(branch), 0600)
+}
+
 // Description returns the description of the given repo.
 //
 // It implements backend.Backend.
@@ -531,28 +554,14 @@ func (fb *FileBackend) IsPrivate(repo string) bool {
 //
 // It implements backend.Backend.
 func (fb *FileBackend) SetAllowKeyless(allow bool) error {
-	f, err := os.OpenFile(filepath.Join(fb.settingsPath(), allowKeyless), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return fmt.Errorf("failed to open allow-keyless file: %w", err)
-	}
-
-	defer f.Close() //nolint:errcheck
-	_, err = fmt.Fprintln(f, allow)
-	return err
+	return os.WriteFile(filepath.Join(fb.settingsPath(), allowKeyless), []byte(strconv.FormatBool(allow)), 0600)
 }
 
 // SetAnonAccess sets the anonymous access level.
 //
 // It implements backend.Backend.
 func (fb *FileBackend) SetAnonAccess(level backend.AccessLevel) error {
-	f, err := os.OpenFile(filepath.Join(fb.settingsPath(), anonAccess), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return fmt.Errorf("failed to open anon-access file: %w", err)
-	}
-
-	defer f.Close() //nolint:errcheck
-	_, err = fmt.Fprintln(f, level.String())
-	return err
+	return os.WriteFile(filepath.Join(fb.settingsPath(), anonAccess), []byte(level.String()), 0600)
 }
 
 // SetDescription sets the description of the given repo.
@@ -560,14 +569,7 @@ func (fb *FileBackend) SetAnonAccess(level backend.AccessLevel) error {
 // It implements backend.Backend.
 func (fb *FileBackend) SetDescription(repo string, desc string) error {
 	repo = utils.SanitizeRepo(repo) + ".git"
-	f, err := os.OpenFile(filepath.Join(fb.reposPath(), repo, description), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return fmt.Errorf("failed to open description file: %w", err)
-	}
-
-	defer f.Close() //nolint:errcheck
-	_, err = fmt.Fprintln(f, desc)
-	return err
+	return os.WriteFile(filepath.Join(fb.reposPath(), repo, description), []byte(desc), 0600)
 }
 
 // SetPrivate sets the private status of the given repo.
