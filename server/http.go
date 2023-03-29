@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -81,8 +81,20 @@ func NewHTTPServer(cfg *config.Config) (*HTTPServer, error) {
 	}
 
 	mux.Use(loggingMiddleware)
-	mux.HandleFunc(pat.Get("/:repo"), s.repoIndexHandler)
-	mux.HandleFunc(pat.Get("/:repo/*"), s.dumbGitHandler)
+	for _, m := range []Matcher{
+		getInfoRefs,
+		getHead,
+		getAlternates,
+		getHTTPAlternates,
+		getInfoPacks,
+		getInfoFile,
+		getLooseObject,
+		getPackFile,
+		getIdxFile,
+	} {
+		mux.HandleFunc(NewPattern(m), s.handleGit)
+	}
+	mux.HandleFunc(pat.Get("/*"), s.handleIndex)
 	return s, nil
 }
 
@@ -101,6 +113,104 @@ func (s *HTTPServer) Shutdown(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
+// Pattern is a pattern for matching a URL.
+// It matches against GET requests.
+type Pattern struct {
+	match func(*url.URL) *Match
+}
+
+// NewPattern returns a new Pattern with the given matcher.
+func NewPattern(m Matcher) *Pattern {
+	return &Pattern{
+		match: m,
+	}
+}
+
+// Match is a match for a URL.
+//
+// It implements goji.Pattern.
+func (p *Pattern) Match(r *http.Request) *http.Request {
+	if r.Method != "GET" {
+		return nil
+	}
+
+	if m := p.match(r.URL); m != nil {
+		ctx := context.WithValue(r.Context(), pattern.Variable("repo"), m.RepoPath)
+		ctx = context.WithValue(ctx, pattern.Variable("file"), m.FilePath)
+		return r.WithContext(ctx)
+	}
+	return nil
+}
+
+// Matcher finds a match in a *url.URL.
+type Matcher = func(*url.URL) *Match
+
+var (
+	getInfoRefs = func(u *url.URL) *Match {
+		return matchSuffix(u.Path, "/info/refs")
+	}
+
+	getHead = func(u *url.URL) *Match {
+		return matchSuffix(u.Path, "/HEAD")
+	}
+
+	getAlternates = func(u *url.URL) *Match {
+		return matchSuffix(u.Path, "/objects/info/alternates")
+	}
+
+	getHTTPAlternates = func(u *url.URL) *Match {
+		return matchSuffix(u.Path, "/objects/info/http-alternates")
+	}
+
+	getInfoPacks = func(u *url.URL) *Match {
+		return matchSuffix(u.Path, "/objects/info/packs")
+	}
+
+	getInfoFileRegexp = regexp.MustCompile(".*?(/objects/info/[^/]*)$")
+	getInfoFile       = func(u *url.URL) *Match {
+		return findStringSubmatch(u.Path, getInfoFileRegexp)
+	}
+
+	getLooseObjectRegexp = regexp.MustCompile(".*?(/objects/[0-9a-f]{2}/[0-9a-f]{38})$")
+	getLooseObject       = func(u *url.URL) *Match {
+		return findStringSubmatch(u.Path, getLooseObjectRegexp)
+	}
+
+	getPackFileRegexp = regexp.MustCompile(".*?(/objects/pack/pack-[0-9a-f]{40}\\.pack)$")
+	getPackFile       = func(u *url.URL) *Match {
+		return findStringSubmatch(u.Path, getPackFileRegexp)
+	}
+
+	getIdxFileRegexp = regexp.MustCompile(".*?(/objects/pack/pack-[0-9a-f]{40}\\.idx)$")
+	getIdxFile       = func(u *url.URL) *Match {
+		return findStringSubmatch(u.Path, getIdxFileRegexp)
+	}
+)
+
+type Match struct {
+	RepoPath, FilePath string
+}
+
+func matchSuffix(path, suffix string) *Match {
+	if !strings.HasSuffix(path, suffix) {
+		return nil
+	}
+	repoPath := strings.Replace(path, suffix, "", 1)
+	filePath := strings.Replace(path, repoPath+"/", "", 1)
+	return &Match{repoPath, filePath}
+}
+
+func findStringSubmatch(path string, prefix *regexp.Regexp) *Match {
+	m := prefix.FindStringSubmatch(path)
+	if m == nil {
+		return nil
+	}
+	suffix := m[1]
+	repoPath := strings.Replace(path, suffix, "", 1)
+	filePath := strings.Replace(path, repoPath+"/", "", 1)
+	return &Match{repoPath, filePath}
+}
+
 var repoIndexHTMLTpl = template.Must(template.New("index").Parse(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -113,9 +223,13 @@ Redirecting to docs at <a href="https://godoc.org/{{.ImportRoot}}/{{.Repo}}">god
 </body>
 </html>`))
 
-func (s *HTTPServer) repoIndexHandler(w http.ResponseWriter, r *http.Request) {
-	repo := pat.Param(r, "repo")
+func (s *HTTPServer) handleIndex(w http.ResponseWriter, r *http.Request) {
+	repo := pattern.Path(r.Context())
 	repo = utils.SanitizeRepo(repo)
+	if _, err := s.cfg.Backend.Repository(repo); err != nil {
+		http.NotFound(w, r)
+		return
+	}
 
 	// Only respond to go-get requests
 	if r.URL.Query().Get("go-get") != "1" {
@@ -132,6 +246,7 @@ func (s *HTTPServer) repoIndexHandler(w http.ResponseWriter, r *http.Request) {
 	importRoot, err := url.Parse(s.cfg.HTTP.PublicURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	if err := repoIndexHTMLTpl.Execute(w, struct {
@@ -148,37 +263,27 @@ func (s *HTTPServer) repoIndexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *HTTPServer) dumbGitHandler(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) handleGit(w http.ResponseWriter, r *http.Request) {
 	repo := pat.Param(r, "repo")
 	repo = utils.SanitizeRepo(repo) + ".git"
-
-	access := s.cfg.Backend.AccessLevel(repo, nil)
-	if access < backend.ReadOnlyAccess || !s.cfg.Backend.AllowKeyless() {
-		httpStatusError(w, http.StatusUnauthorized)
-		return
-	}
-
-	path := pattern.Path(r.Context())
-	stat, err := os.Stat(filepath.Join(s.cfg.DataPath, "repos", repo, path))
-	// Restrict access to files
-	if err != nil || stat.IsDir() {
+	if _, err := s.cfg.Backend.Repository(repo); err != nil {
+		logger.Debug("repository not found", "repo", repo, "err", err)
 		http.NotFound(w, r)
 		return
 	}
 
-	// Don't allow access to non-git clients
-	ua := r.Header.Get("User-Agent")
-	if !strings.HasPrefix(strings.ToLower(ua), "git") {
-		httpStatusError(w, http.StatusBadRequest)
+	if !s.cfg.Backend.AllowKeyless() {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	r.URL.Path = fmt.Sprintf("/%s/%s", repo, path)
-	s.dirHandler.ServeHTTP(w, r)
-}
+	access := s.cfg.Backend.AccessLevel(repo, nil)
+	if access < backend.ReadOnlyAccess {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-func httpStatusError(w http.ResponseWriter, status int) {
-	http.Error(w, fmt.Sprintf("%d %s", status, http.StatusText(status)), status)
+	file := pat.Param(r, "file")
+	r.URL.Path = fmt.Sprintf("/%s/%s", repo, file)
+	s.dirHandler.ServeHTTP(w, r)
 }
