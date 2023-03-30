@@ -42,6 +42,7 @@ type Config struct {
 	AllowKeyless bool           `yaml:"allow-keyless" json:"allow-keyless"`
 	Users        []User         `yaml:"users" json:"users"`
 	Repos        []RepoConfig   `yaml:"repos" json:"repos"`
+	ReposOrder   string         `yaml:"repos-order" json:"repos-order"`
 	Source       *RepoSource    `yaml:"-" json:"-"`
 	Cfg          *config.Config `yaml:"-" json:"-"`
 	mtx          sync.Mutex
@@ -90,7 +91,10 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 		pks = append(pks, pk)
 	}
 
-	rs := NewRepoSource(cfg.RepoPath)
+	rs, err := NewRepoSource(cfg.RepoPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repository source folder: %w\n", err)
+	}
 	c := &Config{
 		Cfg: cfg,
 	}
@@ -124,10 +128,11 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 		yamlUsers = fmt.Sprintf(hasKeyUserConfig, result)
 	}
 	yaml := fmt.Sprintf("%s%s%s", yamlConfig, yamlUsers, exampleUserConfig)
-	err := c.createDefaultConfigRepo(yaml)
+	err = c.createDefaultConfigRepo(yaml)
 	if err != nil {
 		return nil, err
 	}
+
 	return c, nil
 }
 
@@ -180,6 +185,7 @@ func (cfg *Config) Reload() error {
 	if err := cfg.readConfig("config", cfg); err != nil {
 		return fmt.Errorf("error reading config: %w", err)
 	}
+	cfg.Source.Sort(cfg.ReposOrder, cfg.Repos)
 	// sanitize repo configs
 	repos := make(map[string]RepoConfig, 0)
 	for _, r := range cfg.Repos {

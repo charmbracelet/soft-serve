@@ -19,6 +19,12 @@ anon-access: %s
 # will be accepted.
 allow-keyless: %t
 
+# You can select the order in which repositories are shown:
+# 'alphabetical': alphabetical order
+# 'commit': repositories with latest commits show first
+# 'config': keep the order of config.yaml -> this is the default option
+repos-order: config
+
 # Customize repo display in the menu.
 repos:
   - name: Home
