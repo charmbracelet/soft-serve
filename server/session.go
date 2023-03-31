@@ -13,15 +13,28 @@ import (
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	tuiSessionCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "ssh",
+		Name:      "tui_session_total",
+		Help:      "The total number of TUI sessions",
+	}, []string{"key", "user", "repo", "term"})
 )
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
 func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 	return func(s ssh.Session) *tea.Program {
+		ak := backend.MarshalAuthorizedKey(s.PublicKey())
 		pty, _, active := s.Pty()
 		if !active {
 			return nil
 		}
+
 		cmd := s.Command()
 		initialRepo := ""
 		if len(cmd) == 1 {
@@ -32,6 +45,7 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 				return nil
 			}
 		}
+
 		envs := s.Environ()
 		envs = append(envs, fmt.Sprintf("TERM=%s", pty.Term))
 		output := osc52.NewOutput(s, envs)
@@ -45,6 +59,9 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 			tea.WithoutCatchPanics(),
 			tea.WithMouseCellMotion(),
 		)
+
+		tuiSessionCounter.WithLabelValues(ak, s.User(), initialRepo, pty.Term).Inc()
+
 		return p
 	}
 }

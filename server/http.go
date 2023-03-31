@@ -15,9 +15,27 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/dustin/go-humanize"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"goji.io"
 	"goji.io/pat"
 	"goji.io/pattern"
+)
+
+var (
+	gitHttpCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "http",
+		Name:      "git_fetch_pull_total",
+		Help:      "The total number of git fetch/pull requests",
+	}, []string{"repo", "file"})
+
+	goGetCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "http",
+		Name:      "go_get_total",
+		Help:      "The total number of go get requests",
+	}, []string{"repo"})
 )
 
 // logWriter is a wrapper around http.ResponseWriter that allows us to capture
@@ -179,12 +197,12 @@ var (
 		return findStringSubmatch(u.Path, getLooseObjectRegexp)
 	}
 
-	getPackFileRegexp = regexp.MustCompile(".*?(/objects/pack/pack-[0-9a-f]{40}\\.pack)$")
+	getPackFileRegexp = regexp.MustCompile(`.*?(/objects/pack/pack-[0-9a-f]{40}\.pack)$`)
 	getPackFile       = func(u *url.URL) *Match {
 		return findStringSubmatch(u.Path, getPackFileRegexp)
 	}
 
-	getIdxFileRegexp = regexp.MustCompile(".*?(/objects/pack/pack-[0-9a-f]{40}\\.idx)$")
+	getIdxFileRegexp = regexp.MustCompile(`.*?(/objects/pack/pack-[0-9a-f]{40}\.idx)$`)
 	getIdxFile       = func(u *url.URL) *Match {
 		return findStringSubmatch(u.Path, getIdxFileRegexp)
 	}
@@ -264,6 +282,8 @@ func (s *HTTPServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	goGetCounter.WithLabelValues(repo).Inc()
 }
 
 func (s *HTTPServer) handleGit(w http.ResponseWriter, r *http.Request) {
@@ -287,6 +307,7 @@ func (s *HTTPServer) handleGit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	file := pat.Param(r, "file")
+	gitHttpCounter.WithLabelValues(repo, file).Inc()
 	r.URL.Path = fmt.Sprintf("/%s/%s", repo, file)
 	s.dirHandler.ServeHTTP(w, r)
 }

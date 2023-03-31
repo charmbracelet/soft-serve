@@ -21,11 +21,12 @@ var (
 
 // Server is the Soft Serve server.
 type Server struct {
-	SSHServer  *SSHServer
-	GitDaemon  *GitDaemon
-	HTTPServer *HTTPServer
-	Config     *config.Config
-	Backend    backend.Backend
+	SSHServer   *SSHServer
+	GitDaemon   *GitDaemon
+	HTTPServer  *HTTPServer
+	StatsServer *StatsServer
+	Config      *config.Config
+	Backend     backend.Backend
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -74,6 +75,11 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		return nil, err
 	}
 
+	srv.StatsServer, err = NewStatsServer(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return srv, nil
 }
 
@@ -101,6 +107,13 @@ func (s *Server) Start() error {
 		}
 		return nil
 	})
+	errg.Go(func() error {
+		log.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
+		if err := s.StatsServer.ListenAndServe(); err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
 	return errg.Wait()
 }
 
@@ -116,6 +129,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	errg.Go(func() error {
 		return s.SSHServer.Shutdown(ctx)
 	})
+	errg.Go(func() error {
+		return s.StatsServer.Shutdown(ctx)
+	})
 	return errg.Wait()
 }
 
@@ -125,5 +141,6 @@ func (s *Server) Close() error {
 	errg.Go(s.GitDaemon.Close)
 	errg.Go(s.HTTPServer.Close)
 	errg.Go(s.SSHServer.Close)
+	errg.Go(s.StatsServer.Close)
 	return errg.Wait()
 }

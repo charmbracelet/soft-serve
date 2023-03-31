@@ -13,6 +13,24 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	uploadPackGitCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "git",
+		Name:      "git_upload_pack_total",
+		Help:      "The total number of git-upload-pack requests",
+	}, []string{"repo"})
+
+	uploadArchiveGitCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "git",
+		Name:      "git_upload_archive_total",
+		Help:      "The total number of git-upload-archive requests",
+	}, []string{"repo"})
 )
 
 // ErrServerClosed indicates that the server has been closed.
@@ -184,12 +202,14 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		}
 
 		gitPack := uploadPack
+		counter := uploadPackGitCounter
 		cmd := string(split[0])
 		switch cmd {
 		case uploadPackBin:
 			gitPack = uploadPack
 		case uploadArchiveBin:
 			gitPack = uploadArchive
+			counter = uploadArchiveGitCounter
 		default:
 			fatal(c, ErrInvalidRequest)
 			return
@@ -223,6 +243,8 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			fatal(c, err)
 			return
 		}
+
+		counter.WithLabelValues(name)
 	}
 }
 
