@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,7 +21,53 @@ import (
 	lm "github.com/charmbracelet/wish/logging"
 	rm "github.com/charmbracelet/wish/recover"
 	"github.com/muesli/termenv"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	gossh "golang.org/x/crypto/ssh"
+)
+
+var (
+	publicKeyCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "ssh",
+		Name:      "public_key_auth_total",
+		Help:      "The total number of public key auth requests",
+	}, []string{"key", "user", "access", "allowed"})
+
+	keyboardInteractiveCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "ssh",
+		Name:      "keyboard_interactive_auth_total",
+		Help:      "The total number of keyboard interactive auth requests",
+	}, []string{"user", "allowed"})
+
+	uploadPackCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "ssh",
+		Name:      "git_upload_pack_total",
+		Help:      "The total number of git-upload-pack requests",
+	}, []string{"key", "user", "repo"})
+
+	receivePackCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "ssh",
+		Name:      "git_receive_pack_total",
+		Help:      "The total number of git-receive-pack requests",
+	}, []string{"key", "user", "repo"})
+
+	uploadArchiveCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "ssh",
+		Name:      "git_upload_archive_total",
+		Help:      "The total number of git-upload-archive requests",
+	}, []string{"key", "user", "repo"})
+
+	createRepoCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "ssh",
+		Name:      "create_repo_total",
+		Help:      "The total number of create repo requests",
+	}, []string{"key", "user", "repo"})
 )
 
 // SSHServer is a SSH server that implements the git protocol.
@@ -90,12 +137,18 @@ func (s *SSHServer) Shutdown(ctx context.Context) error {
 
 // PublicKeyAuthHandler handles public key authentication.
 func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
-	return s.cfg.Backend.AccessLevel("", pk) >= backend.ReadOnlyAccess
+	ac := s.cfg.Backend.AccessLevel("", pk)
+	allowed := ac >= backend.ReadOnlyAccess
+	ak := backend.MarshalAuthorizedKey(pk)
+	publicKeyCounter.WithLabelValues(ak, ctx.User(), ac.String(), strconv.FormatBool(allowed)).Inc()
+	return allowed
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
 func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
-	return s.cfg.Backend.AllowKeyless() && s.PublicKeyHandler(ctx, nil)
+	ac := s.cfg.Backend.AllowKeyless() && s.PublicKeyHandler(ctx, nil)
+	keyboardInteractiveCounter.WithLabelValues(ctx.User(), strconv.FormatBool(ac)).Inc()
+	return ac
 }
 
 // Middleware adds Git server functionality to the ssh.Server. Repos are stored
@@ -113,6 +166,7 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 					// repo should be in the form of "repo.git"
 					name := utils.SanitizeRepo(cmd[1])
 					pk := s.PublicKey()
+					ak := backend.MarshalAuthorizedKey(pk)
 					access := cfg.Backend.AccessLevel(name, pk)
 					// git bare repositories should end in ".git"
 					// https://git-scm.com/docs/gitrepository-layout
@@ -136,26 +190,34 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 								sshFatal(s, err)
 								return
 							}
+							createRepoCounter.WithLabelValues(ak, s.User(), name).Inc()
 						}
 						if err := receivePack(s, s, s.Stderr(), repoDir); err != nil {
 							sshFatal(s, ErrSystemMalfunction)
 						}
+						receivePackCounter.WithLabelValues(ak, s.User(), name).Inc()
 						return
 					case uploadPackBin, uploadArchiveBin:
 						if access < backend.ReadOnlyAccess {
 							sshFatal(s, ErrNotAuthed)
 							return
 						}
+
 						gitPack := uploadPack
+						counter := uploadPackCounter
 						if gc == uploadArchiveBin {
 							gitPack = uploadArchive
+							counter = uploadArchiveCounter
 						}
+
 						err := gitPack(s, s, s.Stderr(), repoDir)
 						if errors.Is(err, ErrInvalidRepo) {
 							sshFatal(s, ErrInvalidRepo)
 						} else if err != nil {
 							sshFatal(s, ErrSystemMalfunction)
 						}
+
+						counter.WithLabelValues(ak, s.User(), name).Inc()
 					}
 				}
 			}()

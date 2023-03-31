@@ -64,6 +64,11 @@ http:
   # This is the address will be used to clone repositories.
   public_url: "{{ .HTTP.PublicURL }}"
 
+# The stats server configuration.
+stats:
+  # The address on which the stats server will listen.
+  listen_addr: "{{ .Stats.ListenAddr }}"
+
 `))
 )
 

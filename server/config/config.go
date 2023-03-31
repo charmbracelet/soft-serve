@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/caarlos0/env/v6"
+	"github.com/caarlos0/env/v7"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"gopkg.in/yaml.v3"
@@ -61,6 +61,12 @@ type HTTPConfig struct {
 	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
 }
 
+// StatsConfig is the configuration for the stats server.
+type StatsConfig struct {
+	// ListenAddr is the address on which the stats server will listen.
+	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
+}
+
 // Config is the configuration for Soft Serve.
 type Config struct {
 	// Name is the name of the server.
@@ -74,6 +80,9 @@ type Config struct {
 
 	// HTTP is the configuration for the HTTP server.
 	HTTP HTTPConfig `envPrefix:"HTTP_" yaml:"http"`
+
+	// Stats is the configuration for the stats server.
+	Stats StatsConfig `envPrefix:"STATS_" yaml:"stats"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEY" envSeparator:"\n" yaml:"initial_admin_keys"`
@@ -92,7 +101,7 @@ func ParseConfig(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer f.Close() // nolint: errcheck
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return nil, err
 	}
@@ -129,11 +138,14 @@ func DefaultConfig() *Config {
 			ListenAddr: ":8080",
 			PublicURL:  "http://localhost:8080",
 		},
+		Stats: StatsConfig{
+			ListenAddr: ":8081",
+		},
 	}
 	cp := filepath.Join(cfg.DataPath, "config.yaml")
 	f, err := os.Open(cp)
 	if err == nil {
-		defer f.Close()
+		defer f.Close() // nolint: errcheck
 		if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 			log.Error("failed to decode config", "err", err)
 		}
