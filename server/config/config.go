@@ -51,6 +51,12 @@ type HTTPConfig struct {
 	// ListenAddr is the address on which the HTTP server will listen.
 	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 
+	// TLSKeyPath is the path to the TLS private key.
+	TLSKeyPath string `env:"TLS_KEY_PATH" yaml:"tls_key_path"`
+
+	// TLSCertPath is the path to the TLS certificate.
+	TLSCertPath string `env:"TLS_CERT_PATH" yaml:"tls_cert_path"`
+
 	// PublicURL is the public URL of the HTTP server.
 	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
 }

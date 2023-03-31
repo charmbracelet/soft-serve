@@ -54,6 +54,12 @@ http:
   # The address on which the HTTP server will listen.
   listen_addr: "{{ .HTTP.ListenAddr }}"
 
+  # The relative path to the TLS private key.
+  tls_key_path: "{{ .HTTP.TLSKeyPath }}"
+
+  # The relative path to the TLS certificate.
+  tls_cert_path: "{{ .HTTP.TLSCertPath }}"
+
   # The public URL of the HTTP server.
   # This is the address will be used to clone repositories.
   public_url: "{{ .HTTP.PublicURL }}"

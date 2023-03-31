@@ -105,6 +105,9 @@ func (s *HTTPServer) Close() error {
 
 // ListenAndServe starts the HTTP server.
 func (s *HTTPServer) ListenAndServe() error {
+	if s.cfg.HTTP.TLSKeyPath != "" && s.cfg.HTTP.TLSCertPath != "" {
+		return s.server.ListenAndServeTLS(s.cfg.HTTP.TLSCertPath, s.cfg.HTTP.TLSKeyPath)
+	}
 	return s.server.ListenAndServe()
 }
 
