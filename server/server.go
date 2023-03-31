@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/backend/file"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/cron"
 	"github.com/charmbracelet/ssh"
 	"golang.org/x/sync/errgroup"
 )
@@ -25,6 +26,7 @@ type Server struct {
 	GitDaemon   *GitDaemon
 	HTTPServer  *HTTPServer
 	StatsServer *StatsServer
+	Cron        *cron.CronScheduler
 	Config      *config.Config
 	Backend     backend.Backend
 }
@@ -57,9 +59,14 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}
 
 	srv := &Server{
+		Cron:    cron.NewCronScheduler(),
 		Config:  cfg,
 		Backend: cfg.Backend,
 	}
+
+	// Add cron jobs.
+	srv.Cron.AddFunc(jobSpecs["mirror"], mirrorJob(cfg.Backend))
+
 	srv.SSHServer, err = NewSSHServer(cfg, srv)
 	if err != nil {
 		return nil, err
@@ -112,6 +119,11 @@ func (s *Server) Start() error {
 		if err := s.StatsServer.ListenAndServe(); err != http.ErrServerClosed {
 			return err
 		}
+		return nil
+	})
+	errg.Go(func() error {
+		log.Print("Starting cron scheduler")
+		s.Cron.Start()
 		return nil
 	})
 	return errg.Wait()

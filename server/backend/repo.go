@@ -5,6 +5,14 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// RepositoryOptions are options for creating a new repository.
+type RepositoryOptions struct {
+	Private     bool
+	Mirror      string
+	Description string
+	ProjectName string
+}
+
 // RepositoryStore is an interface for managing repositories.
 type RepositoryStore interface {
 	// Repository finds the given repository.
@@ -12,7 +20,7 @@ type RepositoryStore interface {
 	// Repositories returns a list of all repositories.
 	Repositories() ([]Repository, error)
 	// CreateRepository creates a new repository.
-	CreateRepository(name string, private bool) (Repository, error)
+	CreateRepository(name string, opts RepositoryOptions) (Repository, error)
 	// DeleteRepository deletes a repository.
 	DeleteRepository(name string) error
 	// RenameRepository renames a repository.
@@ -33,6 +41,8 @@ type RepositoryMetadata interface {
 	IsPrivate(repo string) bool
 	// SetPrivate sets whether the repository is private.
 	SetPrivate(repo string, private bool) error
+	// IsMirror returns whether the repository is a mirror.
+	IsMirror(repo string) bool
 }
 
 // RepositoryAccess is an interface for managing repository access.
@@ -67,6 +77,8 @@ type Repository interface {
 	Description() string
 	// IsPrivate returns whether the repository is private.
 	IsPrivate() bool
+	// IsMirror returns whether the repository is a mirror.
+	IsMirror() bool
 	// Open returns the underlying git.Repository.
 	Open() (*git.Repository, error)
 }

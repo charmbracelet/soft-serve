@@ -51,6 +51,7 @@ const (
 	private      = "private"
 	projectName  = "project-name"
 	settings     = "settings"
+	mirror       = "mirror"
 )
 
 var (
@@ -591,17 +592,38 @@ func (fb *FileBackend) SetProjectName(repo string, name string) error {
 	return os.WriteFile(filepath.Join(fb.reposPath(), repo, projectName), []byte(name), 0600)
 }
 
+// IsMirror returns true if the given repo is a mirror.
+func (fb *FileBackend) IsMirror(repo string) bool {
+	repo = utils.SanitizeRepo(repo) + ".git"
+	r := &Repo{path: filepath.Join(fb.reposPath(), repo), root: fb.reposPath()}
+	return r.IsMirror()
+}
+
 // CreateRepository creates a new repository.
 //
 // Created repositories are always bare.
 //
 // It implements backend.Backend.
-func (fb *FileBackend) CreateRepository(repo string, private bool) (backend.Repository, error) {
+func (fb *FileBackend) CreateRepository(repo string, opts backend.RepositoryOptions) (backend.Repository, error) {
 	name := utils.SanitizeRepo(repo)
 	repo = name + ".git"
 	rp := filepath.Join(fb.reposPath(), repo)
 	if _, err := os.Stat(rp); err == nil {
 		return nil, os.ErrExist
+	}
+
+	if opts.Mirror != "" {
+		if err := git.Clone(opts.Mirror, rp, git.CloneOptions{
+			Mirror: true,
+		}); err != nil {
+			logger.Debug("failed to clone mirror repository", "err", err)
+			return nil, err
+		}
+
+		if err := os.WriteFile(filepath.Join(rp, mirror), nil, 0600); err != nil {
+			logger.Debug("failed to create mirror file", "err", err)
+			return nil, err
+		}
 	}
 
 	rr, err := git.Init(rp, true)
@@ -615,17 +637,17 @@ func (fb *FileBackend) CreateRepository(repo string, private bool) (backend.Repo
 		return nil, err
 	}
 
-	if err := fb.SetPrivate(repo, private); err != nil {
+	if err := fb.SetPrivate(repo, opts.Private); err != nil {
 		logger.Debug("failed to set private status", "err", err)
 		return nil, err
 	}
 
-	if err := fb.SetDescription(repo, ""); err != nil {
+	if err := fb.SetDescription(repo, opts.Description); err != nil {
 		logger.Debug("failed to set description", "err", err)
 		return nil, err
 	}
 
-	if err := fb.SetProjectName(repo, name); err != nil {
+	if err := fb.SetProjectName(repo, opts.ProjectName); err != nil {
 		logger.Debug("failed to set project name", "err", err)
 		return nil, err
 	}
