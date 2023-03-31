@@ -57,6 +57,14 @@ func (r *Repo) IsPrivate() bool {
 	return err == nil
 }
 
+// IsMirror returns whether the repository is a mirror.
+//
+// It implements backend.Repository.
+func (r *Repo) IsMirror() bool {
+	_, err := os.Stat(filepath.Join(r.path, mirror))
+	return err == nil
+}
+
 // Open returns the underlying git.Repository.
 //
 // It implements backend.Repository.

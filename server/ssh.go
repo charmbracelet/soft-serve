@@ -185,7 +185,7 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 							return
 						}
 						if _, err := cfg.Backend.Repository(name); err != nil {
-							if _, err := cfg.Backend.CreateRepository(name, false); err != nil {
+							if _, err := cfg.Backend.CreateRepository(name, backend.RepositoryOptions{Private: false}); err != nil {
 								log.Errorf("failed to create repo: %s", err)
 								sshFatal(s, err)
 								return
