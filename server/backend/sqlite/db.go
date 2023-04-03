@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/jmoiron/sqlx"
-	"golang.org/x/crypto/bcrypt"
 	"modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 )
@@ -95,21 +94,4 @@ func rollback(tx *sqlx.Tx, err error) error {
 	}
 
 	return err
-}
-
-func hashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password+"soft-serve-v1"), 14)
-	if err != nil {
-		return "", fmt.Errorf("failed to hash password: %w", err)
-	}
-
-	return string(hash), nil
-}
-
-func checkPassword(hash, password string) error {
-	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password+"soft-serve-v1")); err != nil {
-		return fmt.Errorf("failed to check password: %w", err)
-	}
-
-	return nil
 }

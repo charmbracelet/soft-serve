@@ -38,6 +38,10 @@ func (d *SqliteBackend) reposPath() string {
 
 // NewSqliteBackend creates a new SqliteBackend.
 func NewSqliteBackend(dataPath string) (*SqliteBackend, error) {
+	if err := os.MkdirAll(dataPath, 0755); err != nil {
+		return nil, err
+	}
+
 	db, err := sqlx.Connect("sqlite", filepath.Join(dataPath, "soft-serve.db"+
 		"?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"))
 	if err != nil {
@@ -164,6 +168,7 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 
 	copts := git.CloneOptions{
 		Mirror: opts.Mirror,
+		Quiet:  true,
 	}
 	if err := git.Clone(remote, rp, copts); err != nil {
 		logger.Debug("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
