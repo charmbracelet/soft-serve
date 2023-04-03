@@ -2,8 +2,10 @@ package sqlite
 
 import (
 	"context"
+	"strings"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/ssh"
 )
@@ -136,6 +138,11 @@ func (d *SqliteBackend) AccessLevelByPublicKey(repo string, pk ssh.PublicKey) ba
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) AddPublicKey(username string, pk ssh.PublicKey) error {
+	username = strings.ToLower(username)
+	if err := utils.ValidateUsername(username); err != nil {
+		return err
+	}
+
 	return wrapDbErr(
 		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 			var userID int
@@ -154,16 +161,16 @@ func (d *SqliteBackend) AddPublicKey(username string, pk ssh.PublicKey) error {
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) CreateUser(username string, opts backend.UserOptions) (backend.User, error) {
+	username = strings.ToLower(username)
+	if err := utils.ValidateUsername(username); err != nil {
+		return nil, err
+	}
+
 	var user *User
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
-		into := "INSERT INTO user (username"
-		values := "VALUES (?"
-		args := []interface{}{username}
-		if opts.Admin {
-			into += ", admin"
-			values += ", ?"
-			args = append(args, opts.Admin)
-		}
+		into := "INSERT INTO user (username, admin"
+		values := "VALUES (?, ?"
+		args := []interface{}{username, opts.Admin}
 		into += ", updated_at)"
 		values += ", CURRENT_TIMESTAMP)"
 
@@ -202,6 +209,11 @@ func (d *SqliteBackend) CreateUser(username string, opts backend.UserOptions) (b
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) DeleteUser(username string) error {
+	username = strings.ToLower(username)
+	if err := utils.ValidateUsername(username); err != nil {
+		return err
+	}
+
 	return wrapDbErr(
 		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 			_, err := tx.Exec("DELETE FROM user WHERE username = ?", username)
@@ -226,6 +238,11 @@ func (d *SqliteBackend) RemovePublicKey(username string, pk ssh.PublicKey) error
 
 // ListPublicKeys lists the public keys of a user.
 func (d *SqliteBackend) ListPublicKeys(username string) ([]ssh.PublicKey, error) {
+	username = strings.ToLower(username)
+	if err := utils.ValidateUsername(username); err != nil {
+		return nil, err
+	}
+
 	keys := make([]ssh.PublicKey, 0)
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 		var keyStrings []string
@@ -256,6 +273,11 @@ func (d *SqliteBackend) ListPublicKeys(username string) ([]ssh.PublicKey, error)
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) SetUsername(username string, newUsername string) error {
+	username = strings.ToLower(username)
+	if err := utils.ValidateUsername(username); err != nil {
+		return err
+	}
+
 	return wrapDbErr(
 		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 			_, err := tx.Exec("UPDATE user SET username = ? WHERE username = ?", newUsername, username)
@@ -268,6 +290,11 @@ func (d *SqliteBackend) SetUsername(username string, newUsername string) error {
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) SetAdmin(username string, admin bool) error {
+	username = strings.ToLower(username)
+	if err := utils.ValidateUsername(username); err != nil {
+		return err
+	}
+
 	return wrapDbErr(
 		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 			_, err := tx.Exec("UPDATE user SET admin = ? WHERE username = ?", admin, username)
@@ -280,6 +307,11 @@ func (d *SqliteBackend) SetAdmin(username string, admin bool) error {
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) User(username string) (backend.User, error) {
+	username = strings.ToLower(username)
+	if err := utils.ValidateUsername(username); err != nil {
+		return nil, err
+	}
+
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&username, "SELECT username FROM user WHERE username = ?", username)
 	}); err != nil {

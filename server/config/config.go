@@ -109,6 +109,11 @@ func ParseConfig(path string) (*Config, error) {
 	return cfg, nil
 }
 
+// WriteConfig writes the configuration to the given file.
+func WriteConfig(path string, cfg *Config) error {
+	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o600) // nolint: errcheck
+}
+
 // DefaultConfig returns a Config with the values populated with the defaults
 // or specified environment variables.
 func DefaultConfig() *Config {
