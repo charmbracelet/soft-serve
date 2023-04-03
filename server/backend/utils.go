@@ -29,12 +29,24 @@ func LatestFile(r Repository, pattern string) (string, string, error) {
 		return "", "", err
 	}
 	for _, e := range ents {
-		fp := filepath.Join(dir, e.Name())
-		if e.IsTree() {
+		te := e
+		fp := filepath.Join(dir, te.Name())
+		if te.IsTree() {
 			continue
 		}
 		if g.Match(fp) {
-			bts, err := e.Contents()
+			if te.IsSymlink() {
+				bts, err := te.Contents()
+				if err != nil {
+					return "", "", err
+				}
+				fp = string(bts)
+				te, err = t.TreeEntry(fp)
+				if err != nil {
+					return "", "", err
+				}
+			}
+			bts, err := te.Contents()
 			if err != nil {
 				return "", "", err
 			}
