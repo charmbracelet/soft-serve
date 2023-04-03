@@ -32,6 +32,7 @@ func init() {
 		serveCmd,
 		manCmd,
 		hookCmd,
+		migrateConfig,
 	)
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 

@@ -168,13 +168,13 @@ func (d *SqliteBackend) CreateUser(username string, opts backend.UserOptions) (b
 
 	var user *User
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
-		into := "INSERT INTO user (username, admin"
-		values := "VALUES (?, ?"
-		args := []interface{}{username, opts.Admin}
-		into += ", updated_at)"
-		values += ", CURRENT_TIMESTAMP)"
+		stmt, err := tx.Prepare("INSERT INTO user (username, admin, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP);")
+		if err != nil {
+			return err
+		}
 
-		r, err := tx.Exec(into+" "+values, args...)
+		defer stmt.Close() // nolint: errcheck
+		r, err := stmt.Exec(username, opts.Admin)
 		if err != nil {
 			return err
 		}
@@ -182,12 +182,19 @@ func (d *SqliteBackend) CreateUser(username string, opts backend.UserOptions) (b
 		if len(opts.PublicKeys) > 0 {
 			userID, err := r.LastInsertId()
 			if err != nil {
+				logger.Error("error getting last insert id")
 				return err
 			}
 
 			for _, pk := range opts.PublicKeys {
-				if _, err := tx.Exec(`INSERT INTO public_key (user_id, public_key, updated_at)
-					VALUES (?, ?, CURRENT_TIMESTAMP);`, userID, backend.MarshalAuthorizedKey(pk)); err != nil {
+				stmt, err := tx.Prepare(`INSERT INTO public_key (user_id, public_key, updated_at)
+					VALUES (?, ?, CURRENT_TIMESTAMP);`)
+				if err != nil {
+					return err
+				}
+
+				defer stmt.Close() // nolint: errcheck
+				if _, err := stmt.Exec(userID, backend.MarshalAuthorizedKey(pk)); err != nil {
 					return err
 				}
 			}
