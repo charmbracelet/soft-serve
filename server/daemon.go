@@ -233,7 +233,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		auth := d.cfg.Backend.AccessLevel(name, nil)
+		auth := d.cfg.Backend.AccessLevel(name, "")
 		if auth < backend.ReadOnlyAccess {
 			fatal(c, ErrNotAuthed)
 			return

@@ -1,7 +1,7 @@
 package backend
 
-// ServerBackend is an interface that handles server configuration.
-type ServerBackend interface {
+// SettingsBackend is an interface that handles server configuration.
+type SettingsBackend interface {
 	// AnonAccess returns the access level for anonymous users.
 	AnonAccess() AccessLevel
 	// SetAnonAccess sets the access level for anonymous users.

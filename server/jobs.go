@@ -23,7 +23,7 @@ func mirrorJob(b backend.Backend) func() {
 
 		for _, repo := range repos {
 			if repo.IsMirror() {
-				logger.Debug("updating mirror", "repo", repo.Name())
+				logger.Info("updating mirror", "repo", repo.Name())
 				r, err := repo.Open()
 				if err != nil {
 					logger.Error("error opening repository", "repo", repo.Name(), "err", err)

@@ -2,15 +2,14 @@ package backend
 
 import (
 	"github.com/charmbracelet/soft-serve/git"
-	"golang.org/x/crypto/ssh"
 )
 
 // RepositoryOptions are options for creating a new repository.
 type RepositoryOptions struct {
 	Private     bool
-	Mirror      string
 	Description string
 	ProjectName string
+	Mirror      bool
 }
 
 // RepositoryStore is an interface for managing repositories.
@@ -21,10 +20,14 @@ type RepositoryStore interface {
 	Repositories() ([]Repository, error)
 	// CreateRepository creates a new repository.
 	CreateRepository(name string, opts RepositoryOptions) (Repository, error)
+	// ImportRepository creates a new repository from a Git repository.
+	ImportRepository(name string, remote string, opts RepositoryOptions) (Repository, error)
 	// DeleteRepository deletes a repository.
 	DeleteRepository(name string) error
 	// RenameRepository renames a repository.
 	RenameRepository(oldName, newName string) error
+	// InitializeHooks initializes the hooks for the given repository.
+	InitializeHooks(repo string) error
 }
 
 // RepositoryMetadata is an interface for managing repository metadata.
@@ -47,24 +50,13 @@ type RepositoryMetadata interface {
 
 // RepositoryAccess is an interface for managing repository access.
 type RepositoryAccess interface {
-	// AccessLevel returns the access level for the given repository and key.
-	AccessLevel(repo string, pk ssh.PublicKey) AccessLevel
-	// IsCollaborator returns true if the authorized key is a collaborator on the repository.
-	IsCollaborator(pk ssh.PublicKey, repo string) bool
+	IsCollaborator(repo string, username string) bool
 	// AddCollaborator adds the authorized key as a collaborator on the repository.
-	AddCollaborator(pk ssh.PublicKey, memo string, repo string) error
+	AddCollaborator(repo string, username string) error
 	// RemoveCollaborator removes the authorized key as a collaborator on the repository.
-	RemoveCollaborator(pk ssh.PublicKey, repo string) error
+	RemoveCollaborator(repo string, username string) error
 	// Collaborators returns a list of all collaborators on the repository.
 	Collaborators(repo string) ([]string, error)
-	// IsAdmin returns true if the authorized key is an admin.
-	IsAdmin(pk ssh.PublicKey) bool
-	// AddAdmin adds the authorized key as an admin.
-	AddAdmin(pk ssh.PublicKey, memo string) error
-	// RemoveAdmin removes the authorized key as an admin.
-	RemoveAdmin(pk ssh.PublicKey) error
-	// Admins returns a list of all admins.
-	Admins() ([]string, error)
 }
 
 // Repository is a Git repository interface.

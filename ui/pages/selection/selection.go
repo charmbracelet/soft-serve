@@ -198,7 +198,7 @@ func (s *Selection) Init() tea.Cmd {
 	}
 	sortedItems := make(Items, 0)
 	for _, r := range repos {
-		al := cfg.Backend.AccessLevel(r.Name(), pk)
+		al := cfg.Backend.AccessLevelByPublicKey(r.Name(), pk)
 		if al >= backend.ReadOnlyAccess {
 			item, err := NewItem(r, cfg)
 			if err != nil {

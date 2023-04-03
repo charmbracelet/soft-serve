@@ -137,7 +137,7 @@ func (s *HTTPServer) Shutdown(ctx context.Context) error {
 // Pattern is a pattern for matching a URL.
 // It matches against GET requests.
 type Pattern struct {
-	match func(*url.URL) *Match
+	match func(*url.URL) *match
 }
 
 // NewPattern returns a new Pattern with the given matcher.
@@ -164,64 +164,65 @@ func (p *Pattern) Match(r *http.Request) *http.Request {
 }
 
 // Matcher finds a match in a *url.URL.
-type Matcher = func(*url.URL) *Match
+type Matcher = func(*url.URL) *match
 
 var (
-	getInfoRefs = func(u *url.URL) *Match {
+	getInfoRefs = func(u *url.URL) *match {
 		return matchSuffix(u.Path, "/info/refs")
 	}
 
-	getHead = func(u *url.URL) *Match {
+	getHead = func(u *url.URL) *match {
 		return matchSuffix(u.Path, "/HEAD")
 	}
 
-	getAlternates = func(u *url.URL) *Match {
+	getAlternates = func(u *url.URL) *match {
 		return matchSuffix(u.Path, "/objects/info/alternates")
 	}
 
-	getHTTPAlternates = func(u *url.URL) *Match {
+	getHTTPAlternates = func(u *url.URL) *match {
 		return matchSuffix(u.Path, "/objects/info/http-alternates")
 	}
 
-	getInfoPacks = func(u *url.URL) *Match {
+	getInfoPacks = func(u *url.URL) *match {
 		return matchSuffix(u.Path, "/objects/info/packs")
 	}
 
 	getInfoFileRegexp = regexp.MustCompile(".*?(/objects/info/[^/]*)$")
-	getInfoFile       = func(u *url.URL) *Match {
+	getInfoFile       = func(u *url.URL) *match {
 		return findStringSubmatch(u.Path, getInfoFileRegexp)
 	}
 
 	getLooseObjectRegexp = regexp.MustCompile(".*?(/objects/[0-9a-f]{2}/[0-9a-f]{38})$")
-	getLooseObject       = func(u *url.URL) *Match {
+	getLooseObject       = func(u *url.URL) *match {
 		return findStringSubmatch(u.Path, getLooseObjectRegexp)
 	}
 
 	getPackFileRegexp = regexp.MustCompile(`.*?(/objects/pack/pack-[0-9a-f]{40}\.pack)$`)
-	getPackFile       = func(u *url.URL) *Match {
+	getPackFile       = func(u *url.URL) *match {
 		return findStringSubmatch(u.Path, getPackFileRegexp)
 	}
 
 	getIdxFileRegexp = regexp.MustCompile(`.*?(/objects/pack/pack-[0-9a-f]{40}\.idx)$`)
-	getIdxFile       = func(u *url.URL) *Match {
+	getIdxFile       = func(u *url.URL) *match {
 		return findStringSubmatch(u.Path, getIdxFileRegexp)
 	}
 )
 
-type Match struct {
+// match represents a match for a URL.
+type match struct {
 	RepoPath, FilePath string
 }
 
-func matchSuffix(path, suffix string) *Match {
+func matchSuffix(path, suffix string) *match {
 	if !strings.HasSuffix(path, suffix) {
 		return nil
 	}
 	repoPath := strings.Replace(path, suffix, "", 1)
 	filePath := strings.Replace(path, repoPath+"/", "", 1)
-	return &Match{repoPath, filePath}
+	return &match{repoPath, filePath}
 }
 
-func findStringSubmatch(path string, prefix *regexp.Regexp) *Match {
+func findStringSubmatch(path string, prefix *regexp.Regexp) *match {
 	m := prefix.FindStringSubmatch(path)
 	if m == nil {
 		return nil
@@ -229,7 +230,7 @@ func findStringSubmatch(path string, prefix *regexp.Regexp) *Match {
 	suffix := m[1]
 	repoPath := strings.Replace(path, suffix, "", 1)
 	filePath := strings.Replace(path, repoPath+"/", "", 1)
-	return &Match{repoPath, filePath}
+	return &match{repoPath, filePath}
 }
 
 var repoIndexHTMLTpl = template.Must(template.New("index").Parse(`<!DOCTYPE html>
@@ -258,7 +259,7 @@ func (s *HTTPServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	access := s.cfg.Backend.AccessLevel(repo, nil)
+	access := s.cfg.Backend.AccessLevel(repo, "")
 	if access < backend.ReadOnlyAccess {
 		http.NotFound(w, r)
 		return
@@ -300,7 +301,7 @@ func (s *HTTPServer) handleGit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	access := s.cfg.Backend.AccessLevel(repo, nil)
+	access := s.cfg.Backend.AccessLevel(repo, "")
 	if access < backend.ReadOnlyAccess {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

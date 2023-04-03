@@ -45,31 +45,35 @@ var (
 )
 
 // rootCommand is the root command for the server.
-func rootCommand() *cobra.Command {
+func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:          "soft",
 		Short:        "Soft Serve is a self-hostable Git server for the command line.",
 		SilenceUsage: true,
 	}
+
 	// TODO: use command usage template to include hostname and port
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(
-		adminCommand(),
-		blobCommand(),
-		branchCommand(),
-		collabCommand(),
-		createCommand(),
-		deleteCommand(),
-		descriptionCommand(),
 		hookCommand(),
-		listCommand(),
-		privateCommand(),
-		projectName(),
-		renameCommand(),
-		settingCommand(),
-		tagCommand(),
-		treeCommand(),
+		repoCommand(),
 	)
+
+	user, _ := cfg.Backend.UserByPublicKey(s.PublicKey())
+	if user != nil {
+		if user.IsAdmin() {
+			rootCmd.AddCommand(
+				settingsCommand(),
+				userCommand(),
+			)
+		}
+
+		rootCmd.AddCommand(
+			infoCommand(),
+			pubkeyCommand(),
+			setUsernameCommand(),
+		)
+	}
 
 	return rootCmd
 }
@@ -88,18 +92,31 @@ func checkIfReadable(cmd *cobra.Command, args []string) error {
 	}
 	cfg, s := fromContext(cmd)
 	rn := utils.SanitizeRepo(repo)
-	auth := cfg.Backend.AccessLevel(rn, s.PublicKey())
+	auth := cfg.Backend.AccessLevelByPublicKey(rn, s.PublicKey())
 	if auth < backend.ReadOnlyAccess {
 		return ErrUnauthorized
 	}
 	return nil
 }
 
-func checkIfAdmin(cmd *cobra.Command, args []string) error {
+func checkIfAdmin(cmd *cobra.Command, _ []string) error {
 	cfg, s := fromContext(cmd)
-	if !cfg.Backend.IsAdmin(s.PublicKey()) {
+	ak := backend.MarshalAuthorizedKey(s.PublicKey())
+	for _, k := range cfg.InitialAdminKeys {
+		if k == ak {
+			return nil
+		}
+	}
+
+	user, err := cfg.Backend.UserByPublicKey(s.PublicKey())
+	if err != nil {
+		return err
+	}
+
+	if !user.IsAdmin() {
 		return ErrUnauthorized
 	}
+
 	return nil
 }
 
@@ -110,7 +127,7 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 	}
 	cfg, s := fromContext(cmd)
 	rn := utils.SanitizeRepo(repo)
-	auth := cfg.Backend.AccessLevel(rn, s.PublicKey())
+	auth := cfg.Backend.AccessLevelByPublicKey(rn, s.PublicKey())
 	if auth < backend.ReadWriteAccess {
 		return ErrUnauthorized
 	}
@@ -141,7 +158,7 @@ func Middleware(cfg *config.Config, hooks hooks.Hooks) wish.Middleware {
 				ctx = context.WithValue(ctx, SessionCtxKey, s)
 				ctx = context.WithValue(ctx, HooksCtxKey, hooks)
 
-				rootCmd := rootCommand()
+				rootCmd := rootCommand(cfg, s)
 				rootCmd.SetArgs(args)
 				if len(args) == 0 {
 					// otherwise it'll default to os.Args, which is not what we want.

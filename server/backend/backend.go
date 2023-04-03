@@ -9,10 +9,12 @@ import (
 // Backend is an interface that handles repositories management and any
 // non-Git related operations.
 type Backend interface {
-	ServerBackend
+	SettingsBackend
 	RepositoryStore
 	RepositoryMetadata
 	RepositoryAccess
+	UserStore
+	UserAccess
 }
 
 // ParseAuthorizedKey parses an authorized key string into a public key.

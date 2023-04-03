@@ -8,12 +8,11 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/soft-serve/server/backend/file"
+	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 )
@@ -31,7 +30,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("SOFT_SERVE_GIT_MAX_TIMEOUT", "100")
 	os.Setenv("SOFT_SERVE_GIT_IDLE_TIMEOUT", "1")
 	os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", randomPort()))
-	fb, err := file.NewFileBackend(filepath.Join(tmp, "repos"))
+	fb, err := sqlite.NewSqliteBackend(tmp)
 	if err != nil {
 		log.Fatal(err)
 	}

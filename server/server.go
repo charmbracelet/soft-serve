@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/log"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/backend/file"
+	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/cron"
 	"github.com/charmbracelet/ssh"
@@ -39,13 +39,14 @@ type Server struct {
 func NewServer(cfg *config.Config) (*Server, error) {
 	var err error
 	if cfg.Backend == nil {
-		fb, err := file.NewFileBackend(cfg.DataPath)
+		sb, err := sqlite.NewSqliteBackend(cfg.DataPath)
 		if err != nil {
 			logger.Fatal(err)
 		}
+
 		// Add the initial admin keys to the list of admins.
-		fb.AdditionalAdmins = cfg.InitialAdminKeys
-		cfg = cfg.WithBackend(fb)
+		sb.AdditionalAdmins = cfg.InitialAdminKeys
+		cfg = cfg.WithBackend(sb)
 
 		// Create internal key.
 		_, err = keygen.NewWithWrite(
