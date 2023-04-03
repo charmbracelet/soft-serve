@@ -21,7 +21,11 @@ func descriptionCommand() *cobra.Command {
 					return err
 				}
 
-				desc := cfg.Backend.Description(rn)
+				desc, err := cfg.Backend.Description(rn)
+				if err != nil {
+					return err
+				}
+
 				cmd.Println(desc)
 			default:
 				if err := checkIfCollab(cmd, args); err != nil {

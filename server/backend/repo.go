@@ -34,28 +34,28 @@ type RepositoryStore interface {
 // RepositoryMetadata is an interface for managing repository metadata.
 type RepositoryMetadata interface {
 	// ProjectName returns the repository's project name.
-	ProjectName(repo string) string
+	ProjectName(repo string) (string, error)
 	// SetProjectName sets the repository's project name.
 	SetProjectName(repo, name string) error
 	// Description returns the repository's description.
-	Description(repo string) string
+	Description(repo string) (string, error)
 	// SetDescription sets the repository's description.
 	SetDescription(repo, desc string) error
 	// IsPrivate returns whether the repository is private.
-	IsPrivate(repo string) bool
+	IsPrivate(repo string) (bool, error)
 	// SetPrivate sets whether the repository is private.
 	SetPrivate(repo string, private bool) error
 	// IsMirror returns whether the repository is a mirror.
-	IsMirror(repo string) bool
+	IsMirror(repo string) (bool, error)
 	// IsHidden returns whether the repository is hidden.
-	IsHidden(repo string) bool
+	IsHidden(repo string) (bool, error)
 	// SetHidden sets whether the repository is hidden.
 	SetHidden(repo string, hidden bool) error
 }
 
 // RepositoryAccess is an interface for managing repository access.
 type RepositoryAccess interface {
-	IsCollaborator(repo string, username string) bool
+	IsCollaborator(repo string, username string) (bool, error)
 	// AddCollaborator adds the authorized key as a collaborator on the repository.
 	AddCollaborator(repo string, username string) error
 	// RemoveCollaborator removes the authorized key as a collaborator on the repository.

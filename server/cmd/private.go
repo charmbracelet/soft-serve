@@ -22,7 +22,11 @@ func privateCommand() *cobra.Command {
 					return err
 				}
 
-				isPrivate := cfg.Backend.IsPrivate(rn)
+				isPrivate, err := cfg.Backend.IsPrivate(rn)
+				if err != nil {
+					return err
+				}
+
 				cmd.Println(isPrivate)
 			case 2:
 				isPrivate, err := strconv.ParseBool(args[1])

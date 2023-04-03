@@ -16,7 +16,11 @@ func hiddenCommand() *cobra.Command {
 					return err
 				}
 
-				hidden := cfg.Backend.IsHidden(repo)
+				hidden, err := cfg.Backend.IsHidden(repo)
+				if err != nil {
+					return err
+				}
+
 				cmd.Println(hidden)
 			case 2:
 				if err := checkIfCollab(cmd, args); err != nil {

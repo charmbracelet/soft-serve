@@ -21,7 +21,11 @@ func projectName() *cobra.Command {
 					return err
 				}
 
-				pn := cfg.Backend.ProjectName(rn)
+				pn, err := cfg.Backend.ProjectName(rn)
+				if err != nil {
+					return err
+				}
+
 				cmd.Println(pn)
 			default:
 				if err := checkIfCollab(cmd, args); err != nil {

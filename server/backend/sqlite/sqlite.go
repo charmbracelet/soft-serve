@@ -134,7 +134,7 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 		_, err := tx.Exec(`INSERT INTO repo (name, project_name, description, private, mirror, hidden, updated_at)
-			VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
+			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
 			name, opts.ProjectName, opts.Description, opts.Private, opts.Mirror, opts.Hidden)
 		return err
 	}); err != nil {
@@ -282,61 +282,61 @@ func (d *SqliteBackend) Repository(repo string) (backend.Repository, error) {
 // Description returns the description of a repository.
 //
 // It implements backend.Backend.
-func (d *SqliteBackend) Description(repo string) string {
+func (d *SqliteBackend) Description(repo string) (string, error) {
 	repo = utils.SanitizeRepo(repo)
 	var desc string
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&desc, "SELECT description FROM repo WHERE name = ?", repo)
 	}); err != nil {
-		return ""
+		return "", wrapDbErr(err)
 	}
 
-	return desc
+	return desc, nil
 }
 
 // IsMirror returns true if the repository is a mirror.
 //
 // It implements backend.Backend.
-func (d *SqliteBackend) IsMirror(repo string) bool {
+func (d *SqliteBackend) IsMirror(repo string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var mirror bool
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&mirror, "SELECT mirror FROM repo WHERE name = ?", repo)
 	}); err != nil {
-		return false
+		return false, wrapDbErr(err)
 	}
 
-	return mirror
+	return mirror, nil
 }
 
 // IsPrivate returns true if the repository is private.
 //
 // It implements backend.Backend.
-func (d *SqliteBackend) IsPrivate(repo string) bool {
+func (d *SqliteBackend) IsPrivate(repo string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var private bool
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&private, "SELECT private FROM repo WHERE name = ?", repo)
 	}); err != nil {
-		return false
+		return false, wrapDbErr(err)
 	}
 
-	return private
+	return private, nil
 }
 
 // IsHidden returns true if the repository is hidden.
 //
 // It implements backend.Backend.
-func (d *SqliteBackend) IsHidden(repo string) bool {
+func (d *SqliteBackend) IsHidden(repo string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var hidden bool
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&hidden, "SELECT hidden FROM repo WHERE name = ?", repo)
 	}); err != nil {
-		return false
+		return false, wrapDbErr(err)
 	}
 
-	return hidden
+	return hidden, nil
 }
 
 // SetHidden sets the hidden flag of a repository.
@@ -353,16 +353,16 @@ func (d *SqliteBackend) SetHidden(repo string, hidden bool) error {
 // ProjectName returns the project name of a repository.
 //
 // It implements backend.Backend.
-func (d *SqliteBackend) ProjectName(repo string) string {
+func (d *SqliteBackend) ProjectName(repo string) (string, error) {
 	repo = utils.SanitizeRepo(repo)
 	var name string
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&name, "SELECT project_name FROM repo WHERE name = ?", repo)
 	}); err != nil {
-		return ""
+		return "", wrapDbErr(err)
 	}
 
-	return name
+	return name, nil
 }
 
 // SetDescription sets the description of a repository.
@@ -440,7 +440,7 @@ func (d *SqliteBackend) Collaborators(repo string) ([]string, error) {
 // IsCollaborator returns true if the user is a collaborator of the repository.
 //
 // It implements backend.Backend.
-func (d *SqliteBackend) IsCollaborator(repo string, username string) bool {
+func (d *SqliteBackend) IsCollaborator(repo string, username string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var count int
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
@@ -449,10 +449,10 @@ func (d *SqliteBackend) IsCollaborator(repo string, username string) bool {
 			INNER JOIN repo ON repo.id = collab.repo_id
 			WHERE repo.name = ? AND user.username = ?`, repo, username)
 	}); err != nil {
-		return false
+		return false, wrapDbErr(err)
 	}
 
-	return count > 0
+	return count > 0, nil
 }
 
 // RemoveCollaborator removes a collaborator from a repository.
