@@ -32,7 +32,7 @@ var (
 		Subsystem: "ssh",
 		Name:      "public_key_auth_total",
 		Help:      "The total number of public key auth requests",
-	}, []string{"key", "user", "access", "allowed"})
+	}, []string{"key", "user", "allowed"})
 
 	keyboardInteractiveCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
@@ -136,12 +136,26 @@ func (s *SSHServer) Shutdown(ctx context.Context) error {
 }
 
 // PublicKeyAuthHandler handles public key authentication.
-func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) bool {
-	ac := s.cfg.Backend.AccessLevel("", pk)
-	allowed := ac >= backend.ReadOnlyAccess
+func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed bool) {
 	ak := backend.MarshalAuthorizedKey(pk)
-	publicKeyCounter.WithLabelValues(ak, ctx.User(), ac.String(), strconv.FormatBool(allowed)).Inc()
-	return allowed
+	defer func() {
+		publicKeyCounter.WithLabelValues(ak, ctx.User(), strconv.FormatBool(allowed)).Inc()
+	}()
+	for _, k := range s.cfg.InitialAdminKeys {
+		if k == ak {
+			allowed = true
+			return
+		}
+	}
+
+	user, _ := s.cfg.Backend.UserByPublicKey(pk)
+	if user == nil {
+		logger.Debug("public key auth user not found")
+		return s.cfg.Backend.AnonAccess() >= backend.ReadOnlyAccess
+	}
+
+	allowed = s.cfg.Backend.AccessLevel("", user.Username()) >= backend.ReadOnlyAccess
+	return
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
@@ -167,7 +181,7 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 					name := utils.SanitizeRepo(cmd[1])
 					pk := s.PublicKey()
 					ak := backend.MarshalAuthorizedKey(pk)
-					access := cfg.Backend.AccessLevel(name, pk)
+					access := cfg.Backend.AccessLevelByPublicKey(name, pk)
 					// git bare repositories should end in ".git"
 					// https://git-scm.com/docs/gitrepository-layout
 					repo := name + ".git"

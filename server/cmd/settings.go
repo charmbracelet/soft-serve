@@ -8,9 +8,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func settingCommand() *cobra.Command {
+func settingsCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "setting",
+		Use:   "settings",
 		Short: "Manage server settings",
 	}
 

@@ -19,7 +19,7 @@ func listCommand() *cobra.Command {
 				return err
 			}
 			for _, r := range repos {
-				if cfg.Backend.AccessLevel(r.Name(), s.PublicKey()) >= backend.ReadOnlyAccess {
+				if cfg.Backend.AccessLevelByPublicKey(r.Name(), s.PublicKey()) >= backend.ReadOnlyAccess {
 					cmd.Println(r.Name())
 				}
 			}

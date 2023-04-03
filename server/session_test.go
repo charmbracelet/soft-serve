@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/soft-serve/server/backend/file"
+	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/ssh"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -52,7 +51,7 @@ func setup(tb testing.TB) *gossh.Session {
 		is.NoErr(os.Unsetenv("SOFT_SERVE_SSH_LISTEN_ADDR"))
 		is.NoErr(os.RemoveAll(dp))
 	})
-	fb, err := file.NewFileBackend(filepath.Join(dp, "repos"))
+	fb, err := sqlite.NewSqliteBackend(dp)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -29,7 +29,7 @@ type cronLogger struct {
 
 // Info logs routine messages about cron's operation.
 func (l cronLogger) Info(msg string, keysAndValues ...interface{}) {
-	l.logger.Info(msg, keysAndValues...)
+	l.logger.Debug(msg, keysAndValues...)
 }
 
 // Error logs an error condition.

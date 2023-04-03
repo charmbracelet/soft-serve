@@ -5,24 +5,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// createCommand is the command for creating a new repository.
-func createCommand() *cobra.Command {
+// importCommand is the command for creating a new repository.
+func importCommand() *cobra.Command {
 	var private bool
 	var description string
 	var projectName string
+	var mirror bool
 
 	cmd := &cobra.Command{
-		Use:               "create REPOSITORY",
-		Short:             "Create a new repository",
-		Args:              cobra.ExactArgs(1),
+		Use:               "import REPOSITORY REMOTE",
+		Short:             "Import a new repository from remote",
+		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := fromContext(cmd)
 			name := args[0]
-			if _, err := cfg.Backend.CreateRepository(name, backend.RepositoryOptions{
+			remote := args[1]
+			if _, err := cfg.Backend.ImportRepository(name, remote, backend.RepositoryOptions{
 				Private:     private,
 				Description: description,
 				ProjectName: projectName,
+				Mirror:      mirror,
 			}); err != nil {
 				return err
 			}
@@ -30,6 +33,7 @@ func createCommand() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolVarP(&mirror, "mirror", "m", false, "mirror the repository")
 	cmd.Flags().BoolVarP(&private, "private", "p", false, "make the repository private")
 	cmd.Flags().StringVarP(&description, "description", "d", "", "set the repository description")
 	cmd.Flags().StringVarP(&projectName, "name", "n", "", "set the project name")

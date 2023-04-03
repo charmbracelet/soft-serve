@@ -1,16 +1,13 @@
 package cmd
 
 import (
-	"strings"
-
-	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/spf13/cobra"
 )
 
 func collabCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "collab",
-		Aliases: []string{"collaborator", "collaborators"},
+		Aliases: []string{"collabs", "collaborator", "collaborators"},
 		Short:   "Manage collaborators",
 	}
 
@@ -25,19 +22,16 @@ func collabCommand() *cobra.Command {
 
 func collabAddCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "add REPOSITORY AUTHORIZED_KEY",
+		Use:               "add REPOSITORY USERNAME",
 		Short:             "Add a collaborator to a repo",
-		Args:              cobra.MinimumNArgs(2),
+		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := fromContext(cmd)
 			repo := args[0]
-			pk, c, err := backend.ParseAuthorizedKey(strings.Join(args[1:], " "))
-			if err != nil {
-				return err
-			}
+			username := args[1]
 
-			return cfg.Backend.AddCollaborator(pk, c, repo)
+			return cfg.Backend.AddCollaborator(repo, username)
 		},
 	}
 
@@ -46,19 +40,16 @@ func collabAddCommand() *cobra.Command {
 
 func collabRemoveCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "remove REPOSITORY AUTHORIZED_KEY",
-		Args:              cobra.MinimumNArgs(2),
+		Use:               "remove REPOSITORY USERNAME",
+		Args:              cobra.ExactArgs(2),
 		Short:             "Remove a collaborator from a repo",
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := fromContext(cmd)
 			repo := args[0]
-			pk, _, err := backend.ParseAuthorizedKey(strings.Join(args[1:], " "))
-			if err != nil {
-				return err
-			}
+			username := args[1]
 
-			return cfg.Backend.RemoveCollaborator(pk, repo)
+			return cfg.Backend.RemoveCollaborator(repo, username)
 		},
 	}
 
