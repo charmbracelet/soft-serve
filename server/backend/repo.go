@@ -10,6 +10,7 @@ type RepositoryOptions struct {
 	Description string
 	ProjectName string
 	Mirror      bool
+	Hidden      bool
 }
 
 // RepositoryStore is an interface for managing repositories.
@@ -46,6 +47,10 @@ type RepositoryMetadata interface {
 	SetPrivate(repo string, private bool) error
 	// IsMirror returns whether the repository is a mirror.
 	IsMirror(repo string) bool
+	// IsHidden returns whether the repository is hidden.
+	IsHidden(repo string) bool
+	// SetHidden sets whether the repository is hidden.
+	SetHidden(repo string, hidden bool) error
 }
 
 // RepositoryAccess is an interface for managing repository access.
@@ -71,6 +76,8 @@ type Repository interface {
 	IsPrivate() bool
 	// IsMirror returns whether the repository is a mirror.
 	IsMirror() bool
+	// IsHidden returns whether the repository is hidden.
+	IsHidden() bool
 	// Open returns the underlying git.Repository.
 	Open() (*git.Repository, error)
 }

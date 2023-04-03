@@ -133,9 +133,9 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 	}
 
 	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
-		_, err := tx.Exec(`INSERT INTO repo (name, project_name, description, private, mirror, updated_at)
+		_, err := tx.Exec(`INSERT INTO repo (name, project_name, description, private, mirror, hidden, updated_at)
 			VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
-			name, opts.ProjectName, opts.Description, opts.Private, opts.Mirror)
+			name, opts.ProjectName, opts.Description, opts.Private, opts.Mirror, opts.Hidden)
 		return err
 	}); err != nil {
 		logger.Debug("failed to create repository in database", "err", err)
@@ -322,6 +322,32 @@ func (d *SqliteBackend) IsPrivate(repo string) bool {
 	}
 
 	return private
+}
+
+// IsHidden returns true if the repository is hidden.
+//
+// It implements backend.Backend.
+func (d *SqliteBackend) IsHidden(repo string) bool {
+	repo = utils.SanitizeRepo(repo)
+	var hidden bool
+	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+		return tx.Get(&hidden, "SELECT hidden FROM repo WHERE name = ?", repo)
+	}); err != nil {
+		return false
+	}
+
+	return hidden
+}
+
+// SetHidden sets the hidden flag of a repository.
+//
+// It implements backend.Backend.
+func (d *SqliteBackend) SetHidden(repo string, hidden bool) error {
+	repo = utils.SanitizeRepo(repo)
+	return wrapDbErr(wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+		_, err := tx.Exec("UPDATE repo SET hidden = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?;", hidden, repo)
+		return err
+	}))
 }
 
 // ProjectName returns the project name of a repository.
