@@ -16,6 +16,10 @@ import (
 	"github.com/charmbracelet/soft-serve/ui/components/tabs"
 )
 
+const (
+	defaultNoContent = "No readme found.\n\nCreate a `.soft-serve` repository and add a `README.md` file to display readme."
+)
+
 var (
 	logger = log.WithPrefix("ui.selection")
 )
@@ -63,7 +67,8 @@ func New(c common.Common) *Selection {
 		tabs:       t,
 	}
 	readme := code.New(c, "", "")
-	readme.NoContentStyle = c.Styles.NoContent.Copy().SetString("No readme found.")
+	readme.NoContentStyle = c.Styles.NoContent.Copy().
+		SetString(defaultNoContent)
 	selector := selector.New(c,
 		[]selector.IdentifiableItem{},
 		ItemDelegate{&c, &sel.activePane})
@@ -198,6 +203,15 @@ func (s *Selection) Init() tea.Cmd {
 	}
 	sortedItems := make(Items, 0)
 	for _, r := range repos {
+		if r.Name() == ".soft-serve" {
+			readme, path, err := backend.Readme(r)
+			if err != nil {
+				continue
+			}
+
+			readmeCmd = s.readme.SetContent(readme, path)
+		}
+
 		if r.IsHidden() {
 			continue
 		}
