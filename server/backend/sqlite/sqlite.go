@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/charmbracelet/log"
@@ -410,6 +411,11 @@ func (d *SqliteBackend) SetProjectName(repo string, name string) error {
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) AddCollaborator(repo string, username string) error {
+	username = strings.ToLower(username)
+	if err := utils.ValidateUsername(username); err != nil {
+		return err
+	}
+
 	repo = utils.SanitizeRepo(repo)
 	return wrapDbErr(wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 		_, err := tx.Exec(`INSERT INTO collab (user_id, repo_id, updated_at)

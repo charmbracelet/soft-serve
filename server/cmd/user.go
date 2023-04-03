@@ -25,19 +25,24 @@ func userCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var pubkeys []ssh.PublicKey
 			cfg, _ := fromContext(cmd)
 			username := args[0]
-			pk, _, err := backend.ParseAuthorizedKey(key)
-			if err != nil {
-				return err
+			if key != "" {
+				pk, _, err := backend.ParseAuthorizedKey(key)
+				if err != nil {
+					return err
+				}
+
+				pubkeys = []ssh.PublicKey{pk}
 			}
 
 			opts := backend.UserOptions{
 				Admin:      admin,
-				PublicKeys: []ssh.PublicKey{pk},
+				PublicKeys: pubkeys,
 			}
 
-			_, err = cfg.Backend.CreateUser(username, opts)
+			_, err := cfg.Backend.CreateUser(username, opts)
 			return err
 		},
 	}
