@@ -25,7 +25,7 @@ func collabAddCommand() *cobra.Command {
 		Use:               "add REPOSITORY USERNAME",
 		Short:             "Add a collaborator to a repo",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := fromContext(cmd)
 			repo := args[0]
@@ -43,7 +43,7 @@ func collabRemoveCommand() *cobra.Command {
 		Use:               "remove REPOSITORY USERNAME",
 		Args:              cobra.ExactArgs(2),
 		Short:             "Remove a collaborator from a repo",
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := fromContext(cmd)
 			repo := args[0]
