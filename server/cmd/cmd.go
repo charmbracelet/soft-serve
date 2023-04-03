@@ -108,9 +108,9 @@ func checkIfAdmin(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	user, err := cfg.Backend.UserByPublicKey(s.PublicKey())
-	if err != nil {
-		return err
+	user, _ := cfg.Backend.UserByPublicKey(s.PublicKey())
+	if user == nil {
+		return ErrUnauthorized
 	}
 
 	if !user.IsAdmin() {

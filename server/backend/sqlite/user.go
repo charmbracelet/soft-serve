@@ -82,7 +82,8 @@ func (d *SqliteBackend) AccessLevel(repo string, username string) backend.Access
 	r, _ := d.Repository(repo)
 	if r != nil {
 		// If the user is a collaborator, they have read/write access.
-		if d.IsCollaborator(repo, username) {
+		isCollab, _ := d.IsCollaborator(repo, username)
+		if isCollab {
 			if anon > backend.ReadWriteAccess {
 				return anon
 			}
