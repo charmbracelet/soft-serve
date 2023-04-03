@@ -52,7 +52,11 @@ func NewSqliteBackend(dataPath string) (*SqliteBackend, error) {
 		return nil, err
 	}
 
-	return d, d.db.Ping()
+	if err := d.db.Ping(); err != nil {
+		return nil, err
+	}
+
+	return d, d.initRepos()
 }
 
 // AllowKeyless returns whether or not keyless access is allowed.
@@ -617,6 +621,21 @@ func (d *SqliteBackend) InitializeHooks(repo string) error {
 		if err != nil {
 			logger.Error("failed to write hook", "err", err)
 			continue
+		}
+	}
+
+	return nil
+}
+
+func (d *SqliteBackend) initRepos() error {
+	repos, err := d.Repositories()
+	if err != nil {
+		return err
+	}
+
+	for _, repo := range repos {
+		if err := d.InitializeHooks(repo.Name()); err != nil {
+			return err
 		}
 	}
 
