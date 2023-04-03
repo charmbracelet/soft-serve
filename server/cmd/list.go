@@ -7,6 +7,8 @@ import (
 
 // listCommand returns a command that list file or directory at path.
 func listCommand() *cobra.Command {
+	var all bool
+
 	listCmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
@@ -20,11 +22,16 @@ func listCommand() *cobra.Command {
 			}
 			for _, r := range repos {
 				if cfg.Backend.AccessLevelByPublicKey(r.Name(), s.PublicKey()) >= backend.ReadOnlyAccess {
-					cmd.Println(r.Name())
+					if !r.IsHidden() || all {
+						cmd.Println(r.Name())
+					}
 				}
 			}
 			return nil
 		},
 	}
+
+	listCmd.Flags().BoolVarP(&all, "all", "a", false, "List all repositories")
+
 	return listCmd
 }

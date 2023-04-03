@@ -16,7 +16,7 @@ func importCommand() *cobra.Command {
 		Use:               "import REPOSITORY REMOTE",
 		Short:             "Import a new repository from remote",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := fromContext(cmd)
 			name := args[0]
