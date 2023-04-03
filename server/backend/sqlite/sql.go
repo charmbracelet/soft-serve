@@ -37,6 +37,7 @@ var (
 		description TEXT NOT NULL,
 		private BOOLEAN NOT NULL,
 		mirror BOOLEAN NOT NULL,
+		hidden BOOLEAN NOT NULL,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL
 	);`

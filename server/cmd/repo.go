@@ -16,6 +16,7 @@ func repoCommand() *cobra.Command {
 		createCommand(),
 		deleteCommand(),
 		descriptionCommand(),
+		hiddenCommand(),
 		importCommand(),
 		listCommand(),
 		privateCommand(),

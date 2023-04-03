@@ -86,3 +86,17 @@ func (r *Repo) ProjectName() string {
 
 	return name
 }
+
+// IsHidden returns whether the repository is hidden.
+//
+// It implements backend.Repository.
+func (r *Repo) IsHidden() bool {
+	var hidden bool
+	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
+		return tx.Get(&hidden, "SELECT hidden FROM repo WHERE name = ?", r.name)
+	}); err != nil {
+		return false
+	}
+
+	return hidden
+}
