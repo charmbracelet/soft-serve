@@ -128,7 +128,7 @@ func DefaultConfig() *Config {
 		SSH: SSHConfig{
 			ListenAddr:      ":23231",
 			PublicURL:       "ssh://localhost:23231",
-			KeyPath:         filepath.Join("ssh", "soft_serve"),
+			KeyPath:         filepath.Join("ssh", "soft_serve_host"),
 			InternalKeyPath: filepath.Join("ssh", "soft_serve_internal"),
 			MaxTimeout:      0,
 			IdleTimeout:     120,
