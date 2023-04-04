@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -38,7 +39,7 @@ func setupServer(tb testing.TB) (*Server, *config.Config, string) {
 	}
 	go func() {
 		tb.Log("starting server")
-		s.Start()
+		s.Start(context.TODO())
 	}()
 	tb.Cleanup(func() {
 		s.Close()

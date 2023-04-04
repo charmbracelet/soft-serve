@@ -25,18 +25,19 @@ var (
 				return err
 			}
 
+			ctx := cmd.Context()
 			done := make(chan os.Signal, 1)
 			lch := make(chan error, 1)
 			go func() {
 				defer close(lch)
 				defer close(done)
-				lch <- s.Start()
+				lch <- s.Start(ctx)
 			}()
 
 			signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 			<-done
 
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 			if err := s.Shutdown(ctx); err != nil {
 				return err
