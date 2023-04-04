@@ -24,6 +24,11 @@ ssh:
   # The relative path to the SSH server's private key.
   key_path: "{{ .SSH.KeyPath }}"
 
+  # The relative path to the SSH server's client private key.
+  # This key will be used to authenticate the server to make git requests to
+  # ssh remotes.
+  client_key_path: "{{ .SSH.ClientKeyPath }}"
+
   # The relative path to the SSH server's internal api private key.
   internal_key_path: "{{ .SSH.InternalKeyPath }}"
 

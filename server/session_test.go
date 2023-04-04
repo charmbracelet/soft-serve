@@ -51,11 +51,12 @@ func setup(tb testing.TB) *gossh.Session {
 		is.NoErr(os.Unsetenv("SOFT_SERVE_SSH_LISTEN_ADDR"))
 		is.NoErr(os.RemoveAll(dp))
 	})
-	fb, err := sqlite.NewSqliteBackend(dp)
+	cfg := config.DefaultConfig()
+	fb, err := sqlite.NewSqliteBackend(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	cfg := config.DefaultConfig().WithBackend(fb)
+	cfg = cfg.WithBackend(fb)
 	return testsession.New(tb, &ssh.Server{
 		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256)(func(s ssh.Session) {
 			_, _, active := s.Pty()

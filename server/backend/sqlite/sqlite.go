@@ -10,10 +10,10 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
@@ -26,9 +26,9 @@ var (
 // SqliteBackend is a backend that uses a SQLite database as a Soft Serve
 // backend.
 type SqliteBackend struct {
+	cfg              *config.Config
 	dp               string
 	db               *sqlx.DB
-	ckp              string
 	AdditionalAdmins []string
 }
 
@@ -39,19 +39,9 @@ func (d *SqliteBackend) reposPath() string {
 }
 
 // NewSqliteBackend creates a new SqliteBackend.
-func NewSqliteBackend(dataPath string) (*SqliteBackend, error) {
+func NewSqliteBackend(cfg *config.Config) (*SqliteBackend, error) {
+	dataPath := cfg.DataPath
 	if err := os.MkdirAll(dataPath, 0755); err != nil {
-		return nil, err
-	}
-
-	ckp := filepath.Join(dataPath, "ssh", "soft_serve_client")
-	_, err := keygen.NewWithWrite(ckp, nil, keygen.Ed25519)
-	if err != nil {
-		return nil, err
-	}
-
-	ckp, err = filepath.Abs(ckp)
-	if err != nil {
 		return nil, err
 	}
 
@@ -62,9 +52,9 @@ func NewSqliteBackend(dataPath string) (*SqliteBackend, error) {
 	}
 
 	d := &SqliteBackend{
+		cfg: cfg,
 		dp:  dataPath,
 		db:  db,
-		ckp: ckp,
 	}
 
 	if err := d.init(); err != nil {
@@ -186,8 +176,8 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 		CommandOptions: git.CommandOptions{
 			Envs: []string{
 				fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-					filepath.Join(filepath.Dir(d.ckp), "known_hosts"),
-					d.ckp,
+					filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
+					filepath.Join(d.cfg.DataPath, d.cfg.SSH.ClientKeyPath),
 				),
 			},
 		},

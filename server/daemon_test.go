@@ -30,15 +30,16 @@ func TestMain(m *testing.M) {
 	os.Setenv("SOFT_SERVE_GIT_MAX_TIMEOUT", "100")
 	os.Setenv("SOFT_SERVE_GIT_IDLE_TIMEOUT", "1")
 	os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", randomPort()))
-	fb, err := sqlite.NewSqliteBackend(tmp)
-	if err != nil {
-		log.Fatal(err)
-	}
-	cfg := config.DefaultConfig().WithBackend(fb)
+	cfg := config.DefaultConfig()
 	d, err := NewGitDaemon(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
+	fb, err := sqlite.NewSqliteBackend(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg = cfg.WithBackend(fb)
 	testDaemon = d
 	go func() {
 		if err := d.Start(); err != ErrServerClosed {
