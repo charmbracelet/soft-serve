@@ -21,6 +21,9 @@ type SSHConfig struct {
 	// KeyPath is the path to the SSH server's private key.
 	KeyPath string `env:"KEY_PATH" yaml:"key_path"`
 
+	// ClientKeyPath is the path to the SSH server's client private key.
+	ClientKeyPath string `env:"CLIENT_KEY_PATH" yaml:"client_key_path"`
+
 	// InternalKeyPath is the path to the SSH server's internal private key.
 	InternalKeyPath string `env:"INTERNAL_KEY_PATH" yaml:"internal_key_path"`
 
@@ -122,6 +125,11 @@ func DefaultConfig() *Config {
 		dataPath = "data"
 	}
 
+	dp, _ := filepath.Abs(dataPath)
+	if dp != "" {
+		dataPath = dp
+	}
+
 	cfg := &Config{
 		Name:     "Soft Serve",
 		DataPath: dataPath,
@@ -129,6 +137,7 @@ func DefaultConfig() *Config {
 			ListenAddr:      ":23231",
 			PublicURL:       "ssh://localhost:23231",
 			KeyPath:         filepath.Join("ssh", "soft_serve_host"),
+			ClientKeyPath:   filepath.Join("ssh", "soft_serve_client"),
 			InternalKeyPath: filepath.Join("ssh", "soft_serve_internal"),
 			MaxTimeout:      0,
 			IdleTimeout:     120,

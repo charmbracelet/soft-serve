@@ -1,8 +1,11 @@
 package server
 
 import (
+	"fmt"
+	"path/filepath"
+
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/config"
 )
 
 var (
@@ -12,7 +15,8 @@ var (
 )
 
 // mirrorJob runs the (pull) mirror job task.
-func mirrorJob(b backend.Backend) func() {
+func mirrorJob(cfg *config.Config) func() {
+	b := cfg.Backend
 	logger := logger.WithPrefix("server.mirrorJob")
 	return func() {
 		repos, err := b.Repositories()
@@ -31,6 +35,12 @@ func mirrorJob(b backend.Backend) func() {
 				}
 
 				cmd := git.NewCommand("remote", "update", "--prune")
+				cmd.AddEnvs(
+					fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+						filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
+						filepath.Join(cfg.DataPath, cfg.SSH.ClientKeyPath),
+					),
+				)
 				if _, err := cmd.RunInDir(r.Path); err != nil {
 					logger.Error("error running git remote update", "repo", repo.Name(), "err", err)
 				}

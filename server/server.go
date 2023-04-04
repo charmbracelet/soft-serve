@@ -39,7 +39,7 @@ type Server struct {
 func NewServer(cfg *config.Config) (*Server, error) {
 	var err error
 	if cfg.Backend == nil {
-		sb, err := sqlite.NewSqliteBackend(cfg.DataPath)
+		sb, err := sqlite.NewSqliteBackend(cfg)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -57,6 +57,16 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Create client key.
+		_, err = keygen.NewWithWrite(
+			filepath.Join(cfg.DataPath, cfg.SSH.ClientKeyPath),
+			nil,
+			keygen.Ed25519,
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	srv := &Server{
@@ -66,7 +76,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}
 
 	// Add cron jobs.
-	srv.Cron.AddFunc(jobSpecs["mirror"], mirrorJob(cfg.Backend))
+	srv.Cron.AddFunc(jobSpecs["mirror"], mirrorJob(cfg))
 
 	srv.SSHServer, err = NewSSHServer(cfg, srv)
 	if err != nil {
