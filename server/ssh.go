@@ -148,13 +148,9 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 		}
 	}
 
-	user, _ := s.cfg.Backend.UserByPublicKey(pk)
-	if user == nil {
-		logger.Debug("public key auth user not found")
-		return s.cfg.Backend.AnonAccess() >= backend.ReadOnlyAccess
-	}
-
-	allowed = s.cfg.Backend.AccessLevel("", user.Username()) >= backend.ReadOnlyAccess
+	ac := s.cfg.Backend.AccessLevelByPublicKey("", pk)
+	logger.Debugf("access level for %s: %d", ak, ac)
+	allowed = ac >= backend.ReadOnlyAccess
 	return
 }
 
@@ -191,6 +187,7 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 						return
 					}
 
+					logger.Debug("git middleware", "cmd", gc, "access", access.String())
 					repoDir := filepath.Join(reposDir, repo)
 					switch gc {
 					case receivePackBin:

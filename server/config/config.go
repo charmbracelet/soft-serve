@@ -95,6 +95,12 @@ type Config struct {
 
 	// Backend is the Git backend to use.
 	Backend backend.Backend `yaml:"-"`
+
+	// InternalPublicKey is the public key of the internal SSH key.
+	InternalPublicKey string `yaml:"-"`
+
+	// ClientPublicKey is the public key of the client SSH key.
+	ClientPublicKey string `yaml:"-"`
 }
 
 // ParseConfig parses the configuration from the given file.

@@ -45,12 +45,10 @@ func NewServer(cfg *config.Config) (*Server, error) {
 			logger.Fatal(err)
 		}
 
-		// Add the initial admin keys to the list of admins.
-		sb.AdditionalAdmins = cfg.InitialAdminKeys
 		cfg = cfg.WithBackend(sb)
 
 		// Create internal key.
-		_, err = keygen.NewWithWrite(
+		ikp, err := keygen.NewWithWrite(
 			filepath.Join(cfg.DataPath, cfg.SSH.InternalKeyPath),
 			nil,
 			keygen.Ed25519,
@@ -58,9 +56,10 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		if err != nil {
 			return nil, err
 		}
+		cfg.InternalPublicKey = string(ikp.PublicKey())
 
 		// Create client key.
-		_, err = keygen.NewWithWrite(
+		ckp, err := keygen.NewWithWrite(
 			filepath.Join(cfg.DataPath, cfg.SSH.ClientKeyPath),
 			nil,
 			keygen.Ed25519,
@@ -68,6 +67,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		if err != nil {
 			return nil, err
 		}
+		cfg.ClientPublicKey = string(ckp.PublicKey())
 	}
 
 	srv := &Server{
