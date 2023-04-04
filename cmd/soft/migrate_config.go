@@ -52,6 +52,10 @@ var (
 					return fmt.Errorf("failed to copy ssh key: %w", err)
 				}
 
+				if err := copyFile(keyPath+".pub", filepath.Join(cfg.DataPath, "ssh", filepath.Base(keyPath))+".pub"); err != nil {
+					log.Errorf("failed to copy ssh key: %s", err)
+				}
+
 				cfg.SSH.KeyPath = filepath.Join("ssh", filepath.Base(keyPath))
 			}
 
