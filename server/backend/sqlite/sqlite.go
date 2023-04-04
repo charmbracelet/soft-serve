@@ -26,10 +26,9 @@ var (
 // SqliteBackend is a backend that uses a SQLite database as a Soft Serve
 // backend.
 type SqliteBackend struct {
-	cfg              *config.Config
-	dp               string
-	db               *sqlx.DB
-	AdditionalAdmins []string
+	cfg *config.Config
+	dp  string
+	db  *sqlx.DB
 }
 
 var _ backend.Backend = (*SqliteBackend)(nil)
