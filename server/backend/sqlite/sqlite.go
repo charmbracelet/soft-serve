@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
@@ -27,6 +28,7 @@ var (
 type SqliteBackend struct {
 	dp               string
 	db               *sqlx.DB
+	ckp              string
 	AdditionalAdmins []string
 }
 
@@ -42,6 +44,17 @@ func NewSqliteBackend(dataPath string) (*SqliteBackend, error) {
 		return nil, err
 	}
 
+	ckp := filepath.Join(dataPath, "ssh", "soft_serve_client")
+	_, err := keygen.NewWithWrite(ckp, nil, keygen.Ed25519)
+	if err != nil {
+		return nil, err
+	}
+
+	ckp, err = filepath.Abs(ckp)
+	if err != nil {
+		return nil, err
+	}
+
 	db, err := sqlx.Connect("sqlite", filepath.Join(dataPath, "soft-serve.db"+
 		"?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"))
 	if err != nil {
@@ -49,8 +62,9 @@ func NewSqliteBackend(dataPath string) (*SqliteBackend, error) {
 	}
 
 	d := &SqliteBackend{
-		dp: dataPath,
-		db: db,
+		dp:  dataPath,
+		db:  db,
+		ckp: ckp,
 	}
 
 	if err := d.init(); err != nil {
@@ -169,7 +183,16 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 	copts := git.CloneOptions{
 		Mirror: opts.Mirror,
 		Quiet:  true,
+		CommandOptions: git.CommandOptions{
+			Envs: []string{
+				fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+					filepath.Join(filepath.Dir(d.ckp), "known_hosts"),
+					d.ckp,
+				),
+			},
+		},
 	}
+
 	if err := git.Clone(remote, rp, copts); err != nil {
 		logger.Debug("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
 		return nil, err
