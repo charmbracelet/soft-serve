@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"path/filepath"
 
@@ -101,33 +102,48 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	return srv, nil
 }
 
+func start(ctx context.Context, fn func() error) error {
+	errc := make(chan error, 1)
+	go func() {
+		errc <- fn()
+	}()
+
+	select {
+	case err := <-errc:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // Start starts the SSH server.
-func (s *Server) Start() error {
-	var errg errgroup.Group
+func (s *Server) Start(ctx context.Context) error {
+	var errg *errgroup.Group
+	errg, ctx = errgroup.WithContext(ctx)
 	errg.Go(func() error {
 		log.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
-		if err := s.GitDaemon.Start(); err != ErrServerClosed {
+		if err := start(ctx, s.GitDaemon.Start); !errors.Is(err, ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
 		log.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
-		if err := s.HTTPServer.ListenAndServe(); err != http.ErrServerClosed {
+		if err := start(ctx, s.HTTPServer.ListenAndServe); !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
 		log.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
-		if err := s.SSHServer.ListenAndServe(); err != ssh.ErrServerClosed {
+		if err := start(ctx, s.SSHServer.ListenAndServe); !errors.Is(err, ssh.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
 		log.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
-		if err := s.StatsServer.ListenAndServe(); err != http.ErrServerClosed {
+		if err := start(ctx, s.StatsServer.ListenAndServe); !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil

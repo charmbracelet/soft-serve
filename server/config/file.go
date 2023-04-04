@@ -59,10 +59,10 @@ http:
   # The address on which the HTTP server will listen.
   listen_addr: "{{ .HTTP.ListenAddr }}"
 
-  # The relative path to the TLS private key.
+  # The path to the TLS private key.
   tls_key_path: "{{ .HTTP.TLSKeyPath }}"
 
-  # The relative path to the TLS certificate.
+  # The path to the TLS certificate.
   tls_cert_path: "{{ .HTTP.TLSCertPath }}"
 
   # The public URL of the HTTP server.
@@ -79,6 +79,6 @@ stats:
 
 func newConfigFile(cfg *Config) string {
 	var b bytes.Buffer
-	configFileTmpl.Execute(&b, cfg)
+	configFileTmpl.Execute(&b, cfg) // nolint: errcheck
 	return b.String()
 }

@@ -1,9 +1,9 @@
 package main
 
 import (
+	"os"
 	"runtime/debug"
 
-	"github.com/charmbracelet/log"
 	_ "github.com/charmbracelet/soft-serve/log"
 	"github.com/spf13/cobra"
 )
@@ -18,12 +18,10 @@ var (
 	CommitSHA = ""
 
 	rootCmd = &cobra.Command{
-		Use:   "soft",
-		Short: "A self-hostable Git server for the command line",
-		Long:  "Soft Serve is a self-hostable Git server for the command line.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
+		Use:          "soft",
+		Short:        "A self-hostable Git server for the command line",
+		Long:         "Soft Serve is a self-hostable Git server for the command line.",
+		SilenceUsage: true,
 	}
 )
 
@@ -52,6 +50,6 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+		os.Exit(1)
 	}
 }
