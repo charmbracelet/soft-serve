@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -248,43 +249,52 @@ Redirecting to docs at <a href="https://godoc.org/{{ .ImportRoot }}/{{ .Repo }}"
 func (s *HTTPServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 	repo := pattern.Path(r.Context())
 	repo = utils.SanitizeRepo(repo)
-	if _, err := s.cfg.Backend.Repository(repo); err != nil {
-		http.NotFound(w, r)
+
+	// Handle go get requests.
+	//
+	// Always return a 200 status code, even if the repo doesn't exist.
+	//
+	// https://golang.org/cmd/go/#hdr-Remote_import_paths
+	// https://go.dev/ref/mod#vcs-branch
+	if r.URL.Query().Get("go-get") == "1" {
+		repo := repo
+		importRoot, err := url.Parse(s.cfg.HTTP.PublicURL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// find the repo
+		for {
+			if _, err := s.cfg.Backend.Repository(repo); err == nil {
+				break
+			}
+
+			if repo == "" || repo == "." || repo == "/" {
+				return
+			}
+
+			repo = path.Dir(repo)
+		}
+
+		if err := repoIndexHTMLTpl.Execute(w, struct {
+			Repo       string
+			Config     *config.Config
+			ImportRoot string
+		}{
+			Repo:       url.PathEscape(repo),
+			Config:     s.cfg,
+			ImportRoot: importRoot.Host,
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		goGetCounter.WithLabelValues(repo).Inc()
 		return
 	}
 
-	// Only respond to go-get requests
-	if r.URL.Query().Get("go-get") != "1" {
-		http.NotFound(w, r)
-		return
-	}
-
-	access := s.cfg.Backend.AccessLevel(repo, "")
-	if access < backend.ReadOnlyAccess {
-		http.NotFound(w, r)
-		return
-	}
-
-	importRoot, err := url.Parse(s.cfg.HTTP.PublicURL)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err := repoIndexHTMLTpl.Execute(w, struct {
-		Repo       string
-		Config     *config.Config
-		ImportRoot string
-	}{
-		Repo:       repo,
-		Config:     s.cfg,
-		ImportRoot: importRoot.Host,
-	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	goGetCounter.WithLabelValues(repo).Inc()
+	http.NotFound(w, r)
 }
 
 func (s *HTTPServer) handleGit(w http.ResponseWriter, r *http.Request) {
