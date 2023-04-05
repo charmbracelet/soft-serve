@@ -56,13 +56,9 @@ type Item struct {
 
 // New creates a new Item.
 func NewItem(repo backend.Repository, cfg *config.Config) (Item, error) {
-	r, err := repo.Open()
-	if err != nil {
-		return Item{}, err
-	}
 	var lastUpdate *time.Time
-	lu, err := r.LatestCommitTime()
-	if err == nil {
+	lu := repo.UpdatedAt()
+	if !lu.IsZero() {
 		lastUpdate = &lu
 	}
 	return Item{

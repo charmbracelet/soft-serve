@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
@@ -99,4 +100,24 @@ func (r *Repo) IsHidden() bool {
 	}
 
 	return hidden
+}
+
+// UpdatedAt returns the repository's last update time.
+func (r *Repo) UpdatedAt() time.Time {
+	rr, err := git.Open(r.path)
+	if err == nil {
+		t, err := rr.LatestCommitTime()
+		if err == nil {
+			return t
+		}
+	}
+
+	var updatedAt time.Time
+	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
+		return tx.Get(&updatedAt, "SELECT updated_at FROM repo WHERE name = ?", r.name)
+	}); err != nil {
+		return time.Time{}
+	}
+
+	return updatedAt
 }
