@@ -1,6 +1,8 @@
 package backend
 
 import (
+	"time"
+
 	"github.com/charmbracelet/soft-serve/git"
 )
 
@@ -78,6 +80,9 @@ type Repository interface {
 	IsMirror() bool
 	// IsHidden returns whether the repository is hidden.
 	IsHidden() bool
+	// UpdatedAt returns the time the repository was last updated.
+	// If the repository has never been updated, it returns the time it was created.
+	UpdatedAt() time.Time
 	// Open returns the underlying git.Repository.
 	Open() (*git.Repository, error)
 }
