@@ -180,6 +180,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.tabs.Init(),
 			// This will set the selected repo in each pane's model.
 			r.updateModels(msg),
+			r.spinner.Tick,
 		)
 	case RefMsg:
 		r.ref = msg

@@ -413,7 +413,7 @@ func DefaultStyles() *Styles {
 
 	s.NoContent = lipgloss.NewStyle().
 		SetString("No Content.").
-		MarginTop(2).
+		MarginTop(1).
 		MarginLeft(2).
 		Foreground(lipgloss.Color("242"))
 

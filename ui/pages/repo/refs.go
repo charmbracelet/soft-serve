@@ -222,11 +222,12 @@ func UpdateRefCmd(repo backend.Repository) tea.Cmd {
 		if err != nil {
 			return common.ErrorMsg(err)
 		}
+		bs, _ := r.Branches()
+		if len(bs) == 0 {
+			return EmptyRepoMsg{}
+		}
 		ref, err := r.HEAD()
 		if err != nil {
-			if bs, err := r.Branches(); err != nil && len(bs) == 0 {
-				return EmptyRepoMsg{}
-			}
 			logger.Debugf("ui: error getting HEAD reference: %v", err)
 			return common.ErrorMsg(err)
 		}
