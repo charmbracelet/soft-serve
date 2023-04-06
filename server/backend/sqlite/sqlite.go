@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"text/template"
 
@@ -101,7 +100,7 @@ func (d *SqliteBackend) AnonAccess() backend.AccessLevel {
 func (d *SqliteBackend) SetAllowKeyless(allow bool) error {
 	return wrapDbErr(
 		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
-			_, err := tx.Exec("UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?;", "allow_keyless", strconv.FormatBool(allow))
+			_, err := tx.Exec("UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?;", allow, "allow_keyless")
 			return err
 		}),
 	)
@@ -113,7 +112,7 @@ func (d *SqliteBackend) SetAllowKeyless(allow bool) error {
 func (d *SqliteBackend) SetAnonAccess(level backend.AccessLevel) error {
 	return wrapDbErr(
 		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
-			_, err := tx.Exec("UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?;", "anon_access", level.String())
+			_, err := tx.Exec("UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?;", level.String(), "anon_access")
 			return err
 		}),
 	)
@@ -169,6 +168,7 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
+	// TODO: use HTTP(s) or GIT clones
 	copts := git.CloneOptions{
 		Mirror: opts.Mirror,
 		Quiet:  true,
@@ -176,14 +176,15 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 			Envs: []string{
 				fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
 					filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
-					filepath.Join(d.cfg.DataPath, d.cfg.SSH.ClientKeyPath),
+					// FIXME: upstream keygen appends _ed25519 to the key path.
+					filepath.Join(d.cfg.DataPath, d.cfg.SSH.ClientKeyPath)+"_ed25519",
 				),
 			},
 		},
 	}
 
 	if err := git.Clone(remote, rp, copts); err != nil {
-		logger.Debug("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
+		logger.Error("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
 		return nil, err
 	}
 
