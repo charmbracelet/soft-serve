@@ -10,6 +10,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var (
+	logger = log.WithPrefix("server.config")
+)
+
 // SSHConfig is the configuration for the SSH server.
 type SSHConfig struct {
 	// ListenAddr is the address on which the SSH server will listen.
@@ -91,7 +95,7 @@ type Config struct {
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEY" envSeparator:"\n" yaml:"initial_admin_keys"`
 
 	// DataPath is the path to the directory where Soft Serve will store its data.
-	DataPath string `env:"DATA_PATH" envDefault:"data" yaml:"-"`
+	DataPath string `env:"DATA_PATH" yaml:"-"`
 
 	// Backend is the Git backend to use.
 	Backend backend.Backend `yaml:"-"`
