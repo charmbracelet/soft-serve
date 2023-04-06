@@ -168,8 +168,8 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
-	// TODO: use HTTP(s) or GIT clones
 	copts := git.CloneOptions{
+		Bare:   true,
 		Mirror: opts.Mirror,
 		Quiet:  true,
 		CommandOptions: git.CommandOptions{
