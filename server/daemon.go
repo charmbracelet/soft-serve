@@ -221,6 +221,11 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
+		if !d.cfg.Backend.AllowKeyless() {
+			fatal(c, ErrNotAuthed)
+			return
+		}
+
 		name := utils.SanitizeRepo(string(opts[0]))
 		logger.Debugf("git: connect %s %s %s", c.RemoteAddr(), cmd, name)
 		defer logger.Debugf("git: disconnect %s %s %s", c.RemoteAddr(), cmd, name)

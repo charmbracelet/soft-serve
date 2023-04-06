@@ -137,10 +137,15 @@ func (s *SSHServer) Shutdown(ctx context.Context) error {
 
 // PublicKeyAuthHandler handles public key authentication.
 func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed bool) {
+	if pk == nil {
+		return s.cfg.Backend.AllowKeyless()
+	}
+
 	ak := backend.MarshalAuthorizedKey(pk)
 	defer func() {
 		publicKeyCounter.WithLabelValues(ak, ctx.User(), strconv.FormatBool(allowed)).Inc()
 	}()
+
 	for _, k := range s.cfg.InitialAdminKeys {
 		if k == ak {
 			allowed = true
@@ -156,7 +161,7 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
 func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
-	ac := s.cfg.Backend.AllowKeyless() && s.PublicKeyHandler(ctx, nil)
+	ac := s.cfg.Backend.AllowKeyless()
 	keyboardInteractiveCounter.WithLabelValues(ctx.User(), strconv.FormatBool(ac)).Inc()
 	return ac
 }

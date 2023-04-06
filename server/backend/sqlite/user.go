@@ -101,7 +101,6 @@ func (d *SqliteBackend) AccessLevel(repo string, username string) backend.Access
 		return backend.ReadOnlyAccess
 	}
 
-	// If the repository doesn't exist, the user has read/write access.
 	if user != nil {
 		// If the repository doesn't exist, the user has read/write access.
 		if anon > backend.ReadWriteAccess {
