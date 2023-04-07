@@ -123,6 +123,10 @@ func (d *SqliteBackend) SetAnonAccess(level backend.AccessLevel) error {
 // It implements backend.Backend.
 func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOptions) (backend.Repository, error) {
 	name = utils.SanitizeRepo(name)
+	if err := utils.ValidateRepo(name); err != nil {
+		return nil, err
+	}
+
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
@@ -165,6 +169,10 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 // ImportRepository imports a repository from remote.
 func (d *SqliteBackend) ImportRepository(name string, remote string, opts backend.RepositoryOptions) (backend.Repository, error) {
 	name = utils.SanitizeRepo(name)
+	if err := utils.ValidateRepo(name); err != nil {
+		return nil, err
+	}
+
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
@@ -217,7 +225,14 @@ func (d *SqliteBackend) DeleteRepository(name string) error {
 // It implements backend.Backend.
 func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 	oldName = utils.SanitizeRepo(oldName)
+	if err := utils.ValidateRepo(oldName); err != nil {
+		return err
+	}
+
 	newName = utils.SanitizeRepo(newName)
+	if err := utils.ValidateRepo(newName); err != nil {
+		return err
+	}
 	oldRepo := oldName + ".git"
 	newRepo := newName + ".git"
 	op := filepath.Join(d.reposPath(), oldRepo)

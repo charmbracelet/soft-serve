@@ -33,3 +33,18 @@ func ValidateUsername(username string) error {
 
 	return nil
 }
+
+// ValidateRepo returns an error if the given repository name is invalid.
+func ValidateRepo(repo string) error {
+	if repo == "" {
+		return fmt.Errorf("repo cannot be empty")
+	}
+
+	for _, r := range repo {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' && r != '_' && r != '.' && r != '/' {
+			return fmt.Errorf("repo can only contain letters, numbers, hyphens, underscores, periods, and slashes")
+		}
+	}
+
+	return nil
+}
