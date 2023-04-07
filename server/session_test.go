@@ -21,9 +21,10 @@ import (
 func TestSession(t *testing.T) {
 	is := is.New(t)
 	t.Run("authorized repo access", func(t *testing.T) {
-		s := setup(t)
+		t.Log("setting up")
+		s, close := setup(t)
 		s.Stderr = os.Stderr
-		defer s.Close()
+		t.Log("requesting pty")
 		err := s.RequestPty("xterm", 80, 40, nil)
 		is.NoErr(err)
 		go func() {
@@ -32,13 +33,16 @@ func TestSession(t *testing.T) {
 			// FIXME: exit with code 0 instead of forcibly closing the session
 			s.Close()
 		}()
-		err = s.Run("test")
+		t.Log("waiting for session to exit")
+		_, err = s.Output("test")
 		var ee *gossh.ExitMissingError
 		is.True(errors.As(err, &ee))
+		t.Log("session exited")
+		_ = close()
 	})
 }
 
-func setup(tb testing.TB) *gossh.Session {
+func setup(tb testing.TB) (*gossh.Session, func() error) {
 	tb.Helper()
 	is := is.New(tb)
 	dp := tb.TempDir()
@@ -60,9 +64,10 @@ func setup(tb testing.TB) *gossh.Session {
 	return testsession.New(tb, &ssh.Server{
 		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256)(func(s ssh.Session) {
 			_, _, active := s.Pty()
-			tb.Logf("PTY active %v", active)
-			tb.Log(s.Command())
+			if !active {
+				os.Exit(1)
+			}
 			s.Exit(0)
 		}),
-	}, nil)
+	}, nil), fb.Close
 }

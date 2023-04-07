@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
@@ -53,6 +52,7 @@ func TestMain(m *testing.M) {
 	os.Unsetenv("SOFT_SERVE_GIT_IDLE_TIMEOUT")
 	os.Unsetenv("SOFT_SERVE_GIT_LISTEN_ADDR")
 	_ = d.Close()
+	_ = fb.Close()
 	os.Exit(code)
 }
 
@@ -61,12 +61,11 @@ func TestIdleTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(2 * time.Second)
 	out, err := readPktline(c)
 	if err != nil && !errors.Is(err, io.EOF) {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	if out != ErrTimeout.Error() {
+	if out != ErrTimeout.Error() || out == "" {
 		t.Fatalf("expected %q error, got %q", ErrTimeout, out)
 	}
 }
