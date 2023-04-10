@@ -265,6 +265,8 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+	case selector.ActiveMsg:
+		cmds = append(cmds, updateStatusBarCmd)
 	case EmptyRepoMsg:
 		f.ref = nil
 		f.path = ""
@@ -307,7 +309,8 @@ func (f *Files) View() string {
 func (f *Files) StatusBarValue() string {
 	p := f.path
 	if p == "." {
-		return ""
+		// FIXME: this is a hack to force clear the status bar value
+		return " "
 	}
 	return p
 }
