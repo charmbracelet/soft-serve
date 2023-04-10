@@ -21,15 +21,15 @@ ssh:
   # This is the address will be used to clone repositories.
   public_url: "{{ .SSH.PublicURL }}"
 
-  # The relative path to the SSH server's private key.
+  # The path to the SSH server's private key.
   key_path: "{{ .SSH.KeyPath }}"
 
-  # The relative path to the SSH server's client private key.
+  # The path to the SSH server's client private key.
   # This key will be used to authenticate the server to make git requests to
   # ssh remotes.
   client_key_path: "{{ .SSH.ClientKeyPath }}"
 
-  # The relative path to the SSH server's internal api private key.
+  # The path to the SSH server's internal api private key.
   internal_key_path: "{{ .SSH.InternalKeyPath }}"
 
   # The maximum number of seconds a connection can take.
@@ -67,6 +67,7 @@ http:
 
   # The public URL of the HTTP server.
   # This is the address will be used to clone repositories.
+  # Make sure to use https:// if you are using TLS.
   public_url: "{{ .HTTP.PublicURL }}"
 
 # The stats server configuration.
