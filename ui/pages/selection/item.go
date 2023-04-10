@@ -51,7 +51,6 @@ type Item struct {
 	repo       backend.Repository
 	lastUpdate *time.Time
 	cmd        string
-	copied     time.Time
 }
 
 // New creates a new Item.
@@ -64,7 +63,7 @@ func NewItem(repo backend.Repository, cfg *config.Config) (Item, error) {
 	return Item{
 		repo:       repo,
 		lastUpdate: lastUpdate,
-		cmd:        common.RepoURL(cfg.SSH.PublicURL, repo.Name()),
+		cmd:        common.CloneCmd(cfg.SSH.PublicURL, repo.Name()),
 	}, nil
 }
 
@@ -98,6 +97,16 @@ func (i Item) Command() string {
 type ItemDelegate struct {
 	common     *common.Common
 	activePane *pane
+	copiedIdx  int
+}
+
+// NewItemDelegate creates a new ItemDelegate.
+func NewItemDelegate(common *common.Common, activePane *pane) *ItemDelegate {
+	return &ItemDelegate{
+		common:     common,
+		activePane: activePane,
+		copiedIdx:  -1,
+	}
 }
 
 // Width returns the item width.
@@ -107,16 +116,16 @@ func (d ItemDelegate) Width() int {
 }
 
 // Height returns the item height. Implements list.ItemDelegate.
-func (d ItemDelegate) Height() int {
+func (d *ItemDelegate) Height() int {
 	height := d.common.Styles.MenuItem.GetVerticalFrameSize() + d.common.Styles.MenuItem.GetHeight()
 	return height
 }
 
 // Spacing returns the spacing between items. Implements list.ItemDelegate.
-func (d ItemDelegate) Spacing() int { return 1 }
+func (d *ItemDelegate) Spacing() int { return 1 }
 
 // Update implements list.ItemDelegate.
-func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	idx := m.Index()
 	item, ok := m.SelectedItem().(Item)
 	if !ok {
@@ -126,7 +135,7 @@ func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
-			item.copied = time.Now()
+			d.copiedIdx = idx
 			d.common.Copy.Copy(item.Command())
 			return m.SetItem(idx, item)
 		}
@@ -135,7 +144,7 @@ func (d ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 }
 
 // Render implements list.ItemDelegate.
-func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+func (d *ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i := listItem.(Item)
 	s := strings.Builder{}
 	var matchedRunes []int
@@ -192,8 +201,9 @@ func (d ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	s.WriteRune('\n')
 	cmd := common.TruncateString(i.Command(), m.Width()-styles.Base.GetHorizontalFrameSize())
 	cmd = styles.Command.Render(cmd)
-	if !i.copied.IsZero() && i.copied.Add(time.Second).After(time.Now()) {
-		cmd = styles.Command.Render("Copied!")
+	if d.copiedIdx == index {
+		cmd += " " + styles.Desc.Render("(copied to clipboard)")
+		d.copiedIdx = -1
 	}
 	s.WriteString(cmd)
 	fmt.Fprint(w,

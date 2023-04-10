@@ -16,8 +16,8 @@ func TruncateString(s string, max int) string {
 	return truncate.StringWithTail(s, uint(max), "…")
 }
 
-// RepoURL returns the URL of the repository.
-func RepoURL(publicURL, name string) string {
+// CloneCmd returns the URL of the repository.
+func CloneCmd(publicURL, name string) string {
 	name = utils.SanitizeRepo(name) + ".git"
 	url, err := url.Parse(publicURL)
 	if err == nil {

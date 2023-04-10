@@ -2,7 +2,6 @@ package repo
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -56,9 +55,6 @@ type EmptyRepoMsg struct{}
 // CopyURLMsg is a message to copy the URL of the current repository.
 type CopyURLMsg struct{}
 
-// ResetURLMsg is a message to reset the URL string.
-type ResetURLMsg struct{}
-
 // UpdateStatusBarMsg updates the status bar.
 type UpdateStatusBarMsg struct{}
 
@@ -67,6 +63,12 @@ type RepoMsg backend.Repository
 
 // BackMsg is a message to go back to the previous view.
 type BackMsg struct{}
+
+// CopyMsg is a message to indicate copied text.
+type CopyMsg struct {
+	Text    string
+	Message string
+}
 
 // Repo is a view for a git repository.
 type Repo struct {
@@ -77,7 +79,6 @@ type Repo struct {
 	statusbar    *statusbar.StatusBar
 	panes        []common.Component
 	ref          *git.Reference
-	copyURL      time.Time
 	state        state
 	spinner      spinner.Model
 	panesReady   [lastTab]bool
@@ -215,8 +216,9 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if r.selectedRepo != nil {
 			cmds = append(cmds, r.updateStatusBarCmd)
 			urlID := fmt.Sprintf("%s-url", r.selectedRepo.Name())
+			cmd := common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
 			if msg, ok := msg.(tea.MouseMsg); ok && r.common.Zone.Get(urlID).InBounds(msg) {
-				cmds = append(cmds, r.copyURLCmd())
+				cmds = append(cmds, copyCmd(cmd, "Command copied to clipboard"))
 			}
 		}
 		switch msg := msg.(type) {
@@ -234,14 +236,16 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-	case CopyURLMsg:
+	case CopyMsg:
+		txt := msg.Text
 		if cfg := r.common.Config(); cfg != nil {
-			r.common.Copy.Copy(
-				common.RepoURL(cfg.SSH.PublicURL, r.selectedRepo.Name()),
-			)
+			r.common.Copy.Copy(txt)
 		}
-	case ResetURLMsg:
-		r.copyURL = time.Time{}
+		cmds = append(cmds, func() tea.Msg {
+			return statusbar.StatusBarMsg{
+				Value: msg.Message,
+			}
+		})
 	case ReadmeMsg, FileItemsMsg, LogCountMsg, LogItemsMsg, RefItemsMsg:
 		cmds = append(cmds, r.updateRepo(msg))
 	// We have two spinners, one is used to when loading the repository and the
@@ -345,10 +349,7 @@ func (r *Repo) headerView() string {
 		Align(lipgloss.Right)
 	var url string
 	if cfg := r.common.Config(); cfg != nil {
-		url = common.RepoURL(cfg.SSH.PublicURL, r.selectedRepo.Name())
-	}
-	if !r.copyURL.IsZero() && r.copyURL.Add(time.Second).After(time.Now()) {
-		url = "copied!"
+		url = common.CloneCmd(cfg.SSH.PublicURL, r.selectedRepo.Name())
 	}
 	url = common.TruncateString(url, r.common.Width-lipgloss.Width(desc)-1)
 	url = r.common.Zone.Mark(
@@ -378,10 +379,10 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 		branch += " " + r.ref.Name().Short()
 	}
 	return statusbar.StatusBarMsg{
-		Key:    r.selectedRepo.Name(),
-		Value:  value,
-		Info:   info,
-		Branch: branch,
+		Key:   r.selectedRepo.Name(),
+		Value: value,
+		Info:  info,
+		Extra: branch,
 	}
 }
 
@@ -458,16 +459,13 @@ func (r *Repo) isReady() bool {
 	return ready
 }
 
-func (r *Repo) copyURLCmd() tea.Cmd {
-	r.copyURL = time.Now()
-	return tea.Batch(
-		func() tea.Msg {
-			return CopyURLMsg{}
-		},
-		tea.Tick(time.Second, func(time.Time) tea.Msg {
-			return ResetURLMsg{}
-		}),
-	)
+func copyCmd(text, msg string) tea.Cmd {
+	return func() tea.Msg {
+		return CopyMsg{
+			Text:    text,
+			Message: msg,
+		}
+	}
 }
 
 func updateStatusBarCmd() tea.Msg {

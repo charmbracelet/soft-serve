@@ -243,7 +243,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, f.common.KeyMap.BackItem):
 				cmds = append(cmds, backCmd)
 			case key.Matches(msg, f.common.KeyMap.Copy):
-				f.common.Copy.Copy(f.currentContent.content)
+				cmds = append(cmds, copyCmd(f.currentContent.content, "File contents copied to clipboard"))
 			case key.Matches(msg, lineNo):
 				f.lineNumber = !f.lineNumber
 				f.code.SetShowLineNumber(f.lineNumber)
