@@ -1,4 +1,4 @@
-package server
+package ssh
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
@@ -24,6 +25,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gossh "golang.org/x/crypto/ssh"
+)
+
+var (
+	logger = log.WithPrefix("server.ssh")
 )
 
 var (
@@ -187,7 +192,7 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 					// https://git-scm.com/docs/gitrepository-layout
 					repo := name + ".git"
 					reposDir := filepath.Join(cfg.DataPath, "repos")
-					if err := ensureWithin(reposDir, repo); err != nil {
+					if err := git.EnsureWithin(reposDir, repo); err != nil {
 						sshFatal(s, err)
 						return
 					}
@@ -195,9 +200,9 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 					logger.Debug("git middleware", "cmd", gc, "access", access.String())
 					repoDir := filepath.Join(reposDir, repo)
 					switch gc {
-					case receivePackBin:
+					case git.ReceivePackBin:
 						if access < backend.ReadWriteAccess {
-							sshFatal(s, ErrNotAuthed)
+							sshFatal(s, git.ErrNotAuthed)
 							return
 						}
 						if _, err := cfg.Backend.Repository(name); err != nil {
@@ -208,29 +213,29 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 							}
 							createRepoCounter.WithLabelValues(ak, s.User(), name).Inc()
 						}
-						if err := receivePack(s, s, s.Stderr(), repoDir); err != nil {
-							sshFatal(s, ErrSystemMalfunction)
+						if err := git.ReceivePack(s, s, s.Stderr(), repoDir); err != nil {
+							sshFatal(s, git.ErrSystemMalfunction)
 						}
 						receivePackCounter.WithLabelValues(ak, s.User(), name).Inc()
 						return
-					case uploadPackBin, uploadArchiveBin:
+					case git.UploadPackBin, git.UploadArchiveBin:
 						if access < backend.ReadOnlyAccess {
-							sshFatal(s, ErrNotAuthed)
+							sshFatal(s, git.ErrNotAuthed)
 							return
 						}
 
-						gitPack := uploadPack
+						gitPack := git.UploadPack
 						counter := uploadPackCounter
-						if gc == uploadArchiveBin {
-							gitPack = uploadArchive
+						if gc == git.UploadArchiveBin {
+							gitPack = git.UploadArchive
 							counter = uploadArchiveCounter
 						}
 
 						err := gitPack(s, s, s.Stderr(), repoDir)
-						if errors.Is(err, ErrInvalidRepo) {
-							sshFatal(s, ErrInvalidRepo)
+						if errors.Is(err, git.ErrInvalidRepo) {
+							sshFatal(s, git.ErrInvalidRepo)
 						} else if err != nil {
-							sshFatal(s, ErrSystemMalfunction)
+							sshFatal(s, git.ErrSystemMalfunction)
 						}
 
 						counter.WithLabelValues(ak, s.User(), name).Inc()
@@ -244,6 +249,6 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 
 // sshFatal prints to the session's STDOUT as a git response and exit 1.
 func sshFatal(s ssh.Session, v ...interface{}) {
-	writePktline(s, v...)
+	git.WritePktline(s, v...)
 	s.Exit(1) // nolint: errcheck
 }

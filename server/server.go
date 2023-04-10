@@ -13,6 +13,10 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/cron"
+	"github.com/charmbracelet/soft-serve/server/daemon"
+	sshsrv "github.com/charmbracelet/soft-serve/server/ssh"
+	"github.com/charmbracelet/soft-serve/server/stats"
+	"github.com/charmbracelet/soft-serve/server/web"
 	"github.com/charmbracelet/ssh"
 	"golang.org/x/sync/errgroup"
 )
@@ -23,10 +27,10 @@ var (
 
 // Server is the Soft Serve server.
 type Server struct {
-	SSHServer   *SSHServer
-	GitDaemon   *GitDaemon
-	HTTPServer  *HTTPServer
-	StatsServer *StatsServer
+	SSHServer   *sshsrv.SSHServer
+	GitDaemon   *daemon.GitDaemon
+	HTTPServer  *web.HTTPServer
+	StatsServer *stats.StatsServer
 	Cron        *cron.CronScheduler
 	Config      *config.Config
 	Backend     backend.Backend
@@ -81,22 +85,22 @@ func NewServer(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Add cron jobs.
 	srv.Cron.AddFunc(jobSpecs["mirror"], mirrorJob(cfg))
 
-	srv.SSHServer, err = NewSSHServer(cfg, srv)
+	srv.SSHServer, err = sshsrv.NewSSHServer(cfg, srv)
 	if err != nil {
 		return nil, err
 	}
 
-	srv.GitDaemon, err = NewGitDaemon(cfg)
+	srv.GitDaemon, err = daemon.NewGitDaemon(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	srv.HTTPServer, err = NewHTTPServer(cfg)
+	srv.HTTPServer, err = web.NewHTTPServer(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	srv.StatsServer, err = NewStatsServer(cfg)
+	srv.StatsServer, err = stats.NewStatsServer(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +128,7 @@ func (s *Server) Start() error {
 	errg, ctx := errgroup.WithContext(s.ctx)
 	errg.Go(func() error {
 		logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
-		if err := start(ctx, s.GitDaemon.Start); !errors.Is(err, ErrServerClosed) {
+		if err := start(ctx, s.GitDaemon.Start); !errors.Is(err, daemon.ErrServerClosed) {
 			return err
 		}
 		return nil

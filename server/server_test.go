@@ -3,34 +3,28 @@ package server
 import (
 	"context"
 	"fmt"
-	"net"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/charmbracelet/ssh"
 	"github.com/matryer/is"
 	gossh "golang.org/x/crypto/ssh"
 )
-
-func randomPort() int {
-	addr, _ := net.Listen("tcp", ":0") //nolint:gosec
-	_ = addr.Close()
-	return addr.Addr().(*net.TCPAddr).Port
-}
 
 func setupServer(tb testing.TB) (*Server, *config.Config, string) {
 	tb.Helper()
 	tb.Log("creating keypair")
 	pub, pkPath := createKeyPair(tb)
 	dp := tb.TempDir()
-	sshPort := fmt.Sprintf(":%d", randomPort())
+	sshPort := fmt.Sprintf(":%d", test.RandomPort())
 	tb.Setenv("SOFT_SERVE_DATA_PATH", dp)
 	tb.Setenv("SOFT_SERVE_INITIAL_ADMIN_KEY", authorizedKey(pub))
 	tb.Setenv("SOFT_SERVE_SSH_LISTEN_ADDR", sshPort)
-	tb.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", randomPort()))
+	tb.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort()))
 	cfg := config.DefaultConfig()
 	tb.Log("configuring server")
 	ctx := context.TODO()
