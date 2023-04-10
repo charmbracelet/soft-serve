@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -34,7 +35,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fb, err := sqlite.NewSqliteBackend(cfg)
+	ctx := context.TODO()
+	fb, err := sqlite.NewSqliteBackend(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}

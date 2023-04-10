@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"os"
 	"runtime/debug"
 
+	"github.com/charmbracelet/log"
 	_ "github.com/charmbracelet/soft-serve/log"
 	"github.com/spf13/cobra"
 )
@@ -49,7 +51,17 @@ func init() {
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	logger := log.NewWithOptions(os.Stderr, log.Options{
+		ReportTimestamp: true,
+		TimeFormat:      "2006-01-02",
+	})
+	if os.Getenv("SOFT_SERVE_DEBUG") == "true" {
+		logger.SetLevel(log.DebugLevel)
+	}
+
+	ctx := context.Background()
+	ctx = log.WithContext(ctx, logger)
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }

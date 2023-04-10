@@ -10,10 +10,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	logger = log.WithPrefix("server.config")
-)
-
 // SSHConfig is the configuration for the SSH server.
 type SSHConfig struct {
 	// ListenAddr is the address on which the SSH server will listen.

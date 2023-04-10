@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -55,8 +56,9 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 		is.NoErr(os.Unsetenv("SOFT_SERVE_SSH_LISTEN_ADDR"))
 		is.NoErr(os.RemoveAll(dp))
 	})
+	ctx := context.TODO()
 	cfg := config.DefaultConfig()
-	fb, err := sqlite.NewSqliteBackend(cfg)
+	fb, err := sqlite.NewSqliteBackend(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}

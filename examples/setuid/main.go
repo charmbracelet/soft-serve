@@ -44,9 +44,10 @@ func main() {
 	if err := syscall.Setuid(*uid); err != nil {
 		log.Fatal("Setuid error", "err", err)
 	}
+	ctx := context.Background()
 	cfg := config.DefaultConfig()
 	cfg.SSH.ListenAddr = fmt.Sprintf(":%d", *port)
-	s, err := server.NewServer(cfg)
+	s, err := server.NewServer(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -64,7 +65,7 @@ func main() {
 	<-done
 
 	log.Print("Stopping SSH server", "addr", cfg.SSH.ListenAddr)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer func() { cancel() }()
 	if err := s.Shutdown(ctx); err != nil {
 		log.Fatal(err)

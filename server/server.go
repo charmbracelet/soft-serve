@@ -30,6 +30,7 @@ type Server struct {
 	Cron        *cron.CronScheduler
 	Config      *config.Config
 	Backend     backend.Backend
+	ctx         context.Context
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -37,10 +38,10 @@ type Server struct {
 // key can be provided with authKey. If authKey is provided, access will be
 // restricted to that key. If authKey is not provided, the server will be
 // publicly writable until configured otherwise by cloning the `config` repo.
-func NewServer(cfg *config.Config) (*Server, error) {
+func NewServer(ctx context.Context, cfg *config.Config) (*Server, error) {
 	var err error
 	if cfg.Backend == nil {
-		sb, err := sqlite.NewSqliteBackend(cfg)
+		sb, err := sqlite.NewSqliteBackend(ctx, cfg)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -71,9 +72,10 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}
 
 	srv := &Server{
-		Cron:    cron.NewCronScheduler(),
+		Cron:    cron.NewCronScheduler(ctx),
 		Config:  cfg,
 		Backend: cfg.Backend,
+		ctx:     ctx,
 	}
 
 	// Add cron jobs.
@@ -117,39 +119,39 @@ func start(ctx context.Context, fn func() error) error {
 }
 
 // Start starts the SSH server.
-func (s *Server) Start(ctx context.Context) error {
-	var errg *errgroup.Group
-	errg, ctx = errgroup.WithContext(ctx)
+func (s *Server) Start() error {
+	logger := log.FromContext(s.ctx).WithPrefix("server")
+	errg, ctx := errgroup.WithContext(s.ctx)
 	errg.Go(func() error {
-		log.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
+		logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
 		if err := start(ctx, s.GitDaemon.Start); !errors.Is(err, ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		log.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
+		logger.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
 		if err := start(ctx, s.HTTPServer.ListenAndServe); !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		log.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
+		logger.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
 		if err := start(ctx, s.SSHServer.ListenAndServe); !errors.Is(err, ssh.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		log.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
+		logger.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
 		if err := start(ctx, s.StatsServer.ListenAndServe); !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		log.Print("Starting cron scheduler")
+		logger.Print("Starting cron scheduler")
 		s.Cron.Start()
 		return nil
 	})

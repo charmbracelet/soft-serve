@@ -26,6 +26,7 @@ var (
 // backend.
 type SqliteBackend struct {
 	cfg *config.Config
+	ctx context.Context
 	dp  string
 	db  *sqlx.DB
 }
@@ -37,7 +38,7 @@ func (d *SqliteBackend) reposPath() string {
 }
 
 // NewSqliteBackend creates a new SqliteBackend.
-func NewSqliteBackend(cfg *config.Config) (*SqliteBackend, error) {
+func NewSqliteBackend(ctx context.Context, cfg *config.Config) (*SqliteBackend, error) {
 	dataPath := cfg.DataPath
 	if err := os.MkdirAll(dataPath, 0755); err != nil {
 		return nil, err
@@ -51,6 +52,7 @@ func NewSqliteBackend(cfg *config.Config) (*SqliteBackend, error) {
 
 	d := &SqliteBackend{
 		cfg: cfg,
+		ctx: ctx,
 		dp:  dataPath,
 		db:  db,
 	}
@@ -71,7 +73,7 @@ func NewSqliteBackend(cfg *config.Config) (*SqliteBackend, error) {
 // It implements backend.Backend.
 func (d *SqliteBackend) AllowKeyless() bool {
 	var allow bool
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		return tx.Get(&allow, "SELECT value FROM settings WHERE key = ?;", "allow_keyless")
 	}); err != nil {
 		return false
@@ -85,7 +87,7 @@ func (d *SqliteBackend) AllowKeyless() bool {
 // It implements backend.Backend.
 func (d *SqliteBackend) AnonAccess() backend.AccessLevel {
 	var level string
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		return tx.Get(&level, "SELECT value FROM settings WHERE key = ?;", "anon_access")
 	}); err != nil {
 		return backend.NoAccess
@@ -99,7 +101,7 @@ func (d *SqliteBackend) AnonAccess() backend.AccessLevel {
 // It implements backend.Backend.
 func (d *SqliteBackend) SetAllowKeyless(allow bool) error {
 	return wrapDbErr(
-		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 			_, err := tx.Exec("UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?;", allow, "allow_keyless")
 			return err
 		}),
@@ -111,7 +113,7 @@ func (d *SqliteBackend) SetAllowKeyless(allow bool) error {
 // It implements backend.Backend.
 func (d *SqliteBackend) SetAnonAccess(level backend.AccessLevel) error {
 	return wrapDbErr(
-		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 			_, err := tx.Exec("UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?;", level.String(), "anon_access")
 			return err
 		}),
@@ -147,7 +149,7 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 		return nil, err
 	}
 
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		_, err := tx.Exec(`INSERT INTO repo (name, project_name, description, private, mirror, hidden, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
 			name, opts.ProjectName, opts.Description, opts.Private, opts.Mirror, opts.Hidden)
@@ -210,7 +212,7 @@ func (d *SqliteBackend) DeleteRepository(name string) error {
 		return os.ErrNotExist
 	}
 
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		_, err := tx.Exec("DELETE FROM repo WHERE name = ?;", name)
 		return err
 	}); err != nil {
@@ -245,7 +247,7 @@ func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 		return fmt.Errorf("repository %s already exists", newName)
 	}
 
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		_, err := tx.Exec("UPDATE repo SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?;", newName, oldName)
 		return err
 	}); err != nil {
@@ -260,7 +262,7 @@ func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 // It implements backend.Backend.
 func (d *SqliteBackend) Repositories() ([]backend.Repository, error) {
 	repos := make([]backend.Repository, 0)
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		rows, err := tx.Query("SELECT name FROM repo")
 		if err != nil {
 			return err
@@ -299,7 +301,7 @@ func (d *SqliteBackend) Repository(repo string) (backend.Repository, error) {
 	}
 
 	var count int
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		return tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo)
 	}); err != nil {
 		return nil, wrapDbErr(err)
@@ -323,7 +325,7 @@ func (d *SqliteBackend) Repository(repo string) (backend.Repository, error) {
 func (d *SqliteBackend) Description(repo string) (string, error) {
 	repo = utils.SanitizeRepo(repo)
 	var desc string
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		return tx.Get(&desc, "SELECT description FROM repo WHERE name = ?", repo)
 	}); err != nil {
 		return "", wrapDbErr(err)
@@ -338,7 +340,7 @@ func (d *SqliteBackend) Description(repo string) (string, error) {
 func (d *SqliteBackend) IsMirror(repo string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var mirror bool
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		return tx.Get(&mirror, "SELECT mirror FROM repo WHERE name = ?", repo)
 	}); err != nil {
 		return false, wrapDbErr(err)
@@ -353,7 +355,7 @@ func (d *SqliteBackend) IsMirror(repo string) (bool, error) {
 func (d *SqliteBackend) IsPrivate(repo string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var private bool
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		return tx.Get(&private, "SELECT private FROM repo WHERE name = ?", repo)
 	}); err != nil {
 		return false, wrapDbErr(err)
@@ -368,7 +370,7 @@ func (d *SqliteBackend) IsPrivate(repo string) (bool, error) {
 func (d *SqliteBackend) IsHidden(repo string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var hidden bool
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		return tx.Get(&hidden, "SELECT hidden FROM repo WHERE name = ?", repo)
 	}); err != nil {
 		return false, wrapDbErr(err)
@@ -382,7 +384,7 @@ func (d *SqliteBackend) IsHidden(repo string) (bool, error) {
 // It implements backend.Backend.
 func (d *SqliteBackend) SetHidden(repo string, hidden bool) error {
 	repo = utils.SanitizeRepo(repo)
-	return wrapDbErr(wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	return wrapDbErr(wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		_, err := tx.Exec("UPDATE repo SET hidden = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?;", hidden, repo)
 		return err
 	}))
@@ -394,7 +396,7 @@ func (d *SqliteBackend) SetHidden(repo string, hidden bool) error {
 func (d *SqliteBackend) ProjectName(repo string) (string, error) {
 	repo = utils.SanitizeRepo(repo)
 	var name string
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		return tx.Get(&name, "SELECT project_name FROM repo WHERE name = ?", repo)
 	}); err != nil {
 		return "", wrapDbErr(err)
@@ -408,7 +410,7 @@ func (d *SqliteBackend) ProjectName(repo string) (string, error) {
 // It implements backend.Backend.
 func (d *SqliteBackend) SetDescription(repo string, desc string) error {
 	repo = utils.SanitizeRepo(repo)
-	return wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	return wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		_, err := tx.Exec("UPDATE repo SET description = ? WHERE name = ?", desc, repo)
 		return err
 	})
@@ -420,7 +422,7 @@ func (d *SqliteBackend) SetDescription(repo string, desc string) error {
 func (d *SqliteBackend) SetPrivate(repo string, private bool) error {
 	repo = utils.SanitizeRepo(repo)
 	return wrapDbErr(
-		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 			_, err := tx.Exec("UPDATE repo SET private = ? WHERE name = ?", private, repo)
 			return err
 		}),
@@ -433,7 +435,7 @@ func (d *SqliteBackend) SetPrivate(repo string, private bool) error {
 func (d *SqliteBackend) SetProjectName(repo string, name string) error {
 	repo = utils.SanitizeRepo(repo)
 	return wrapDbErr(
-		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 			_, err := tx.Exec("UPDATE repo SET project_name = ? WHERE name = ?", name, repo)
 			return err
 		}),
@@ -450,7 +452,7 @@ func (d *SqliteBackend) AddCollaborator(repo string, username string) error {
 	}
 
 	repo = utils.SanitizeRepo(repo)
-	return wrapDbErr(wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	return wrapDbErr(wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		_, err := tx.Exec(`INSERT INTO collab (user_id, repo_id, updated_at)
 			VALUES (
 			(SELECT id FROM user WHERE username = ?),
@@ -468,7 +470,7 @@ func (d *SqliteBackend) AddCollaborator(repo string, username string) error {
 func (d *SqliteBackend) Collaborators(repo string) ([]string, error) {
 	repo = utils.SanitizeRepo(repo)
 	var users []string
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		return tx.Select(&users, `SELECT name FROM user
 			INNER JOIN collab ON user.id = collab.user_id
 			INNER JOIN repo ON repo.id = collab.repo_id
@@ -486,7 +488,7 @@ func (d *SqliteBackend) Collaborators(repo string) ([]string, error) {
 func (d *SqliteBackend) IsCollaborator(repo string, username string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var count int
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		return tx.Get(&count, `SELECT COUNT(*) FROM user
 			INNER JOIN collab ON user.id = collab.user_id
 			INNER JOIN repo ON repo.id = collab.repo_id
@@ -504,7 +506,7 @@ func (d *SqliteBackend) IsCollaborator(repo string, username string) (bool, erro
 func (d *SqliteBackend) RemoveCollaborator(repo string, username string) error {
 	repo = utils.SanitizeRepo(repo)
 	return wrapDbErr(
-		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 			_, err := tx.Exec(`DELETE FROM collab
 			WHERE user_id = (SELECT id FROM user WHERE username = ?)
 			AND repo_id = (SELECT id FROM repo WHERE name = ?)`, username, repo)
