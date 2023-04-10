@@ -38,8 +38,8 @@ func (l cronLogger) Error(err error, msg string, keysAndValues ...interface{}) {
 }
 
 // NewCronScheduler returns a new Cron.
-func NewCronScheduler() *CronScheduler {
-	logger := cronLogger{log.WithPrefix("server.cron")}
+func NewCronScheduler(ctx context.Context) *CronScheduler {
+	logger := cronLogger{log.FromContext(ctx).WithPrefix("server.cron")}
 	return &CronScheduler{
 		Cron: cron.New(cron.WithLogger(logger)),
 	}

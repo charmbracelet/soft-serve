@@ -33,13 +33,14 @@ func setupServer(tb testing.TB) (*Server, *config.Config, string) {
 	tb.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", randomPort()))
 	cfg := config.DefaultConfig()
 	tb.Log("configuring server")
-	s, err := NewServer(cfg)
+	ctx := context.TODO()
+	s, err := NewServer(ctx, cfg)
 	if err != nil {
 		tb.Fatal(err)
 	}
 	go func() {
 		tb.Log("starting server")
-		s.Start(context.TODO())
+		s.Start()
 	}()
 	tb.Cleanup(func() {
 		s.Close()

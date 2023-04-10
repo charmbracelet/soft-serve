@@ -23,12 +23,13 @@ var (
 	migrateConfig = &cobra.Command{
 		Use:   "migrate-config",
 		Short: "Migrate config to new format",
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			keyPath := os.Getenv("SOFT_SERVE_KEY_PATH")
 			reposPath := os.Getenv("SOFT_SERVE_REPO_PATH")
 			bindAddr := os.Getenv("SOFT_SERVE_BIND_ADDRESS")
+			ctx := cmd.Context()
 			cfg := config.DefaultConfig()
-			sb, err := sqlite.NewSqliteBackend(cfg)
+			sb, err := sqlite.NewSqliteBackend(ctx, cfg)
 			if err != nil {
 				return fmt.Errorf("failed to create sqlite backend: %w", err)
 			}
