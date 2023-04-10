@@ -1,4 +1,4 @@
-package server
+package ssh
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/charmbracelet/ssh"
 	bm "github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/testsession"
@@ -49,7 +50,7 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 	dp := tb.TempDir()
 	is.NoErr(os.Setenv("SOFT_SERVE_DATA_PATH", dp))
 	is.NoErr(os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", ":9418"))
-	is.NoErr(os.Setenv("SOFT_SERVE_SSH_LISTEN_ADDR", fmt.Sprintf(":%d", randomPort())))
+	is.NoErr(os.Setenv("SOFT_SERVE_SSH_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort())))
 	tb.Cleanup(func() {
 		is.NoErr(os.Unsetenv("SOFT_SERVE_DATA_PATH"))
 		is.NoErr(os.Unsetenv("SOFT_SERVE_GIT_LISTEN_ADDR"))

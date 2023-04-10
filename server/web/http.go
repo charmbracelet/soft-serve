@@ -1,4 +1,4 @@
-package server
+package web
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/utils"
@@ -21,6 +22,10 @@ import (
 	"goji.io"
 	"goji.io/pat"
 	"goji.io/pattern"
+)
+
+var (
+	logger = log.WithPrefix("server.web")
 )
 
 var (

@@ -1,4 +1,4 @@
-package server
+package git
 
 import (
 	"errors"
@@ -36,13 +36,13 @@ var (
 
 // Git protocol commands.
 const (
-	receivePackBin   = "git-receive-pack"
-	uploadPackBin    = "git-upload-pack"
-	uploadArchiveBin = "git-upload-archive"
+	ReceivePackBin   = "git-receive-pack"
+	UploadPackBin    = "git-upload-pack"
+	UploadArchiveBin = "git-upload-archive"
 )
 
-// uploadPack runs the git upload-pack protocol against the provided repo.
-func uploadPack(in io.Reader, out io.Writer, er io.Writer, repoDir string) error {
+// UploadPack runs the git upload-pack protocol against the provided repo.
+func UploadPack(in io.Reader, out io.Writer, er io.Writer, repoDir string) error {
 	exists, err := fileExists(repoDir)
 	if !exists {
 		return ErrInvalidRepo
@@ -50,11 +50,11 @@ func uploadPack(in io.Reader, out io.Writer, er io.Writer, repoDir string) error
 	if err != nil {
 		return err
 	}
-	return runGit(in, out, er, "", uploadPackBin[4:], repoDir)
+	return RunGit(in, out, er, "", UploadPackBin[4:], repoDir)
 }
 
-// uploadArchive runs the git upload-archive protocol against the provided repo.
-func uploadArchive(in io.Reader, out io.Writer, er io.Writer, repoDir string) error {
+// UploadArchive runs the git upload-archive protocol against the provided repo.
+func UploadArchive(in io.Reader, out io.Writer, er io.Writer, repoDir string) error {
 	exists, err := fileExists(repoDir)
 	if !exists {
 		return ErrInvalidRepo
@@ -62,19 +62,19 @@ func uploadArchive(in io.Reader, out io.Writer, er io.Writer, repoDir string) er
 	if err != nil {
 		return err
 	}
-	return runGit(in, out, er, "", uploadArchiveBin[4:], repoDir)
+	return RunGit(in, out, er, "", UploadArchiveBin[4:], repoDir)
 }
 
-// receivePack runs the git receive-pack protocol against the provided repo.
-func receivePack(in io.Reader, out io.Writer, er io.Writer, repoDir string) error {
-	if err := runGit(in, out, er, "", receivePackBin[4:], repoDir); err != nil {
+// ReceivePack runs the git receive-pack protocol against the provided repo.
+func ReceivePack(in io.Reader, out io.Writer, er io.Writer, repoDir string) error {
+	if err := RunGit(in, out, er, "", ReceivePackBin[4:], repoDir); err != nil {
 		return err
 	}
-	return ensureDefaultBranch(in, out, er, repoDir)
+	return EnsureDefaultBranch(in, out, er, repoDir)
 }
 
-// runGit runs a git command in the given repo.
-func runGit(in io.Reader, out io.Writer, err io.Writer, dir string, args ...string) error {
+// RunGit runs a git command in the given repo.
+func RunGit(in io.Reader, out io.Writer, err io.Writer, dir string, args ...string) error {
 	c := git.NewCommand(args...)
 	return c.RunInDirWithOptions(dir, git.RunInDirOptions{
 		Stdin:  in,
@@ -83,8 +83,8 @@ func runGit(in io.Reader, out io.Writer, err io.Writer, dir string, args ...stri
 	})
 }
 
-// writePktline encodes and writes a pktline to the given writer.
-func writePktline(w io.Writer, v ...interface{}) {
+// WritePktline encodes and writes a pktline to the given writer.
+func WritePktline(w io.Writer, v ...interface{}) {
 	msg := fmt.Sprintln(v...)
 	pkt := pktline.NewEncoder(w)
 	if err := pkt.EncodeString(msg); err != nil {
@@ -95,8 +95,8 @@ func writePktline(w io.Writer, v ...interface{}) {
 	}
 }
 
-// ensureWithin ensures the given repo is within the repos directory.
-func ensureWithin(reposDir string, repo string) error {
+// EnsureWithin ensures the given repo is within the repos directory.
+func EnsureWithin(reposDir string, repo string) error {
 	repoDir := filepath.Join(reposDir, repo)
 	absRepos, err := filepath.Abs(reposDir)
 	if err != nil {
@@ -129,7 +129,7 @@ func fileExists(path string) (bool, error) {
 	return true, err
 }
 
-func ensureDefaultBranch(in io.Reader, out io.Writer, er io.Writer, repoPath string) error {
+func EnsureDefaultBranch(in io.Reader, out io.Writer, er io.Writer, repoPath string) error {
 	r, err := git.Open(repoPath)
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func ensureDefaultBranch(in io.Reader, out io.Writer, er io.Writer, repoPath str
 	// Rename the default branch to the first branch available
 	_, err = r.HEAD()
 	if err == git.ErrReferenceNotExist {
-		err = runGit(in, out, er, repoPath, "branch", "-M", brs[0])
+		err = RunGit(in, out, er, repoPath, "branch", "-M", brs[0])
 		if err != nil {
 			return err
 		}
