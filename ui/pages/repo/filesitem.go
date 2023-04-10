@@ -78,7 +78,6 @@ func (d FileItemDelegate) Spacing() int { return 0 }
 
 // Update implements list.ItemDelegate.
 func (d FileItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
-	idx := m.Index()
 	item, ok := m.SelectedItem().(FileItem)
 	if !ok {
 		return nil
@@ -87,8 +86,7 @@ func (d FileItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
-			d.common.Copy.Copy(item.Title())
-			return m.SetItem(idx, item)
+			return copyCmd(item.entry.Name(), fmt.Sprintf("File name %q copied to clipboard", item.entry.Name()))
 		}
 	}
 	return nil

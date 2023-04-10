@@ -9,16 +9,19 @@ import (
 
 // StatusBarMsg is a message sent to the status bar.
 type StatusBarMsg struct {
-	Key    string
-	Value  string
-	Info   string
-	Branch string
+	Key   string
+	Value string
+	Info  string
+	Extra string
 }
 
 // StatusBar is a status bar model.
 type StatusBar struct {
 	common common.Common
-	msg    StatusBarMsg
+	key    string
+	value  string
+	info   string
+	extra  string
 }
 
 // Model is an interface that supports setting the status bar information.
@@ -50,7 +53,18 @@ func (s *StatusBar) Init() tea.Cmd {
 func (s *StatusBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case StatusBarMsg:
-		s.msg = msg
+		if msg.Key != "" {
+			s.key = msg.Key
+		}
+		if msg.Value != "" {
+			s.value = msg.Value
+		}
+		if msg.Info != "" {
+			s.info = msg.Info
+		}
+		if msg.Extra != "" {
+			s.extra = msg.Extra
+		}
 	}
 	return s, nil
 }
@@ -63,14 +77,14 @@ func (s *StatusBar) View() string {
 		"repo-help",
 		st.StatusBarHelp.Render("? Help"),
 	)
-	key := st.StatusBarKey.Render(s.msg.Key)
+	key := st.StatusBarKey.Render(s.key)
 	info := ""
-	if s.msg.Info != "" {
-		info = st.StatusBarInfo.Render(s.msg.Info)
+	if s.info != "" {
+		info = st.StatusBarInfo.Render(s.info)
 	}
-	branch := st.StatusBarBranch.Render(s.msg.Branch)
+	branch := st.StatusBarBranch.Render(s.extra)
 	maxWidth := s.common.Width - w(key) - w(info) - w(branch) - w(help)
-	v := truncate.StringWithTail(s.msg.Value, uint(maxWidth-st.StatusBarValue.GetHorizontalFrameSize()), "…")
+	v := truncate.StringWithTail(s.value, uint(maxWidth-st.StatusBarValue.GetHorizontalFrameSize()), "…")
 	value := st.StatusBarValue.
 		Width(maxWidth).
 		Render(v)

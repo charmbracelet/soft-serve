@@ -18,7 +18,6 @@ import (
 // LogItem is a item in the log list that displays a git commit.
 type LogItem struct {
 	*git.Commit
-	copied time.Time
 }
 
 // ID implements selector.IdentifiableItem.
@@ -57,7 +56,6 @@ func (d LogItemDelegate) Spacing() int { return 1 }
 
 // Update updates the item. Implements list.ItemDelegate.
 func (d LogItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
-	idx := m.Index()
 	item, ok := m.SelectedItem().(LogItem)
 	if !ok {
 		return nil
@@ -66,9 +64,7 @@ func (d LogItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
-			item.copied = time.Now()
-			d.common.Copy.Copy(item.Hash())
-			return m.SetItem(idx, item)
+			return copyCmd(item.Hash(), fmt.Sprintf("Commit hash %q copied to clipboard", item.Hash()))
 		}
 	}
 	return nil
@@ -92,9 +88,6 @@ func (d LogItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	horizontalFrameSize := styles.Base.GetHorizontalFrameSize()
 
 	hash := i.Commit.ID.String()[:7]
-	if !i.copied.IsZero() && i.copied.Add(time.Second).After(time.Now()) {
-		hash = "copied"
-	}
 	title := styles.Title.Render(
 		common.TruncateString(i.Title(),
 			m.Width()-

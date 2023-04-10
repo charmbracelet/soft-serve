@@ -71,7 +71,7 @@ func New(c common.Common) *Selection {
 		SetString(defaultNoContent)
 	selector := selector.New(c,
 		[]selector.IdentifiableItem{},
-		ItemDelegate{&c, &sel.activePane})
+		NewItemDelegate(&c, &sel.activePane))
 	selector.SetShowTitle(false)
 	selector.SetShowHelp(false)
 	selector.SetShowStatusBar(false)

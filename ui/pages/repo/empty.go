@@ -36,5 +36,5 @@ git push -u origin main
 git remote add origin %[1]s
 git push -u origin main
 `+"```"+`
-`, common.RepoURL(cfg.SSH.PublicURL, repo))
+`, common.CloneCmd(cfg.SSH.PublicURL, repo))
 }
