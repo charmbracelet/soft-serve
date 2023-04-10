@@ -19,9 +19,9 @@ func userCommand() *cobra.Command {
 
 	var admin bool
 	var key string
-	userAddCommand := &cobra.Command{
-		Use:               "add USERNAME",
-		Short:             "Add a user",
+	userCreateCommand := &cobra.Command{
+		Use:               "create USERNAME",
+		Short:             "Create a new user",
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -47,12 +47,12 @@ func userCommand() *cobra.Command {
 		},
 	}
 
-	userAddCommand.Flags().BoolVarP(&admin, "admin", "a", false, "make the user an admin")
-	userAddCommand.Flags().StringVarP(&key, "key", "k", "", "add a public key to the user")
+	userCreateCommand.Flags().BoolVarP(&admin, "admin", "a", false, "make the user an admin")
+	userCreateCommand.Flags().StringVarP(&key, "key", "k", "", "add a public key to the user")
 
-	userRemoveCommand := &cobra.Command{
-		Use:               "remove USERNAME",
-		Short:             "Remove a user",
+	userDeleteCommand := &cobra.Command{
+		Use:               "delete USERNAME",
+		Short:             "Delete a user",
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -184,11 +184,11 @@ func userCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		userAddCommand,
+		userCreateCommand,
 		userAddPubkeyCommand,
 		userInfoCommand,
 		userListCommand,
-		userRemoveCommand,
+		userDeleteCommand,
 		userRemovePubkeyCommand,
 		userSetAdminCommand,
 		userSetUsernameCommand,
