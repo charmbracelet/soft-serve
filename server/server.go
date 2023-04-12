@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"path/filepath"
 
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
@@ -54,7 +53,7 @@ func NewServer(ctx context.Context, cfg *config.Config) (*Server, error) {
 
 		// Create internal key.
 		ikp, err := keygen.NewWithWrite(
-			filepath.Join(cfg.DataPath, cfg.SSH.InternalKeyPath),
+			cfg.SSH.InternalKeyPath,
 			nil,
 			keygen.Ed25519,
 		)
@@ -65,7 +64,7 @@ func NewServer(ctx context.Context, cfg *config.Config) (*Server, error) {
 
 		// Create client key.
 		ckp, err := keygen.NewWithWrite(
-			filepath.Join(cfg.DataPath, cfg.SSH.ClientKeyPath),
+			cfg.SSH.ClientKeyPath,
 			nil,
 			keygen.Ed25519,
 		)

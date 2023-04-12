@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/keygen"
@@ -119,7 +118,7 @@ func hookCommand() *cobra.Command {
 func checkIfInternal(cmd *cobra.Command, _ []string) error {
 	cfg, s := fromContext(cmd)
 	pk := s.PublicKey()
-	kp, err := keygen.New(filepath.Join(cfg.DataPath, cfg.SSH.InternalKeyPath), nil, keygen.Ed25519)
+	kp, err := keygen.New(cfg.SSH.InternalKeyPath, nil, keygen.Ed25519)
 	if err != nil {
 		logger.Errorf("failed to read internal key: %v", err)
 		return err

@@ -103,7 +103,7 @@ func NewSSHServer(cfg *config.Config, hooks hooks.Hooks) (*SSHServer, error) {
 		ssh.PublicKeyAuth(s.PublicKeyHandler),
 		ssh.KeyboardInteractiveAuth(s.KeyboardInteractiveHandler),
 		wish.WithAddress(cfg.SSH.ListenAddr),
-		wish.WithHostKeyPath(filepath.Join(cfg.DataPath, cfg.SSH.KeyPath)),
+		wish.WithHostKeyPath(cfg.SSH.KeyPath),
 		wish.WithMiddleware(mw...),
 	)
 	if err != nil {
