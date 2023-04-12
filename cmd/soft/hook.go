@@ -176,7 +176,7 @@ func commonInit() (c *gossh.Client, s *gossh.Session, err error) {
 
 func newClient(cfg *config.Config) (*gossh.Client, error) {
 	// Only accept the server's host key.
-	pk, err := keygen.New(filepath.Join(cfg.DataPath, cfg.SSH.KeyPath), nil, keygen.Ed25519)
+	pk, err := keygen.New(cfg.SSH.KeyPath, nil, keygen.Ed25519)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func newClient(cfg *config.Config) (*gossh.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	ik, err := keygen.New(filepath.Join(cfg.DataPath, cfg.SSH.InternalKeyPath), nil, keygen.Ed25519)
+	ik, err := keygen.New(cfg.SSH.InternalKeyPath, nil, keygen.Ed25519)
 	if err != nil {
 		return nil, err
 	}

@@ -57,7 +57,7 @@ var (
 					log.Errorf("failed to copy ssh key: %s", err)
 				}
 
-				cfg.SSH.KeyPath = filepath.Join("ssh", filepath.Base(keyPath))
+				cfg.SSH.KeyPath = filepath.Join(cfg.DataPath, "ssh", filepath.Base(keyPath))
 			}
 
 			// Read config

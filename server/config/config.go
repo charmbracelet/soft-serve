@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/caarlos0/env/v7"
 	"github.com/charmbracelet/log"
@@ -115,6 +116,10 @@ func ParseConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
+	if err := cfg.init(); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 
@@ -129,11 +134,6 @@ func DefaultConfig() *Config {
 	dataPath := os.Getenv("SOFT_SERVE_DATA_PATH")
 	if dataPath == "" {
 		dataPath = "data"
-	}
-
-	dp, _ := filepath.Abs(dataPath)
-	if dp != "" {
-		dataPath = dp
 	}
 
 	cfg := &Config{
@@ -181,6 +181,10 @@ func DefaultConfig() *Config {
 		log.Fatal(err)
 	}
 
+	if err := cfg.init(); err != nil {
+		log.Fatal(err)
+	}
+
 	return cfg
 }
 
@@ -188,4 +192,40 @@ func DefaultConfig() *Config {
 func (c *Config) WithBackend(backend backend.Backend) *Config {
 	c.Backend = backend
 	return c
+}
+
+func (c *Config) init() error {
+	// Use absolute paths
+	if !filepath.IsAbs(c.DataPath) {
+		dp, err := filepath.Abs(c.DataPath)
+		if err != nil {
+			return err
+		}
+		c.DataPath = dp
+	}
+
+	c.SSH.PublicURL = strings.TrimSuffix(c.SSH.PublicURL, "/")
+	c.HTTP.PublicURL = strings.TrimSuffix(c.HTTP.PublicURL, "/")
+
+	if c.SSH.KeyPath != "" && !filepath.IsAbs(c.SSH.KeyPath) {
+		c.SSH.KeyPath = filepath.Join(c.DataPath, c.SSH.KeyPath)
+	}
+
+	if c.SSH.ClientKeyPath != "" && !filepath.IsAbs(c.SSH.ClientKeyPath) {
+		c.SSH.ClientKeyPath = filepath.Join(c.DataPath, c.SSH.ClientKeyPath)
+	}
+
+	if c.SSH.InternalKeyPath != "" && !filepath.IsAbs(c.SSH.InternalKeyPath) {
+		c.SSH.InternalKeyPath = filepath.Join(c.DataPath, c.SSH.InternalKeyPath)
+	}
+
+	if c.HTTP.TLSKeyPath != "" && !filepath.IsAbs(c.HTTP.TLSKeyPath) {
+		c.HTTP.TLSKeyPath = filepath.Join(c.DataPath, c.HTTP.TLSKeyPath)
+	}
+
+	if c.HTTP.TLSCertPath != "" && !filepath.IsAbs(c.HTTP.TLSCertPath) {
+		c.HTTP.TLSCertPath = filepath.Join(c.DataPath, c.HTTP.TLSCertPath)
+	}
+
+	return nil
 }
