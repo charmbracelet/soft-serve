@@ -59,8 +59,6 @@ type Styles struct {
 	ErrorTitle lipgloss.Style
 	ErrorBody  lipgloss.Style
 
-	AboutNoReadme lipgloss.Style
-
 	LogItem struct {
 		Normal struct {
 			Base    lipgloss.Style
@@ -277,11 +275,6 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("252")).
 		MarginLeft(2)
 
-	s.AboutNoReadme = lipgloss.NewStyle().
-		MarginTop(1).
-		MarginLeft(2).
-		Foreground(lipgloss.Color("242"))
-
 	s.LogItem.Normal.Base = lipgloss.NewStyle().
 		Border(lipgloss.Border{
 			Left: " ",
@@ -417,7 +410,9 @@ func DefaultStyles() *Styles {
 		MarginLeft(2).
 		Foreground(lipgloss.Color("242"))
 
-	s.NoItems = s.AboutNoReadme.Copy()
+	s.NoItems = lipgloss.NewStyle().
+		MarginLeft(2).
+		Foreground(lipgloss.Color("242"))
 
 	s.StatusBar = lipgloss.NewStyle().
 		Height(1)
