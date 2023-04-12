@@ -22,7 +22,7 @@ require (
 
 require (
 	github.com/aymanbagabas/go-osc52 v1.2.2
-	github.com/charmbracelet/keygen v0.3.0
+	github.com/charmbracelet/keygen v0.4.1
 	github.com/charmbracelet/log v0.2.1
 	github.com/gobwas/glob v0.2.3
 	github.com/gogs/git-module v1.8.1
@@ -31,7 +31,7 @@ require (
 	github.com/muesli/mango-cobra v1.2.0
 	github.com/muesli/roff v0.1.0
 	github.com/spf13/cobra v1.6.1
-	golang.org/x/crypto v0.7.0
+	golang.org/x/crypto v0.8.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -61,7 +61,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mcuadros/go-version v0.0.0-20190308113854-92cdf37c5b75 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.21 // indirect
-	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/muesli/ansi v0.0.0-20211031195517-c9f0611b6c70 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/mango v0.1.0 // indirect
@@ -75,10 +74,10 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/yuin/goldmark v1.5.2 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
-	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/term v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/term v0.7.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
