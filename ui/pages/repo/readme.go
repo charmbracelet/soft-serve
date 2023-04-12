@@ -28,7 +28,7 @@ type Readme struct {
 // NewReadme creates a new readme model.
 func NewReadme(common common.Common) *Readme {
 	readme := code.New(common, "", "")
-	readme.NoContentStyle = readme.NoContentStyle.SetString("No readme found.")
+	readme.NoContentStyle = readme.NoContentStyle.Copy().SetString("No readme found.")
 	return &Readme{
 		code:   readme,
 		common: common,
