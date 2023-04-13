@@ -117,7 +117,7 @@ func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
 
 	sshCmd := "ssh"
 	if port != "22" {
-		sshCmd += " -p" + port
+		sshCmd += " -p " + port
 	}
 
 	sshCmd += " " + hostname
