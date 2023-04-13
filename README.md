@@ -1,5 +1,4 @@
-Soft Serve
-==========
+# Soft Serve
 
 <p>
     <img style="width: 451px" src="https://stuff.charm.sh/soft-serve/soft-serve-header.png?0" alt="A nice rendering of some melting ice cream with the words ‘Charm Soft Serve’ next to it"><br>
@@ -17,12 +16,13 @@ A tasty, self-hostable Git server for the command line. 🍦
   <img src="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0" alt="Soft Serve screencast">
 </picture>
 
-* Configure with `git`
-* Create repos on demand with `git push`
-* Browse repos, files and commits with an SSH-accessible TUI
-* TUI mouse support
-* Print files over SSH with or without syntax highlighting and line numbers
-* Easy access control
+- Glamorous clean SSH TUI
+- Clone repos over SSH, HTTP, or Git protocol
+- Manage repos with SSH
+- Create repos on demand with SSH or `git push`
+- Browse repos, files and commits with SSH-accessible
+- Print files over SSH with or without syntax highlighting and line numbers
+- Easy access control with SSH
   - Allow/disallow anonymous access
   - Add collaborators with SSH public keys
   - Repos can be public or private
@@ -36,13 +36,13 @@ Just run `ssh git.charm.sh` for an example. You can also try some of the followi
 ssh git.charm.sh -t soft-serve
 
 # Print out a directory tree for a repo
-ssh git.charm.sh ls soft-serve
+ssh git.charm.sh repo tree soft-serve
 
 # Print a specific file
-ssh git.charm.sh cat soft-serve/cmd/soft/root.go
+ssh git.charm.sh repo blob soft-serve cmd/soft/root.go
 
 # Print a file with syntax highlighting and line numbers
-ssh git.charm.sh cat soft-serve/cmd/soft/root.go -c -l
+ssh git.charm.sh repo blob soft-serve cmd/soft/root.go -c -l
 ```
 
 ## Installation
@@ -90,7 +90,112 @@ go install github.com/charmbracelet/soft-serve/cmd/soft@latest
 
 ## Setting up a server
 
-Make sure `git` is installed, then run `soft`. That’s it.
+Make sure `git` is installed, then run `soft serve`. That’s it.
+
+This will create a `data` directory that will store all the repos, ssh keys,
+and database.
+
+To change the default data path use `SOFT_SERVE_DATA_PATH` environment variable.
+
+```sh
+SOFT_SERVE_DATA_PATH=/var/lib/soft-serve soft serve
+```
+
+When you run Soft Serve for the first time, make sure you have the
+`SOFT_SERVE_INITIAL_ADMIN_KEY` environment variable is set to your ssh
+authorized key. Any added key to this variable will be treated as admin with
+full privileges.
+
+Using this environment variable, Soft Serve will create a new `admin` user that
+has full privileges. You can rename and change the user settings later.
+
+### Server Settings
+
+Once you start the server for the first time, the settings will be in
+`config.yaml` under your data directory. The default `config.yaml` is
+self-explanatory and will look like this:
+
+```yaml
+# Soft Serve Server configurations
+
+# The name of the server.
+# This is the name that will be displayed in the UI.
+name: "Soft Serve"
+
+# The SSH server configuration.
+ssh:
+  # The address on which the SSH server will listen.
+  listen_addr: ":23231"
+
+  # The public URL of the SSH server.
+  # This is the address that will be used to clone repositories.
+  public_url: "ssh://localhost:23231"
+
+  # The path to the SSH server's private key.
+  key_path: "ssh/soft_serve_host"
+
+  # The path to the SSH server's client private key.
+  # This key will be used to authenticate the server to make git requests to
+  # ssh remotes.
+  client_key_path: "ssh/soft_serve_client"
+
+  # The path to the SSH server's internal api private key.
+  internal_key_path: "ssh/soft_serve_internal"
+
+  # The maximum number of seconds a connection can take.
+  # A value of 0 means no timeout.
+  max_timeout: 0
+
+  # The number of seconds a connection can be idle before it is closed.
+  idle_timeout: 120
+
+# The Git daemon configuration.
+git:
+  # The address on which the Git daemon will listen.
+  listen_addr: ":9418"
+
+  # The maximum number of seconds a connection can take.
+  # A value of 0 means no timeout.
+  max_timeout: 0
+
+  # The number of seconds a connection can be idle before it is closed.
+  idle_timeout: 3
+
+  # The maximum number of concurrent connections.
+  max_connections: 32
+
+# The HTTP server configuration.
+http:
+  # The address on which the HTTP server will listen.
+  listen_addr: ":8080"
+
+  # The path to the TLS private key.
+  tls_key_path: ""
+
+  # The path to the TLS certificate.
+  tls_cert_path: ""
+
+  # The public URL of the HTTP server.
+  # This is the address that will be used to clone repositories.
+  # Make sure to use https:// if you are using TLS.
+  public_url: "http://localhost:8080"
+
+# The stats server configuration.
+stats:
+  # The address on which the stats server will listen.
+  listen_addr: ":8081"
+```
+
+You can also use environment variables, to override these settings. All server
+settings environment variables start with `SOFT_SERVE_` followed by the setting
+name all in uppercase. Here are some examples:
+
+- `SOFT_SERVE_NAME`: The name of the server that will appear in the TUI
+- `SOFT_SERVE_SSH_LISTEN_ADDR`: SSH listen address
+- `SOFT_SERVE_SSH_KEY_PATH`: SSH host key-pair path
+- `SOFT_SERVE_HTTP_LISTEN_ADDR`: HTTP listen address
+- `SOFT_SERVE_HTTP_PUBLIC_URL`: HTTP public URL used for cloning
+- `SOFT_SERVE_GIT_MAX_CONNECTIONS`: The number of simultaneous connections to git daemon
 
 A [Docker image][docker] is also available.
 
@@ -98,99 +203,284 @@ A [Docker image][docker] is also available.
 
 ## Configuration
 
-The Soft Serve configuration is simple and straightforward:
+Configuring Soft Serve is simple and straightforward. Use the SSH command-line
+interface to manage access settings, users, and repos.
 
-```yaml
-# The name of the server to show in the TUI.
-name: Soft Serve
+For more info try `ssh localhost -i ~/.ssh/id_ed25519 -p23231 help`. Make sure
+you use your key here.
 
-# The host and port to display in the TUI. You may want to change this if your
-# server is accessible from a different host and/or port that what it's
-# actually listening on (for example, if it's behind a port forwarding router).
-host: localhost
-port: 23231
+> **Note** The `-i` and `-p` parts will be omitted in the examples below for
+> brevity.
 
-# Access level for anonymous users. Options are: admin-access, read-write,
-# read-only, and no-access.
-anon-access: read-write
+### Access Levels
 
-# You can grant read-only access to users without private keys.
-allow-keyless: false
+Soft Serve offers a simple access control. There are four access levels,
+no-access, read-only, read-write, and admin-access.
 
-# Customize repos in the menu
-repos:
-  - name: Home
-    repo: config
-    private: true
-    note: "Configuration and content repo for this server"
-  - name: Example Public Repo
-    repo: my-public-repo
-    private: false
-    note: "A publicly-accessible repo"
-    readme: docs/README.md
-  - name: Example Private Repo
-    repo: my-private-repo
-    private: true
-    note: "A private repo"
+`admin-access` has full control of the server and can make changes to users and repos.
 
-# Authorized users. Admins have full access to all repos. Private repos are only
-# accessible by admins and collab users. Regular users can read public repos
-# based on your anon-access setting.
-users:
-  - name: Beatrice
-    admin: true
-    public-keys:
-      - ssh-rsa AAAAB3Nz...   # redacted
-      - ssh-ed25519 AAAA...   # redacted
-  - name: Frankie
-    collab-repos:
-      - my-public-repo
-      - my-private-repo
-    public-keys:
-      - ssh-rsa AAAAB3Nz...   # redacted
-      - ssh-ed25519 AAAA...   # redacted
+`read-write` access gets full control of repos.
+
+`read-only` can read public repos.
+
+`no-access` denies access to all repos.
+
+### Authentication
+
+Everything that needs authentication is done using SSH.
+
+By default, Soft Serve gives ready-only permission to anonymous connections to
+any of the above protocols. This is controlled by two settings `anon-access`
+and `allow-keyless`.
+
+- `anon-access`: Defines the access level for anonymous users. Available
+  options are `no-access`, `read-only`, `read-write`, and `admin-access`.
+  Default is `read-only`.
+- `allow-keyless`: Whether to allow connections that doesn't use keys to pass.
+  Setting this to `false` would disable access to SSH keyboard-interactive,
+  HTTP, and Git protocol connections. Default is `true`.
+
+```sh
+$ ssh localhost settings
+Manage server settings
+
+Usage:
+  ssh -p23231 localhost settings [command]
+
+Available Commands:
+  allow-keyless Set or get allow keyless access to repositories
+  anon-access   Set or get the default access level for anonymous users
+
+Flags:
+  -h, --help   help for settings
+
+Use "ssh -p23231 localhost settings [command] --help" for more information about a command.
 ```
 
-When `soft serve` is run for the first time, it creates a configuration repo
-containing the main README displayed in the TUI as well as a config file for
-user access control.
+> **Note** These settings can only be changed by admins.
+
+When `allow-keyless` is disabled, connections that don't use SSH Public Key
+authentication will get denied. This means cloning repos over HTTP(s) or git://
+will get denied.
+
+Meanwhile, `anon-access` controls the access level granted to connections that
+use SSH Public Key authentication but are not registered users. The default
+setting for this is `read-only`. This will grant anonymous connections that use
+SSH Public Key authentication `read-only` access to public repos.
+
+## Authorization
+
+Admins can manage users and manage their keys. Once a user is created and has
+access to the server, they can manage their own keys and settings.
+
+To create a new user use simply use `user create`:
+
+```sh
+# Create a new user
+ssh -p23231 localhost user create beatrice
+
+# Add user keys
+ssh -p23231 localhost user add-pubkey beatrice ssh-rsa AAAAB3Nz...
+ssh -p23231 localhost user add-pubkey beatrice ssh-ed25519 AAAA...
+
+# Create another user with public key
+ssh -p23231 localhost user create frankie '-k "ssh-ed25519 AAAATzN..."'
+
+# Need help?
+ssh -p23231 localhost user help
+```
+
+Once a user has access, they get `read-only` access to public repositories. And
+can create new repositories on the server.
+
+Non-admin users can manage their keys using the `pubkey` command:
+
+```sh
+# List user keys
+ssh -p23231 localhost pubkey list
+
+# Add key
+ssh -p23231 localhost pubkey add ssh-ed25519 AAAA...
+
+# Wanna change your username?
+ssh -p23231 localhost set-username yolo
+
+# To display user info
+ssh -p23231 localhost info
+```
+
+## Repositories
+
+You can manage repositories using the `repo` command.
+
+```sh
+# Run repo help
+$ ssh -p23231 localhost repo help
+Manage repositories
+
+Usage:
+  ssh -p23231 localhost repo [command]
+
+Aliases:
+  repo, repos, repository, repositories
+
+Available Commands:
+  blob         Print out the contents of file at path
+  branch       Manage repository branches
+  collab       Manage collaborators
+  create       Create a new repository
+  delete       Delete a repository
+  description  Set or get the description for a repository
+  hide         Hide or unhide a repository
+  import       Import a new repository from remote
+  info         Get information about a repository
+  is-mirror    Whether a repository is a mirror
+  list         List repositories
+  private      Set or get a repository private property
+  project-name Set or get the project name for a repository
+  rename       Rename an existing repository
+  tag          Manage repository tags
+  tree         Print repository tree at path
+
+Flags:
+  -h, --help   help for repo
+
+Use "ssh -p23231 localhost repo [command] --help" for more information about a command.
+```
+
+### Creating Repositories
+
+To create a repository, first make sure you have at least a `read-write`
+permission. You can use the `repo create <repo>`:
+
+```sh
+# Create a new repository
+ssh -p23231 localhost repo create icecream
+
+# Create a repo with description
+ssh -p23231 localhost repo create icecream '-d "This is an Ice Cream description"'
+
+# ... and project name
+ssh -p23231 localhost repo create icecream '-d "This is an Ice Cream description"' '-n "Ice Cream"'
+
+# I need my repository private!
+ssh -p23231 localhost repo create icecream -p '-d "This is an Ice Cream description"' '-n "Ice Cream"'
+```
+
+Or you can add your Soft Serve server as a remote to any existing repo, given
+you have write access, and push to remote:
 
 ```
-git clone ssh://localhost:23231/config
-```
-
-The `config` repo is publicly writable by default, so be sure to setup your
-access as desired. You can also set the `SOFT_SERVE_INITIAL_ADMIN_KEY`
-environment variable before first run and it will restrict access to that
-initial public key until you configure things otherwise.
-If you're having trouble, make sure you have generated keys with `ssh-keygen`
-as configuration is not supported for keyless users.
-
-### Server Settings
-
-In addition to the Git-based configuration above, there are a few
-environment-level settings:
-
-* `SOFT_SERVE_PORT`: SSH listen port (_default 23231_)
-* `SOFT_SERVE_HOST`: Address to use in public clone URLs
-* `SOFT_SERVE_BIND_ADDRESS`: Network interface to listen on (_default 0.0.0.0_)
-* `SOFT_SERVE_KEY_PATH`: SSH host key-pair path (_default .ssh/soft_serve_server_ed25519_)
-* `SOFT_SERVE_REPO_PATH`: Path where repos are stored (_default .repos_)
-* `SOFT_SERVE_INITIAL_ADMIN_KEY`: The public key that will initially have admin access to repos (_default ""_). This must be set before `soft` runs for the first time and creates the `config` repo. If set after the `config` repo has been created, this setting has no effect.
-
-## Pushing (and creating!) repos
-
-You can add your Soft Serve server as a remote to any existing repo:
-
-```
-git remote add soft ssh://localhost:23231/REPO
+git remote add origin ssh://localhost:23231/icecream
 ```
 
 After you’ve added the remote just go ahead and push. If the repo doesn’t exist
 on the server it’ll be created.
 
 ```
-git push soft main
+git push origin main
+```
+
+Repositories can be nested too:
+
+```sh
+# Create a new nested repository
+ssh -p23231 localhost repo create charmbracelet/icecream
+
+# Or ...
+git remote add charm ssh://localhost:23231/charmbracelet/icecream
+git push charm main
+```
+
+### Deleting Repositories
+
+You can delete repositories using the `repo delete <repo>` command.
+
+```sh
+ssh -p23231 localhost repo delete iceacream
+```
+
+### Renaming Repositories
+
+Use the `repo rename <old> <new>` command to rename existing repositories.
+
+```sh
+ssh -p23231 localhost repo rename iceacream vanilla
+```
+
+### Repository Collaborators
+
+Sometimes you want to restrict write access to certain repositories. This can
+be achieved by adding a collaborator to your repository.
+
+Use the `repo collab <repo> <username>` command to add/remove user collaborators.
+
+```sh
+# Add collaborator to soft-serve
+ssh -p23231 localhost repo collab add soft-serve frankie
+
+# Remove collaborator
+ssh -p23231 localhost repo collab remove soft-serve beatrice
+
+# List collaborators
+ssh -p23231 localhost repo collab list
+```
+
+### Repository metadata
+
+You can also change the repo's description, project name, whether it's private,
+etc using the `repo <command>` command.
+
+```sh
+# Set description for repo
+ssh -p23231 localhost repo description icecream "This is a new description"
+
+# Hide repo from listing
+ssh -p23231 localhost repo icecream hide true
+
+# List repository info (branches, tags, description, etc)
+ssh -p23231 localhost repo icecream info
+```
+
+To make a repository private, use `repo private <repo> [true|false]`. Private
+repos can only be accessed by admins and collaborators.
+
+```sh
+ssh -p23231 localhost repo icecream private true
+```
+
+### Repository Branches & Tags
+
+Use `repo branch` and `repo tag` to list, and delete branches or tags. You can
+also use `repo branch default` to set or get the repository default branch.
+
+### Repository Tree
+
+To print a file tree for the project, just use the `repo tree` command along with
+the repo name as the SSH command to your Soft Serve server:
+
+```sh
+ssh -p23231 localhost repo tree soft-serve
+```
+
+You can also specify the sub-path and a specific reference or branch.
+
+```sh
+ssh -p23231 localhost repo tree soft-serve server/config
+ssh -p23231 localhost repo tree soft-serve main server/config
+```
+
+From there, you can print individual files using the `repo blob` command:
+
+```sh
+ssh -p23231 localhost repo blob soft-serve cmd/soft/root.go
+```
+
+You can add the `-c` flag to enable syntax coloring and `-l` to print line
+numbers:
+
+```sh
+ssh -p 23231 localhost repo blob soft-serve cmd/soft/root.go -c -l
 ```
 
 ## The Soft Serve TUI
@@ -210,78 +500,13 @@ It's also possible to “link” to a specific repo:
 ssh localhost -t -p 23231 REPO
 ```
 
-You can copy text to your clipboard over SSH. For instance, you can press <kbd>c</kbd> on the highlighted repo in the menu to copy the clone command [^osc52].
+You can copy text to your clipboard over SSH. For instance, you can press
+<kbd>c</kbd> on the highlighted repo in the menu to copy the clone command
+[^osc52].
 
-[^osc52]: Copying over SSH depends on your terminal support of OSC52.
-
-## The Soft Serve SSH CLI
-
-```sh
-$ ssh -p 23231 localhost help
-Soft Serve is a self-hostable Git server for the command line.
-
-Usage:
-  ssh -p 23231 localhost [command]
-
-Available Commands:
-  cat         Outputs the contents of the file at path.
-  git         Perform Git operations on a repository.
-  help        Help about any command
-  ls          List file or directory at path.
-  reload      Reloads the configuration
-
-Flags:
-  -h, --help   help for ssh
-
-Use "ssh -p 23231 localhost [command] --help" for more information about a command.
-```
-
-Soft Serve SSH CLI has the ability to print files and list directories, perform
-`git` operations on remote repos, and reload the configuration when necessary.
-
-To print a file tree for the project, just use the `list` command along with the
-repo name as the SSH command to your Soft Serve server:
-
-```sh
-ssh -p 23231 localhost ls soft-serve
-```
-
-From there, you can print individual files using the `cat` command:
-
-```sh
-ssh -p 23231 localhost cat soft-serve/cmd/soft/root.go
-```
-
-You can add the `-c` flag to enable syntax coloring and `-l` to print line
-numbers:
-
-```sh
-ssh -p 23231 localhost cat soft-serve/cmd/soft/root.go -c -l
-```
-
-You can also use the `git` command to perform Git operations on a repo such as changing the default branch name for instance:
-
-```sh
-ssh -p 23231 localhost git soft-serve symbolic-ref HEAD refs/heads/taco
-```
-
-Both `git` and `reload` commands need admin access to the server to work. So
-make sure you have added your key as an admin user, or you’re using `anon-access:
-admin-access` in the configuration.
-
-## Managing Repos
-
-`.repos` and `.ssh` directories are created when you first run `soft` at the paths specified for the `SOFT_SERVE_KEY_PATH` and `SOFT_SERVE_REPO_PATH` environment variables.
-It's recommended to have a dedicated directory for your soft-serve repos and config.
-
-### Deleting a Repo
-
-To delete a repo from your soft serve server, you'll have to remove the repo from the .repos directory.
-
-### Renaming a Repo
-
-To rename a repo's display name in the menu, change its name in the config.yaml file for your soft serve server.
-By default, the display name will be the repository name.
+[^osc52]:
+    Copying over SSH depends on your terminal support of OSC52. Refer to
+    [go-osc52](https://github.com/aymanbagabas/go-osc52) for more information.
 
 ## A note about RSA keys
 
@@ -307,15 +532,15 @@ If you’re curious about the inner workings of this problem have a look at:
 
 We’d love to hear your thoughts on this project. Feel free to drop us a note!
 
-* [Twitter](https://twitter.com/charmcli)
-* [The Fediverse](https://mastodon.social/@charmcli)
-* [Discord](https://charm.sh/chat)
+- [Twitter](https://twitter.com/charmcli)
+- [The Fediverse](https://mastodon.social/@charmcli)
+- [Discord](https://charm.sh/chat)
 
 ## License
 
 [MIT](https://github.com/charmbracelet/soft-serve/raw/main/LICENSE)
 
-***
+---
 
 Part of [Charm](https://charm.sh).
 
