@@ -254,6 +254,11 @@ func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 		return wrapDbErr(err)
 	}
 
+	// Make sure the new repository parent directory exists.
+	if err := os.MkdirAll(filepath.Dir(np), 0755); err != nil {
+		return err
+	}
+
 	return os.Rename(op, np)
 }
 
