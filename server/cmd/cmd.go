@@ -3,6 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strings"
+	"text/template"
+	"unicode"
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
@@ -44,15 +48,92 @@ var (
 	logger = log.WithPrefix("server.cmd")
 )
 
+var templateFuncs = template.FuncMap{
+	"trim":                    strings.TrimSpace,
+	"trimRightSpace":          trimRightSpace,
+	"trimTrailingWhitespaces": trimRightSpace,
+	"rpad":                    rpad,
+	"gt":                      cobra.Gt,
+	"eq":                      cobra.Eq,
+}
+
+const (
+	usageTmpl = `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.SSHCommand}}{{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
+
+Available Commands:{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
+
+{{.Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
+
+Additional Commands:{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.SSHCommand}}{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+)
+
+func trimRightSpace(s string) string {
+	return strings.TrimRightFunc(s, unicode.IsSpace)
+}
+
+// rpad adds padding to the right of a string.
+func rpad(s string, padding int) string {
+	template := fmt.Sprintf("%%-%ds", padding)
+	return fmt.Sprintf(template, s)
+}
+
 // rootCommand is the root command for the server.
 func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:          "soft",
 		Short:        "Soft Serve is a self-hostable Git server for the command line.",
 		SilenceUsage: true,
 	}
 
-	// TODO: use command usage template to include hostname and port
+	hostname := "localhost"
+	port := "23231"
+	url, err := url.Parse(cfg.SSH.PublicURL)
+	if err == nil {
+		hostname = url.Hostname()
+		port = url.Port()
+	}
+
+	sshCmd := "ssh"
+	if port != "22" {
+		sshCmd += " -p" + port
+	}
+
+	sshCmd += " " + hostname
+	rootCmd.SetUsageTemplate(usageTmpl)
+	rootCmd.SetUsageFunc(func(c *cobra.Command) error {
+		t := template.New("usage")
+		t.Funcs(templateFuncs)
+		template.Must(t.Parse(c.UsageTemplate()))
+		return t.Execute(c.OutOrStderr(), struct {
+			*cobra.Command
+			SSHCommand string
+		}{
+			Command:    c,
+			SSHCommand: sshCmd,
+		})
+	})
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(
 		hookCommand(),
