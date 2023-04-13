@@ -15,6 +15,9 @@ docker run \
   --name=soft-serve \
   --volume /path/to/data:/soft-serve \
   --publish 23231:23231 \
+  --publish 9418:9418 \
+  --publish 8080:8080 \
+  --publish 8081:8081 \
   --restart unless-stopped \
   charmcli/soft-serve:latest
 ```
@@ -32,6 +35,9 @@ services:
       - /path/to/data:/soft-serve
     ports:
       - 23231:23231
+      - 9418:9418
+      - 8080:8080
+      - 8081:8081
     restart: unless-stopped
 ```
 

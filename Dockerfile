@@ -10,9 +10,8 @@ WORKDIR /soft-serve
 VOLUME /soft-serve
 
 # Environment variables
-ENV SOFT_SERVE_KEY_PATH "/soft-serve/ssh/soft_serve_server_ed25519"
+ENV SOFT_SERVE_DATA_PATH "/soft-serve"
 ENV SOFT_SERVE_INITIAL_ADMIN_KEY ""
-ENV SOFT_SERVE_REPO_PATH "/soft-serve/repos"
 
 # Expose ports
 # SSH
