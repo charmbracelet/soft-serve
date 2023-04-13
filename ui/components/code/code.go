@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/alecthomas/chroma/lexers"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	gansi "github.com/charmbracelet/glamour/ansi"
@@ -98,10 +99,18 @@ func (r *Code) Init() tea.Cmd {
 // Update implements tea.Model.
 func (r *Code) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		// Recalculate content width and line wrap.
 		cmds = append(cmds, r.Init())
+	case tea.KeyMsg:
+		// Viewport doesn't handle these keys, so we do it here.
+		switch {
+		case key.Matches(msg, r.common.KeyMap.GotoTop):
+			r.GotoTop()
+		case key.Matches(msg, r.common.KeyMap.GotoBottom):
+			r.GotoBottom()
+		}
 	}
 	v, cmd := r.Viewport.Update(msg)
 	r.Viewport = v.(*vp.Viewport)

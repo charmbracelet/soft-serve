@@ -131,9 +131,9 @@ func (f *Files) ShortHelp() []key.Binding {
 // FullHelp implements help.KeyMap.
 func (f *Files) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
+	copyKey := f.common.KeyMap.Copy
 	switch f.activeView {
 	case filesViewFiles:
-		copyKey := f.common.KeyMap.Copy
 		copyKey.SetHelp("c", "copy name")
 		k := f.selector.KeyMap
 		b = append(b, []key.Binding{
@@ -154,7 +154,6 @@ func (f *Files) FullHelp() [][]key.Binding {
 			},
 		}...)
 	case filesViewContent:
-		copyKey := f.common.KeyMap.Copy
 		copyKey.SetHelp("c", "copy content")
 		k := f.code.KeyMap
 		b = append(b, []key.Binding{
@@ -171,6 +170,8 @@ func (f *Files) FullHelp() [][]key.Binding {
 		lc := []key.Binding{
 			k.Down,
 			k.Up,
+			f.common.KeyMap.GotoTop,
+			f.common.KeyMap.GotoBottom,
 			copyKey,
 		}
 		lexer := lexers.Match(f.currentContent.ext)
