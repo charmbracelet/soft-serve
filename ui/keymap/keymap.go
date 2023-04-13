@@ -4,18 +4,20 @@ import "github.com/charmbracelet/bubbles/key"
 
 // KeyMap is a map of key bindings for the UI.
 type KeyMap struct {
-	Quit      key.Binding
-	Up        key.Binding
-	Down      key.Binding
-	UpDown    key.Binding
-	LeftRight key.Binding
-	Arrows    key.Binding
-	Select    key.Binding
-	Section   key.Binding
-	Back      key.Binding
-	PrevPage  key.Binding
-	NextPage  key.Binding
-	Help      key.Binding
+	Quit       key.Binding
+	Up         key.Binding
+	Down       key.Binding
+	UpDown     key.Binding
+	LeftRight  key.Binding
+	Arrows     key.Binding
+	GotoTop    key.Binding
+	GotoBottom key.Binding
+	Select     key.Binding
+	Section    key.Binding
+	Back       key.Binding
+	PrevPage   key.Binding
+	NextPage   key.Binding
+	Help       key.Binding
 
 	SelectItem key.Binding
 	BackItem   key.Binding
@@ -100,6 +102,28 @@ func DefaultKeyMap() *KeyMap {
 		key.WithHelp(
 			"↑←↓→",
 			"navigate",
+		),
+	)
+
+	km.GotoTop = key.NewBinding(
+		key.WithKeys(
+			"home",
+			"g",
+		),
+		key.WithHelp(
+			"g/home",
+			"goto top",
+		),
+	)
+
+	km.GotoBottom = key.NewBinding(
+		key.WithKeys(
+			"end",
+			"G",
+		),
+		key.WithHelp(
+			"G/end",
+			"goto bottom",
 		),
 	)
 

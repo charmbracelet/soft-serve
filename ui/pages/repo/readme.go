@@ -62,6 +62,8 @@ func (r *Readme) FullHelp() [][]key.Binding {
 		{
 			k.Down,
 			k.Up,
+			r.common.KeyMap.GotoTop,
+			r.common.KeyMap.GotoBottom,
 		},
 	}
 	return b
