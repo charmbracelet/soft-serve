@@ -206,10 +206,10 @@ A [Docker image][docker] is also available.
 Configuring Soft Serve is simple and straightforward. Use the SSH command-line
 interface to manage access settings, users, and repos.
 
-For more info try `ssh localhost -i ~/.ssh/id_ed25519 -p23231 help`. Make sure
+For more info try `ssh localhost -i ~/.ssh/id_ed25519 -p 23231 help`. Make sure
 you use your key here.
 
-> **Note** The `-i` and `-p` parts will be omitted in the examples below for
+> **Note** The `-i` parts will be omitted in the examples below for
 > brevity.
 
 ### Access Levels
@@ -245,7 +245,7 @@ $ ssh localhost settings
 Manage server settings
 
 Usage:
-  ssh -p23231 localhost settings [command]
+  ssh -p 23231 localhost settings [command]
 
 Available Commands:
   allow-keyless Set or get allow keyless access to repositories
@@ -254,7 +254,7 @@ Available Commands:
 Flags:
   -h, --help   help for settings
 
-Use "ssh -p23231 localhost settings [command] --help" for more information about a command.
+Use "ssh -p 23231 localhost settings [command] --help" for more information about a command.
 ```
 
 > **Note** These settings can only be changed by admins.
@@ -277,17 +277,17 @@ To create a new user use simply use `user create`:
 
 ```sh
 # Create a new user
-ssh -p23231 localhost user create beatrice
+ssh -p 23231 localhost user create beatrice
 
 # Add user keys
-ssh -p23231 localhost user add-pubkey beatrice ssh-rsa AAAAB3Nz...
-ssh -p23231 localhost user add-pubkey beatrice ssh-ed25519 AAAA...
+ssh -p 23231 localhost user add-pubkey beatrice ssh-rsa AAAAB3Nz...
+ssh -p 23231 localhost user add-pubkey beatrice ssh-ed25519 AAAA...
 
 # Create another user with public key
-ssh -p23231 localhost user create frankie '-k "ssh-ed25519 AAAATzN..."'
+ssh -p 23231 localhost user create frankie '-k "ssh-ed25519 AAAATzN..."'
 
 # Need help?
-ssh -p23231 localhost user help
+ssh -p 23231 localhost user help
 ```
 
 Once a user has access, they get `read-only` access to public repositories. And
@@ -297,16 +297,16 @@ Non-admin users can manage their keys using the `pubkey` command:
 
 ```sh
 # List user keys
-ssh -p23231 localhost pubkey list
+ssh -p 23231 localhost pubkey list
 
 # Add key
-ssh -p23231 localhost pubkey add ssh-ed25519 AAAA...
+ssh -p 23231 localhost pubkey add ssh-ed25519 AAAA...
 
 # Wanna change your username?
-ssh -p23231 localhost set-username yolo
+ssh -p 23231 localhost set-username yolo
 
 # To display user info
-ssh -p23231 localhost info
+ssh -p 23231 localhost info
 ```
 
 ## Repositories
@@ -315,11 +315,11 @@ You can manage repositories using the `repo` command.
 
 ```sh
 # Run repo help
-$ ssh -p23231 localhost repo help
+$ ssh -p 23231 localhost repo help
 Manage repositories
 
 Usage:
-  ssh -p23231 localhost repo [command]
+  ssh -p 23231 localhost repo [command]
 
 Aliases:
   repo, repos, repository, repositories
@@ -345,7 +345,7 @@ Available Commands:
 Flags:
   -h, --help   help for repo
 
-Use "ssh -p23231 localhost repo [command] --help" for more information about a command.
+Use "ssh -p 23231 localhost repo [command] --help" for more information about a command.
 ```
 
 ### Creating Repositories
@@ -355,16 +355,16 @@ permission. You can use the `repo create <repo>`:
 
 ```sh
 # Create a new repository
-ssh -p23231 localhost repo create icecream
+ssh -p 23231 localhost repo create icecream
 
 # Create a repo with description
-ssh -p23231 localhost repo create icecream '-d "This is an Ice Cream description"'
+ssh -p 23231 localhost repo create icecream '-d "This is an Ice Cream description"'
 
 # ... and project name
-ssh -p23231 localhost repo create icecream '-d "This is an Ice Cream description"' '-n "Ice Cream"'
+ssh -p 23231 localhost repo create icecream '-d "This is an Ice Cream description"' '-n "Ice Cream"'
 
 # I need my repository private!
-ssh -p23231 localhost repo create icecream -p '-d "This is an Ice Cream description"' '-n "Ice Cream"'
+ssh -p 23231 localhost repo create icecream -p '-d "This is an Ice Cream description"' '-n "Ice Cream"'
 ```
 
 Or you can add your Soft Serve server as a remote to any existing repo, given
@@ -385,7 +385,7 @@ Repositories can be nested too:
 
 ```sh
 # Create a new nested repository
-ssh -p23231 localhost repo create charmbracelet/icecream
+ssh -p 23231 localhost repo create charmbracelet/icecream
 
 # Or ...
 git remote add charm ssh://localhost:23231/charmbracelet/icecream
@@ -397,7 +397,7 @@ git push charm main
 You can delete repositories using the `repo delete <repo>` command.
 
 ```sh
-ssh -p23231 localhost repo delete iceacream
+ssh -p 23231 localhost repo delete iceacream
 ```
 
 ### Renaming Repositories
@@ -405,7 +405,7 @@ ssh -p23231 localhost repo delete iceacream
 Use the `repo rename <old> <new>` command to rename existing repositories.
 
 ```sh
-ssh -p23231 localhost repo rename iceacream vanilla
+ssh -p 23231 localhost repo rename iceacream vanilla
 ```
 
 ### Repository Collaborators
@@ -417,13 +417,13 @@ Use the `repo collab <repo> <username>` command to add/remove user collaborators
 
 ```sh
 # Add collaborator to soft-serve
-ssh -p23231 localhost repo collab add soft-serve frankie
+ssh -p 23231 localhost repo collab add soft-serve frankie
 
 # Remove collaborator
-ssh -p23231 localhost repo collab remove soft-serve beatrice
+ssh -p 23231 localhost repo collab remove soft-serve beatrice
 
 # List collaborators
-ssh -p23231 localhost repo collab list
+ssh -p 23231 localhost repo collab list
 ```
 
 ### Repository metadata
@@ -433,20 +433,20 @@ etc using the `repo <command>` command.
 
 ```sh
 # Set description for repo
-ssh -p23231 localhost repo description icecream "This is a new description"
+ssh -p 23231 localhost repo description icecream "This is a new description"
 
 # Hide repo from listing
-ssh -p23231 localhost repo icecream hide true
+ssh -p 23231 localhost repo icecream hide true
 
 # List repository info (branches, tags, description, etc)
-ssh -p23231 localhost repo icecream info
+ssh -p 23231 localhost repo icecream info
 ```
 
 To make a repository private, use `repo private <repo> [true|false]`. Private
 repos can only be accessed by admins and collaborators.
 
 ```sh
-ssh -p23231 localhost repo icecream private true
+ssh -p 23231 localhost repo icecream private true
 ```
 
 ### Repository Branches & Tags
@@ -460,20 +460,20 @@ To print a file tree for the project, just use the `repo tree` command along wit
 the repo name as the SSH command to your Soft Serve server:
 
 ```sh
-ssh -p23231 localhost repo tree soft-serve
+ssh -p 23231 localhost repo tree soft-serve
 ```
 
 You can also specify the sub-path and a specific reference or branch.
 
 ```sh
-ssh -p23231 localhost repo tree soft-serve server/config
-ssh -p23231 localhost repo tree soft-serve main server/config
+ssh -p 23231 localhost repo tree soft-serve server/config
+ssh -p 23231 localhost repo tree soft-serve main server/config
 ```
 
 From there, you can print individual files using the `repo blob` command:
 
 ```sh
-ssh -p23231 localhost repo blob soft-serve cmd/soft/root.go
+ssh -p 23231 localhost repo blob soft-serve cmd/soft/root.go
 ```
 
 You can add the `-c` flag to enable syntax coloring and `-l` to print line
