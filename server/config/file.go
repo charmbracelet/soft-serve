@@ -18,7 +18,7 @@ ssh:
   listen_addr: "{{ .SSH.ListenAddr }}"
 
   # The public URL of the SSH server.
-  # This is the address will be used to clone repositories.
+  # This is the address that will be used to clone repositories.
   public_url: "{{ .SSH.PublicURL }}"
 
   # The path to the SSH server's private key.
@@ -66,7 +66,7 @@ http:
   tls_cert_path: "{{ .HTTP.TLSCertPath }}"
 
   # The public URL of the HTTP server.
-  # This is the address will be used to clone repositories.
+  # This is the address that will be used to clone repositories.
   # Make sure to use https:// if you are using TLS.
   public_url: "{{ .HTTP.PublicURL }}"
 
