@@ -4,9 +4,9 @@ import "github.com/spf13/cobra"
 
 func hiddenCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "hide REPOSITORY [TRUE|FALSE]",
+		Use:     "hidden REPOSITORY [TRUE|FALSE]",
 		Short:   "Hide or unhide a repository",
-		Aliases: []string{"hidden"},
+		Aliases: []string{"hide"},
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := fromContext(cmd)
