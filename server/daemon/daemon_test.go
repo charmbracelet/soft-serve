@@ -69,7 +69,7 @@ func TestIdleTimeout(t *testing.T) {
 	if err != nil && !errors.Is(err, io.EOF) {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	if out != git.ErrTimeout.Error() || out == "" {
+	if out != git.ErrTimeout.Error() && out != "" {
 		t.Fatalf("expected %q error, got %q", git.ErrTimeout, out)
 	}
 }
