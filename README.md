@@ -209,8 +209,8 @@ interface to manage access settings, users, and repos.
 For more info try `ssh localhost -i ~/.ssh/id_ed25519 -p 23231 help`. Make sure
 you use your key here.
 
-> **Note** The `-i` parts will be omitted in the examples below for
-> brevity.
+> **Note** The `-i` part will be omitted in the examples below for brevity. You
+> can add your server settings to your sshconfig for quicker access.
 
 ### Access Levels
 
@@ -273,7 +273,7 @@ SSH Public Key authentication `read-only` access to public repos.
 Admins can manage users and manage their keys. Once a user is created and has
 access to the server, they can manage their own keys and settings.
 
-To create a new user use simply use `user create`:
+To create a new user simply use `user create`:
 
 ```sh
 # Create a new user
@@ -350,8 +350,8 @@ Use "ssh -p 23231 localhost repo [command] --help" for more information about a 
 
 ### Creating Repositories
 
-To create a repository, first make sure you have at least a `read-write`
-permission. You can use the `repo create <repo>`:
+To create a repository, first make sure you are an admin or a registered user.
+Use the `repo create <repo>` command to create a new repository:
 
 ```sh
 # Create a new repository
@@ -365,6 +365,9 @@ ssh -p 23231 localhost repo create icecream '-d "This is an Ice Cream descriptio
 
 # I need my repository private!
 ssh -p 23231 localhost repo create icecream -p '-d "This is an Ice Cream description"' '-n "Ice Cream"'
+
+# Help?
+ssh -p 23231 localhost repo create -h
 ```
 
 Or you can add your Soft Serve server as a remote to any existing repo, given
@@ -413,7 +416,7 @@ ssh -p 23231 localhost repo rename iceacream vanilla
 Sometimes you want to restrict write access to certain repositories. This can
 be achieved by adding a collaborator to your repository.
 
-Use the `repo collab <repo> <username>` command to add/remove user collaborators.
+Use the `repo collab <command> <repo>` command to manage repo collaborators.
 
 ```sh
 # Add collaborator to soft-serve
@@ -423,7 +426,7 @@ ssh -p 23231 localhost repo collab add soft-serve frankie
 ssh -p 23231 localhost repo collab remove soft-serve beatrice
 
 # List collaborators
-ssh -p 23231 localhost repo collab list
+ssh -p 23231 localhost repo collab list soft-serve
 ```
 
 ### Repository metadata
@@ -436,7 +439,7 @@ etc using the `repo <command>` command.
 ssh -p 23231 localhost repo description icecream "This is a new description"
 
 # Hide repo from listing
-ssh -p 23231 localhost repo icecream hide true
+ssh -p 23231 localhost repo hidden icecream true
 
 # List repository info (branches, tags, description, etc)
 ssh -p 23231 localhost repo icecream info
@@ -481,7 +484,10 @@ numbers:
 
 ```sh
 ssh -p 23231 localhost repo blob soft-serve cmd/soft/root.go -c -l
+
 ```
+
+Use `--raw` to print raw file contents. This is useful for dumping binary data.
 
 ## The Soft Serve TUI
 
@@ -490,14 +496,14 @@ ssh -p 23231 localhost repo blob soft-serve cmd/soft/root.go -c -l
 Soft Serve serves a TUI over SSH for browsing repos, viewing files and commits,
 and grabbing clone commands:
 
-```
+```sh
 ssh localhost -p 23231
 ```
 
 It's also possible to “link” to a specific repo:
 
-```
-ssh localhost -t -p 23231 REPO
+```sh
+ssh -p 23231 localhost -t soft-serve
 ```
 
 You can copy text to your clipboard over SSH. For instance, you can press
@@ -518,7 +524,7 @@ Until we sort this out you’ll either need an SHA-1 RSA key or a key with
 another algorithm, e.g. Ed25519. Not sure what type of keys you have?
 You can check with the following:
 
-```
+```sh
 $ find ~/.ssh/id_*.pub -exec ssh-keygen -l -f {} \;
 ```
 
