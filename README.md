@@ -16,7 +16,7 @@ A tasty, self-hostable Git server for the command line. 🍦
   <img src="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0" alt="Soft Serve screencast">
 </picture>
 
-- Glamorous clean SSH TUI
+- Easy to navigate TUI available over SSH
 - Clone repos over SSH, HTTP, or Git protocol
 - Manage repos with SSH
 - Create repos on demand with SSH or `git push`
@@ -290,8 +290,8 @@ ssh -p 23231 localhost user create frankie '-k "ssh-ed25519 AAAATzN..."'
 ssh -p 23231 localhost user help
 ```
 
-Once a user has access, they get `read-only` access to public repositories. And
-can create new repositories on the server.
+Once a user has access, they get `read-only` access to public repositories.
+They can also create new repositories on the server.
 
 Non-admin users can manage their keys using the `pubkey` command:
 
@@ -400,7 +400,7 @@ git push charm main
 You can delete repositories using the `repo delete <repo>` command.
 
 ```sh
-ssh -p 23231 localhost repo delete iceacream
+ssh -p 23231 localhost repo delete icecream
 ```
 
 ### Renaming Repositories
@@ -408,7 +408,7 @@ ssh -p 23231 localhost repo delete iceacream
 Use the `repo rename <old> <new>` command to rename existing repositories.
 
 ```sh
-ssh -p 23231 localhost repo rename iceacream vanilla
+ssh -p 23231 localhost repo rename icecream vanilla
 ```
 
 ### Repository Collaborators
