@@ -16,16 +16,13 @@ A tasty, self-hostable Git server for the command line. 🍦
   <img src="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0" alt="Soft Serve screencast">
 </picture>
 
-- Easy to navigate TUI available over SSH
+- Super fast setup to get your repos hosted quickly
+- Easy access control using SSH public keys
+- Browse repos, files and commits with SSH-accessible TUI
 - Clone repos over SSH, HTTP, or Git protocol
-- Manage repos with SSH
+- Manage repos with SSH commands
 - Create repos on demand with SSH or `git push`
-- Browse repos, files and commits with SSH-accessible
-- Print files over SSH with or without syntax highlighting and line numbers
-- Easy access control with SSH
-  - Allow/disallow anonymous access
-  - Add collaborators with SSH public keys
-  - Repos can be public or private
+- Public and private repo support
 
 ## Where can I see it?
 
@@ -206,16 +203,13 @@ A [Docker image][docker] is also available.
 Configuring Soft Serve is simple and straightforward. Use the SSH command-line
 interface to manage access settings, users, and repos.
 
-For more info try `ssh localhost -i ~/.ssh/id_ed25519 -p 23231 help`. Make sure
-you use your key here.
-
-> **Note** The `-i` part will be omitted in the examples below for brevity. You
-> can add your server settings to your sshconfig for quicker access.
+For more info try `ssh localhost -p 23231 help`. Make sure you use your key
+here.
 
 ### Access Levels
 
-Soft Serve offers a simple access control. There are four access levels,
-no-access, read-only, read-write, and admin-access.
+Soft Serve offers a simple access control. Users can have one of four access
+levels:
 
 `admin-access` has full control of the server and can make changes to users and repos.
 
@@ -259,14 +253,14 @@ Use "ssh -p 23231 localhost settings [command] --help" for more information abou
 
 > **Note** These settings can only be changed by admins.
 
-When `allow-keyless` is disabled, connections that don't use SSH Public Key
+When `allow-keyless` is disabled, connections that don't use SSH public key
 authentication will get denied. This means cloning repos over HTTP(s) or git://
 will get denied.
 
 Meanwhile, `anon-access` controls the access level granted to connections that
-use SSH Public Key authentication but are not registered users. The default
+use SSH public key authentication but are not registered users. The default
 setting for this is `read-only`. This will grant anonymous connections that use
-SSH Public Key authentication `read-only` access to public repos.
+SSH public key authentication `read-only` access to public repos.
 
 ## Authorization
 
