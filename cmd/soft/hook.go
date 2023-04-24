@@ -176,28 +176,20 @@ func commonInit() (c *gossh.Client, s *gossh.Session, err error) {
 
 func newClient(cfg *config.Config) (*gossh.Client, error) {
 	// Only accept the server's host key.
-	pk, err := keygen.New(cfg.SSH.KeyPath, nil, keygen.Ed25519)
+	pk, err := keygen.New(cfg.SSH.KeyPath, keygen.WithKeyType(keygen.Ed25519))
 	if err != nil {
 		return nil, err
 	}
-	hostKey, err := gossh.ParsePrivateKey(pk.PrivateKeyPEM())
-	if err != nil {
-		return nil, err
-	}
-	ik, err := keygen.New(cfg.SSH.InternalKeyPath, nil, keygen.Ed25519)
-	if err != nil {
-		return nil, err
-	}
-	k, err := gossh.ParsePrivateKey(ik.PrivateKeyPEM())
+	ik, err := keygen.New(cfg.SSH.InternalKeyPath, keygen.WithKeyType(keygen.Ed25519))
 	if err != nil {
 		return nil, err
 	}
 	cc := &gossh.ClientConfig{
 		User: "internal",
 		Auth: []gossh.AuthMethod{
-			gossh.PublicKeys(k),
+			gossh.PublicKeys(ik.Signer()),
 		},
-		HostKeyCallback: gossh.FixedHostKey(hostKey.PublicKey()),
+		HostKeyCallback: gossh.FixedHostKey(pk.PublicKey()),
 	}
 	c, err := gossh.Dial("tcp", cfg.SSH.ListenAddr, cc)
 	if err != nil {

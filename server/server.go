@@ -52,26 +52,26 @@ func NewServer(ctx context.Context, cfg *config.Config) (*Server, error) {
 		cfg = cfg.WithBackend(sb)
 
 		// Create internal key.
-		ikp, err := keygen.NewWithWrite(
+		ikp, err := keygen.New(
 			cfg.SSH.InternalKeyPath,
-			nil,
-			keygen.Ed25519,
+			keygen.WithKeyType(keygen.Ed25519),
+			keygen.WithWrite(),
 		)
 		if err != nil {
 			return nil, err
 		}
-		cfg.InternalPublicKey = string(ikp.PublicKey())
+		cfg.InternalPublicKey = ikp.AuthorizedKey()
 
 		// Create client key.
-		ckp, err := keygen.NewWithWrite(
+		ckp, err := keygen.New(
 			cfg.SSH.ClientKeyPath,
-			nil,
-			keygen.Ed25519,
+			keygen.WithKeyType(keygen.Ed25519),
+			keygen.WithWrite(),
 		)
 		if err != nil {
 			return nil, err
 		}
-		cfg.ClientPublicKey = string(ckp.PublicKey())
+		cfg.ClientPublicKey = ckp.AuthorizedKey()
 	}
 
 	srv := &Server{
