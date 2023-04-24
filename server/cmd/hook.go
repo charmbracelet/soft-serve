@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/charmbracelet/ssh"
 	"github.com/spf13/cobra"
-	gossh "golang.org/x/crypto/ssh"
 )
 
 // hookCommand handles Soft Serve internal API git hook requests.
@@ -118,16 +117,12 @@ func hookCommand() *cobra.Command {
 func checkIfInternal(cmd *cobra.Command, _ []string) error {
 	cfg, s := fromContext(cmd)
 	pk := s.PublicKey()
-	kp, err := keygen.New(cfg.SSH.InternalKeyPath, nil, keygen.Ed25519)
+	kp, err := keygen.New(cfg.SSH.InternalKeyPath, keygen.WithKeyType(keygen.Ed25519))
 	if err != nil {
 		logger.Errorf("failed to read internal key: %v", err)
 		return err
 	}
-	priv, err := gossh.ParsePrivateKey(kp.PrivateKeyPEM())
-	if err != nil {
-		return err
-	}
-	if !ssh.KeysEqual(pk, priv.PublicKey()) {
+	if !ssh.KeysEqual(pk, kp.PublicKey()) {
 		return ErrUnauthorized
 	}
 	return nil
