@@ -141,8 +141,9 @@ func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
 	)
 
 	user, _ := cfg.Backend.UserByPublicKey(s.PublicKey())
-	if user != nil {
-		if user.IsAdmin() {
+	isAdmin := isPublicKeyAdmin(cfg, s.PublicKey()) || (user != nil && user.IsAdmin())
+	if user != nil || isAdmin {
+		if isAdmin {
 			rootCmd.AddCommand(
 				settingsCommand(),
 				userCommand(),
@@ -180,13 +181,20 @@ func checkIfReadable(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func isPublicKeyAdmin(cfg *config.Config, pk ssh.PublicKey) bool {
+	for _, k := range cfg.InitialAdminKeys {
+		pk2, _, err := backend.ParseAuthorizedKey(k)
+		if err == nil && backend.KeysEqual(pk, pk2) {
+			return true
+		}
+	}
+	return false
+}
+
 func checkIfAdmin(cmd *cobra.Command, _ []string) error {
 	cfg, s := fromContext(cmd)
-	ak := backend.MarshalAuthorizedKey(s.PublicKey())
-	for _, k := range cfg.InitialAdminKeys {
-		if k == ak {
-			return nil
-		}
+	if isPublicKeyAdmin(cfg, s.PublicKey()) {
+		return nil
 	}
 
 	user, _ := cfg.Backend.UserByPublicKey(s.PublicKey())
