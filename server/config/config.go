@@ -1,6 +1,8 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -104,41 +106,8 @@ type Config struct {
 	ClientPublicKey string `yaml:"-"`
 }
 
-// ParseConfig parses the configuration from the given file.
-func ParseConfig(path string) (*Config, error) {
-	cfg := &Config{}
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close() // nolint: errcheck
-	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
-		return nil, err
-	}
-
-	if err := cfg.init(); err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
-// WriteConfig writes the configuration to the given file.
-func WriteConfig(path string, cfg *Config) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return err
-	}
-	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o600) // nolint: errcheck
-}
-
-// DefaultConfig returns a Config with the values populated with the defaults
-// or specified environment variables.
-func DefaultConfig() *Config {
-	dataPath := os.Getenv("SOFT_SERVE_DATA_PATH")
-	if dataPath == "" {
-		dataPath = "data"
-	}
-
+func parseConfig(path string) (*Config, error) {
+	dataPath := filepath.Dir(path)
 	cfg := &Config{
 		Name:     "Soft Serve",
 		DataPath: dataPath,
@@ -166,20 +135,65 @@ func DefaultConfig() *Config {
 		},
 	}
 
-	cp := filepath.Join(cfg.DataPath, "config.yaml")
-	f, err := os.Open(cp)
-	if err == nil {
-		defer f.Close() // nolint: errcheck
-		if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
-			log.Error("failed to decode config", "err", err)
-		}
+	f, err := os.Open(path)
+	if err != nil {
+		return cfg, err
+	}
+
+	defer f.Close() // nolint: errcheck
+	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
+		return cfg, fmt.Errorf("decode config: %w", err)
 	}
 
 	// Override with environment variables
 	if err := env.Parse(cfg, env.Options{
 		Prefix: "SOFT_SERVE_",
 	}); err != nil {
-		log.Fatal(err)
+		return cfg, fmt.Errorf("parse environment variables: %w", err)
+	}
+
+	// Reset datapath to config dir.
+	// This is necessary because the environment variable may be set to
+	// a different directory.
+	cfg.DataPath = dataPath
+
+	return cfg, nil
+}
+
+// ParseConfig parses the configuration from the given file.
+func ParseConfig(path string) (*Config, error) {
+	cfg, err := parseConfig(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+// WriteConfig writes the configuration to the given file.
+func WriteConfig(path string, cfg *Config) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o600) // nolint: errcheck
+}
+
+// DefaultConfig returns a Config with the values populated with the defaults
+// or specified environment variables.
+func DefaultConfig() *Config {
+	dataPath := os.Getenv("SOFT_SERVE_DATA_PATH")
+	if dataPath == "" {
+		dataPath = "data"
+	}
+
+	cp := filepath.Join(dataPath, "config.yaml")
+	cfg, err := parseConfig(cp)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Errorf("failed to parse config: %v", err)
 	}
 
 	// Write config if it doesn't exist
@@ -189,7 +203,7 @@ func DefaultConfig() *Config {
 		}
 	}
 
-	if err := cfg.init(); err != nil {
+	if err := cfg.validate(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -202,7 +216,7 @@ func (c *Config) WithBackend(backend backend.Backend) *Config {
 	return c
 }
 
-func (c *Config) init() error {
+func (c *Config) validate() error {
 	// Use absolute paths
 	if !filepath.IsAbs(c.DataPath) {
 		dp, err := filepath.Abs(c.DataPath)
