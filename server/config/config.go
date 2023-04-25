@@ -125,6 +125,9 @@ func ParseConfig(path string) (*Config, error) {
 
 // WriteConfig writes the configuration to the given file.
 func WriteConfig(path string, cfg *Config) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
 	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o600) // nolint: errcheck
 }
 
@@ -162,6 +165,7 @@ func DefaultConfig() *Config {
 			ListenAddr: ":8081",
 		},
 	}
+
 	cp := filepath.Join(cfg.DataPath, "config.yaml")
 	f, err := os.Open(cp)
 	if err == nil {
@@ -169,16 +173,20 @@ func DefaultConfig() *Config {
 		if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 			log.Error("failed to decode config", "err", err)
 		}
-	} else {
-		defer func() {
-			os.WriteFile(cp, []byte(newConfigFile(cfg)), 0o600) // nolint: errcheck
-		}()
 	}
 
+	// Override with environment variables
 	if err := env.Parse(cfg, env.Options{
 		Prefix: "SOFT_SERVE_",
 	}); err != nil {
 		log.Fatal(err)
+	}
+
+	// Write config if it doesn't exist
+	if _, err := os.Stat(cp); os.IsNotExist(err) {
+		if err := WriteConfig(cp, cfg); err != nil {
+			log.Fatal("failed to write config", "err", err)
+		}
 	}
 
 	if err := cfg.init(); err != nil {
