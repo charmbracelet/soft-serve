@@ -141,9 +141,6 @@ func commonInit() (c *gossh.Client, s *gossh.Session, err error) {
 		return
 	}
 
-	// Use absolute path.
-	cfg.DataPath = filepath.Dir(configPath)
-
 	// Git runs the hook within the repository's directory.
 	// Get the working directory to determine the repository name.
 	wd, err := os.Getwd()
@@ -161,7 +158,7 @@ func commonInit() (c *gossh.Client, s *gossh.Session, err error) {
 		return
 	}
 	repoName := strings.TrimPrefix(wd, rs)
-	repoName = strings.TrimPrefix(repoName, fmt.Sprintf("%c", os.PathSeparator))
+	repoName = strings.TrimPrefix(repoName, string(os.PathSeparator))
 	c, err = newClient(cfg)
 	if err != nil {
 		return

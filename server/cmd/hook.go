@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/keygen"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/charmbracelet/ssh"
 	"github.com/spf13/cobra"
@@ -122,7 +123,7 @@ func checkIfInternal(cmd *cobra.Command, _ []string) error {
 		logger.Errorf("failed to read internal key: %v", err)
 		return err
 	}
-	if !ssh.KeysEqual(pk, kp.PublicKey()) {
+	if !backend.KeysEqual(pk, kp.PublicKey()) {
 		return ErrUnauthorized
 	}
 	return nil
