@@ -184,6 +184,11 @@ http:
 stats:
   # The address on which the stats server will listen.
   listen_addr: ":8081"
+
+# Additional admin keys.
+#initial_admin_keys:
+#  - "ssh-rsa AAAAB3NzaC1yc2..."
+
 ```
 
 You can also use environment variables, to override these settings. All server
