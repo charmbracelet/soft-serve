@@ -75,6 +75,9 @@ stats:
   # The address on which the stats server will listen.
   listen_addr: "{{ .Stats.ListenAddr }}"
 
+# Additional admin keys.
+#initial_admin_keys:
+#  - "ssh-rsa AAAAB3NzaC1yc2..."
 `))
 )
 
