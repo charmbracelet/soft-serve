@@ -46,11 +46,10 @@ func createKeyPair(tb testing.TB) (ssh.PublicKey, string) {
 	tb.Helper()
 	is := is.New(tb)
 	keyDir := tb.TempDir()
-	kp, err := keygen.NewWithWrite(filepath.Join(keyDir, "id"), nil, keygen.Ed25519)
+	fp := filepath.Join(keyDir, "id_ed25519")
+	kp, err := keygen.New(fp, keygen.WithKeyType(keygen.Ed25519), keygen.WithWrite())
 	is.NoErr(err)
-	pubkey, _, _, _, err := ssh.ParseAuthorizedKey(kp.PublicKey())
-	is.NoErr(err)
-	return pubkey, filepath.Join(keyDir, "id_ed25519")
+	return kp.PublicKey(), fp
 }
 
 func authorizedKey(pk ssh.PublicKey) string {
