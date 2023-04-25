@@ -89,7 +89,7 @@ type Config struct {
 	Stats StatsConfig `envPrefix:"STATS_" yaml:"stats"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
-	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEY" envSeparator:"\n" yaml:"initial_admin_keys"`
+	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" yaml:"-"`
