@@ -136,13 +136,11 @@ func parseConfig(path string) (*Config, error) {
 	}
 
 	f, err := os.Open(path)
-	if err != nil {
-		return cfg, err
-	}
-
-	defer f.Close() // nolint: errcheck
-	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
-		return cfg, fmt.Errorf("decode config: %w", err)
+	if err == nil {
+		defer f.Close() // nolint: errcheck
+		if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
+			return cfg, fmt.Errorf("decode config: %w", err)
+		}
 	}
 
 	// Override with environment variables
@@ -150,6 +148,13 @@ func parseConfig(path string) (*Config, error) {
 		Prefix: "SOFT_SERVE_",
 	}); err != nil {
 		return cfg, fmt.Errorf("parse environment variables: %w", err)
+	}
+
+	for _, key := range cfg.InitialAdminKeys {
+		if _, _, err := backend.ParseAuthorizedKey(key); err != nil {
+			log.Error("invalid initial admin key", "err", err)
+		}
+		log.Debugf("found initial admin key: %q", key)
 	}
 
 	// Reset datapath to config dir.

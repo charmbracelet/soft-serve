@@ -147,19 +147,12 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 	}
 
 	ak := backend.MarshalAuthorizedKey(pk)
-	defer func() {
-		publicKeyCounter.WithLabelValues(ak, ctx.User(), strconv.FormatBool(allowed)).Inc()
-	}()
-
-	for _, k := range s.cfg.InitialAdminKeys {
-		if k == ak {
-			allowed = true
-			return
-		}
-	}
+	defer func(allowed *bool) {
+		publicKeyCounter.WithLabelValues(ak, ctx.User(), strconv.FormatBool(*allowed)).Inc()
+	}(&allowed)
 
 	ac := s.cfg.Backend.AccessLevelByPublicKey("", pk)
-	logger.Debugf("access level for %s: %d", ak, ac)
+	logger.Debugf("access level for %q: %s", ak, ac)
 	allowed = ac >= backend.ReadOnlyAccess
 	return
 }
