@@ -21,8 +21,9 @@ import (
 
 var (
 	migrateConfig = &cobra.Command{
-		Use:   "migrate-config",
-		Short: "Migrate config to new format",
+		Use:    "migrate-config",
+		Short:  "Migrate config to new format",
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			keyPath := os.Getenv("SOFT_SERVE_KEY_PATH")
 			reposPath := os.Getenv("SOFT_SERVE_REPO_PATH")
