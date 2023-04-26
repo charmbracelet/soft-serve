@@ -11,6 +11,7 @@ func importCommand() *cobra.Command {
 	var description string
 	var projectName string
 	var mirror bool
+	var hidden bool
 
 	cmd := &cobra.Command{
 		Use:               "import REPOSITORY REMOTE",
@@ -26,6 +27,7 @@ func importCommand() *cobra.Command {
 				Description: description,
 				ProjectName: projectName,
 				Mirror:      mirror,
+				Hidden:      hidden,
 			}); err != nil {
 				return err
 			}
@@ -37,6 +39,7 @@ func importCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&private, "private", "p", false, "make the repository private")
 	cmd.Flags().StringVarP(&description, "description", "d", "", "set the repository description")
 	cmd.Flags().StringVarP(&projectName, "name", "n", "", "set the project name")
+	cmd.Flags().BoolVarP(&hidden, "hidden", "H", false, "hide the repository from the UI")
 
 	return cmd
 }

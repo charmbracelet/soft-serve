@@ -35,7 +35,7 @@ func createCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&private, "private", "p", false, "make the repository private")
 	cmd.Flags().StringVarP(&description, "description", "d", "", "set the repository description")
 	cmd.Flags().StringVarP(&projectName, "name", "n", "", "set the project name")
-	cmd.Flags().BoolVarP(&hidden, "hidden", "H", false, "hide the repository from the list")
+	cmd.Flags().BoolVarP(&hidden, "hidden", "H", false, "hide the repository from the UI")
 
 	return cmd
 }
