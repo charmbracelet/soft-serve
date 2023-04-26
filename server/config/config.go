@@ -143,6 +143,9 @@ func parseConfig(path string) (*Config, error) {
 		}
 	}
 
+	// Merge initial admin keys from both config file and environment variables.
+	initialAdminKeys := append([]string{}, cfg.InitialAdminKeys...)
+
 	// Override with environment variables
 	if err := env.Parse(cfg, env.Options{
 		Prefix: "SOFT_SERVE_",
@@ -150,12 +153,30 @@ func parseConfig(path string) (*Config, error) {
 		return cfg, fmt.Errorf("parse environment variables: %w", err)
 	}
 
-	for _, key := range cfg.InitialAdminKeys {
-		if _, _, err := backend.ParseAuthorizedKey(key); err != nil {
-			log.Error("invalid initial admin key", "err", err)
-		}
-		log.Debugf("found initial admin key: %q", key)
+	// Merge initial admin keys from environment variables.
+	if initialAdminKeysEnv := os.Getenv("SOFT_SERVE_INITIAL_ADMIN_KEYS"); initialAdminKeysEnv != "" {
+		cfg.InitialAdminKeys = append(cfg.InitialAdminKeys, initialAdminKeys...)
 	}
+
+	// Validate keys
+	pks := make([]string, 0)
+	for _, key := range cfg.InitialAdminKeys {
+		var pk string
+		if bts, err := os.ReadFile(key); err == nil {
+			// key is a file
+			pk = string(bts)
+		}
+		if _, _, err := backend.ParseAuthorizedKey(key); err == nil {
+			pk = key
+		}
+		pk = strings.TrimSpace(pk)
+		if pk != "" {
+			log.Debugf("found initial admin key: %q", key)
+			pks = append(pks, pk)
+		}
+	}
+
+	cfg.InitialAdminKeys = pks
 
 	// Reset datapath to config dir.
 	// This is necessary because the environment variable may be set to
