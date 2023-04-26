@@ -38,8 +38,7 @@ func mirrorJob(cfg *config.Config) func() {
 				cmd.AddEnvs(
 					fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
 						filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
-						// FIXME: upstream keygen appends _ed25519 to the key path.
-						cfg.SSH.ClientKeyPath+"_ed25519",
+						cfg.Internal.ClientKeyPath,
 					),
 				)
 				if _, err := cmd.RunInDir(r.Path); err != nil {

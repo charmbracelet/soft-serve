@@ -186,8 +186,7 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 			Envs: []string{
 				fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
 					filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
-					// FIXME: upstream keygen appends _ed25519 to the key path.
-					d.cfg.SSH.ClientKeyPath+"_ed25519",
+					d.cfg.Internal.ClientKeyPath,
 				),
 			},
 		},

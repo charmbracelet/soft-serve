@@ -3,9 +3,9 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
-	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/cron"
 	"github.com/charmbracelet/soft-serve/server/daemon"
+	"github.com/charmbracelet/soft-serve/server/internal"
 	sshsrv "github.com/charmbracelet/soft-serve/server/ssh"
 	"github.com/charmbracelet/soft-serve/server/stats"
 	"github.com/charmbracelet/soft-serve/server/web"
@@ -26,14 +27,15 @@ var (
 
 // Server is the Soft Serve server.
 type Server struct {
-	SSHServer   *sshsrv.SSHServer
-	GitDaemon   *daemon.GitDaemon
-	HTTPServer  *web.HTTPServer
-	StatsServer *stats.StatsServer
-	Cron        *cron.CronScheduler
-	Config      *config.Config
-	Backend     backend.Backend
-	ctx         context.Context
+	SSHServer      *sshsrv.SSHServer
+	GitDaemon      *daemon.GitDaemon
+	HTTPServer     *web.HTTPServer
+	StatsServer    *stats.StatsServer
+	InternalServer *internal.InternalServer
+	Cron           *cron.CronScheduler
+	Config         *config.Config
+	Backend        backend.Backend
+	ctx            context.Context
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -46,32 +48,10 @@ func NewServer(ctx context.Context, cfg *config.Config) (*Server, error) {
 	if cfg.Backend == nil {
 		sb, err := sqlite.NewSqliteBackend(ctx, cfg)
 		if err != nil {
-			logger.Fatal(err)
+			return nil, fmt.Errorf("create backend: %w", err)
 		}
 
 		cfg = cfg.WithBackend(sb)
-
-		// Create internal key.
-		ikp, err := keygen.New(
-			cfg.SSH.InternalKeyPath,
-			keygen.WithKeyType(keygen.Ed25519),
-			keygen.WithWrite(),
-		)
-		if err != nil {
-			return nil, err
-		}
-		cfg.InternalPublicKey = ikp.AuthorizedKey()
-
-		// Create client key.
-		ckp, err := keygen.New(
-			cfg.SSH.ClientKeyPath,
-			keygen.WithKeyType(keygen.Ed25519),
-			keygen.WithWrite(),
-		)
-		if err != nil {
-			return nil, err
-		}
-		cfg.ClientPublicKey = ckp.AuthorizedKey()
 	}
 
 	srv := &Server{
@@ -84,24 +64,29 @@ func NewServer(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Add cron jobs.
 	srv.Cron.AddFunc(jobSpecs["mirror"], mirrorJob(cfg))
 
-	srv.SSHServer, err = sshsrv.NewSSHServer(cfg, srv)
+	srv.SSHServer, err = sshsrv.NewSSHServer(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create ssh server: %w", err)
 	}
 
 	srv.GitDaemon, err = daemon.NewGitDaemon(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create git daemon: %w", err)
 	}
 
 	srv.HTTPServer, err = web.NewHTTPServer(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create http server: %w", err)
 	}
 
 	srv.StatsServer, err = stats.NewStatsServer(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create stats server: %w", err)
+	}
+
+	srv.InternalServer, err = internal.NewInternalServer(cfg, srv)
+	if err != nil {
+		return nil, fmt.Errorf("create internal server: %w", err)
 	}
 
 	return srv, nil
@@ -158,6 +143,13 @@ func (s *Server) Start() error {
 		s.Cron.Start()
 		return nil
 	})
+	errg.Go(func() error {
+		logger.Print("Starting internal server", "addr", s.Config.Internal.ListenAddr)
+		if err := start(ctx, s.InternalServer.Start); !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	})
 	return errg.Wait()
 }
 
@@ -176,6 +168,13 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	errg.Go(func() error {
 		return s.StatsServer.Shutdown(ctx)
 	})
+	errg.Go(func() error {
+		s.Cron.Stop()
+		return nil
+	})
+	errg.Go(func() error {
+		return s.InternalServer.Shutdown(ctx)
+	})
 	return errg.Wait()
 }
 
@@ -186,5 +185,10 @@ func (s *Server) Close() error {
 	errg.Go(s.HTTPServer.Close)
 	errg.Go(s.SSHServer.Close)
 	errg.Go(s.StatsServer.Close)
+	errg.Go(func() error {
+		s.Cron.Stop()
+		return nil
+	})
+	errg.Go(s.InternalServer.Close)
 	return errg.Wait()
 }

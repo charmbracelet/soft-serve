@@ -135,6 +135,7 @@ func init() {
 	hookCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "path to config file")
 }
 
+// TODO: use ssh controlmaster
 func commonInit() (c *gossh.Client, s *gossh.Session, err error) {
 	cfg, err := config.ParseConfig(configPath)
 	if err != nil {
@@ -173,11 +174,11 @@ func commonInit() (c *gossh.Client, s *gossh.Session, err error) {
 
 func newClient(cfg *config.Config) (*gossh.Client, error) {
 	// Only accept the server's host key.
-	pk, err := keygen.New(cfg.SSH.KeyPath, keygen.WithKeyType(keygen.Ed25519))
+	pk, err := keygen.New(cfg.Internal.KeyPath, keygen.WithKeyType(keygen.Ed25519))
 	if err != nil {
 		return nil, err
 	}
-	ik, err := keygen.New(cfg.SSH.InternalKeyPath, keygen.WithKeyType(keygen.Ed25519))
+	ik, err := keygen.New(cfg.Internal.InternalKeyPath, keygen.WithKeyType(keygen.Ed25519))
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +189,7 @@ func newClient(cfg *config.Config) (*gossh.Client, error) {
 		},
 		HostKeyCallback: gossh.FixedHostKey(pk.PublicKey()),
 	}
-	c, err := gossh.Dial("tcp", cfg.SSH.ListenAddr, cc)
+	c, err := gossh.Dial("tcp", cfg.Internal.ListenAddr, cc)
 	if err != nil {
 		return nil, err
 	}
