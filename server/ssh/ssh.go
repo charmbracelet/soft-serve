@@ -14,7 +14,6 @@ import (
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
-	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -82,7 +81,7 @@ type SSHServer struct {
 }
 
 // NewSSHServer returns a new SSHServer.
-func NewSSHServer(cfg *config.Config, hooks hooks.Hooks) (*SSHServer, error) {
+func NewSSHServer(cfg *config.Config) (*SSHServer, error) {
 	var err error
 	s := &SSHServer{cfg: cfg}
 	logger := logger.StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})
@@ -92,7 +91,7 @@ func NewSSHServer(cfg *config.Config, hooks hooks.Hooks) (*SSHServer, error) {
 			// BubbleTea middleware.
 			bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256),
 			// CLI middleware.
-			cm.Middleware(cfg, hooks),
+			cm.Middleware(cfg),
 			// Git middleware.
 			s.Middleware(cfg),
 			// Logging middleware.

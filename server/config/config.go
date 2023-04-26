@@ -10,6 +10,7 @@ import (
 	"github.com/caarlos0/env/v7"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,12 +24,6 @@ type SSHConfig struct {
 
 	// KeyPath is the path to the SSH server's private key.
 	KeyPath string `env:"KEY_PATH" yaml:"key_path"`
-
-	// ClientKeyPath is the path to the SSH server's client private key.
-	ClientKeyPath string `env:"CLIENT_KEY_PATH" yaml:"client_key_path"`
-
-	// InternalKeyPath is the path to the SSH server's internal private key.
-	InternalKeyPath string `env:"INTERNAL_KEY_PATH" yaml:"internal_key_path"`
 
 	// MaxTimeout is the maximum number of seconds a connection can take.
 	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout`
@@ -73,6 +68,22 @@ type StatsConfig struct {
 	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 }
 
+// InternalConfig is the configuration for the internal server.
+// This is used for internal communication between the Soft Serve client and server.
+type InternalConfig struct {
+	// ListenAddr is the address on which the internal server will listen.
+	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
+
+	// KeyPath is the path to the SSH server's host private key.
+	KeyPath string `env:"KEY_PATH" yaml:"key_path"`
+
+	// InternalKeyPath is the path to the server's internal private key.
+	InternalKeyPath string `env:"INTERNAL_KEY_PATH" yaml:"internal_key_path"`
+
+	// ClientKeyPath is the path to the server's client private key.
+	ClientKeyPath string `env:"CLIENT_KEY_PATH" yaml:"client_key_path"`
+}
+
 // Config is the configuration for Soft Serve.
 type Config struct {
 	// Name is the name of the server.
@@ -90,6 +101,9 @@ type Config struct {
 	// Stats is the configuration for the stats server.
 	Stats StatsConfig `envPrefix:"STATS_" yaml:"stats"`
 
+	// Internal is the configuration for the internal server.
+	Internal InternalConfig `envPrefix:"INTERNAL_" yaml:"internal"`
+
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
@@ -98,12 +112,6 @@ type Config struct {
 
 	// Backend is the Git backend to use.
 	Backend backend.Backend `yaml:"-"`
-
-	// InternalPublicKey is the public key of the internal SSH key.
-	InternalPublicKey string `yaml:"-"`
-
-	// ClientPublicKey is the public key of the client SSH key.
-	ClientPublicKey string `yaml:"-"`
 }
 
 func parseConfig(path string) (*Config, error) {
@@ -112,13 +120,11 @@ func parseConfig(path string) (*Config, error) {
 		Name:     "Soft Serve",
 		DataPath: dataPath,
 		SSH: SSHConfig{
-			ListenAddr:      ":23231",
-			PublicURL:       "ssh://localhost:23231",
-			KeyPath:         filepath.Join("ssh", "soft_serve_host_ed25519"),
-			ClientKeyPath:   filepath.Join("ssh", "soft_serve_client_ed25519"),
-			InternalKeyPath: filepath.Join("ssh", "soft_serve_internal_ed25519"),
-			MaxTimeout:      0,
-			IdleTimeout:     120,
+			ListenAddr:  ":23231",
+			PublicURL:   "ssh://localhost:23231",
+			KeyPath:     filepath.Join("ssh", "soft_serve_host_ed25519"),
+			MaxTimeout:  0,
+			IdleTimeout: 120,
 		},
 		Git: GitConfig{
 			ListenAddr:     ":9418",
@@ -127,11 +133,17 @@ func parseConfig(path string) (*Config, error) {
 			MaxConnections: 32,
 		},
 		HTTP: HTTPConfig{
-			ListenAddr: ":8080",
-			PublicURL:  "http://localhost:8080",
+			ListenAddr: ":23232",
+			PublicURL:  "http://localhost:23232",
 		},
 		Stats: StatsConfig{
-			ListenAddr: ":8081",
+			ListenAddr: "localhost:23233",
+		},
+		Internal: InternalConfig{
+			ListenAddr:      "localhost:23230",
+			KeyPath:         filepath.Join("ssh", "soft_serve_internal_host_ed25519"),
+			InternalKeyPath: filepath.Join("ssh", "soft_serve_internal_ed25519"),
+			ClientKeyPath:   filepath.Join("ssh", "soft_serve_client_ed25519"),
 		},
 	}
 
@@ -160,20 +172,10 @@ func parseConfig(path string) (*Config, error) {
 
 	// Validate keys
 	pks := make([]string, 0)
-	for _, key := range cfg.InitialAdminKeys {
-		var pk string
-		if bts, err := os.ReadFile(key); err == nil {
-			// key is a file
-			pk = string(bts)
-		}
-		if _, _, err := backend.ParseAuthorizedKey(key); err == nil {
-			pk = key
-		}
-		pk = strings.TrimSpace(pk)
-		if pk != "" {
-			log.Debugf("found initial admin key: %q", key)
-			pks = append(pks, pk)
-		}
+	for _, key := range parseAuthKeys(cfg.InitialAdminKeys) {
+		ak := backend.MarshalAuthorizedKey(key)
+		pks = append(pks, ak)
+		log.Debugf("found initial admin key: %q", ak)
 	}
 
 	cfg.InitialAdminKeys = pks
@@ -259,12 +261,16 @@ func (c *Config) validate() error {
 		c.SSH.KeyPath = filepath.Join(c.DataPath, c.SSH.KeyPath)
 	}
 
-	if c.SSH.ClientKeyPath != "" && !filepath.IsAbs(c.SSH.ClientKeyPath) {
-		c.SSH.ClientKeyPath = filepath.Join(c.DataPath, c.SSH.ClientKeyPath)
+	if c.Internal.KeyPath != "" && !filepath.IsAbs(c.Internal.KeyPath) {
+		c.Internal.KeyPath = filepath.Join(c.DataPath, c.Internal.KeyPath)
 	}
 
-	if c.SSH.InternalKeyPath != "" && !filepath.IsAbs(c.SSH.InternalKeyPath) {
-		c.SSH.InternalKeyPath = filepath.Join(c.DataPath, c.SSH.InternalKeyPath)
+	if c.Internal.ClientKeyPath != "" && !filepath.IsAbs(c.Internal.ClientKeyPath) {
+		c.Internal.ClientKeyPath = filepath.Join(c.DataPath, c.Internal.ClientKeyPath)
+	}
+
+	if c.Internal.InternalKeyPath != "" && !filepath.IsAbs(c.Internal.InternalKeyPath) {
+		c.Internal.InternalKeyPath = filepath.Join(c.DataPath, c.Internal.InternalKeyPath)
 	}
 
 	if c.HTTP.TLSKeyPath != "" && !filepath.IsAbs(c.HTTP.TLSKeyPath) {
@@ -276,4 +282,25 @@ func (c *Config) validate() error {
 	}
 
 	return nil
+}
+
+// parseAuthKeys parses authorized keys from either file paths or string authorized_keys.
+func parseAuthKeys(aks []string) []ssh.PublicKey {
+	pks := make([]ssh.PublicKey, 0)
+	for _, key := range aks {
+		var ak string
+		if bts, err := os.ReadFile(key); err == nil {
+			// key is a file
+			ak = strings.TrimSpace(string(bts))
+		}
+		if pk, _, err := backend.ParseAuthorizedKey(ak); err == nil {
+			pks = append(pks, pk)
+		}
+	}
+	return pks
+}
+
+// AdminKeys returns the admin keys including the internal api key.
+func (c *Config) AdminKeys() []ssh.PublicKey {
+	return parseAuthKeys(append(c.InitialAdminKeys, c.Internal.InternalKeyPath))
 }

@@ -6,8 +6,8 @@ import (
 	"github.com/aymanbagabas/go-osc52"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/errors"
 	"github.com/charmbracelet/soft-serve/ui"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/ssh"
@@ -41,7 +41,7 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 			initialRepo = cmd[0]
 			auth := cfg.Backend.AccessLevelByPublicKey(initialRepo, s.PublicKey())
 			if auth < backend.ReadOnlyAccess {
-				wish.Fatalln(s, cm.ErrUnauthorized)
+				wish.Fatalln(s, errors.ErrUnauthorized)
 				return nil
 			}
 		}

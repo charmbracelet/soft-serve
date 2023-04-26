@@ -118,9 +118,8 @@ func (d *SqliteBackend) AccessLevel(repo string, username string) backend.Access
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) AccessLevelByPublicKey(repo string, pk ssh.PublicKey) backend.AccessLevel {
-	for _, k := range append(d.cfg.InitialAdminKeys, d.cfg.InternalPublicKey) {
-		ik, _, err := backend.ParseAuthorizedKey(k)
-		if err == nil && backend.KeysEqual(pk, ik) {
+	for _, k := range d.cfg.AdminKeys() {
+		if backend.KeysEqual(pk, k) {
 			return backend.AdminAccess
 		}
 	}

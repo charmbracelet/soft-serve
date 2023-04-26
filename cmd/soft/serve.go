@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -24,7 +25,7 @@ var (
 			cfg := config.DefaultConfig()
 			s, err := server.NewServer(ctx, cfg)
 			if err != nil {
-				return err
+				return fmt.Errorf("start server: %w", err)
 			}
 
 			done := make(chan os.Signal, 1)

@@ -142,7 +142,6 @@ func userCommand() *cobra.Command {
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, s := fromContext(cmd)
-			ak := backend.MarshalAuthorizedKey(s.PublicKey())
 			username := args[0]
 
 			user, err := cfg.Backend.User(username)
@@ -151,8 +150,8 @@ func userCommand() *cobra.Command {
 			}
 
 			isAdmin := user.IsAdmin()
-			for _, k := range cfg.InitialAdminKeys {
-				if ak == k {
+			for _, k := range cfg.AdminKeys() {
+				if backend.KeysEqual(k, s.PublicKey()) {
 					isAdmin = true
 					break
 				}

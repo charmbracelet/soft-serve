@@ -61,6 +61,8 @@ func (d *SqliteBackend) init() error {
 			}
 
 			// Add initial keys
+			// Don't use cfg.AdminKeys since it also includes the internal key
+			// used for internal api access.
 			for _, k := range d.cfg.InitialAdminKeys {
 				pk, _, err := backend.ParseAuthorizedKey(k)
 				if err != nil {

@@ -1,4 +1,4 @@
-package cmd
+package internal
 
 import (
 	"bufio"
@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/keygen"
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/errors"
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/charmbracelet/ssh"
 	"github.com/spf13/cobra"
@@ -15,12 +17,11 @@ import (
 // hookCommand handles Soft Serve internal API git hook requests.
 func hookCommand() *cobra.Command {
 	preReceiveCmd := &cobra.Command{
-		Use:               "pre-receive",
-		Short:             "Run git pre-receive hook",
-		PersistentPreRunE: checkIfInternal,
+		Use:   "pre-receive",
+		Short: "Run git pre-receive hook",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, s := fromContext(cmd)
-			hks := cmd.Context().Value(HooksCtxKey).(hooks.Hooks)
+			hks := cmd.Context().Value(hooksCtxKey).(hooks.Hooks)
 			repoName := getRepoName(s)
 			opts := make([]hooks.HookArg, 0)
 			scanner := bufio.NewScanner(s)
@@ -35,21 +36,20 @@ func hookCommand() *cobra.Command {
 					RefName: fields[2],
 				})
 			}
-			hks.PreReceive(s, s.Stderr(), repoName, opts)
+			hks.PreReceive(s, s, s.Stderr(), repoName, opts)
 			return nil
 		},
 	}
 
 	updateCmd := &cobra.Command{
-		Use:               "update",
-		Short:             "Run git update hook",
-		Args:              cobra.ExactArgs(3),
-		PersistentPreRunE: checkIfInternal,
+		Use:   "update",
+		Short: "Run git update hook",
+		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, s := fromContext(cmd)
-			hks := cmd.Context().Value(HooksCtxKey).(hooks.Hooks)
+			hks := cmd.Context().Value(hooksCtxKey).(hooks.Hooks)
 			repoName := getRepoName(s)
-			hks.Update(s, s.Stderr(), repoName, hooks.HookArg{
+			hks.Update(s, s, s.Stderr(), repoName, hooks.HookArg{
 				RefName: args[0],
 				OldSha:  args[1],
 				NewSha:  args[2],
@@ -59,12 +59,11 @@ func hookCommand() *cobra.Command {
 	}
 
 	postReceiveCmd := &cobra.Command{
-		Use:               "post-receive",
-		Short:             "Run git post-receive hook",
-		PersistentPreRunE: checkIfInternal,
+		Use:   "post-receive",
+		Short: "Run git post-receive hook",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			_, s := fromContext(cmd)
-			hks := cmd.Context().Value(HooksCtxKey).(hooks.Hooks)
+			hks := cmd.Context().Value(hooksCtxKey).(hooks.Hooks)
 			repoName := getRepoName(s)
 			opts := make([]hooks.HookArg, 0)
 			scanner := bufio.NewScanner(s)
@@ -79,20 +78,19 @@ func hookCommand() *cobra.Command {
 					RefName: fields[2],
 				})
 			}
-			hks.PostReceive(s, s.Stderr(), repoName, opts)
+			hks.PostReceive(s, s, s.Stderr(), repoName, opts)
 			return nil
 		},
 	}
 
 	postUpdateCmd := &cobra.Command{
-		Use:               "post-update",
-		Short:             "Run git post-update hook",
-		PersistentPreRunE: checkIfInternal,
+		Use:   "post-update",
+		Short: "Run git post-update hook",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, s := fromContext(cmd)
-			hks := cmd.Context().Value(HooksCtxKey).(hooks.Hooks)
+			hks := cmd.Context().Value(hooksCtxKey).(hooks.Hooks)
 			repoName := getRepoName(s)
-			hks.PostUpdate(s, s.Stderr(), repoName, args...)
+			hks.PostUpdate(s, s, s.Stderr(), repoName, args...)
 			return nil
 		},
 	}
@@ -118,13 +116,13 @@ func hookCommand() *cobra.Command {
 func checkIfInternal(cmd *cobra.Command, _ []string) error {
 	cfg, s := fromContext(cmd)
 	pk := s.PublicKey()
-	kp, err := keygen.New(cfg.SSH.InternalKeyPath, keygen.WithKeyType(keygen.Ed25519))
+	kp, err := keygen.New(cfg.Internal.InternalKeyPath, keygen.WithKeyType(keygen.Ed25519))
 	if err != nil {
-		logger.Errorf("failed to read internal key: %v", err)
+		log.WithPrefix("server.internal").Errorf("failed to read internal key: %v", err)
 		return err
 	}
 	if !backend.KeysEqual(pk, kp.PublicKey()) {
-		return ErrUnauthorized
+		return errors.ErrUnauthorized
 	}
 	return nil
 }
