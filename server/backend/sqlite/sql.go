@@ -20,7 +20,7 @@ var (
 	sqlCreatePublicKeyTable = `CREATE TABLE IF NOT EXISTS public_key (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id INTEGER NOT NULL,
-		public_key TEXT NOT NULL,
+		public_key TEXT NOT NULL UNIQUE,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL,
 		UNIQUE (user_id, public_key),
