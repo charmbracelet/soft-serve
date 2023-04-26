@@ -475,7 +475,7 @@ func (d *SqliteBackend) Collaborators(repo string) ([]string, error) {
 	repo = utils.SanitizeRepo(repo)
 	var users []string
 	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		return tx.Select(&users, `SELECT name FROM user
+		return tx.Select(&users, `SELECT user.username FROM user
 			INNER JOIN collab ON user.id = collab.user_id
 			INNER JOIN repo ON repo.id = collab.repo_id
 			WHERE repo.name = ?`, repo)
