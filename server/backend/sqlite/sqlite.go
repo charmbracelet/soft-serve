@@ -313,7 +313,7 @@ func (d *SqliteBackend) Repository(repo string) (backend.Repository, error) {
 
 	if count == 0 {
 		logger.Warn("repository exists but not found in database", "repo", repo)
-		return nil, fmt.Errorf("repository does not exist")
+		return nil, ErrRepoNotExist
 	}
 
 	return &Repo{
@@ -330,7 +330,8 @@ func (d *SqliteBackend) Description(repo string) (string, error) {
 	repo = utils.SanitizeRepo(repo)
 	var desc string
 	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		return tx.Get(&desc, "SELECT description FROM repo WHERE name = ?", repo)
+		row := tx.QueryRow("SELECT description FROM repo WHERE name = ?", repo)
+		return row.Scan(&desc)
 	}); err != nil {
 		return "", wrapDbErr(err)
 	}
@@ -360,7 +361,8 @@ func (d *SqliteBackend) IsPrivate(repo string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var private bool
 	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		return tx.Get(&private, "SELECT private FROM repo WHERE name = ?", repo)
+		row := tx.QueryRow("SELECT private FROM repo WHERE name = ?", repo)
+		return row.Scan(&private)
 	}); err != nil {
 		return false, wrapDbErr(err)
 	}
@@ -375,7 +377,8 @@ func (d *SqliteBackend) IsHidden(repo string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var hidden bool
 	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		return tx.Get(&hidden, "SELECT hidden FROM repo WHERE name = ?", repo)
+		row := tx.QueryRow("SELECT hidden FROM repo WHERE name = ?", repo)
+		return row.Scan(&hidden)
 	}); err != nil {
 		return false, wrapDbErr(err)
 	}
@@ -389,6 +392,13 @@ func (d *SqliteBackend) IsHidden(repo string) (bool, error) {
 func (d *SqliteBackend) SetHidden(repo string, hidden bool) error {
 	repo = utils.SanitizeRepo(repo)
 	return wrapDbErr(wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+		var count int
+		if err := tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo); err != nil {
+			return err
+		}
+		if count == 0 {
+			return ErrRepoNotExist
+		}
 		_, err := tx.Exec("UPDATE repo SET hidden = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?;", hidden, repo)
 		return err
 	}))
@@ -401,7 +411,8 @@ func (d *SqliteBackend) ProjectName(repo string) (string, error) {
 	repo = utils.SanitizeRepo(repo)
 	var name string
 	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		return tx.Get(&name, "SELECT project_name FROM repo WHERE name = ?", repo)
+		row := tx.QueryRow("SELECT project_name FROM repo WHERE name = ?", repo)
+		return row.Scan(&name)
 	}); err != nil {
 		return "", wrapDbErr(err)
 	}
@@ -415,6 +426,13 @@ func (d *SqliteBackend) ProjectName(repo string) (string, error) {
 func (d *SqliteBackend) SetDescription(repo string, desc string) error {
 	repo = utils.SanitizeRepo(repo)
 	return wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+		var count int
+		if err := tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo); err != nil {
+			return err
+		}
+		if count == 0 {
+			return ErrRepoNotExist
+		}
 		_, err := tx.Exec("UPDATE repo SET description = ? WHERE name = ?", desc, repo)
 		return err
 	})
@@ -427,6 +445,13 @@ func (d *SqliteBackend) SetPrivate(repo string, private bool) error {
 	repo = utils.SanitizeRepo(repo)
 	return wrapDbErr(
 		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+			var count int
+			if err := tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo); err != nil {
+				return err
+			}
+			if count == 0 {
+				return ErrRepoNotExist
+			}
 			_, err := tx.Exec("UPDATE repo SET private = ? WHERE name = ?", private, repo)
 			return err
 		}),
@@ -440,6 +465,13 @@ func (d *SqliteBackend) SetProjectName(repo string, name string) error {
 	repo = utils.SanitizeRepo(repo)
 	return wrapDbErr(
 		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+			var count int
+			if err := tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo); err != nil {
+				return err
+			}
+			if count == 0 {
+				return ErrRepoNotExist
+			}
 			_, err := tx.Exec("UPDATE repo SET project_name = ? WHERE name = ?", name, repo)
 			return err
 		}),
