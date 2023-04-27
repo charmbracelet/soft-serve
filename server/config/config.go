@@ -26,7 +26,7 @@ type SSHConfig struct {
 	KeyPath string `env:"KEY_PATH" yaml:"key_path"`
 
 	// MaxTimeout is the maximum number of seconds a connection can take.
-	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout`
+	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout"`
 
 	// IdleTimeout is the number of seconds a connection can be idle before it is closed.
 	IdleTimeout int `env:"IDLE_TIMEOUT" yaml:"idle_timeout"`
