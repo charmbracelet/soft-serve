@@ -16,8 +16,8 @@ func TruncateString(s string, max int) string {
 	return truncate.StringWithTail(s, uint(max), "…")
 }
 
-// CloneCmd returns the URL of the repository.
-func CloneCmd(publicURL, name string) string {
+// RepoURL returns the URL of the repository.
+func RepoURL(publicURL, name string) string {
 	name = utils.SanitizeRepo(name) + ".git"
 	url, err := url.Parse(publicURL)
 	if err == nil {
@@ -25,12 +25,17 @@ func CloneCmd(publicURL, name string) string {
 		case "ssh":
 			port := url.Port()
 			if port == "" || port == "22" {
-				return fmt.Sprintf("git clone git@%s:%s", url.Hostname(), name)
+				return fmt.Sprintf("git@%s:%s", url.Hostname(), name)
 			} else {
-				return fmt.Sprintf("git clone ssh://%s:%s/%s", url.Hostname(), url.Port(), name)
+				return fmt.Sprintf("ssh://%s:%s/%s", url.Hostname(), url.Port(), name)
 			}
 		}
 	}
 
-	return fmt.Sprintf("git clone %s/%s", publicURL, name)
+	return fmt.Sprintf("%s/%s", publicURL, name)
+}
+
+// CloneCmd returns the URL of the repository.
+func CloneCmd(publicURL, name string) string {
+	return fmt.Sprintf("git clone %s", RepoURL(publicURL, name))
 }
