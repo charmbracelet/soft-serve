@@ -239,7 +239,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CopyMsg:
 		txt := msg.Text
 		if cfg := r.common.Config(); cfg != nil {
-			r.common.Copy.Copy(txt)
+			r.common.Output.Copy(txt)
 		}
 		cmds = append(cmds, func() tea.Msg {
 			return statusbar.StatusBarMsg{

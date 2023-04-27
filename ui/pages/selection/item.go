@@ -136,7 +136,7 @@ func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
 			d.copiedIdx = idx
-			d.common.Copy.Copy(item.Command())
+			d.common.Output.Copy(item.Command())
 			return m.SetItem(idx, item)
 		}
 	}
