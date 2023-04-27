@@ -29,6 +29,7 @@ ssh:
   max_timeout: {{ .SSH.MaxTimeout }}
 
   # The number of seconds a connection can be idle before it is closed.
+  # A value of 0 means no timeout.
   idle_timeout: {{ .SSH.IdleTimeout }}
 
 # The Git daemon configuration.

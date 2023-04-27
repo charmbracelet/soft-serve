@@ -124,7 +124,7 @@ func parseConfig(path string) (*Config, error) {
 			PublicURL:   "ssh://localhost:23231",
 			KeyPath:     filepath.Join("ssh", "soft_serve_host_ed25519"),
 			MaxTimeout:  0,
-			IdleTimeout: 120,
+			IdleTimeout: 0,
 		},
 		Git: GitConfig{
 			ListenAddr:     ":9418",
