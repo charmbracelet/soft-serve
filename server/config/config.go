@@ -203,10 +203,10 @@ func ParseConfig(path string) (*Config, error) {
 
 // WriteConfig writes the configuration to the given file.
 func WriteConfig(path string, cfg *Config) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o600) // nolint: errcheck
+	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644) // nolint: errcheck
 }
 
 // DefaultConfig returns a Config with the values populated with the defaults
