@@ -362,7 +362,7 @@ func (l *Log) StatusBarValue() string {
 	if email := c.Author.Email; email != "" {
 		who += " <" + email + ">"
 	}
-	value := c.ID.String()
+	value := c.ID.String()[:7]
 	if who != "" {
 		value += " by " + who
 	}
