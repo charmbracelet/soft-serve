@@ -3,13 +3,13 @@ package common
 import (
 	"context"
 
-	"github.com/aymanbagabas/go-osc52"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/ui/keymap"
 	"github.com/charmbracelet/soft-serve/ui/styles"
 	"github.com/charmbracelet/ssh"
 	zone "github.com/lrstanley/bubblezone"
+	"github.com/muesli/termenv"
 )
 
 type contextKey struct {
@@ -28,12 +28,12 @@ type Common struct {
 	Width, Height int
 	Styles        *styles.Styles
 	KeyMap        *keymap.KeyMap
-	Copy          *osc52.Output
 	Zone          *zone.Manager
+	Output        *termenv.Output
 }
 
 // NewCommon returns a new Common struct.
-func NewCommon(ctx context.Context, copy *osc52.Output, width, height int) Common {
+func NewCommon(ctx context.Context, out *termenv.Output, width, height int) Common {
 	if ctx == nil {
 		ctx = context.TODO()
 	}
@@ -41,7 +41,7 @@ func NewCommon(ctx context.Context, copy *osc52.Output, width, height int) Commo
 		ctx:    ctx,
 		Width:  width,
 		Height: height,
-		Copy:   copy,
+		Output: out,
 		Styles: styles.DefaultStyles(),
 		KeyMap: keymap.DefaultKeyMap(),
 		Zone:   zone.New(),

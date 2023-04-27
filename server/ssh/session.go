@@ -1,9 +1,8 @@
 package ssh
 
 import (
-	"fmt"
+	"strings"
 
-	"github.com/aymanbagabas/go-osc52"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
@@ -13,6 +12,7 @@ import (
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
+	"github.com/muesli/termenv"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -46,9 +46,8 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 			}
 		}
 
-		envs := s.Environ()
-		envs = append(envs, fmt.Sprintf("TERM=%s", pty.Term))
-		output := osc52.NewOutput(s, envs)
+		envs := &sessionEnv{s}
+		output := termenv.NewOutput(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
 		c := common.NewCommon(s.Context(), output, pty.Window.Width, pty.Window.Height)
 		c.SetValue(common.ConfigKey, cfg)
 		m := ui.New(c, initialRepo)
@@ -64,4 +63,24 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 
 		return p
 	}
+}
+
+var _ termenv.Environ = &sessionEnv{}
+
+type sessionEnv struct {
+	ssh.Session
+}
+
+func (s *sessionEnv) Environ() []string {
+	pty, _, _ := s.Pty()
+	return append(s.Session.Environ(), "TERM="+pty.Term)
+}
+
+func (s *sessionEnv) Getenv(key string) string {
+	for _, env := range s.Environ() {
+		if strings.HasPrefix(env, key+"=") {
+			return strings.TrimPrefix(env, key+"=")
+		}
+	}
+	return ""
 }
