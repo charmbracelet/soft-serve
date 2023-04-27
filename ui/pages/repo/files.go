@@ -332,8 +332,7 @@ func (f *Files) updateFilesCmd() tea.Msg {
 	files := make([]selector.IdentifiableItem, 0)
 	dirs := make([]selector.IdentifiableItem, 0)
 	if f.ref == nil {
-		log.Printf("ui: files: ref is nil")
-		return common.ErrorMsg(errNoRef)
+		return nil
 	}
 	r, err := f.repo.Open()
 	if err != nil {
