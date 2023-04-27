@@ -175,7 +175,6 @@ func parseConfig(path string) (*Config, error) {
 	for _, key := range parseAuthKeys(cfg.InitialAdminKeys) {
 		ak := backend.MarshalAuthorizedKey(key)
 		pks = append(pks, ak)
-		log.Debugf("found initial admin key: %q", ak)
 	}
 
 	cfg.InitialAdminKeys = pks
