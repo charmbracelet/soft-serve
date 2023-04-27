@@ -290,7 +290,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				),
 			)
 		}
-		if l.repo != nil {
+		if l.repo != nil && l.ref != nil {
 			cmds = append(cmds,
 				l.updateCommitsCmd,
 				// start loading on resize since the number of commits per page
@@ -385,8 +385,7 @@ func (l *Log) StatusBarInfo() string {
 
 func (l *Log) countCommitsCmd() tea.Msg {
 	if l.ref == nil {
-		logger.Debugf("ui: log: ref is nil")
-		return common.ErrorMsg(errNoRef)
+		return nil
 	}
 	r, err := l.repo.Open()
 	if err != nil {
@@ -411,8 +410,7 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 		}
 	}
 	if l.ref == nil {
-		logger.Debugf("ui: log: ref is nil")
-		return common.ErrorMsg(errNoRef)
+		return nil
 	}
 	items := make([]selector.IdentifiableItem, count)
 	page := l.nextPage
