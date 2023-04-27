@@ -288,12 +288,11 @@ func (c *Config) validate() error {
 func parseAuthKeys(aks []string) []ssh.PublicKey {
 	pks := make([]ssh.PublicKey, 0)
 	for _, key := range aks {
-		var ak string
 		if bts, err := os.ReadFile(key); err == nil {
 			// key is a file
-			ak = strings.TrimSpace(string(bts))
+			key = strings.TrimSpace(string(bts))
 		}
-		if pk, _, err := backend.ParseAuthorizedKey(ak); err == nil {
+		if pk, _, err := backend.ParseAuthorizedKey(key); err == nil {
 			pks = append(pks, pk)
 		}
 	}
