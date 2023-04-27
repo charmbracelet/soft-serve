@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,119 +18,28 @@ var (
 	hookCmd = &cobra.Command{
 		Use:    "hook",
 		Short:  "Run git server hooks",
-		Long:   "Handles git server hooks. This includes pre-receive, update, and post-receive.",
+		Long:   "Handles Soft Serve git server hooks.",
 		Hidden: true,
-	}
-
-	preReceiveCmd = &cobra.Command{
-		Use:   "pre-receive",
-		Short: "Run git pre-receive hook",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			c, s, err := commonInit()
 			if err != nil {
 				return err
 			}
 			defer c.Close() //nolint:errcheck
 			defer s.Close() //nolint:errcheck
-			in, err := s.StdinPipe()
-			if err != nil {
+			s.Stdin = os.Stdin
+			s.Stdout = os.Stdout
+			s.Stderr = os.Stderr
+			cmd := fmt.Sprintf("hook %s", strings.Join(args, " "))
+			if err := s.Run(cmd); err != nil {
 				return err
 			}
-			scanner := bufio.NewScanner(os.Stdin)
-			for scanner.Scan() {
-				in.Write([]byte(scanner.Text()))
-				in.Write([]byte("\n"))
-			}
-			in.Close() //nolint:errcheck
-			b, err := s.Output("hook pre-receive")
-			if err != nil {
-				return err
-			}
-			cmd.Print(string(b))
-			return nil
-		},
-	}
-
-	updateCmd = &cobra.Command{
-		Use:   "update",
-		Short: "Run git update hook",
-		Args:  cobra.ExactArgs(3),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			refName := args[0]
-			oldSha := args[1]
-			newSha := args[2]
-			c, s, err := commonInit()
-			if err != nil {
-				return err
-			}
-			defer c.Close() //nolint:errcheck
-			defer s.Close() //nolint:errcheck
-			b, err := s.Output(fmt.Sprintf("hook update %s %s %s", refName, oldSha, newSha))
-			if err != nil {
-				return err
-			}
-			cmd.Print(string(b))
-			return nil
-		},
-	}
-
-	postReceiveCmd = &cobra.Command{
-		Use:   "post-receive",
-		Short: "Run git post-receive hook",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			c, s, err := commonInit()
-			if err != nil {
-				return err
-			}
-			defer c.Close() //nolint:errcheck
-			defer s.Close() //nolint:errcheck
-			in, err := s.StdinPipe()
-			if err != nil {
-				return err
-			}
-			scanner := bufio.NewScanner(os.Stdin)
-			for scanner.Scan() {
-				in.Write([]byte(scanner.Text()))
-				in.Write([]byte("\n"))
-			}
-			in.Close() //nolint:errcheck
-			b, err := s.Output("hook post-receive")
-			if err != nil {
-				return err
-			}
-			cmd.Print(string(b))
-			return nil
-		},
-	}
-
-	postUpdateCmd = &cobra.Command{
-		Use:   "post-update",
-		Short: "Run git post-update hook",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			c, s, err := commonInit()
-			if err != nil {
-				return err
-			}
-			defer c.Close() //nolint:errcheck
-			defer s.Close() //nolint:errcheck
-			b, err := s.Output(fmt.Sprintf("hook post-update %s", strings.Join(args, " ")))
-			if err != nil {
-				return err
-			}
-			cmd.Print(string(b))
 			return nil
 		},
 	}
 )
 
 func init() {
-	hookCmd.AddCommand(
-		preReceiveCmd,
-		updateCmd,
-		postReceiveCmd,
-		postUpdateCmd,
-	)
-
 	hookCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "path to config file")
 }
 

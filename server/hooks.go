@@ -13,7 +13,6 @@ var _ hooks.Hooks = (*Server)(nil)
 //
 // It implements Hooks.
 func (*Server) PostReceive(stdin io.Reader, stdout io.Writer, stderr io.Writer, repo string, args []hooks.HookArg) {
-	io.WriteString(stdout, "Hello, world!\n")
 	log.WithPrefix("server.hooks").Debug("post-receive hook called", "repo", repo, "args", args)
 }
 
@@ -35,6 +34,7 @@ func (*Server) Update(stdin io.Reader, stdout io.Writer, stderr io.Writer, repo 
 //
 // It implements Hooks.
 func (s *Server) PostUpdate(stdin io.Reader, stdout io.Writer, stderr io.Writer, repo string, args ...string) {
+	log.WithPrefix("server.hooks").Debug("post-update hook called", "repo", repo, "args", args)
 	rr, err := s.Config.Backend.Repository(repo)
 	if err != nil {
 		log.WithPrefix("server.hooks.post-update").Error("error getting repository", "repo", repo, "err", err)
