@@ -40,7 +40,7 @@ func (d *SqliteBackend) reposPath() string {
 // NewSqliteBackend creates a new SqliteBackend.
 func NewSqliteBackend(ctx context.Context, cfg *config.Config) (*SqliteBackend, error) {
 	dataPath := cfg.DataPath
-	if err := os.MkdirAll(dataPath, 0755); err != nil {
+	if err := os.MkdirAll(dataPath, os.ModePerm); err != nil {
 		return nil, err
 	}
 
@@ -254,7 +254,7 @@ func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 	}
 
 	// Make sure the new repository parent directory exists.
-	if err := os.MkdirAll(filepath.Dir(np), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(np), os.ModePerm); err != nil {
 		return err
 	}
 
@@ -639,7 +639,7 @@ func (d *SqliteBackend) InitializeHooks(repo string) error {
 
 	repo = utils.SanitizeRepo(repo) + ".git"
 	hooksPath := filepath.Join(d.reposPath(), repo, "hooks")
-	if err := os.MkdirAll(hooksPath, 0755); err != nil {
+	if err := os.MkdirAll(hooksPath, os.ModePerm); err != nil {
 		return err
 	}
 
@@ -659,13 +659,13 @@ func (d *SqliteBackend) InitializeHooks(repo string) error {
 		var data bytes.Buffer
 		var args string
 		hp := filepath.Join(hooksPath, hook)
-		if err := os.WriteFile(hp, []byte(hookTpls[i]), 0755); err != nil {
+		if err := os.WriteFile(hp, []byte(hookTpls[i]), os.ModePerm); err != nil {
 			return err
 		}
 
 		// Create hook.d directory.
 		hp += ".d"
-		if err := os.MkdirAll(hp, 0755); err != nil {
+		if err := os.MkdirAll(hp, os.ModePerm); err != nil {
 			return err
 		}
 
@@ -694,7 +694,7 @@ func (d *SqliteBackend) InitializeHooks(repo string) error {
 		}
 
 		hp = filepath.Join(hp, "soft-serve")
-		err = os.WriteFile(hp, data.Bytes(), 0755) //nolint:gosec
+		err = os.WriteFile(hp, data.Bytes(), os.ModePerm) //nolint:gosec
 		if err != nil {
 			logger.Error("failed to write hook", "err", err)
 			continue

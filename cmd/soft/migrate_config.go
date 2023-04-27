@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
@@ -14,6 +15,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/utils"
+	gitm "github.com/gogs/git-module"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
@@ -25,6 +27,9 @@ var (
 		Short:  "Migrate config to new format",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			// Disable logging timestamp
+			log.SetReportTimestamp(false)
+
 			keyPath := os.Getenv("SOFT_SERVE_KEY_PATH")
 			reposPath := os.Getenv("SOFT_SERVE_REPO_PATH")
 			bindAddr := os.Getenv("SOFT_SERVE_BIND_ADDRESS")
@@ -46,7 +51,7 @@ var (
 			// Copy SSH host key
 			log.Info("Copying SSH host key...")
 			if keyPath != "" {
-				if err := os.MkdirAll(filepath.Join(cfg.DataPath, "ssh"), 0700); err != nil {
+				if err := os.MkdirAll(filepath.Join(cfg.DataPath, "ssh"), os.ModePerm); err != nil {
 					return fmt.Errorf("failed to create ssh directory: %w", err)
 				}
 
@@ -104,6 +109,9 @@ var (
 				}
 			}
 
+			readme, readmePath, err := git.LatestFile(r, "README*")
+			hasReadme := err == nil
+
 			// Set server name
 			cfg.Name = ocfg.Name
 
@@ -125,13 +133,17 @@ var (
 			// Copy repos
 			if reposPath != "" {
 				log.Info("Copying repos...")
+				if err := os.MkdirAll(filepath.Join(cfg.DataPath, "repos"), os.ModePerm); err != nil {
+					return fmt.Errorf("failed to create repos directory: %w", err)
+				}
+
 				dirs, err := os.ReadDir(reposPath)
 				if err != nil {
 					return fmt.Errorf("failed to read repos directory: %w", err)
 				}
 
 				for _, dir := range dirs {
-					if !dir.IsDir() {
+					if !dir.IsDir() || dir.Name() == "config" {
 						continue
 					}
 
@@ -140,12 +152,12 @@ var (
 					}
 
 					log.Infof("  Copying repo %s", dir.Name())
-					if err := os.MkdirAll(filepath.Join(cfg.DataPath, "repos"), 0700); err != nil {
-						return fmt.Errorf("failed to create repos directory: %w", err)
+					src := filepath.Join(reposPath, utils.SanitizeRepo(dir.Name()))
+					dst := filepath.Join(cfg.DataPath, "repos", utils.SanitizeRepo(dir.Name())) + ".git"
+					if err := os.MkdirAll(dst, os.ModePerm); err != nil {
+						return fmt.Errorf("failed to create repo directory: %w", err)
 					}
 
-					src := utils.SanitizeRepo(filepath.Join(reposPath, dir.Name()))
-					dst := utils.SanitizeRepo(filepath.Join(cfg.DataPath, "repos", dir.Name())) + ".git"
 					if err := copyDir(src, dst); err != nil {
 						return fmt.Errorf("failed to copy repo: %w", err)
 					}
@@ -154,26 +166,100 @@ var (
 						fmt.Fprintf(os.Stderr, "failed to create repository: %s\n", err)
 					}
 				}
+
+				if hasReadme {
+					log.Infof("  Copying readme from \"config\" to \".soft-serve\"")
+
+					// Switch to main branch
+					bcmd := git.NewCommand("branch", "-M", "main")
+
+					rp := filepath.Join(cfg.DataPath, "repos", ".soft-serve.git")
+					nr, err := git.Init(rp, true)
+					if err != nil {
+						return fmt.Errorf("failed to init repo: %w", err)
+					}
+
+					if _, err := nr.SymbolicRef("HEAD", gitm.RefsHeads+"main"); err != nil {
+						return fmt.Errorf("failed to set HEAD: %w", err)
+					}
+
+					tmpDir, err := os.MkdirTemp("", "soft-serve")
+					if err != nil {
+						return fmt.Errorf("failed to create temp dir: %w", err)
+					}
+
+					r, err := git.Init(tmpDir, false)
+					if err != nil {
+						return fmt.Errorf("failed to clone repo: %w", err)
+					}
+
+					if _, err := bcmd.RunInDir(tmpDir); err != nil {
+						return fmt.Errorf("failed to create main branch: %w", err)
+					}
+
+					if err := os.WriteFile(filepath.Join(tmpDir, readmePath), []byte(readme), 0o644); err != nil {
+						return fmt.Errorf("failed to write readme: %w", err)
+					}
+
+					if err := r.Add(gitm.AddOptions{
+						All: true,
+					}); err != nil {
+						return fmt.Errorf("failed to add readme: %w", err)
+					}
+
+					if err := r.Commit(&gitm.Signature{
+						Name:  "Soft Serve",
+						Email: "vt100@charm.sh",
+						When:  time.Now(),
+					}, "Add readme"); err != nil {
+						return fmt.Errorf("failed to commit readme: %w", err)
+					}
+
+					if err := r.RemoteAdd("origin", "file://"+rp); err != nil {
+						return fmt.Errorf("failed to add remote: %w", err)
+					}
+
+					if err := r.Push("origin", "main"); err != nil {
+						return fmt.Errorf("failed to push readme: %w", err)
+					}
+
+					// Create `.soft-serve` repository and add readme
+					if _, err := sb.CreateRepository(".soft-serve", backend.RepositoryOptions{
+						ProjectName: "Home",
+						Description: "Soft Serve home repository",
+						Hidden:      true,
+						Private:     false,
+					}); err != nil {
+						fmt.Fprintf(os.Stderr, "failed to create repository: %s\n", err)
+					}
+				}
 			}
 
 			// Set repos metadata & collabs
 			log.Info("Setting repos metadata & collabs...")
-			for _, repo := range ocfg.Repos {
-				if err := sb.SetProjectName(repo.Repo, repo.Name); err != nil {
-					log.Errorf("failed to set repo name to %s: %s", repo.Repo, err)
+			for _, r := range ocfg.Repos {
+				repo, name := r.Repo, r.Name
+				// Special case for config repo
+				if repo == "config" {
+					repo = ".soft-serve"
+					r.Private = false
 				}
 
-				if err := sb.SetDescription(repo.Repo, repo.Note); err != nil {
-					log.Errorf("failed to set repo description to %s: %s", repo.Repo, err)
+				if err := sb.SetProjectName(repo, name); err != nil {
+					log.Errorf("failed to set repo name to %s: %s", repo, err)
 				}
 
-				if err := sb.SetPrivate(repo.Repo, repo.Private); err != nil {
-					log.Errorf("failed to set repo private to %s: %s", repo.Repo, err)
+				if err := sb.SetDescription(repo, r.Note); err != nil {
+					log.Errorf("failed to set repo description to %s: %s", repo, err)
 				}
 
-				for _, collab := range repo.Collabs {
-					if err := sb.AddCollaborator(repo.Repo, collab); err != nil {
-						log.Errorf("failed to add repo collab to %s: %s", repo.Repo, err)
+				if err := sb.SetPrivate(repo, r.Private); err != nil {
+					log.Errorf("failed to set repo private to %s: %s", repo, err)
+				}
+
+				for _, collab := range r.Collabs {
+					if err := sb.AddCollaborator(repo, collab); err != nil {
+						log.Errorf("failed to add repo collab to %s: %s", repo, err)
 					}
 				}
 			}
@@ -291,11 +377,11 @@ func copyDir(src string, dst string) error {
 
 		if fd.IsDir() {
 			if err = copyDir(srcfp, dstfp); err != nil {
-				fmt.Println(err)
+				log.Error("failed to copy directory", "err", err)
 			}
 		} else {
 			if err = copyFile(srcfp, dstfp); err != nil {
-				fmt.Println(err)
+				log.Error("failed to copy file", "err", err)
 			}
 		}
 	}
