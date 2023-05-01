@@ -27,10 +27,6 @@ import (
 )
 
 var (
-	logger = log.WithPrefix("server.ssh")
-)
-
-var (
 	publicKeyCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
 		Subsystem: "ssh",
@@ -76,15 +72,22 @@ var (
 
 // SSHServer is a SSH server that implements the git protocol.
 type SSHServer struct {
-	srv *ssh.Server
-	cfg *config.Config
+	srv    *ssh.Server
+	cfg    *config.Config
+	ctx    context.Context
+	logger *log.Logger
 }
 
 // NewSSHServer returns a new SSHServer.
-func NewSSHServer(cfg *config.Config) (*SSHServer, error) {
+func NewSSHServer(ctx context.Context) (*SSHServer, error) {
+	cfg := config.FromContext(ctx)
 	var err error
-	s := &SSHServer{cfg: cfg}
-	logger := logger.StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})
+	s := &SSHServer{
+		cfg:    cfg,
+		ctx:    ctx,
+		logger: log.FromContext(ctx).WithPrefix("ssh"),
+	}
+	logger := s.logger.StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})
 	mw := []wish.Middleware{
 		rm.MiddlewareWithLogger(
 			logger,
@@ -151,7 +154,7 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 	}(&allowed)
 
 	ac := s.cfg.Backend.AccessLevelByPublicKey("", pk)
-	logger.Debugf("access level for %q: %s", ak, ac)
+	s.logger.Debugf("access level for %q: %s", ak, ac)
 	allowed = ac >= backend.ReadOnlyAccess
 	return
 }
@@ -168,7 +171,7 @@ func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.Keyboard
 // checked for access on a per repo basis for a ssh.Session public key.
 // Hooks.Push and Hooks.Fetch will be called on successful completion of
 // their commands.
-func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
+func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			func() {
@@ -196,7 +199,7 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 						"SOFT_SERVE_PUBLIC_KEY=" + ak,
 					}
 
-					logger.Debug("git middleware", "cmd", gc, "access", access.String())
+					ss.logger.Debug("git middleware", "cmd", gc, "access", access.String())
 					repoDir := filepath.Join(reposDir, repo)
 					switch gc {
 					case git.ReceivePackBin:

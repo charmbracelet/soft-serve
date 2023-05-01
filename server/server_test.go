@@ -25,10 +25,11 @@ func setupServer(tb testing.TB) (*Server, *config.Config, string) {
 	tb.Setenv("SOFT_SERVE_INITIAL_ADMIN_KEY", authorizedKey(pub))
 	tb.Setenv("SOFT_SERVE_SSH_LISTEN_ADDR", sshPort)
 	tb.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort()))
-	cfg := config.DefaultConfig()
-	tb.Log("configuring server")
 	ctx := context.TODO()
-	s, err := NewServer(ctx, cfg)
+	cfg := config.DefaultConfig()
+	ctx = config.WithContext(ctx, cfg)
+	tb.Log("configuring server")
+	s, err := NewServer(ctx)
 	if err != nil {
 		tb.Fatal(err)
 	}

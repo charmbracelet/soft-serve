@@ -12,6 +12,9 @@ var (
 # This is the name that will be displayed in the UI.
 name: "{{ .Name }}"
 
+# Log format to use. Valid values are "json", "logfmt", and "text".
+log_format: "{{ .LogFormat }}"
+
 # The SSH server configuration.
 ssh:
   # The address on which the SSH server will listen.

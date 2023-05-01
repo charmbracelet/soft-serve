@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -27,15 +28,18 @@ var (
 		Short:  "Migrate config to new format",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			ctx := cmd.Context()
+
+			logger := log.FromContext(ctx)
 			// Disable logging timestamp
-			log.SetReportTimestamp(false)
+			logger.SetReportTimestamp(false)
 
 			keyPath := os.Getenv("SOFT_SERVE_KEY_PATH")
 			reposPath := os.Getenv("SOFT_SERVE_REPO_PATH")
 			bindAddr := os.Getenv("SOFT_SERVE_BIND_ADDRESS")
-			ctx := cmd.Context()
 			cfg := config.DefaultConfig()
-			sb, err := sqlite.NewSqliteBackend(ctx, cfg)
+			ctx = config.WithContext(ctx, cfg)
+			sb, err := sqlite.NewSqliteBackend(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to create sqlite backend: %w", err)
 			}
@@ -43,13 +47,13 @@ var (
 			cfg = cfg.WithBackend(sb)
 
 			// Set SSH listen address
-			log.Info("Setting SSH listen address...")
+			logger.Info("Setting SSH listen address...")
 			if bindAddr != "" {
 				cfg.SSH.ListenAddr = bindAddr
 			}
 
 			// Copy SSH host key
-			log.Info("Copying SSH host key...")
+			logger.Info("Copying SSH host key...")
 			if keyPath != "" {
 				if err := os.MkdirAll(filepath.Join(cfg.DataPath, "ssh"), os.ModePerm); err != nil {
 					return fmt.Errorf("failed to create ssh directory: %w", err)
@@ -60,14 +64,14 @@ var (
 				}
 
 				if err := copyFile(keyPath+".pub", filepath.Join(cfg.DataPath, "ssh", filepath.Base(keyPath))+".pub"); err != nil {
-					log.Errorf("failed to copy ssh key: %s", err)
+					logger.Errorf("failed to copy ssh key: %s", err)
 				}
 
 				cfg.SSH.KeyPath = filepath.Join(cfg.DataPath, "ssh", filepath.Base(keyPath))
 			}
 
 			// Read config
-			log.Info("Reading config repository...")
+			logger.Info("Reading config repository...")
 			r, err := git.Open(filepath.Join(reposPath, "config"))
 			if err != nil {
 				return fmt.Errorf("failed to open config repo: %w", err)
@@ -119,7 +123,7 @@ var (
 			cfg.SSH.PublicURL = fmt.Sprintf("ssh://%s:%d", ocfg.Host, ocfg.Port)
 
 			// Set server settings
-			log.Info("Setting server settings...")
+			logger.Info("Setting server settings...")
 			if cfg.Backend.SetAllowKeyless(ocfg.AllowKeyless) != nil {
 				fmt.Fprintf(os.Stderr, "failed to set allow keyless\n")
 			}
@@ -132,7 +136,7 @@ var (
 
 			// Copy repos
 			if reposPath != "" {
-				log.Info("Copying repos...")
+				logger.Info("Copying repos...")
 				if err := os.MkdirAll(filepath.Join(cfg.DataPath, "repos"), os.ModePerm); err != nil {
 					return fmt.Errorf("failed to create repos directory: %w", err)
 				}
@@ -151,7 +155,7 @@ var (
 						continue
 					}
 
-					log.Infof("  Copying repo %s", dir.Name())
+					logger.Infof("  Copying repo %s", dir.Name())
 					src := filepath.Join(reposPath, utils.SanitizeRepo(dir.Name()))
 					dst := filepath.Join(cfg.DataPath, "repos", utils.SanitizeRepo(dir.Name())) + ".git"
 					if err := os.MkdirAll(dst, os.ModePerm); err != nil {
@@ -168,7 +172,7 @@ var (
 				}
 
 				if hasReadme {
-					log.Infof("  Copying readme from \"config\" to \".soft-serve\"")
+					logger.Infof("  Copying readme from \"config\" to \".soft-serve\"")
 
 					// Switch to main branch
 					bcmd := git.NewCommand("branch", "-M", "main")
@@ -236,7 +240,7 @@ var (
 			}
 
 			// Set repos metadata & collabs
-			log.Info("Setting repos metadata & collabs...")
+			logger.Info("Setting repos metadata & collabs...")
 			for _, r := range ocfg.Repos {
 				repo, name := r.Repo, r.Name
 				// Special case for config repo
@@ -246,26 +250,26 @@ var (
 				}
 
 				if err := sb.SetProjectName(repo, name); err != nil {
-					log.Errorf("failed to set repo name to %s: %s", repo, err)
+					logger.Errorf("failed to set repo name to %s: %s", repo, err)
 				}
 
 				if err := sb.SetDescription(repo, r.Note); err != nil {
-					log.Errorf("failed to set repo description to %s: %s", repo, err)
+					logger.Errorf("failed to set repo description to %s: %s", repo, err)
 				}
 
 				if err := sb.SetPrivate(repo, r.Private); err != nil {
-					log.Errorf("failed to set repo private to %s: %s", repo, err)
+					logger.Errorf("failed to set repo private to %s: %s", repo, err)
 				}
 
 				for _, collab := range r.Collabs {
 					if err := sb.AddCollaborator(repo, collab); err != nil {
-						log.Errorf("failed to add repo collab to %s: %s", repo, err)
+						logger.Errorf("failed to add repo collab to %s: %s", repo, err)
 					}
 				}
 			}
 
 			// Create users & collabs
-			log.Info("Creating users & collabs...")
+			logger.Info("Creating users & collabs...")
 			for _, user := range ocfg.Users {
 				keys := make(map[string]ssh.PublicKey)
 				for _, key := range user.PublicKeys {
@@ -284,23 +288,23 @@ var (
 
 				username := strings.ToLower(user.Name)
 				username = strings.ReplaceAll(username, " ", "-")
-				log.Infof("Creating user %q", username)
+				logger.Infof("Creating user %q", username)
 				if _, err := sb.CreateUser(username, backend.UserOptions{
 					Admin:      user.Admin,
 					PublicKeys: pubkeys,
 				}); err != nil {
-					log.Errorf("failed to create user: %s", err)
+					logger.Errorf("failed to create user: %s", err)
 				}
 
 				for _, repo := range user.CollabRepos {
 					if err := sb.AddCollaborator(repo, username); err != nil {
-						log.Errorf("failed to add user collab to %s: %s\n", repo, err)
+						logger.Errorf("failed to add user collab to %s: %s\n", repo, err)
 					}
 				}
 			}
 
-			log.Info("Writing config...")
-			defer log.Info("Done!")
+			logger.Info("Writing config...")
+			defer logger.Info("Done!")
 			return config.WriteConfig(filepath.Join(cfg.DataPath, "config.yaml"), cfg)
 		},
 	}
@@ -371,21 +375,23 @@ func copyDir(src string, dst string) error {
 	if fds, err = os.ReadDir(src); err != nil {
 		return err
 	}
+
 	for _, fd := range fds {
 		srcfp := filepath.Join(src, fd.Name())
 		dstfp := filepath.Join(dst, fd.Name())
 
 		if fd.IsDir() {
 			if err = copyDir(srcfp, dstfp); err != nil {
-				log.Error("failed to copy directory", "err", err)
+				err = errors.Join(err, err)
 			}
 		} else {
 			if err = copyFile(srcfp, dstfp); err != nil {
-				log.Error("failed to copy file", "err", err)
+				err = errors.Join(err, err)
 			}
 		}
 	}
-	return nil
+
+	return err
 }
 
 // Config is the configuration for the server.

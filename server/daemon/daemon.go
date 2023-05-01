@@ -20,10 +20,6 @@ import (
 )
 
 var (
-	logger = log.WithPrefix("server.daemon")
-)
-
-var (
 	uploadPackGitCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
 		Subsystem: "git",
@@ -81,6 +77,7 @@ func (m *connections) CloseAll() {
 
 // GitDaemon represents a Git daemon.
 type GitDaemon struct {
+	ctx      context.Context
 	listener net.Listener
 	addr     string
 	finished chan struct{}
@@ -88,16 +85,20 @@ type GitDaemon struct {
 	cfg      *config.Config
 	wg       sync.WaitGroup
 	once     sync.Once
+	logger   *log.Logger
 }
 
 // NewDaemon returns a new Git daemon.
-func NewGitDaemon(cfg *config.Config) (*GitDaemon, error) {
+func NewGitDaemon(ctx context.Context) (*GitDaemon, error) {
+	cfg := config.FromContext(ctx)
 	addr := cfg.Git.ListenAddr
 	d := &GitDaemon{
+		ctx:      ctx,
 		addr:     addr,
 		finished: make(chan struct{}, 1),
 		cfg:      cfg,
 		conns:    connections{m: make(map[net.Conn]struct{})},
+		logger:   log.FromContext(ctx).WithPrefix("gitdaemon"),
 	}
 	listener, err := net.Listen("tcp", d.addr)
 	if err != nil {
@@ -122,7 +123,7 @@ func (d *GitDaemon) Start() error {
 			case <-d.finished:
 				return ErrServerClosed
 			default:
-				logger.Debugf("git: error accepting connection: %v", err)
+				d.logger.Debugf("git: error accepting connection: %v", err)
 			}
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {
@@ -141,8 +142,8 @@ func (d *GitDaemon) Start() error {
 
 		// Close connection if there are too many open connections.
 		if d.conns.Size()+1 >= d.cfg.Git.MaxConnections {
-			logger.Debugf("git: max connections reached, closing %s", conn.RemoteAddr())
-			fatal(conn, git.ErrMaxConnections)
+			d.logger.Debugf("git: max connections reached, closing %s", conn.RemoteAddr())
+			d.fatal(conn, git.ErrMaxConnections)
 			continue
 		}
 
@@ -154,10 +155,10 @@ func (d *GitDaemon) Start() error {
 	}
 }
 
-func fatal(c net.Conn, err error) {
+func (d *GitDaemon) fatal(c net.Conn, err error) {
 	git.WritePktline(c, err)
 	if err := c.Close(); err != nil {
-		logger.Debugf("git: error closing connection: %v", err)
+		d.logger.Debugf("git: error closing connection: %v", err)
 	}
 }
 
@@ -185,10 +186,10 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		if !s.Scan() {
 			if err := s.Err(); err != nil {
 				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
-					fatal(c, git.ErrTimeout)
+					d.fatal(c, git.ErrTimeout)
 				} else {
-					logger.Debugf("git: error scanning pktline: %v", err)
-					fatal(c, git.ErrSystemMalfunction)
+					d.logger.Debugf("git: error scanning pktline: %v", err)
+					d.fatal(c, git.ErrSystemMalfunction)
 				}
 			}
 			return
@@ -199,14 +200,14 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 	select {
 	case <-ctx.Done():
 		if err := ctx.Err(); err != nil {
-			logger.Debugf("git: connection context error: %v", err)
+			d.logger.Debugf("git: connection context error: %v", err)
 		}
 		return
 	case <-readc:
 		line := s.Bytes()
 		split := bytes.SplitN(line, []byte{' '}, 2)
 		if len(split) != 2 {
-			fatal(c, git.ErrInvalidRequest)
+			d.fatal(c, git.ErrInvalidRequest)
 			return
 		}
 
@@ -220,36 +221,36 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			gitPack = git.UploadArchive
 			counter = uploadArchiveGitCounter
 		default:
-			fatal(c, git.ErrInvalidRequest)
+			d.fatal(c, git.ErrInvalidRequest)
 			return
 		}
 
 		opts := bytes.Split(split[1], []byte{'\x00'})
 		if len(opts) == 0 {
-			fatal(c, git.ErrInvalidRequest)
+			d.fatal(c, git.ErrInvalidRequest)
 			return
 		}
 
 		if !d.cfg.Backend.AllowKeyless() {
-			fatal(c, git.ErrNotAuthed)
+			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
 
 		name := utils.SanitizeRepo(string(opts[0]))
-		logger.Debugf("git: connect %s %s %s", c.RemoteAddr(), cmd, name)
-		defer logger.Debugf("git: disconnect %s %s %s", c.RemoteAddr(), cmd, name)
+		d.logger.Debugf("git: connect %s %s %s", c.RemoteAddr(), cmd, name)
+		defer d.logger.Debugf("git: disconnect %s %s %s", c.RemoteAddr(), cmd, name)
 		// git bare repositories should end in ".git"
 		// https://git-scm.com/docs/gitrepository-layout
 		repo := name + ".git"
 		reposDir := filepath.Join(d.cfg.DataPath, "repos")
 		if err := git.EnsureWithin(reposDir, repo); err != nil {
-			fatal(c, err)
+			d.fatal(c, err)
 			return
 		}
 
 		auth := d.cfg.Backend.AccessLevel(name, "")
 		if auth < backend.ReadOnlyAccess {
-			fatal(c, git.ErrNotAuthed)
+			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
 
@@ -260,7 +261,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		}
 
 		if err := gitPack(ctx, c, c, c, filepath.Join(reposDir, repo), envs...); err != nil {
-			fatal(c, err)
+			d.fatal(c, err)
 			return
 		}
 

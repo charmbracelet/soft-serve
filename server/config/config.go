@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -88,6 +89,10 @@ type Config struct {
 	// Stats is the configuration for the stats server.
 	Stats StatsConfig `envPrefix:"STATS_" yaml:"stats"`
 
+	// LogFormat is the format of the logs.
+	// Valid values are "json", "logfmt", and "text".
+	LogFormat string `env:"LOG_FORMAT" yaml:"log_format"`
+
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
@@ -101,8 +106,9 @@ type Config struct {
 func parseConfig(path string) (*Config, error) {
 	dataPath := filepath.Dir(path)
 	cfg := &Config{
-		Name:     "Soft Serve",
-		DataPath: dataPath,
+		Name:      "Soft Serve",
+		LogFormat: "text",
+		DataPath:  dataPath,
 		SSH: SSHConfig{
 			ListenAddr:    ":23231",
 			PublicURL:     "ssh://localhost:23231",
@@ -272,4 +278,22 @@ func parseAuthKeys(aks []string) []ssh.PublicKey {
 // AdminKeys returns the server admin keys.
 func (c *Config) AdminKeys() []ssh.PublicKey {
 	return parseAuthKeys(c.InitialAdminKeys)
+}
+
+var (
+	configCtxKey = struct{ string }{"config"}
+)
+
+// WithContext returns a new context with the configuration attached.
+func WithContext(ctx context.Context, cfg *Config) context.Context {
+	return context.WithValue(ctx, configCtxKey, cfg)
+}
+
+// FromContext returns the configuration from the context.
+func FromContext(ctx context.Context) *Config {
+	if c, ok := ctx.Value(configCtxKey).(*Config); ok {
+		return c
+	}
+
+	return DefaultConfig()
 }

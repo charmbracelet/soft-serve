@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/ui/keymap"
@@ -30,6 +31,7 @@ type Common struct {
 	KeyMap        *keymap.KeyMap
 	Zone          *zone.Manager
 	Output        *termenv.Output
+	Logger        *log.Logger
 }
 
 // NewCommon returns a new Common struct.
@@ -45,6 +47,7 @@ func NewCommon(ctx context.Context, out *termenv.Output, width, height int) Comm
 		Styles: styles.DefaultStyles(),
 		KeyMap: keymap.DefaultKeyMap(),
 		Zone:   zone.New(),
+		Logger: log.FromContext(ctx).WithPrefix("ui"),
 	}
 }
 

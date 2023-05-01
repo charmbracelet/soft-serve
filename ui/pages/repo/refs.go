@@ -181,7 +181,7 @@ func (r *Refs) updateItemsCmd() tea.Msg {
 	}
 	refs, err := rr.References()
 	if err != nil {
-		logger.Debugf("ui: error getting references: %v", err)
+		r.common.Logger.Debugf("ui: error getting references: %v", err)
 		return common.ErrorMsg(err)
 	}
 	for _, ref := range refs {
@@ -228,10 +228,8 @@ func UpdateRefCmd(repo backend.Repository) tea.Cmd {
 		}
 		ref, err := r.HEAD()
 		if err != nil {
-			logger.Debugf("ui: error getting HEAD reference: %v", err)
 			return common.ErrorMsg(err)
 		}
-		logger.Debugf("HEAD: %s", ref.Name())
 		return RefMsg(ref)
 	}
 }

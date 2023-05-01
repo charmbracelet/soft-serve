@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
@@ -19,12 +20,9 @@ import (
 )
 
 var (
-	confixCtxKey  = "config"
-	backendCtxKey = "backend"
-)
-
-var (
 	configPath string
+
+	logFileCtxKey = struct{}{}
 
 	hookCmd = &cobra.Command{
 		Use:    "hook",
@@ -32,39 +30,46 @@ var (
 		Long:   "Handles Soft Serve git server hooks.",
 		Hidden: true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			ctx := cmd.Context()
 			cfg, err := config.ParseConfig(configPath)
 			if err != nil {
 				return fmt.Errorf("could not parse config: %w", err)
 			}
 
-			customHooksPath := filepath.Join(filepath.Dir(configPath), "hooks")
-			if _, err := os.Stat(customHooksPath); err != nil && os.IsNotExist(err) {
-				os.MkdirAll(customHooksPath, os.ModePerm)
-				// Generate update hook example without executable permissions
-				hookPath := filepath.Join(customHooksPath, "update.sample")
-				if err := os.WriteFile(hookPath, []byte(updateHookExample), 0744); err != nil {
-					return fmt.Errorf("failed to generate update hook example: %w", err)
-				}
+			ctx = config.WithContext(ctx, cfg)
+
+			logPath := filepath.Join(cfg.DataPath, "log", "hooks.log")
+			f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				return fmt.Errorf("opening file: %w", err)
 			}
+
+			ctx = context.WithValue(ctx, logFileCtxKey, f)
+			logger := log.FromContext(ctx)
+			logger.SetOutput(f)
+			ctx = log.WithContext(ctx, logger)
+			cmd.SetContext(ctx)
 
 			// Set up the backend
 			// TODO: support other backends
-			sb, err := sqlite.NewSqliteBackend(cmd.Context(), cfg)
+			sb, err := sqlite.NewSqliteBackend(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to create sqlite backend: %w", err)
 			}
 
 			cfg = cfg.WithBackend(sb)
 
-			cmd.SetContext(context.WithValue(cmd.Context(), confixCtxKey, cfg))
-			cmd.SetContext(context.WithValue(cmd.Context(), backendCtxKey, sb))
-
 			return nil
+		},
+		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
+			f := cmd.Context().Value(logFileCtxKey).(*os.File)
+			return f.Close()
 		},
 	}
 
 	hooksRunE = func(cmd *cobra.Command, args []string) error {
-		cfg := cmd.Context().Value(confixCtxKey).(*config.Config)
+		ctx := cmd.Context()
+		cfg := config.FromContext(ctx)
 		hks := cfg.Backend.(backend.Hooks)
 
 		// This is set in the server before invoking git-receive-pack/git-upload-pack
@@ -119,7 +124,7 @@ var (
 		// Custom hooks
 		if stat, err := os.Stat(customHookPath); err == nil && !stat.IsDir() && stat.Mode()&0o111 != 0 {
 			// If the custom hook is executable, run it
-			if err := runCommand(cmd.Context(), &buf, stdout, stderr, customHookPath, args...); err != nil {
+			if err := runCommand(ctx, &buf, stdout, stderr, customHookPath, args...); err != nil {
 				return fmt.Errorf("failed to run custom hook: %w", err)
 			}
 		}

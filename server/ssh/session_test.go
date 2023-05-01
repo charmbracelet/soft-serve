@@ -59,7 +59,8 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 	})
 	ctx := context.TODO()
 	cfg := config.DefaultConfig()
-	fb, err := sqlite.NewSqliteBackend(ctx, cfg)
+	ctx = config.WithContext(ctx, cfg)
+	fb, err := sqlite.NewSqliteBackend(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

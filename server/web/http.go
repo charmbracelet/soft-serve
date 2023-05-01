@@ -25,10 +25,6 @@ import (
 )
 
 var (
-	logger = log.WithPrefix("server.web")
-)
-
-var (
 	gitHttpCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
 		Subsystem: "http",
@@ -64,18 +60,17 @@ func (r *logWriter) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
-func loggingMiddleware(next http.Handler) http.Handler {
-	logger := logger.WithPrefix("server.http")
+func (s *HTTPServer) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		writer := &logWriter{code: http.StatusOK, ResponseWriter: w}
-		logger.Debug("request",
+		s.logger.Debug("request",
 			"method", r.Method,
 			"uri", r.RequestURI,
 			"addr", r.RemoteAddr)
 		next.ServeHTTP(writer, r)
 		elapsed := time.Since(start)
-		logger.Debug("response",
+		s.logger.Debug("response",
 			"status", fmt.Sprintf("%d %s", writer.code, http.StatusText(writer.code)),
 			"bytes", humanize.Bytes(uint64(writer.bytes)),
 			"time", elapsed)
@@ -84,15 +79,20 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 // HTTPServer is an http server.
 type HTTPServer struct {
+	ctx        context.Context
 	cfg        *config.Config
 	server     *http.Server
 	dirHandler http.Handler
+	logger     *log.Logger
 }
 
-func NewHTTPServer(cfg *config.Config) (*HTTPServer, error) {
+func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
+	cfg := config.FromContext(ctx)
 	mux := goji.NewMux()
 	s := &HTTPServer{
+		ctx:        ctx,
 		cfg:        cfg,
+		logger:     log.FromContext(ctx).WithPrefix("http"),
 		dirHandler: http.FileServer(http.Dir(filepath.Join(cfg.DataPath, "repos"))),
 		server: &http.Server{
 			Addr:              cfg.HTTP.ListenAddr,
@@ -104,7 +104,7 @@ func NewHTTPServer(cfg *config.Config) (*HTTPServer, error) {
 		},
 	}
 
-	mux.Use(loggingMiddleware)
+	mux.Use(s.loggingMiddleware)
 	for _, m := range []Matcher{
 		getInfoRefs,
 		getHead,
@@ -306,7 +306,7 @@ func (s *HTTPServer) handleGit(w http.ResponseWriter, r *http.Request) {
 	repo := pat.Param(r, "repo")
 	repo = utils.SanitizeRepo(repo) + ".git"
 	if _, err := s.cfg.Backend.Repository(repo); err != nil {
-		logger.Debug("repository not found", "repo", repo, "err", err)
+		s.logger.Debug("repository not found", "repo", repo, "err", err)
 		http.NotFound(w, r)
 		return
 	}

@@ -180,7 +180,7 @@ func (d *SqliteBackend) CreateUser(username string, opts backend.UserOptions) (b
 		if len(opts.PublicKeys) > 0 {
 			userID, err := r.LastInsertId()
 			if err != nil {
-				logger.Error("error getting last insert id")
+				d.logger.Error("error getting last insert id")
 				return err
 			}
 

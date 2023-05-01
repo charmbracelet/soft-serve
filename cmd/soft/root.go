@@ -4,9 +4,11 @@ import (
 	"context"
 	"os"
 	"runtime/debug"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
-	_ "github.com/charmbracelet/soft-serve/log"
 	"github.com/spf13/cobra"
 )
 
@@ -51,15 +53,24 @@ func init() {
 }
 
 func main() {
+	ctx := context.Background()
 	logger := log.NewWithOptions(os.Stderr, log.Options{
 		ReportTimestamp: true,
-		TimeFormat:      "2006-01-02",
+		TimeFormat:      time.DateOnly,
 	})
-	if os.Getenv("SOFT_SERVE_DEBUG") == "true" {
+	if debug, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_DEBUG")); debug {
 		logger.SetLevel(log.DebugLevel)
 	}
 
-	ctx := context.Background()
+	switch strings.ToLower(os.Getenv("SOFT_SERVE_LOG_FORMAT")) {
+	case "json":
+		logger.SetFormatter(log.JSONFormatter)
+	case "logfmt":
+		logger.SetFormatter(log.LogfmtFormatter)
+	case "text":
+		logger.SetFormatter(log.TextFormatter)
+	}
+
 	ctx = log.WithContext(ctx, logger)
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
