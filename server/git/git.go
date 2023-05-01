@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"golang.org/x/sync/errgroup"
 )
@@ -78,12 +79,16 @@ func ReceivePack(ctx context.Context, in io.Reader, out io.Writer, er io.Writer,
 
 // RunGit runs a git command in the given repo.
 func RunGit(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, dir string, envs []string, args ...string) error {
-	logger := log.WithPrefix("server.git")
+	cfg := config.FromContext(ctx)
+	logger := log.FromContext(ctx).WithPrefix("rungit")
 	c := exec.CommandContext(ctx, "git", args...)
 	c.Dir = dir
 	c.Env = append(c.Env, envs...)
-	c.Env = append(c.Env, "SOFT_SERVE_DEBUG="+os.Getenv("SOFT_SERVE_DEBUG"))
 	c.Env = append(c.Env, "PATH="+os.Getenv("PATH"))
+	c.Env = append(c.Env, "SOFT_SERVE_DEBUG="+os.Getenv("SOFT_SERVE_DEBUG"))
+	if cfg != nil {
+		c.Env = append(c.Env, "SOFT_SERVE_LOG_FORMAT="+cfg.LogFormat)
+	}
 
 	stdin, err := c.StdinPipe()
 	if err != nil {

@@ -393,7 +393,7 @@ func (l *Log) countCommitsCmd() tea.Msg {
 	}
 	count, err := r.CountCommits(l.ref)
 	if err != nil {
-		logger.Debugf("ui: error counting commits: %v", err)
+		l.common.Logger.Debugf("ui: error counting commits: %v", err)
 		return common.ErrorMsg(err)
 	}
 	return LogCountMsg(count)
@@ -423,7 +423,7 @@ func (l *Log) updateCommitsCmd() tea.Msg {
 	// CommitsByPage pages start at 1
 	cc, err := r.CommitsByPage(l.ref, page+1, limit)
 	if err != nil {
-		logger.Debugf("ui: error loading commits: %v", err)
+		l.common.Logger.Debugf("ui: error loading commits: %v", err)
 		return common.ErrorMsg(err)
 	}
 	for i, c := range cc {
@@ -445,12 +445,12 @@ func (l *Log) selectCommitCmd(commit *git.Commit) tea.Cmd {
 func (l *Log) loadDiffCmd() tea.Msg {
 	r, err := l.repo.Open()
 	if err != nil {
-		logger.Debugf("ui: error loading diff repository: %v", err)
+		l.common.Logger.Debugf("ui: error loading diff repository: %v", err)
 		return common.ErrorMsg(err)
 	}
 	diff, err := r.Diff(l.selectedCommit)
 	if err != nil {
-		logger.Debugf("ui: error loading diff: %v", err)
+		l.common.Logger.Debugf("ui: error loading diff: %v", err)
 		return common.ErrorMsg(err)
 	}
 	return LogDiffMsg(diff)

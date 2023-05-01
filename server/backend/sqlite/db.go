@@ -66,7 +66,7 @@ func (d *SqliteBackend) init() error {
 			for _, k := range d.cfg.InitialAdminKeys {
 				pk, _, err := backend.ParseAuthorizedKey(k)
 				if err != nil {
-					logger.Error("error parsing initial admin key, skipping", "key", k, "err", err)
+					d.logger.Error("error parsing initial admin key, skipping", "key", k, "err", err)
 					continue
 				}
 

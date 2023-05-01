@@ -11,15 +11,18 @@ import (
 
 // StatsServer is a server for collecting and reporting statistics.
 type StatsServer struct {
+	ctx    context.Context
 	cfg    *config.Config
 	server *http.Server
 }
 
 // NewStatsServer returns a new StatsServer.
-func NewStatsServer(cfg *config.Config) (*StatsServer, error) {
+func NewStatsServer(ctx context.Context) (*StatsServer, error) {
+	cfg := config.FromContext(ctx)
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
 	return &StatsServer{
+		ctx: ctx,
 		cfg: cfg,
 		server: &http.Server{
 			Addr:              cfg.Stats.ListenAddr,

@@ -20,10 +20,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var (
-	logger = log.WithPrefix("server")
-)
-
 // Server is the Soft Serve server.
 type Server struct {
 	SSHServer   *sshsrv.SSHServer
@@ -33,7 +29,9 @@ type Server struct {
 	Cron        *cron.CronScheduler
 	Config      *config.Config
 	Backend     backend.Backend
-	ctx         context.Context
+
+	logger *log.Logger
+	ctx    context.Context
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -41,10 +39,12 @@ type Server struct {
 // key can be provided with authKey. If authKey is provided, access will be
 // restricted to that key. If authKey is not provided, the server will be
 // publicly writable until configured otherwise by cloning the `config` repo.
-func NewServer(ctx context.Context, cfg *config.Config) (*Server, error) {
+func NewServer(ctx context.Context) (*Server, error) {
+	cfg := config.FromContext(ctx)
+
 	var err error
 	if cfg.Backend == nil {
-		sb, err := sqlite.NewSqliteBackend(ctx, cfg)
+		sb, err := sqlite.NewSqliteBackend(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("create backend: %w", err)
 		}
@@ -56,28 +56,29 @@ func NewServer(ctx context.Context, cfg *config.Config) (*Server, error) {
 		Cron:    cron.NewCronScheduler(ctx),
 		Config:  cfg,
 		Backend: cfg.Backend,
+		logger:  log.FromContext(ctx).WithPrefix("server"),
 		ctx:     ctx,
 	}
 
 	// Add cron jobs.
-	srv.Cron.AddFunc(jobSpecs["mirror"], mirrorJob(cfg))
+	srv.Cron.AddFunc(jobSpecs["mirror"], srv.mirrorJob())
 
-	srv.SSHServer, err = sshsrv.NewSSHServer(cfg)
+	srv.SSHServer, err = sshsrv.NewSSHServer(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create ssh server: %w", err)
 	}
 
-	srv.GitDaemon, err = daemon.NewGitDaemon(cfg)
+	srv.GitDaemon, err = daemon.NewGitDaemon(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create git daemon: %w", err)
 	}
 
-	srv.HTTPServer, err = web.NewHTTPServer(cfg)
+	srv.HTTPServer, err = web.NewHTTPServer(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create http server: %w", err)
 	}
 
-	srv.StatsServer, err = stats.NewStatsServer(cfg)
+	srv.StatsServer, err = stats.NewStatsServer(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create stats server: %w", err)
 	}
@@ -101,38 +102,37 @@ func start(ctx context.Context, fn func() error) error {
 
 // Start starts the SSH server.
 func (s *Server) Start() error {
-	logger := log.FromContext(s.ctx).WithPrefix("server")
 	errg, ctx := errgroup.WithContext(s.ctx)
 	errg.Go(func() error {
-		logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
+		s.logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
 		if err := start(ctx, s.GitDaemon.Start); !errors.Is(err, daemon.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		logger.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
+		s.logger.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
 		if err := start(ctx, s.HTTPServer.ListenAndServe); !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		logger.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
+		s.logger.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
 		if err := start(ctx, s.SSHServer.ListenAndServe); !errors.Is(err, ssh.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		logger.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
+		s.logger.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
 		if err := start(ctx, s.StatsServer.ListenAndServe); !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		logger.Print("Starting cron scheduler")
+		s.logger.Print("Starting cron scheduler")
 		s.Cron.Start()
 		return nil
 	})

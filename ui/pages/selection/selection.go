@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/ui/common"
 	"github.com/charmbracelet/soft-serve/ui/components/code"
@@ -18,10 +17,6 @@ import (
 
 const (
 	defaultNoContent = "No readme found.\n\nCreate a `.soft-serve` repository and add a `README.md` file to display readme."
-)
-
-var (
-	logger = log.WithPrefix("ui.selection")
 )
 
 type pane int
@@ -219,7 +214,7 @@ func (s *Selection) Init() tea.Cmd {
 		if al >= backend.ReadOnlyAccess {
 			item, err := NewItem(r, cfg)
 			if err != nil {
-				logger.Debugf("ui: failed to create item for %s: %v", r.Name(), err)
+				s.common.Logger.Debugf("ui: failed to create item for %s: %v", r.Name(), err)
 				continue
 			}
 			sortedItems = append(sortedItems, item)

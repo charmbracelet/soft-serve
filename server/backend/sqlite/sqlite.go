@@ -17,17 +17,14 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-var (
-	logger = log.WithPrefix("backend.sqlite")
-)
-
 // SqliteBackend is a backend that uses a SQLite database as a Soft Serve
 // backend.
 type SqliteBackend struct {
-	cfg *config.Config
-	ctx context.Context
-	dp  string
-	db  *sqlx.DB
+	cfg    *config.Config
+	ctx    context.Context
+	dp     string
+	db     *sqlx.DB
+	logger *log.Logger
 }
 
 var _ backend.Backend = (*SqliteBackend)(nil)
@@ -37,7 +34,8 @@ func (d *SqliteBackend) reposPath() string {
 }
 
 // NewSqliteBackend creates a new SqliteBackend.
-func NewSqliteBackend(ctx context.Context, cfg *config.Config) (*SqliteBackend, error) {
+func NewSqliteBackend(ctx context.Context) (*SqliteBackend, error) {
+	cfg := config.FromContext(ctx)
 	dataPath := cfg.DataPath
 	if err := os.MkdirAll(dataPath, os.ModePerm); err != nil {
 		return nil, err
@@ -50,10 +48,11 @@ func NewSqliteBackend(ctx context.Context, cfg *config.Config) (*SqliteBackend, 
 	}
 
 	d := &SqliteBackend{
-		cfg: cfg,
-		ctx: ctx,
-		dp:  dataPath,
-		db:  db,
+		cfg:    cfg,
+		ctx:    ctx,
+		dp:     dataPath,
+		db:     db,
+		logger: log.FromContext(ctx).WithPrefix("sqlite"),
 	}
 
 	if err := d.init(); err != nil {
@@ -137,13 +136,13 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 
 	rr, err := git.Init(rp, true)
 	if err != nil {
-		logger.Debug("failed to create repository", "err", err)
+		d.logger.Debug("failed to create repository", "err", err)
 		cleanup() // nolint: errcheck
 		return nil, err
 	}
 
 	if err := rr.UpdateServerInfo(); err != nil {
-		logger.Debug("failed to update server info", "err", err)
+		d.logger.Debug("failed to update server info", "err", err)
 		cleanup() // nolint: errcheck
 		return nil, err
 	}
@@ -154,7 +153,7 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 			name, opts.ProjectName, opts.Description, opts.Private, opts.Mirror, opts.Hidden)
 		return err
 	}); err != nil {
-		logger.Debug("failed to create repository in database", "err", err)
+		d.logger.Debug("failed to create repository in database", "err", err)
 		return nil, wrapDbErr(err)
 	}
 
@@ -192,7 +191,7 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 	}
 
 	if err := git.Clone(remote, rp, copts); err != nil {
-		logger.Error("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
+		d.logger.Error("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
 		return nil, err
 	}
 
@@ -311,7 +310,7 @@ func (d *SqliteBackend) Repository(repo string) (backend.Repository, error) {
 	}
 
 	if count == 0 {
-		logger.Warn("repository exists but not found in database", "repo", repo)
+		d.logger.Warn("repository exists but not found in database", "repo", repo)
 		return nil, ErrRepoNotExist
 	}
 

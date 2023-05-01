@@ -46,8 +46,9 @@ func main() {
 	}
 	ctx := context.Background()
 	cfg := config.DefaultConfig()
+	ctx = config.WithContext(ctx, cfg)
 	cfg.SSH.ListenAddr = fmt.Sprintf(":%d", *port)
-	s, err := server.NewServer(ctx, cfg)
+	s, err := server.NewServer(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

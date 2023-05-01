@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/server/config"
 )
 
 var (
@@ -15,9 +14,10 @@ var (
 )
 
 // mirrorJob runs the (pull) mirror job task.
-func mirrorJob(cfg *config.Config) func() {
+func (s *Server) mirrorJob() func() {
+	cfg := s.Config
 	b := cfg.Backend
-	logger := logger.WithPrefix("server.mirrorJob")
+	logger := s.logger
 	return func() {
 		repos, err := b.Repositories()
 		if err != nil {
