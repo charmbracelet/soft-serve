@@ -8,7 +8,7 @@ import (
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/ui/common"
+	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 )
