@@ -122,6 +122,9 @@ self-explanatory and will look like this:
 # This is the name that will be displayed in the UI.
 name: "Soft Serve"
 
+# Log format to use. Valid values are "json", "logfmt", and "text".
+log_format: "text"
+
 # The SSH server configuration.
 ssh:
   # The address on which the SSH server will listen.
@@ -138,9 +141,6 @@ ssh:
   # This key will be used to authenticate the server to make git requests to
   # ssh remotes.
   client_key_path: "ssh/soft_serve_client"
-
-  # The path to the SSH server's internal api private key.
-  internal_key_path: "ssh/soft_serve_internal"
 
   # The maximum number of seconds a connection can take.
   # A value of 0 means no timeout.
@@ -518,6 +518,65 @@ You can copy text to your clipboard over SSH. For instance, you can press
 [^osc52]:
     Copying over SSH depends on your terminal support of OSC52. Refer to
     [go-osc52](https://github.com/aymanbagabas/go-osc52) for more information.
+
+## Hooks
+
+Soft Serve supports git server-side hooks `pre-receive`, `update`,
+`post-update`, and `post-receive`. This means you can define your own hooks to
+run on repository push events. Hooks can be defined as a per-repository hook,
+and/or global hooks that get run for all repositories.
+
+You can find per-repository hooks under the repository `hooks` directory.
+
+Globs hooks can be found in your `SOFT_SERVE_DATA_PATH` directory under
+`hooks`. Defining global hooks is useful if you want to run CI/CD for example.
+
+Here's an example of sending a message after receiving a push event. Create an
+executable file `<data path>/hooks/update`:
+
+```sh
+#!/bin/sh
+#
+# An example hook script to echo information about the push
+# and send it to the client.
+
+refname="$1"
+oldrev="$2"
+newrev="$3"
+
+# Safety check
+if [ -z "$GIT_DIR" ]; then
+        echo "Don't run this script from the command line." >&2
+        echo " (if you want, you could supply GIT_DIR then run" >&2
+        echo "  $0 <ref> <oldrev> <newrev>)" >&2
+        exit 1
+fi
+
+if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
+        echo "usage: $0 <ref> <oldrev> <newrev>" >&2
+        exit 1
+fi
+
+# Check types
+# if $newrev is 0000...0000, it's a commit to delete a ref.
+zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+if [ "$newrev" = "$zero" ]; then
+        newrev_type=delete
+else
+        newrev_type=$(git cat-file -t $newrev)
+fi
+
+echo "Hi from Soft Serve update hook!"
+echo
+echo "RefName: $refname"
+echo "Change Type: $newrev_type"
+echo "Old SHA1: $oldrev"
+echo "New SHA1: $newrev"
+
+exit 0
+```
+
+Now, you should get a message after pushing changes to any repository.
 
 ## A note about RSA keys
 
