@@ -44,6 +44,9 @@ var (
 				return fmt.Errorf("failed to create sqlite backend: %w", err)
 			}
 
+			// FIXME: Admin user gets created when the database is created.
+			sb.DeleteUser("admin") // nolint: errcheck
+
 			cfg = cfg.WithBackend(sb)
 
 			// Set SSH listen address
