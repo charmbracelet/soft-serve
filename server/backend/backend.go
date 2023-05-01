@@ -16,6 +16,7 @@ type Backend interface {
 	RepositoryAccess
 	UserStore
 	UserAccess
+	Hooks
 }
 
 // ParseAuthorizedKey parses an authorized key string into a public key.

@@ -253,7 +253,13 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		if err := gitPack(c, c, c, filepath.Join(reposDir, repo)); err != nil {
+		// Environment variables to pass down to git hooks.
+		envs := []string{
+			"SOFT_SERVE_REPO_NAME=" + name,
+			"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
+		}
+
+		if err := gitPack(ctx, c, c, c, filepath.Join(reposDir, repo), envs...); err != nil {
 			fatal(c, err)
 			return
 		}

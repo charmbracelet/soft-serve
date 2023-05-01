@@ -24,6 +24,10 @@ ssh:
   # The path to the SSH server's private key.
   key_path: "{{ .SSH.KeyPath }}"
 
+  # The path to the server's client private key. This key will be used to
+  # authenticate the server to make git requests to ssh remotes.
+  client_key_path: "{{ .Internal.ClientKeyPath }}"
+
   # The maximum number of seconds a connection can take.
   # A value of 0 means no timeout.
   max_timeout: {{ .SSH.MaxTimeout }}
@@ -67,22 +71,6 @@ http:
 stats:
   # The address on which the stats server will listen.
   listen_addr: "{{ .Stats.ListenAddr }}"
-
-# The internal server configuration.
-internal:
-  # The address on which the internal server will listen.
-  listen_addr: "{{ .Internal.ListenAddr }}"
-
-  # The path to the Internal server's host private key.
-  key_path: "{{ .Internal.KeyPath }}"
-
-  # The path to the Internal server's client private key.
-  # This key will be used to authenticate the server to make git requests to
-  # ssh remotes.
-  client_key_path: "{{ .Internal.ClientKeyPath }}"
-
-  # The path to the Internal server's internal api private key.
-  internal_key_path: "{{ .Internal.InternalKeyPath }}"
 
 # Additional admin keys.
 #initial_admin_keys:

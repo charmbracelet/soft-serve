@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/cron"
 	"github.com/charmbracelet/soft-serve/server/daemon"
-	"github.com/charmbracelet/soft-serve/server/internal"
 	sshsrv "github.com/charmbracelet/soft-serve/server/ssh"
 	"github.com/charmbracelet/soft-serve/server/stats"
 	"github.com/charmbracelet/soft-serve/server/web"
@@ -27,15 +26,14 @@ var (
 
 // Server is the Soft Serve server.
 type Server struct {
-	SSHServer      *sshsrv.SSHServer
-	GitDaemon      *daemon.GitDaemon
-	HTTPServer     *web.HTTPServer
-	StatsServer    *stats.StatsServer
-	InternalServer *internal.InternalServer
-	Cron           *cron.CronScheduler
-	Config         *config.Config
-	Backend        backend.Backend
-	ctx            context.Context
+	SSHServer   *sshsrv.SSHServer
+	GitDaemon   *daemon.GitDaemon
+	HTTPServer  *web.HTTPServer
+	StatsServer *stats.StatsServer
+	Cron        *cron.CronScheduler
+	Config      *config.Config
+	Backend     backend.Backend
+	ctx         context.Context
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -82,11 +80,6 @@ func NewServer(ctx context.Context, cfg *config.Config) (*Server, error) {
 	srv.StatsServer, err = stats.NewStatsServer(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("create stats server: %w", err)
-	}
-
-	srv.InternalServer, err = internal.NewInternalServer(cfg, srv)
-	if err != nil {
-		return nil, fmt.Errorf("create internal server: %w", err)
 	}
 
 	return srv, nil
@@ -143,13 +136,6 @@ func (s *Server) Start() error {
 		s.Cron.Start()
 		return nil
 	})
-	errg.Go(func() error {
-		logger.Print("Starting internal server", "addr", s.Config.Internal.ListenAddr)
-		if err := start(ctx, s.InternalServer.Start); !errors.Is(err, http.ErrServerClosed) {
-			return err
-		}
-		return nil
-	})
 	return errg.Wait()
 }
 
@@ -172,9 +158,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		s.Cron.Stop()
 		return nil
 	})
-	errg.Go(func() error {
-		return s.InternalServer.Shutdown(ctx)
-	})
 	return errg.Wait()
 }
 
@@ -189,6 +172,5 @@ func (s *Server) Close() error {
 		s.Cron.Stop()
 		return nil
 	})
-	errg.Go(s.InternalServer.Close)
 	return errg.Wait()
 }
