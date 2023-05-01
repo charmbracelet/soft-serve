@@ -5,7 +5,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
@@ -34,6 +37,16 @@ var (
 				return fmt.Errorf("could not parse config: %w", err)
 			}
 
+			customHooksPath := filepath.Join(filepath.Dir(configPath), "hooks")
+			if _, err := os.Stat(customHooksPath); err != nil && os.IsNotExist(err) {
+				os.MkdirAll(customHooksPath, os.ModePerm)
+				// Generate update hook example without executable permissions
+				hookPath := filepath.Join(customHooksPath, "update.sample")
+				if err := os.WriteFile(hookPath, []byte(updateHookExample), 0744); err != nil {
+					return fmt.Errorf("failed to generate update hook example: %w", err)
+				}
+			}
+
 			// Set up the backend
 			// TODO: support other backends
 			sb, err := sqlite.NewSqliteBackend(cmd.Context(), cfg)
@@ -57,21 +70,24 @@ var (
 		// This is set in the server before invoking git-receive-pack/git-upload-pack
 		repoName := os.Getenv("SOFT_SERVE_REPO_NAME")
 
-		in := cmd.InOrStdin()
-		out := cmd.OutOrStdout()
-		err := cmd.ErrOrStderr()
+		stdin := cmd.InOrStdin()
+		stdout := cmd.OutOrStdout()
+		stderr := cmd.ErrOrStderr()
 
 		cmdName := cmd.Name()
+		customHookPath := filepath.Join(filepath.Dir(configPath), "hooks", cmdName)
+
+		var buf bytes.Buffer
+		opts := make([]backend.HookArg, 0)
+
 		switch cmdName {
 		case hooks.PreReceiveHook, hooks.PostReceiveHook:
-			var buf bytes.Buffer
-			opts := make([]backend.HookArg, 0)
-			scanner := bufio.NewScanner(in)
+			scanner := bufio.NewScanner(stdin)
 			for scanner.Scan() {
 				buf.Write(scanner.Bytes())
 				fields := strings.Fields(scanner.Text())
 				if len(fields) != 3 {
-					return fmt.Errorf("invalid pre-receive hook input: %s", scanner.Text())
+					return fmt.Errorf("invalid hook input: %s", scanner.Text())
 				}
 				opts = append(opts, backend.HookArg{
 					OldSha:  fields[0],
@@ -82,22 +98,30 @@ var (
 
 			switch cmdName {
 			case hooks.PreReceiveHook:
-				hks.PreReceive(out, err, repoName, opts)
+				hks.PreReceive(stdout, stderr, repoName, opts)
 			case hooks.PostReceiveHook:
-				hks.PostReceive(out, err, repoName, opts)
+				hks.PostReceive(stdout, stderr, repoName, opts)
 			}
 		case hooks.UpdateHook:
 			if len(args) != 3 {
 				return fmt.Errorf("invalid update hook input: %s", args)
 			}
 
-			hks.Update(out, err, repoName, backend.HookArg{
+			hks.Update(stdout, stderr, repoName, backend.HookArg{
 				OldSha:  args[0],
 				NewSha:  args[1],
 				RefName: args[2],
 			})
 		case hooks.PostUpdateHook:
-			hks.PostUpdate(out, err, repoName, args...)
+			hks.PostUpdate(stdout, stderr, repoName, args...)
+		}
+
+		// Custom hooks
+		if stat, err := os.Stat(customHookPath); err == nil && !stat.IsDir() && stat.Mode()&0o111 != 0 {
+			// If the custom hook is executable, run it
+			if err := runCommand(cmd.Context(), &buf, stdout, stderr, customHookPath, args...); err != nil {
+				return fmt.Errorf("failed to run custom hook: %w", err)
+			}
 		}
 
 		return nil
@@ -138,3 +162,54 @@ func init() {
 		postUpdateCmd,
 	)
 }
+
+func runCommand(ctx context.Context, in io.Reader, out io.Writer, err io.Writer, name string, args ...string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdin = in
+	cmd.Stdout = out
+	cmd.Stderr = err
+	return cmd.Run()
+}
+
+const updateHookExample = `#!/bin/sh
+#
+# An example hook script to echo information about the push
+# and send it to the client.
+#
+# To enable this hook, rename this file to "update" and make it executable.
+
+refname="$1"
+oldrev="$2"
+newrev="$3"
+
+# Safety check
+if [ -z "$GIT_DIR" ]; then
+        echo "Don't run this script from the command line." >&2
+        echo " (if you want, you could supply GIT_DIR then run" >&2
+        echo "  $0 <ref> <oldrev> <newrev>)" >&2
+        exit 1
+fi
+
+if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
+        echo "usage: $0 <ref> <oldrev> <newrev>" >&2
+        exit 1
+fi
+
+# Check types
+# if $newrev is 0000...0000, it's a commit to delete a ref.
+zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+if [ "$newrev" = "$zero" ]; then
+        newrev_type=delete
+else
+        newrev_type=$(git cat-file -t $newrev)
+fi
+
+echo "Hi from Soft Serve update hook!"
+echo
+echo "RefName: $refname"
+echo "Change Type: $newrev_type"
+echo "Old SHA1: $oldrev"
+echo "New SHA1: $newrev"
+
+exit 0
+`
