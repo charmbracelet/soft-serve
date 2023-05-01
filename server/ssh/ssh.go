@@ -189,6 +189,13 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 						return
 					}
 
+					// Environment variables to pass down to git hooks.
+					envs := []string{
+						"SOFT_SERVE_REPO_NAME=" + name,
+						"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
+						"SOFT_SERVE_PUBLIC_KEY=" + ak,
+					}
+
 					logger.Debug("git middleware", "cmd", gc, "access", access.String())
 					repoDir := filepath.Join(reposDir, repo)
 					switch gc {
@@ -205,7 +212,7 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 							}
 							createRepoCounter.WithLabelValues(ak, s.User(), name).Inc()
 						}
-						if err := git.ReceivePack(s, s, s.Stderr(), repoDir); err != nil {
+						if err := git.ReceivePack(s.Context(), s, s, s.Stderr(), repoDir, envs...); err != nil {
 							sshFatal(s, git.ErrSystemMalfunction)
 						}
 						receivePackCounter.WithLabelValues(ak, s.User(), name).Inc()
@@ -223,7 +230,7 @@ func (s *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 							counter = uploadArchiveCounter
 						}
 
-						err := gitPack(s, s, s.Stderr(), repoDir)
+						err := gitPack(s.Context(), s, s, s.Stderr(), repoDir, envs...)
 						if errors.Is(err, git.ErrInvalidRepo) {
 							sshFatal(s, git.ErrInvalidRepo)
 						} else if err != nil {

@@ -38,7 +38,7 @@ func mirrorJob(cfg *config.Config) func() {
 				cmd.AddEnvs(
 					fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
 						filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
-						cfg.Internal.ClientKeyPath,
+						cfg.SSH.ClientKeyPath,
 					),
 				)
 				if _, err := cmd.RunInDir(r.Path); err != nil {

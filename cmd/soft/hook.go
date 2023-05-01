@@ -1,15 +1,23 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/keygen"
+	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/spf13/cobra"
-	gossh "golang.org/x/crypto/ssh"
+)
+
+var (
+	confixCtxKey  = "config"
+	backendCtxKey = "backend"
 )
 
 var (
@@ -20,94 +28,113 @@ var (
 		Short:  "Run git server hooks",
 		Long:   "Handles Soft Serve git server hooks.",
 		Hidden: true,
-		RunE: func(_ *cobra.Command, args []string) error {
-			c, s, err := commonInit()
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := config.ParseConfig(configPath)
 			if err != nil {
-				return err
+				return fmt.Errorf("could not parse config: %w", err)
 			}
-			defer c.Close() //nolint:errcheck
-			defer s.Close() //nolint:errcheck
-			s.Stdin = os.Stdin
-			s.Stdout = os.Stdout
-			s.Stderr = os.Stderr
-			cmd := fmt.Sprintf("hook %s", strings.Join(args, " "))
-			if err := s.Run(cmd); err != nil {
-				return err
+
+			// Set up the backend
+			// TODO: support other backends
+			sb, err := sqlite.NewSqliteBackend(cmd.Context(), cfg)
+			if err != nil {
+				return fmt.Errorf("failed to create sqlite backend: %w", err)
 			}
+
+			cfg = cfg.WithBackend(sb)
+
+			cmd.SetContext(context.WithValue(cmd.Context(), confixCtxKey, cfg))
+			cmd.SetContext(context.WithValue(cmd.Context(), backendCtxKey, sb))
+
 			return nil
 		},
+	}
+
+	hooksRunE = func(cmd *cobra.Command, args []string) error {
+		cfg := cmd.Context().Value(confixCtxKey).(*config.Config)
+		hks := cfg.Backend.(backend.Hooks)
+
+		// This is set in the server before invoking git-receive-pack/git-upload-pack
+		repoName := os.Getenv("SOFT_SERVE_REPO_NAME")
+
+		in := cmd.InOrStdin()
+		out := cmd.OutOrStdout()
+		err := cmd.ErrOrStderr()
+
+		cmdName := cmd.Name()
+		switch cmdName {
+		case hooks.PreReceiveHook, hooks.PostReceiveHook:
+			var buf bytes.Buffer
+			opts := make([]backend.HookArg, 0)
+			scanner := bufio.NewScanner(in)
+			for scanner.Scan() {
+				buf.Write(scanner.Bytes())
+				fields := strings.Fields(scanner.Text())
+				if len(fields) != 3 {
+					return fmt.Errorf("invalid pre-receive hook input: %s", scanner.Text())
+				}
+				opts = append(opts, backend.HookArg{
+					OldSha:  fields[0],
+					NewSha:  fields[1],
+					RefName: fields[2],
+				})
+			}
+
+			switch cmdName {
+			case hooks.PreReceiveHook:
+				hks.PreReceive(out, err, repoName, opts)
+			case hooks.PostReceiveHook:
+				hks.PostReceive(out, err, repoName, opts)
+			}
+		case hooks.UpdateHook:
+			if len(args) != 3 {
+				return fmt.Errorf("invalid update hook input: %s", args)
+			}
+
+			hks.Update(out, err, repoName, backend.HookArg{
+				OldSha:  args[0],
+				NewSha:  args[1],
+				RefName: args[2],
+			})
+		case hooks.PostUpdateHook:
+			hks.PostUpdate(out, err, repoName, args...)
+		}
+
+		return nil
+	}
+
+	preReceiveCmd = &cobra.Command{
+		Use:   "pre-receive",
+		Short: "Run git pre-receive hook",
+		RunE:  hooksRunE,
+	}
+
+	updateCmd = &cobra.Command{
+		Use:   "update",
+		Short: "Run git update hook",
+		Args:  cobra.ExactArgs(3),
+		RunE:  hooksRunE,
+	}
+
+	postReceiveCmd = &cobra.Command{
+		Use:   "post-receive",
+		Short: "Run git post-receive hook",
+		RunE:  hooksRunE,
+	}
+
+	postUpdateCmd = &cobra.Command{
+		Use:   "post-update",
+		Short: "Run git post-update hook",
+		RunE:  hooksRunE,
 	}
 )
 
 func init() {
 	hookCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "path to config file")
-}
-
-// TODO: use ssh controlmaster
-func commonInit() (c *gossh.Client, s *gossh.Session, err error) {
-	cfg, err := config.ParseConfig(configPath)
-	if err != nil {
-		return
-	}
-
-	// Git runs the hook within the repository's directory.
-	// Get the working directory to determine the repository name.
-	wd, err := os.Getwd()
-	if err != nil {
-		return
-	}
-
-	rs, err := filepath.Abs(filepath.Join(cfg.DataPath, "repos"))
-	if err != nil {
-		return
-	}
-
-	if !strings.HasPrefix(wd, rs) {
-		err = fmt.Errorf("hook must be run from within repository directory")
-		return
-	}
-	repoName := strings.TrimPrefix(wd, rs)
-	repoName = strings.TrimPrefix(repoName, string(os.PathSeparator))
-	c, err = newClient(cfg)
-	if err != nil {
-		return
-	}
-	s, err = newSession(c)
-	if err != nil {
-		return
-	}
-	s.Setenv("SOFT_SERVE_REPO_NAME", repoName)
-	return
-}
-
-func newClient(cfg *config.Config) (*gossh.Client, error) {
-	// Only accept the server's host key.
-	pk, err := keygen.New(cfg.Internal.KeyPath, keygen.WithKeyType(keygen.Ed25519))
-	if err != nil {
-		return nil, err
-	}
-	ik, err := keygen.New(cfg.Internal.InternalKeyPath, keygen.WithKeyType(keygen.Ed25519))
-	if err != nil {
-		return nil, err
-	}
-	cc := &gossh.ClientConfig{
-		User: "internal",
-		Auth: []gossh.AuthMethod{
-			gossh.PublicKeys(ik.Signer()),
-		},
-		HostKeyCallback: gossh.FixedHostKey(pk.PublicKey()),
-	}
-	c, err := gossh.Dial("tcp", cfg.Internal.ListenAddr, cc)
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
-}
-
-func newSession(c *gossh.Client) (*gossh.Session, error) {
-	s, err := c.NewSession()
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
+	hookCmd.AddCommand(
+		preReceiveCmd,
+		updateCmd,
+		postReceiveCmd,
+		postUpdateCmd,
+	)
 }

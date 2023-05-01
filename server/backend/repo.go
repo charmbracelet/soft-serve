@@ -29,8 +29,6 @@ type RepositoryStore interface {
 	DeleteRepository(name string) error
 	// RenameRepository renames a repository.
 	RenameRepository(oldName, newName string) error
-	// InitializeHooks initializes the hooks for the given repository.
-	InitializeHooks(repo string) error
 }
 
 // RepositoryMetadata is an interface for managing repository metadata.

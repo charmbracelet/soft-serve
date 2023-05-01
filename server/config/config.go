@@ -25,6 +25,9 @@ type SSHConfig struct {
 	// KeyPath is the path to the SSH server's private key.
 	KeyPath string `env:"KEY_PATH" yaml:"key_path"`
 
+	// ClientKeyPath is the path to the server's client private key.
+	ClientKeyPath string `env:"CLIENT_KEY_PATH" yaml:"client_key_path"`
+
 	// MaxTimeout is the maximum number of seconds a connection can take.
 	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout"`
 
@@ -68,22 +71,6 @@ type StatsConfig struct {
 	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 }
 
-// InternalConfig is the configuration for the internal server.
-// This is used for internal communication between the Soft Serve client and server.
-type InternalConfig struct {
-	// ListenAddr is the address on which the internal server will listen.
-	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
-
-	// KeyPath is the path to the SSH server's host private key.
-	KeyPath string `env:"KEY_PATH" yaml:"key_path"`
-
-	// InternalKeyPath is the path to the server's internal private key.
-	InternalKeyPath string `env:"INTERNAL_KEY_PATH" yaml:"internal_key_path"`
-
-	// ClientKeyPath is the path to the server's client private key.
-	ClientKeyPath string `env:"CLIENT_KEY_PATH" yaml:"client_key_path"`
-}
-
 // Config is the configuration for Soft Serve.
 type Config struct {
 	// Name is the name of the server.
@@ -101,9 +88,6 @@ type Config struct {
 	// Stats is the configuration for the stats server.
 	Stats StatsConfig `envPrefix:"STATS_" yaml:"stats"`
 
-	// Internal is the configuration for the internal server.
-	Internal InternalConfig `envPrefix:"INTERNAL_" yaml:"internal"`
-
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
@@ -120,11 +104,12 @@ func parseConfig(path string) (*Config, error) {
 		Name:     "Soft Serve",
 		DataPath: dataPath,
 		SSH: SSHConfig{
-			ListenAddr:  ":23231",
-			PublicURL:   "ssh://localhost:23231",
-			KeyPath:     filepath.Join("ssh", "soft_serve_host_ed25519"),
-			MaxTimeout:  0,
-			IdleTimeout: 0,
+			ListenAddr:    ":23231",
+			PublicURL:     "ssh://localhost:23231",
+			KeyPath:       filepath.Join("ssh", "soft_serve_host_ed25519"),
+			ClientKeyPath: filepath.Join("ssh", "soft_serve_client_ed25519"),
+			MaxTimeout:    0,
+			IdleTimeout:   0,
 		},
 		Git: GitConfig{
 			ListenAddr:     ":9418",
@@ -138,12 +123,6 @@ func parseConfig(path string) (*Config, error) {
 		},
 		Stats: StatsConfig{
 			ListenAddr: "localhost:23233",
-		},
-		Internal: InternalConfig{
-			ListenAddr:      "localhost:23230",
-			KeyPath:         filepath.Join("ssh", "soft_serve_internal_host_ed25519"),
-			InternalKeyPath: filepath.Join("ssh", "soft_serve_internal_ed25519"),
-			ClientKeyPath:   filepath.Join("ssh", "soft_serve_client_ed25519"),
 		},
 	}
 
@@ -260,16 +239,8 @@ func (c *Config) validate() error {
 		c.SSH.KeyPath = filepath.Join(c.DataPath, c.SSH.KeyPath)
 	}
 
-	if c.Internal.KeyPath != "" && !filepath.IsAbs(c.Internal.KeyPath) {
-		c.Internal.KeyPath = filepath.Join(c.DataPath, c.Internal.KeyPath)
-	}
-
-	if c.Internal.ClientKeyPath != "" && !filepath.IsAbs(c.Internal.ClientKeyPath) {
-		c.Internal.ClientKeyPath = filepath.Join(c.DataPath, c.Internal.ClientKeyPath)
-	}
-
-	if c.Internal.InternalKeyPath != "" && !filepath.IsAbs(c.Internal.InternalKeyPath) {
-		c.Internal.InternalKeyPath = filepath.Join(c.DataPath, c.Internal.InternalKeyPath)
+	if c.SSH.ClientKeyPath != "" && !filepath.IsAbs(c.SSH.ClientKeyPath) {
+		c.SSH.ClientKeyPath = filepath.Join(c.DataPath, c.SSH.ClientKeyPath)
 	}
 
 	if c.HTTP.TLSKeyPath != "" && !filepath.IsAbs(c.HTTP.TLSKeyPath) {
@@ -298,7 +269,7 @@ func parseAuthKeys(aks []string) []ssh.PublicKey {
 	return pks
 }
 
-// AdminKeys returns the admin keys including the internal api key.
+// AdminKeys returns the server admin keys.
 func (c *Config) AdminKeys() []ssh.PublicKey {
-	return parseAuthKeys(append(c.InitialAdminKeys, c.Internal.InternalKeyPath))
+	return parseAuthKeys(c.InitialAdminKeys)
 }
