@@ -29,7 +29,7 @@ ssh:
 
   # The path to the server's client private key. This key will be used to
   # authenticate the server to make git requests to ssh remotes.
-  client_key_path: "{{ .Internal.ClientKeyPath }}"
+  client_key_path: "{{ .SSH.ClientKeyPath }}"
 
   # The maximum number of seconds a connection can take.
   # A value of 0 means no timeout.

@@ -3,12 +3,15 @@ package ssh
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
@@ -81,12 +84,14 @@ type SSHServer struct {
 // NewSSHServer returns a new SSHServer.
 func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 	cfg := config.FromContext(ctx)
+
 	var err error
 	s := &SSHServer{
 		cfg:    cfg,
 		ctx:    ctx,
 		logger: log.FromContext(ctx).WithPrefix("ssh"),
 	}
+
 	logger := s.logger.StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})
 	mw := []wish.Middleware{
 		rm.MiddlewareWithLogger(
@@ -101,6 +106,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 			lm.MiddlewareWithLogger(logger),
 		),
 	}
+
 	s.srv, err = wish.NewServer(
 		ssh.PublicKeyAuth(s.PublicKeyHandler),
 		ssh.KeyboardInteractiveAuth(s.KeyboardInteractiveHandler),
@@ -115,8 +121,17 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 	if cfg.SSH.MaxTimeout > 0 {
 		s.srv.MaxTimeout = time.Duration(cfg.SSH.MaxTimeout) * time.Second
 	}
+
 	if cfg.SSH.IdleTimeout > 0 {
 		s.srv.IdleTimeout = time.Duration(cfg.SSH.IdleTimeout) * time.Second
+	}
+
+	// Create client ssh key
+	if _, err := os.Stat(cfg.SSH.ClientKeyPath); err != nil && os.IsNotExist(err) {
+		_, err := keygen.New(cfg.SSH.ClientKeyPath, keygen.WithKeyType(keygen.Ed25519), keygen.WithWrite())
+		if err != nil {
+			return nil, fmt.Errorf("client ssh key: %w", err)
+		}
 	}
 
 	return s, nil

@@ -132,7 +132,6 @@ func (s *Server) Start() error {
 		return nil
 	})
 	errg.Go(func() error {
-		s.logger.Print("Starting cron scheduler")
 		s.Cron.Start()
 		return nil
 	})
