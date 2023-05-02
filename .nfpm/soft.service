@@ -1,0 +1,45 @@
+[Unit]
+Description=Soft Serve git server 🍦
+Documentation=https://github.com/charmbracelet/soft-serve
+Requires=network-online.target
+After=network-online.target
+
+[Install]
+WantedBy=multi-user.target
+
+# Hardening
+ReadWritePaths=/var/lib/soft-serve
+UMask=0027
+NoNewPrivileges=true
+LimitNOFILE=1048576
+ProtectSystem=strict
+ProtectHome=true
+PrivateUsers=yes
+PrivateTmp=true
+PrivateDevices=true
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallArchitectures=native
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+ExecStartPre=mkdir -p /var/local/lib/soft-serve
+ExecStart=/usr/bin/soft serve
+EnvironmentFile=-/etc/soft.conf
