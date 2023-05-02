@@ -88,6 +88,10 @@ Or just install it with `go`:
 go install github.com/charmbracelet/soft-serve/cmd/soft@latest
 ```
 
+A [Docker image][docker] is also available.
+
+[docker]: https://github.com/charmbracelet/soft-serve/blob/main/docker.md
+
 ## Setting up a server
 
 Make sure `git` is installed, then run `soft serve`. That’s it.
@@ -102,7 +106,7 @@ SOFT_SERVE_DATA_PATH=/var/lib/soft-serve soft serve
 ```
 
 When you run Soft Serve for the first time, make sure you have the
-`SOFT_SERVE_INITIAL_ADMIN_KEY` environment variable is set to your ssh
+`SOFT_SERVE_INITIAL_ADMIN_KEYS` environment variable is set to your ssh
 authorized key. Any added key to this variable will be treated as admin with
 full privileges.
 
@@ -202,17 +206,36 @@ name all in uppercase. Here are some examples:
 - `SOFT_SERVE_HTTP_PUBLIC_URL`: HTTP public URL used for cloning
 - `SOFT_SERVE_GIT_MAX_CONNECTIONS`: The number of simultaneous connections to git daemon
 
-A [Docker image][docker] is also available.
-
-[docker]: https://github.com/charmbracelet/soft-serve/blob/main/docker.md
-
 ## Configuration
 
 Configuring Soft Serve is simple and straightforward. Use the SSH command-line
 interface to manage access settings, users, and repos.
 
-For more info try `ssh localhost -i ~/.ssh/id_ed25519 -p 23231 help`. Make sure
+Try `ssh localhost -i ~/.ssh/id_ed25519 -p 23231 help` for more info. Make sure
 you use your key here.
+
+For ease of use, instead of specifying the key, port, and hostname every time
+you SSH into Soft Serve, add your own Soft Serve instance entry to your SSH
+config. For instance, to use `ssh soft` instead of typing `ssh localhost -i
+~/.ssh/id_ed25519 -p 23231`, we can define a `soft` entry in our SSH config
+file `~/.ssh/config`.
+
+```conf
+Host soft
+  HostName localhost
+  Port 23231
+  IdentityFile ~/.ssh/id_ed25519
+```
+
+Now, we can do `ssh soft` to SSH into Soft Serve. Since `git` is also aware of
+this config, you can use `soft` as the hostname for your clone commands.
+
+```sh
+git clone ssh://soft/dotfiles
+# make changes
+# add & commit
+git push origin main
+```
 
 > **Note** The `-i` part will be omitted in the examples below for brevity. You
 > can add your server settings to your sshconfig for quicker access.
@@ -232,7 +255,8 @@ no-access, read-only, read-write, and admin-access.
 
 ### Authentication
 
-Everything that needs authentication is done using SSH.
+Everything that needs authentication is done using SSH. Make sure you have
+added an entry for your Soft Serve instance in your `~/.ssh/config` file.
 
 By default, Soft Serve gives ready-only permission to anonymous connections to
 any of the above protocols. This is controlled by two settings `anon-access`
@@ -246,7 +270,7 @@ and `allow-keyless`.
   HTTP, and Git protocol connections. Default is `true`.
 
 ```sh
-$ ssh localhost settings
+$ ssh -p 23231 localhost settings
 Manage server settings
 
 Usage:
@@ -273,10 +297,14 @@ use SSH Public Key authentication but are not registered users. The default
 setting for this is `read-only`. This will grant anonymous connections that use
 SSH Public Key authentication `read-only` access to public repos.
 
+`anon-access` is also used in combination with `allow-keyless` to determine the
+access level for HTTP(s) and git:// clone requests.
+
 ## Authorization
 
-Admins can manage users and manage their keys. Once a user is created and has
-access to the server, they can manage their own keys and settings.
+Admins can manage users and their keys using the `user` command. Once a user is
+created and has access to the server, they can manage their own keys and
+settings.
 
 To create a new user simply use `user create`:
 
@@ -295,10 +323,10 @@ ssh -p 23231 localhost user create frankie '-k "ssh-ed25519 AAAATzN..."'
 ssh -p 23231 localhost user help
 ```
 
-Once a user has access, they get `read-only` access to public repositories.
+Once a user is created, they get `read-only` access to public repositories.
 They can also create new repositories on the server.
 
-Non-admin users can manage their keys using the `pubkey` command:
+Users can manage their keys using the `pubkey` command:
 
 ```sh
 # List user keys
@@ -353,10 +381,12 @@ Flags:
 Use "ssh -p 23231 localhost repo [command] --help" for more information about a command.
 ```
 
+To use any of the above `repo` commands, a user must be a collaborator in the repository. More on this below.
+
 ### Creating Repositories
 
-To create a repository, first make sure you are an admin or a registered user.
-Use the `repo create <repo>` command to create a new repository:
+To create a repository, first make sure you are a registered user. Use the
+`repo create <repo>` command to create a new repository:
 
 ```sh
 # Create a new repository
@@ -524,7 +554,7 @@ You can copy text to your clipboard over SSH. For instance, you can press
 Soft Serve supports git server-side hooks `pre-receive`, `update`,
 `post-update`, and `post-receive`. This means you can define your own hooks to
 run on repository push events. Hooks can be defined as a per-repository hook,
-and/or global hooks that get run for all repositories.
+and/or global hooks that run for all repositories.
 
 You can find per-repository hooks under the repository `hooks` directory.
 
