@@ -6,9 +6,12 @@ if ! command -V systemctl >/dev/null 2>&1; then
 	exit 0
 fi
 
-echo "Enabling and starting soft.service"
+systemd-sysusers
+systemd-tmpfiles --create
+
+echo "Enabling and starting soft-server.service"
 systemctl daemon-reload
-systemctl unmask soft.service
-systemctl preset soft.service
-systemctl enable soft.service
-systemctl restart soft.service
+systemctl unmask soft-serve.service
+systemctl preset soft-serve.service
+systemctl enable soft-serve.service
+systemctl restart soft-serve.service
