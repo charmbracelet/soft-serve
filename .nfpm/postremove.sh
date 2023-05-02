@@ -6,6 +6,10 @@ if ! command -V systemctl >/dev/null 2>&1; then
 	exit 0
 fi
 
-systemctl stop soft.service
-systemctl disable soft.service
+echo "Disabling and starting soft-server.service"
+systemctl stop soft-serve.service
+systemctl disable soft-serve.service
 systemctl daemon-reload
+systemctl reset-failed
+
+echo "WARN: the soft-serve user/group and /var/lib/soft-serve directory were not removed"

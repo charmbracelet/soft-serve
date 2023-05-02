@@ -4,8 +4,15 @@ Documentation=https://github.com/charmbracelet/soft-serve
 Requires=network-online.target
 After=network-online.target
 
-[Install]
-WantedBy=multi-user.target
+[Service]
+Type=simple
+User=soft-serve
+Group=soft-serve
+Restart=always
+RestartSec=1
+ExecStart=/usr/bin/soft serve
+EnvironmentFile=-/etc/soft-serve.conf
+WorkingDirectory=/var/lib/soft-serve
 
 # Hardening
 ReadWritePaths=/var/lib/soft-serve
@@ -36,10 +43,5 @@ SystemCallFilter=@system-service
 SystemCallFilter=~@privileged @resources
 SystemCallArchitectures=native
 
-[Service]
-Type=simple
-Restart=always
-RestartSec=1
-ExecStartPre=mkdir -p /var/local/lib/soft-serve
-ExecStart=/usr/bin/soft serve
-EnvironmentFile=-/etc/soft.conf
+[Install]
+WantedBy=multi-user.target
