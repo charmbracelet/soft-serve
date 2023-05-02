@@ -16,6 +16,12 @@ ENV SOFT_SERVE_INITIAL_ADMIN_KEYS ""
 # Expose ports
 # SSH
 EXPOSE 23231/tcp
+# HTTP
+EXPOSE 23232/tcp
+# Stats
+EXPOSE 23233/tcp
+# Git
+EXPOSE 9418/tcp
 
 # Set the default command
 ENTRYPOINT [ "/usr/local/bin/soft", "serve" ]

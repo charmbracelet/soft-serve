@@ -171,7 +171,7 @@ git:
 # The HTTP server configuration.
 http:
   # The address on which the HTTP server will listen.
-  listen_addr: ":8080"
+  listen_addr: ":23232"
 
   # The path to the TLS private key.
   tls_key_path: ""
@@ -182,12 +182,12 @@ http:
   # The public URL of the HTTP server.
   # This is the address that will be used to clone repositories.
   # Make sure to use https:// if you are using TLS.
-  public_url: "http://localhost:8080"
+  public_url: "http://localhost:23232"
 
 # The stats server configuration.
 stats:
   # The address on which the stats server will listen.
-  listen_addr: ":8081"
+  listen_addr: ":23233"
 
 # Additional admin keys.
 #initial_admin_keys:
