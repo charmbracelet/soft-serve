@@ -6,9 +6,6 @@ if ! command -V systemctl >/dev/null 2>&1; then
 	exit 0
 fi
 
-echo "Disabling and starting soft-server.service"
-systemctl stop soft-serve.service
-systemctl disable soft-serve.service
 systemctl daemon-reload
 systemctl reset-failed
 
