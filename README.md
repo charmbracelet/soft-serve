@@ -52,7 +52,7 @@ manager:
 
 ```bash
 # macOS or Linux
-brew tap charmbracelet/tap && brew install charmbracelet/tap/soft-serve
+brew install charmbracelet/tap/soft-serve
 
 # Arch Linux
 pacman -S soft-serve
