@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-RUN apk update && apk add --update git bash && rm -rf /var/cache/apk/*
+RUN apk update && apk add --update git bash openssh && rm -rf /var/cache/apk/*
 
 COPY soft /usr/local/bin/soft
 
