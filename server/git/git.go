@@ -136,11 +136,11 @@ func RunGit(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, dir 
 	})
 
 	if err := errg.Wait(); err != nil {
-		logger.Error("while running git command", "err", err)
-		return err
+		logger.Error("while copying output", "err", err)
 	}
 
-	return nil
+	// Wait for the command to finish
+	return c.Wait()
 }
 
 // WritePktline encodes and writes a pktline to the given writer.
