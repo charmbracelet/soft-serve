@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/caarlos0/env/v7"
 	"github.com/charmbracelet/log"
@@ -93,6 +94,10 @@ type Config struct {
 	// Valid values are "json", "logfmt", and "text".
 	LogFormat string `env:"LOG_FORMAT" yaml:"log_format"`
 
+	// Time format for the log `ts` field.
+	// Format must be described in Golang's time format.
+	LogTimeFormat string `env:"LOG_TIME_FORMAT" yaml:"log_time_format"`
+
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
@@ -106,9 +111,10 @@ type Config struct {
 func parseConfig(path string) (*Config, error) {
 	dataPath := filepath.Dir(path)
 	cfg := &Config{
-		Name:      "Soft Serve",
-		LogFormat: "text",
-		DataPath:  dataPath,
+		Name:          "Soft Serve",
+		LogFormat:     "text",
+		LogTimeFormat: time.DateOnly,
+		DataPath:      dataPath,
 		SSH: SSHConfig{
 			ListenAddr:    ":23231",
 			PublicURL:     "ssh://localhost:23231",
@@ -280,9 +286,7 @@ func (c *Config) AdminKeys() []ssh.PublicKey {
 	return parseAuthKeys(c.InitialAdminKeys)
 }
 
-var (
-	configCtxKey = struct{ string }{"config"}
-)
+var configCtxKey = struct{ string }{"config"}
 
 // WithContext returns a new context with the configuration attached.
 func WithContext(ctx context.Context, cfg *Config) context.Context {

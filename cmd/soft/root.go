@@ -61,6 +61,9 @@ func main() {
 	if debug, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_DEBUG")); debug {
 		logger.SetLevel(log.DebugLevel)
 	}
+	if tsfmt := os.Getenv("SOFT_SERVE_LOG_TIME_FORMAT"); tsfmt != "" {
+		logger.SetTimeFormat(tsfmt)
+	}
 
 	switch strings.ToLower(os.Getenv("SOFT_SERVE_LOG_FORMAT")) {
 	case "json":

@@ -5,8 +5,7 @@ import (
 	"text/template"
 )
 
-var (
-	configFileTmpl = template.Must(template.New("config").Parse(`# Soft Serve Server configurations
+var configFileTmpl = template.Must(template.New("config").Parse(`# Soft Serve Server configurations
 
 # The name of the server.
 # This is the name that will be displayed in the UI.
@@ -14,6 +13,7 @@ name: "{{ .Name }}"
 
 # Log format to use. Valid values are "json", "logfmt", and "text".
 log_format: "{{ .LogFormat }}"
+log_time_format: "{{ .LogTimeFormat }}"
 
 # The SSH server configuration.
 ssh:
@@ -79,7 +79,6 @@ stats:
 #initial_admin_keys:
 #  - "ssh-rsa AAAAB3NzaC1yc2..."
 `))
-)
 
 func newConfigFile(cfg *Config) string {
 	var b bytes.Buffer
