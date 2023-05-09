@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
@@ -14,12 +15,12 @@ import (
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/jmoiron/sqlx"
-	_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite" // sqlite driver
 )
 
 // SqliteBackend is a backend that uses a SQLite database as a Soft Serve
 // backend.
-type SqliteBackend struct {
+type SqliteBackend struct { //nolint: revive
 	cfg    *config.Config
 	ctx    context.Context
 	dp     string
@@ -177,9 +178,10 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 	rp := filepath.Join(d.reposPath(), repo)
 
 	copts := git.CloneOptions{
-		Bare:   true,
-		Mirror: opts.Mirror,
-		Quiet:  true,
+		Bare:    true,
+		Mirror:  opts.Mirror,
+		Quiet:   true,
+		Timeout: 15 * time.Minute,
 		CommandOptions: git.CommandOptions{
 			Envs: []string{
 				fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,

@@ -41,16 +41,6 @@ func Init(path string, bare bool) (*Repository, error) {
 	return Open(path)
 }
 
-func isInsideWorkTree(r *git.Repository) bool {
-	out, err := r.RevParse("--is-inside-work-tree")
-	return err == nil && out == "true"
-}
-
-func isInsideGitDir(r *git.Repository) bool {
-	out, err := r.RevParse("--is-inside-git-dir")
-	return err == nil && out == "true"
-}
-
 func gitDir(r *git.Repository) (string, error) {
 	return r.RevParse("--git-dir")
 }
@@ -192,7 +182,7 @@ func (r *Repository) Patch(commit *Commit) (string, error) {
 
 // CountCommits returns the number of commits in the repository.
 func (r *Repository) CountCommits(ref *Reference) (int64, error) {
-	return r.Repository.RevListCount([]string{ref.Name().String()})
+	return r.RevListCount([]string{ref.Name().String()})
 }
 
 // CommitsByPage returns the commits for a given page and size.
