@@ -77,6 +77,7 @@ var (
 type SSHServer struct {
 	srv    *ssh.Server
 	cfg    *config.Config
+	be     backend.Backend
 	ctx    context.Context
 	logger *log.Logger
 }
@@ -84,26 +85,28 @@ type SSHServer struct {
 // NewSSHServer returns a new SSHServer.
 func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 	cfg := config.FromContext(ctx)
+	logger := log.FromContext(ctx).WithPrefix("ssh")
 
 	var err error
 	s := &SSHServer{
 		cfg:    cfg,
 		ctx:    ctx,
-		logger: log.FromContext(ctx).WithPrefix("ssh"),
+		be:     backend.FromContext(ctx),
+		logger: logger,
 	}
 
-	logger := s.logger.StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})
 	mw := []wish.Middleware{
 		rm.MiddlewareWithLogger(
 			logger,
 			// BubbleTea middleware.
 			bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256),
 			// CLI middleware.
-			cm.Middleware(cfg),
+			cm.Middleware(cfg, logger),
 			// Git middleware.
 			s.Middleware(cfg),
 			// Logging middleware.
-			lm.MiddlewareWithLogger(logger),
+			lm.MiddlewareWithLogger(logger.
+				StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})),
 		),
 	}
 
@@ -191,6 +194,8 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 		return func(s ssh.Session) {
 			func() {
 				cmd := s.Command()
+				ctx := s.Context()
+				be := ss.be.WithContext(ctx)
 				if len(cmd) >= 2 && strings.HasPrefix(cmd[0], "git") {
 					gc := cmd[0]
 					// repo should be in the form of "repo.git"
@@ -222,8 +227,8 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 							sshFatal(s, git.ErrNotAuthed)
 							return
 						}
-						if _, err := cfg.Backend.Repository(name); err != nil {
-							if _, err := cfg.Backend.CreateRepository(name, backend.RepositoryOptions{Private: false}); err != nil {
+						if _, err := be.Repository(name); err != nil {
+							if _, err := be.CreateRepository(name, backend.RepositoryOptions{Private: false}); err != nil {
 								log.Errorf("failed to create repo: %s", err)
 								sshFatal(s, err)
 								return
@@ -248,7 +253,7 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 							counter = uploadArchiveCounter
 						}
 
-						err := gitPack(s.Context(), s, s, s.Stderr(), repoDir, envs...)
+						err := gitPack(ctx, s, s, s.Stderr(), repoDir, envs...)
 						if errors.Is(err, git.ErrInvalidRepo) {
 							sshFatal(s, git.ErrInvalidRepo)
 						} else if err != nil {

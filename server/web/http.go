@@ -81,6 +81,7 @@ func (s *HTTPServer) loggingMiddleware(next http.Handler) http.Handler {
 type HTTPServer struct {
 	ctx        context.Context
 	cfg        *config.Config
+	be         backend.Backend
 	server     *http.Server
 	dirHandler http.Handler
 	logger     *log.Logger
@@ -92,6 +93,7 @@ func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 	s := &HTTPServer{
 		ctx:        ctx,
 		cfg:        cfg,
+		be:         backend.FromContext(ctx),
 		logger:     log.FromContext(ctx).WithPrefix("http"),
 		dirHandler: http.FileServer(http.Dir(filepath.Join(cfg.DataPath, "repos"))),
 		server: &http.Server{
@@ -254,6 +256,7 @@ Redirecting to docs at <a href="https://godoc.org/{{ .ImportRoot }}/{{ .Repo }}"
 func (s *HTTPServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 	repo := pattern.Path(r.Context())
 	repo = utils.SanitizeRepo(repo)
+	be := s.be.WithContext(r.Context())
 
 	// Handle go get requests.
 	//
@@ -271,7 +274,7 @@ func (s *HTTPServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 		// find the repo
 		for {
-			if _, err := s.cfg.Backend.Repository(repo); err == nil {
+			if _, err := be.Repository(repo); err == nil {
 				break
 			}
 
@@ -305,7 +308,8 @@ func (s *HTTPServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 func (s *HTTPServer) handleGit(w http.ResponseWriter, r *http.Request) {
 	repo := pat.Param(r, "repo")
 	repo = utils.SanitizeRepo(repo) + ".git"
-	if _, err := s.cfg.Backend.Repository(repo); err != nil {
+	be := s.be.WithContext(r.Context())
+	if _, err := be.Repository(repo); err != nil {
 		s.logger.Debug("repository not found", "repo", repo, "err", err)
 		http.NotFound(w, r)
 		return

@@ -2,6 +2,7 @@ package backend
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/charmbracelet/ssh"
 	gossh "golang.org/x/crypto/ssh"
@@ -17,6 +18,9 @@ type Backend interface {
 	UserStore
 	UserAccess
 	Hooks
+
+	// WithContext returns a copy Backend with the given context.
+	WithContext(ctx context.Context) Backend
 }
 
 // ParseAuthorizedKey parses an authorized key string into a public key.

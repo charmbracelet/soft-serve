@@ -18,25 +18,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ContextKey is a type that can be used as a key in a context.
-type ContextKey string
-
-// String returns the string representation of the ContextKey.
-func (c ContextKey) String() string {
-	return string(c) + "ContextKey"
-}
-
 var (
-	// ConfigCtxKey is the key for the config in the context.
-	ConfigCtxKey = ContextKey("config")
-	// SessionCtxKey is the key for the session in the context.
-	SessionCtxKey = ContextKey("session")
-	// HooksCtxKey is the key for the git hooks in the context.
-	HooksCtxKey = ContextKey("hooks")
-)
-
-var (
-	logger = log.WithPrefix("server.cmd")
+	// sessionCtxKey is the key for the session in the context.
+	sessionCtxKey = &struct{ string }{"session"}
 )
 
 var templateFuncs = template.FuncMap{
@@ -152,8 +136,8 @@ func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
 
 func fromContext(cmd *cobra.Command) (*config.Config, ssh.Session) {
 	ctx := cmd.Context()
-	cfg := ctx.Value(ConfigCtxKey).(*config.Config)
-	s := ctx.Value(SessionCtxKey).(ssh.Session)
+	cfg := config.FromContext(ctx)
+	s := ctx.Value(sessionCtxKey).(ssh.Session)
 	return cfg, s
 }
 
@@ -213,7 +197,7 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 }
 
 // Middleware is the Soft Serve middleware that handles SSH commands.
-func Middleware(cfg *config.Config) wish.Middleware {
+func Middleware(cfg *config.Config, logger *log.Logger) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			func() {
@@ -232,8 +216,16 @@ func Middleware(cfg *config.Config) wish.Middleware {
 					}
 				}
 
-				ctx := context.WithValue(s.Context(), ConfigCtxKey, cfg)
-				ctx = context.WithValue(ctx, SessionCtxKey, s)
+				// Here we copy the server's config and replace the backend
+				// with a new one that uses the session's context.
+				var ctx context.Context = s.Context()
+				scfg := *cfg
+				cfg = &scfg
+				be := cfg.Backend.WithContext(ctx)
+				cfg.Backend = be
+				ctx = config.WithContext(ctx, cfg)
+				ctx = backend.WithContext(ctx, be)
+				ctx = context.WithValue(ctx, sessionCtxKey, s)
 
 				rootCmd := rootCommand(cfg, s)
 				rootCmd.SetArgs(args)
