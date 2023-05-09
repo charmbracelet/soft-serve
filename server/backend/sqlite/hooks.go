@@ -40,24 +40,58 @@ func (d *SqliteBackend) PostUpdate(stdout io.Writer, stderr io.Writer, repo stri
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-
-		rr, err := d.Repository(repo)
-		if err != nil {
-			d.logger.Error("error getting repository", "repo", repo, "err", err)
-			return
-		}
-
-		r, err := rr.Open()
-		if err != nil {
-			d.logger.Error("error opening repository", "repo", repo, "err", err)
-			return
-		}
-
-		if err := r.UpdateServerInfo(); err != nil {
+		if err := updateServerInfo(d, repo); err != nil {
 			d.logger.Error("error updating server-info", "repo", repo, "err", err)
 			return
 		}
 	}()
 
+	// Populate last-modified file.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := populateLastModified(d, repo); err != nil {
+			d.logger.Error("error populating last-modified", "repo", repo, "err", err)
+			return
+		}
+	}()
+
 	wg.Wait()
+}
+
+func updateServerInfo(d *SqliteBackend, repo string) error {
+	rr, err := d.Repository(repo)
+	if err != nil {
+		return err
+	}
+
+	r, err := rr.Open()
+	if err != nil {
+		return err
+	}
+
+	return r.UpdateServerInfo()
+}
+
+func populateLastModified(d *SqliteBackend, repo string) error {
+	var rr *Repo
+	if rr, err := d.Repository(repo); err != nil {
+		return err
+	} else if r, ok := rr.(*Repo); ok {
+		rr = r
+	} else {
+		return ErrRepoNotExist
+	}
+
+	r, err := rr.Open()
+	if err != nil {
+		return err
+	}
+
+	c, err := r.LatestCommitTime()
+	if err != nil {
+		return err
+	}
+
+	return rr.writeLastModified(c)
 }
