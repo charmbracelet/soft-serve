@@ -56,7 +56,7 @@ func main() {
 	ctx := context.Background()
 	logger := log.NewWithOptions(os.Stderr, log.Options{
 		ReportTimestamp: true,
-		TimeFormat:      time.DateOnly,
+		TimeFormat:      time.DateTime,
 	})
 	if debug, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_DEBUG")); debug {
 		logger.SetLevel(log.DebugLevel)
