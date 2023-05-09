@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -64,6 +65,12 @@ func NewSqliteBackend(ctx context.Context) (*SqliteBackend, error) {
 	}
 
 	return d, d.initRepos()
+}
+
+// WithContext returns a copy of SqliteBackend with the given context.
+func (d SqliteBackend) WithContext(ctx context.Context) backend.Backend {
+	d.ctx = ctx
+	return &d
 }
 
 // AllowKeyless returns whether or not keyless access is allowed.
@@ -181,6 +188,8 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 		Mirror: opts.Mirror,
 		Quiet:  true,
 		CommandOptions: git.CommandOptions{
+			Timeout: -1,
+			Context: d.ctx,
 			Envs: []string{
 				fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
 					filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
@@ -192,6 +201,9 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 
 	if err := git.Clone(remote, rp, copts); err != nil {
 		d.logger.Error("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
+		if rerr := os.RemoveAll(rp); rerr != nil {
+			err = errors.Join(err, rerr)
+		}
 		return nil, err
 	}
 

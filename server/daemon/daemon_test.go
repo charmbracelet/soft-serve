@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
@@ -35,15 +36,16 @@ func TestMain(m *testing.M) {
 	ctx := context.TODO()
 	cfg := config.DefaultConfig()
 	ctx = config.WithContext(ctx, cfg)
-	d, err := NewGitDaemon(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
 	fb, err := sqlite.NewSqliteBackend(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 	cfg = cfg.WithBackend(fb)
+	ctx = backend.WithContext(ctx, fb)
+	d, err := NewGitDaemon(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 	testDaemon = d
 	go func() {
 		if err := d.Start(); err != ErrServerClosed {

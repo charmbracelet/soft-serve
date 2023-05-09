@@ -83,6 +83,7 @@ type GitDaemon struct {
 	finished chan struct{}
 	conns    connections
 	cfg      *config.Config
+	be       backend.Backend
 	wg       sync.WaitGroup
 	once     sync.Once
 	logger   *log.Logger
@@ -97,6 +98,7 @@ func NewGitDaemon(ctx context.Context) (*GitDaemon, error) {
 		addr:     addr,
 		finished: make(chan struct{}, 1),
 		cfg:      cfg,
+		be:       backend.FromContext(ctx),
 		conns:    connections{m: make(map[net.Conn]struct{})},
 		logger:   log.FromContext(ctx).WithPrefix("gitdaemon"),
 	}
@@ -231,7 +233,8 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		if !d.cfg.Backend.AllowKeyless() {
+		be := d.be.WithContext(ctx)
+		if !be.AllowKeyless() {
 			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
@@ -248,7 +251,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		auth := d.cfg.Backend.AccessLevel(name, "")
+		auth := be.AccessLevel(name, "")
 		if auth < backend.ReadOnlyAccess {
 			d.fatal(c, git.ErrNotAuthed)
 			return

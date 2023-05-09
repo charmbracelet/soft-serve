@@ -93,3 +93,5 @@ require (
 	modernc.org/strutil v1.1.3 // indirect
 	modernc.org/token v1.0.1 // indirect
 )
+
+replace github.com/gogs/git-module => github.com/aymanbagabas/git-module v1.4.1-0.20230509180555-975c24cdb79a

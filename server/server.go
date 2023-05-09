@@ -50,6 +50,7 @@ func NewServer(ctx context.Context) (*Server, error) {
 		}
 
 		cfg = cfg.WithBackend(sb)
+		ctx = backend.WithContext(ctx, sb)
 	}
 
 	srv := &Server{
