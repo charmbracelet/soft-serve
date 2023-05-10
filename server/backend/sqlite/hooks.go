@@ -75,9 +75,12 @@ func updateServerInfo(d *SqliteBackend, repo string) error {
 
 func populateLastModified(d *SqliteBackend, repo string) error {
 	var rr *Repo
-	if rr, err := d.Repository(repo); err != nil {
+	_rr, err := d.Repository(repo)
+	if err != nil {
 		return err
-	} else if r, ok := rr.(*Repo); ok {
+	}
+
+	if r, ok := _rr.(*Repo); ok {
 		rr = r
 	} else {
 		return ErrRepoNotExist
