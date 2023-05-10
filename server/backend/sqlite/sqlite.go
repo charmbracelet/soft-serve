@@ -223,18 +223,14 @@ func (d *SqliteBackend) DeleteRepository(name string) error {
 	name = utils.SanitizeRepo(name)
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
-	if _, err := os.Stat(rp); err != nil {
-		return os.ErrNotExist
-	}
 
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	return wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+		if err := os.RemoveAll(rp); err != nil {
+			return err
+		}
 		_, err := tx.Exec("DELETE FROM repo WHERE name = ?;", name)
 		return err
-	}); err != nil {
-		return wrapDbErr(err)
-	}
-
-	return os.RemoveAll(rp)
+	})
 }
 
 // RenameRepository renames a repository.
