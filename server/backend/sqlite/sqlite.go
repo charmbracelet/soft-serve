@@ -144,28 +144,25 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
-	cleanup := func() error {
-		return os.RemoveAll(rp)
-	}
-
-	rr, err := git.Init(rp, true)
-	if err != nil {
-		d.logger.Debug("failed to create repository", "err", err)
-		cleanup() // nolint: errcheck
-		return nil, err
-	}
-
-	if err := rr.UpdateServerInfo(); err != nil {
-		d.logger.Debug("failed to update server info", "err", err)
-		cleanup() // nolint: errcheck
-		return nil, err
-	}
-
 	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		_, err := tx.Exec(`INSERT INTO repo (name, project_name, description, private, mirror, hidden, updated_at)
+		if _, err := tx.Exec(`INSERT INTO repo (name, project_name, description, private, mirror, hidden, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
-			name, opts.ProjectName, opts.Description, opts.Private, opts.Mirror, opts.Hidden)
-		return err
+			name, opts.ProjectName, opts.Description, opts.Private, opts.Mirror, opts.Hidden); err != nil {
+			return err
+		}
+
+		rr, err := git.Init(rp, true)
+		if err != nil {
+			d.logger.Debug("failed to create repository", "err", err)
+			return err
+		}
+
+		if err := rr.UpdateServerInfo(); err != nil {
+			d.logger.Debug("failed to update server info", "err", err)
+			return err
+		}
+
+		return nil
 	}); err != nil {
 		d.logger.Debug("failed to create repository in database", "err", err)
 		return nil, wrapDbErr(err)
@@ -216,6 +213,7 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 
 	if err := git.Clone(remote, rp, copts); err != nil {
 		d.logger.Error("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
+		// Cleanup the mess!
 		if rerr := os.RemoveAll(rp); rerr != nil {
 			err = errors.Join(err, rerr)
 		}
@@ -237,11 +235,11 @@ func (d *SqliteBackend) DeleteRepository(name string) error {
 		// Delete repo from cache
 		defer d.cache.Delete(name)
 
-		if err := os.RemoveAll(rp); err != nil {
+		if _, err := tx.Exec("DELETE FROM repo WHERE name = ?;", name); err != nil {
 			return err
 		}
-		_, err := tx.Exec("DELETE FROM repo WHERE name = ?;", name)
-		return err
+
+		return os.RemoveAll(rp)
 	})
 }
 
@@ -263,32 +261,37 @@ func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 	op := filepath.Join(d.reposPath(), oldRepo)
 	np := filepath.Join(d.reposPath(), newRepo)
 	if _, err := os.Stat(op); err != nil {
-		return fmt.Errorf("repository %s does not exist", oldName)
+		return ErrRepoNotExist
 	}
 
 	if _, err := os.Stat(np); err == nil {
-		return fmt.Errorf("repository %s already exists", newName)
+		return ErrRepoExist
 	}
 
 	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+		// Delete cache
+		defer d.cache.Delete(oldName)
+
 		_, err := tx.Exec("UPDATE repo SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?;", newName, oldName)
-		return err
+		if err != nil {
+			return err
+		}
+
+		// Make sure the new repository parent directory exists.
+		if err := os.MkdirAll(filepath.Dir(np), os.ModePerm); err != nil {
+			return err
+		}
+
+		if err := os.Rename(op, np); err != nil {
+			return err
+		}
+
+		return nil
 	}); err != nil {
 		return wrapDbErr(err)
 	}
 
-	// Make sure the new repository parent directory exists.
-	if err := os.MkdirAll(filepath.Dir(np), os.ModePerm); err != nil {
-		return err
-	}
-
-	// Delete cache
-	d.cache.Delete(oldName)
-	defer func() {
-		d.Repository(newName) // nolint: errcheck
-	}()
-
-	return os.Rename(op, np)
+	return nil
 }
 
 // Repositories returns a list of all repositories.
