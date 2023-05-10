@@ -105,6 +105,8 @@ func (l *Log) ShortHelp() []key.Binding {
 		return []key.Binding{
 			l.common.KeyMap.UpDown,
 			l.common.KeyMap.BackItem,
+			l.common.KeyMap.GotoTop,
+			l.common.KeyMap.GotoBottom,
 		}
 	default:
 		return []key.Binding{}
@@ -151,6 +153,8 @@ func (l *Log) FullHelp() [][]key.Binding {
 			{
 				k.Down,
 				k.Up,
+				l.common.KeyMap.GotoTop,
+				l.common.KeyMap.GotoBottom,
 			},
 		}...)
 	}
