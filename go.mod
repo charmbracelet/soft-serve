@@ -23,7 +23,7 @@ require (
 	github.com/charmbracelet/log v0.2.1
 	github.com/charmbracelet/ssh v0.0.0-20221117183211-483d43d97103
 	github.com/gobwas/glob v0.2.3
-	github.com/gogs/git-module v1.8.1
+	github.com/gogs/git-module v1.8.2
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lrstanley/bubblezone v0.0.0-20220716194435-3cb8c52f6a8f
 	github.com/muesli/mango-cobra v1.2.0
@@ -93,5 +93,3 @@ require (
 	modernc.org/strutil v1.1.3 // indirect
 	modernc.org/token v1.0.1 // indirect
 )
-
-replace github.com/gogs/git-module => github.com/aymanbagabas/git-module v1.4.1-0.20230509180555-975c24cdb79a
