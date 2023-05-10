@@ -1,6 +1,7 @@
 package viewport
 
 import (
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
@@ -36,6 +37,15 @@ func (v *Viewport) Init() tea.Cmd {
 
 // Update implements tea.Model.
 func (v *Viewport) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, v.common.KeyMap.GotoTop):
+			v.GotoTop()
+		case key.Matches(msg, v.common.KeyMap.GotoBottom):
+			v.GotoBottom()
+		}
+	}
 	vp, cmd := v.Model.Update(msg)
 	v.Model = &vp
 	return v, cmd
