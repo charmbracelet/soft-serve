@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
@@ -192,7 +191,6 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 		Bare:    true,
 		Mirror:  opts.Mirror,
 		Quiet:   true,
-		Timeout: 15 * time.Minute,
 		CommandOptions: git.CommandOptions{
 			Timeout: -1,
 			Context: d.ctx,
