@@ -184,6 +184,10 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
+	if _, err := os.Stat(rp); err == nil || os.IsExist(err) {
+		return nil, ErrRepoExist
+	}
+
 	copts := git.CloneOptions{
 		Bare:    true,
 		Mirror:  opts.Mirror,

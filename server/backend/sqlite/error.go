@@ -14,4 +14,7 @@ var (
 
 	// ErrRepoNotExist is returned when a repository does not exist.
 	ErrRepoNotExist = fmt.Errorf("repository does not exist")
+
+	// ErrRepoExist is returned when a repository already exists.
+	ErrRepoExist = fmt.Errorf("repository already exists")
 )
