@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/log"
+	. "github.com/charmbracelet/soft-serve/internal/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/errors"
@@ -48,7 +50,9 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 
 		envs := &sessionEnv{s}
 		output := termenv.NewOutput(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
-		c := common.NewCommon(s.Context(), output, pty.Window.Width, pty.Window.Height)
+		logger := NewDefaultLogger()
+		ctx := log.WithContext(s.Context(), logger)
+		c := common.NewCommon(ctx, output, pty.Window.Width, pty.Window.Height)
 		c.SetValue(common.ConfigKey, cfg)
 		m := ui.New(c, initialRepo)
 		p := tea.NewProgram(m,
