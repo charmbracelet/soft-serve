@@ -83,7 +83,7 @@ func RunGit(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, dir 
 	logger := log.FromContext(ctx).WithPrefix("rungit")
 	c := exec.CommandContext(ctx, "git", args...)
 	c.Dir = dir
-	c.Env = append(c.Env, envs...)
+	c.Env = append(os.Environ(), envs...)
 	c.Env = append(c.Env, "PATH="+os.Getenv("PATH"))
 	c.Env = append(c.Env, "SOFT_SERVE_DEBUG="+os.Getenv("SOFT_SERVE_DEBUG"))
 	if cfg != nil {
