@@ -87,8 +87,8 @@ func RunGit(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, dir 
 	c.Env = append(c.Env, "PATH="+os.Getenv("PATH"))
 	c.Env = append(c.Env, "SOFT_SERVE_DEBUG="+os.Getenv("SOFT_SERVE_DEBUG"))
 	if cfg != nil {
-		c.Env = append(c.Env, "SOFT_SERVE_LOG_FORMAT="+cfg.LogFormat)
-		c.Env = append(c.Env, "SOFT_SERVE_LOG_TIME_FORMAT="+cfg.LogTimeFormat)
+		c.Env = append(c.Env, "SOFT_SERVE_LOG_FORMAT="+cfg.Log.Format)
+		c.Env = append(c.Env, "SOFT_SERVE_LOG_TIME_FORMAT="+cfg.Log.TimeFormat)
 	}
 
 	stdin, err := c.StdinPipe()
