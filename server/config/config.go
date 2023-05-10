@@ -142,7 +142,7 @@ func parseConfig(path string) (*Config, error) {
 		},
 		Log: Log{
 			Format:     "text",
-			TimeFormat: time.DateOnly,
+			TimeFormat: time.DateTime,
 		},
 	}
 
