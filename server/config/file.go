@@ -11,9 +11,13 @@ var configFileTmpl = template.Must(template.New("config").Parse(`# Soft Serve Se
 # This is the name that will be displayed in the UI.
 name: "{{ .Name }}"
 
-# Log format to use. Valid values are "json", "logfmt", and "text".
-log_format: "{{ .LogFormat }}"
-log_time_format: "{{ .LogTimeFormat }}"
+# Logging configuration.
+log:
+  # Log format to use. Valid values are "json", "logfmt", and "text".
+  format: "{{ .Log.Format }}"
+  # Time format for the log "timestamp" field.
+  # Should be described in Golang's time format.
+  time_format: "{{ .Log.TimeFormat }}"
 
 # The SSH server configuration.
 ssh:

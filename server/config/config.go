@@ -73,6 +73,17 @@ type StatsConfig struct {
 	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 }
 
+// LogConfig is the logger configuration.
+type LogConfig struct {
+	// Format is the format of the logs.
+	// Valid values are "json", "logfmt", and "text".
+	Format string `env:"FORMAT" yaml:"format"`
+
+	// Time format for the log `ts` field.
+	// Format must be described in Golang's time format.
+	TimeFormat string `env:"TIME_FORMAT" yaml:"time_format"`
+}
+
 // Config is the configuration for Soft Serve.
 type Config struct {
 	// Name is the name of the server.
@@ -90,13 +101,8 @@ type Config struct {
 	// Stats is the configuration for the stats server.
 	Stats StatsConfig `envPrefix:"STATS_" yaml:"stats"`
 
-	// LogFormat is the format of the logs.
-	// Valid values are "json", "logfmt", and "text".
-	LogFormat string `env:"LOG_FORMAT" yaml:"log_format"`
-
-	// Time format for the log `ts` field.
-	// Format must be described in Golang's time format.
-	LogTimeFormat string `env:"LOG_TIME_FORMAT" yaml:"log_time_format"`
+	// Log is the logger configuration.
+	Log LogConfig `envPrefix:"LOG_" yaml:"log"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
@@ -111,10 +117,8 @@ type Config struct {
 func parseConfig(path string) (*Config, error) {
 	dataPath := filepath.Dir(path)
 	cfg := &Config{
-		Name:          "Soft Serve",
-		LogFormat:     "text",
-		LogTimeFormat: time.DateOnly,
-		DataPath:      dataPath,
+		Name:     "Soft Serve",
+		DataPath: dataPath,
 		SSH: SSHConfig{
 			ListenAddr:    ":23231",
 			PublicURL:     "ssh://localhost:23231",
@@ -135,6 +139,10 @@ func parseConfig(path string) (*Config, error) {
 		},
 		Stats: StatsConfig{
 			ListenAddr: "localhost:23233",
+		},
+		Log: LogConfig{
+			Format:     "text",
+			TimeFormat: time.DateTime,
 		},
 	}
 
@@ -182,11 +190,11 @@ func parseConfig(path string) (*Config, error) {
 func ParseConfig(path string) (*Config, error) {
 	cfg, err := parseConfig(path)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	if err := cfg.validate(); err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	return cfg, nil
