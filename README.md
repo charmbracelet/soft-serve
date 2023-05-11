@@ -113,6 +113,12 @@ full privileges.
 Using this environment variable, Soft Serve will create a new `admin` user that
 has full privileges. You can rename and change the user settings later.
 
+Check out [Systemd][systemd] on how to run Soft Serve as a service using
+Systemd. Soft Serve packages in our Apt/Yum repositories come with Systemd
+service units.
+
+[systemd]: https://github.com/charmbracelet/soft-serve/blob/main/systemd.md
+
 ### Server Settings
 
 Once you start the server for the first time, the settings will be in
@@ -188,11 +194,9 @@ http:
 stats:
   # The address on which the stats server will listen.
   listen_addr: ":23233"
-
 # Additional admin keys.
 #initial_admin_keys:
 #  - "ssh-rsa AAAAB3NzaC1yc2..."
-
 ```
 
 You can also use environment variables, to override these settings. All server
