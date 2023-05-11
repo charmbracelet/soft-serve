@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/log"
 	. "github.com/charmbracelet/soft-serve/internal/log"
 	"github.com/spf13/cobra"
+	"go.uber.org/automaxprocs/maxprocs"
 )
 
 var (
@@ -52,6 +53,13 @@ func init() {
 
 func main() {
 	logger := NewDefaultLogger()
+
+	// Set the max number of processes to the number of CPUs
+	// This is useful when running soft serve in a container
+	if _, err := maxprocs.Set(maxprocs.Logger(logger.Debugf)); err != nil {
+		logger.Warn("couldn't set automaxprocs", "error", err)
+	}
+
 	ctx := log.WithContext(context.Background(), logger)
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)

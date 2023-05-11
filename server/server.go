@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/charmbracelet/log"
-	"go.uber.org/automaxprocs/maxprocs"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
@@ -60,10 +59,6 @@ func NewServer(ctx context.Context) (*Server, error) {
 		Backend: cfg.Backend,
 		logger:  log.FromContext(ctx).WithPrefix("server"),
 		ctx:     ctx,
-	}
-
-	if _, err := maxprocs.Set(); err != nil {
-		srv.logger.Warn("automaxprocs", "error", err)
 	}
 
 	// Add cron jobs.
