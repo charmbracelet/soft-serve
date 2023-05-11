@@ -44,6 +44,13 @@ services:
 [docker]: https://hub.docker.com/r/charmcli/soft-serve
 [ghcr]: https://github.com/charmbracelet/soft-serve/pkgs/container/soft-serve
 
+
+> **Warning**
+>
+> Make sure to run the image without a TTY, i.e.: do not use the `--tty`/`-t`
+> flags.
+
+
 ***
 
 Part of [Charm](https://charm.sh).
