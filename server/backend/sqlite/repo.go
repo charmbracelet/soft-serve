@@ -23,7 +23,7 @@ type Repo struct {
 
 	// cache
 	// updatedAt is cached in "last-modified" file.
-	mu          sync.RWMutex
+	mu          sync.Mutex
 	desc        *string
 	projectName *string
 	isMirror    *bool
