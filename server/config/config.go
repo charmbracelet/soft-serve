@@ -73,8 +73,8 @@ type StatsConfig struct {
 	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 }
 
-// Log is the logger configuration.
-type Log struct {
+// LogConfig is the logger configuration.
+type LogConfig struct {
 	// Format is the format of the logs.
 	// Valid values are "json", "logfmt", and "text".
 	Format string `env:"FORMAT" yaml:"format"`
@@ -102,7 +102,7 @@ type Config struct {
 	Stats StatsConfig `envPrefix:"STATS_" yaml:"stats"`
 
 	// Log is the logger configuration.
-	Log Log `envPrefix:"LOG_" yaml:"log"`
+	Log LogConfig `envPrefix:"LOG_" yaml:"log"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
@@ -140,7 +140,7 @@ func parseConfig(path string) (*Config, error) {
 		Stats: StatsConfig{
 			ListenAddr: "localhost:23233",
 		},
-		Log: Log{
+		Log: LogConfig{
 			Format:     "text",
 			TimeFormat: time.DateTime,
 		},

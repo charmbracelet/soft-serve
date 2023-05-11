@@ -12,7 +12,7 @@ var configFileTmpl = template.Must(template.New("config").Parse(`# Soft Serve Se
 name: "{{ .Name }}"
 
 # Logging configuration.
-log
+log:
   # Log format to use. Valid values are "json", "logfmt", and "text".
   format: "{{ .Log.Format }}"
   # Time format for the log "timestamp" field.
