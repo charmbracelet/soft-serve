@@ -9,11 +9,9 @@ import (
 	"github.com/charmbracelet/soft-serve/internal/sync"
 )
 
-var (
-	jobSpecs = map[string]string{
-		"mirror": "@every 10m",
-	}
-)
+var jobSpecs = map[string]string{
+	"mirror": "@every 10m",
+}
 
 // mirrorJob runs the (pull) mirror job task.
 func (s *Server) mirrorJob() func() {
@@ -28,7 +26,7 @@ func (s *Server) mirrorJob() func() {
 		}
 
 		// Divide the work up among the number of CPUs.
-		wq := sync.NewWorkQueue(runtime.NumCPU() / 4)
+		wq := sync.NewWorkQueue(runtime.GOMAXPROCS(0))
 
 		for _, repo := range repos {
 			if repo.IsMirror() {
