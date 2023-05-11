@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/charmbracelet/log"
+	"go.uber.org/automaxprocs/maxprocs"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
@@ -61,8 +62,12 @@ func NewServer(ctx context.Context) (*Server, error) {
 		ctx:     ctx,
 	}
 
+	if _, err := maxprocs.Set(); err != nil {
+		srv.logger.Warn("automaxprocs", "error", err)
+	}
+
 	// Add cron jobs.
-	srv.Cron.AddFunc(jobSpecs["mirror"], srv.mirrorJob())
+	_, _ = srv.Cron.AddFunc(jobSpecs["mirror"], srv.mirrorJob())
 
 	srv.SSHServer, err = sshsrv.NewSSHServer(ctx)
 	if err != nil {
