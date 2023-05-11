@@ -1,7 +1,11 @@
 package sqlite
 
 import (
+	"bufio"
 	"context"
+	"os"
+	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/charmbracelet/soft-serve/git"
@@ -16,12 +20,27 @@ type Repo struct {
 	name string
 	path string
 	db   *sqlx.DB
+
+	// cache
+	// updatedAt is cached in "last-modified" file.
+	mu          sync.Mutex
+	desc        *string
+	projectName *string
+	isMirror    *bool
+	isPrivate   *bool
+	isHidden    *bool
 }
 
 // Description returns the repository's description.
 //
 // It implements backend.Repository.
 func (r *Repo) Description() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.desc != nil {
+		return *r.desc
+	}
+
 	var desc string
 	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&desc, "SELECT description FROM repo WHERE name = ?", r.name)
@@ -29,6 +48,7 @@ func (r *Repo) Description() string {
 		return ""
 	}
 
+	r.desc = &desc
 	return desc
 }
 
@@ -36,6 +56,12 @@ func (r *Repo) Description() string {
 //
 // It implements backend.Repository.
 func (r *Repo) IsMirror() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.isMirror != nil {
+		return *r.isMirror
+	}
+
 	var mirror bool
 	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&mirror, "SELECT mirror FROM repo WHERE name = ?", r.name)
@@ -43,6 +69,7 @@ func (r *Repo) IsMirror() bool {
 		return false
 	}
 
+	r.isMirror = &mirror
 	return mirror
 }
 
@@ -50,6 +77,12 @@ func (r *Repo) IsMirror() bool {
 //
 // It implements backend.Repository.
 func (r *Repo) IsPrivate() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.isPrivate != nil {
+		return *r.isPrivate
+	}
+
 	var private bool
 	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&private, "SELECT private FROM repo WHERE name = ?", r.name)
@@ -57,6 +90,7 @@ func (r *Repo) IsPrivate() bool {
 		return false
 	}
 
+	r.isPrivate = &private
 	return private
 }
 
@@ -78,6 +112,12 @@ func (r *Repo) Open() (*git.Repository, error) {
 //
 // It implements backend.Repository.
 func (r *Repo) ProjectName() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.projectName != nil {
+		return *r.projectName
+	}
+
 	var name string
 	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&name, "SELECT project_name FROM repo WHERE name = ?", r.name)
@@ -85,6 +125,7 @@ func (r *Repo) ProjectName() string {
 		return ""
 	}
 
+	r.projectName = &name
 	return name
 }
 
@@ -92,6 +133,12 @@ func (r *Repo) ProjectName() string {
 //
 // It implements backend.Repository.
 func (r *Repo) IsHidden() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.isHidden != nil {
+		return *r.isHidden
+	}
+
 	var hidden bool
 	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
 		return tx.Get(&hidden, "SELECT hidden FROM repo WHERE name = ?", r.name)
@@ -99,25 +146,57 @@ func (r *Repo) IsHidden() bool {
 		return false
 	}
 
+	r.isHidden = &hidden
 	return hidden
 }
 
 // UpdatedAt returns the repository's last update time.
 func (r *Repo) UpdatedAt() time.Time {
-	rr, err := git.Open(r.path)
-	if err == nil {
-		t, err := rr.LatestCommitTime()
-		if err == nil {
+	var updatedAt time.Time
+
+	// Try to read the last modified time from the info directory.
+	if t, err := readOneline(filepath.Join(r.path, "info", "last-modified")); err == nil {
+		if t, err := time.Parse(time.RFC3339, t); err == nil {
 			return t
 		}
 	}
 
-	var updatedAt time.Time
-	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
-		return tx.Get(&updatedAt, "SELECT updated_at FROM repo WHERE name = ?", r.name)
-	}); err != nil {
-		return time.Time{}
+	rr, err := git.Open(r.path)
+	if err == nil {
+		t, err := rr.LatestCommitTime()
+		if err == nil {
+			updatedAt = t
+		}
+	}
+
+	if updatedAt.IsZero() {
+		if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
+			return tx.Get(&updatedAt, "SELECT updated_at FROM repo WHERE name = ?", r.name)
+		}); err != nil {
+			return time.Time{}
+		}
 	}
 
 	return updatedAt
+}
+
+func (r *Repo) writeLastModified(t time.Time) error {
+	fp := filepath.Join(r.path, "info", "last-modified")
+	if err := os.MkdirAll(filepath.Dir(fp), os.ModePerm); err != nil {
+		return err
+	}
+
+	return os.WriteFile(fp, []byte(t.Format(time.RFC3339)), os.ModePerm)
+}
+
+func readOneline(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+
+	defer f.Close() // nolint: errcheck
+	s := bufio.NewScanner(f)
+	s.Scan()
+	return s.Text(), s.Err()
 }

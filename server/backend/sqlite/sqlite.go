@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/charmbracelet/soft-serve/server/utils"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite" // sqlite driver
 )
@@ -26,6 +27,9 @@ type SqliteBackend struct { //nolint: revive
 	dp     string
 	db     *sqlx.DB
 	logger *log.Logger
+
+	// Repositories cache
+	cache *cache
 }
 
 var _ backend.Backend = (*SqliteBackend)(nil)
@@ -55,6 +59,9 @@ func NewSqliteBackend(ctx context.Context) (*SqliteBackend, error) {
 		db:     db,
 		logger: log.FromContext(ctx).WithPrefix("sqlite"),
 	}
+
+	// Set up LRU cache with size 1000
+	d.cache = newCache(d, 1000)
 
 	if err := d.init(); err != nil {
 		return nil, err
@@ -170,6 +177,9 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 		db:   d.db,
 	}
 
+	// Set cache
+	d.cache.Set(name, r)
+
 	return r, d.initRepo(name)
 }
 
@@ -188,9 +198,9 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 	}
 
 	copts := git.CloneOptions{
-		Bare:    true,
-		Mirror:  opts.Mirror,
-		Quiet:   true,
+		Bare:   true,
+		Mirror: opts.Mirror,
+		Quiet:  true,
 		CommandOptions: git.CommandOptions{
 			Timeout: -1,
 			Context: d.ctx,
@@ -201,6 +211,7 @@ func (d *SqliteBackend) ImportRepository(name string, remote string, opts backen
 				),
 			},
 		},
+		// Timeout: time.Hour,
 	}
 
 	if err := git.Clone(remote, rp, copts); err != nil {
@@ -223,6 +234,9 @@ func (d *SqliteBackend) DeleteRepository(name string) error {
 	rp := filepath.Join(d.reposPath(), repo)
 
 	return wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+		// Delete repo from cache
+		defer d.cache.Delete(name)
+
 		if err := os.RemoveAll(rp); err != nil {
 			return err
 		}
@@ -268,6 +282,12 @@ func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 		return err
 	}
 
+	// Delete cache
+	d.cache.Delete(oldName)
+	defer func() {
+		d.Repository(newName) // nolint: errcheck
+	}()
+
 	return os.Rename(op, np)
 }
 
@@ -276,6 +296,7 @@ func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 // It implements backend.Backend.
 func (d *SqliteBackend) Repositories() ([]backend.Repository, error) {
 	repos := make([]backend.Repository, 0)
+
 	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		rows, err := tx.Query("SELECT name FROM repo")
 		if err != nil {
@@ -289,11 +310,21 @@ func (d *SqliteBackend) Repositories() ([]backend.Repository, error) {
 				return err
 			}
 
-			repos = append(repos, &Repo{
+			if r, ok := d.cache.Get(name); ok && r != nil {
+				repos = append(repos, r)
+				continue
+			}
+
+			r := &Repo{
 				name: name,
 				path: filepath.Join(d.reposPath(), name+".git"),
 				db:   d.db,
-			})
+			}
+
+			// Cache repositories
+			d.cache.Set(name, r)
+
+			repos = append(repos, r)
 		}
 
 		return nil
@@ -309,6 +340,11 @@ func (d *SqliteBackend) Repositories() ([]backend.Repository, error) {
 // It implements backend.Backend.
 func (d *SqliteBackend) Repository(repo string) (backend.Repository, error) {
 	repo = utils.SanitizeRepo(repo)
+
+	if r, ok := d.cache.Get(repo); ok && r != nil {
+		return r, nil
+	}
+
 	rp := filepath.Join(d.reposPath(), repo+".git")
 	if _, err := os.Stat(rp); err != nil {
 		return nil, os.ErrNotExist
@@ -326,74 +362,64 @@ func (d *SqliteBackend) Repository(repo string) (backend.Repository, error) {
 		return nil, ErrRepoNotExist
 	}
 
-	return &Repo{
+	r := &Repo{
 		name: repo,
 		path: rp,
 		db:   d.db,
-	}, nil
+	}
+
+	// Add to cache
+	d.cache.Set(repo, r)
+
+	return r, nil
 }
 
 // Description returns the description of a repository.
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) Description(repo string) (string, error) {
-	repo = utils.SanitizeRepo(repo)
-	var desc string
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		row := tx.QueryRow("SELECT description FROM repo WHERE name = ?", repo)
-		return row.Scan(&desc)
-	}); err != nil {
-		return "", wrapDbErr(err)
+	r, err := d.Repository(repo)
+	if err != nil {
+		return "", err
 	}
 
-	return desc, nil
+	return r.Description(), nil
 }
 
 // IsMirror returns true if the repository is a mirror.
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) IsMirror(repo string) (bool, error) {
-	repo = utils.SanitizeRepo(repo)
-	var mirror bool
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		return tx.Get(&mirror, "SELECT mirror FROM repo WHERE name = ?", repo)
-	}); err != nil {
-		return false, wrapDbErr(err)
+	r, err := d.Repository(repo)
+	if err != nil {
+		return false, err
 	}
 
-	return mirror, nil
+	return r.IsMirror(), nil
 }
 
 // IsPrivate returns true if the repository is private.
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) IsPrivate(repo string) (bool, error) {
-	repo = utils.SanitizeRepo(repo)
-	var private bool
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		row := tx.QueryRow("SELECT private FROM repo WHERE name = ?", repo)
-		return row.Scan(&private)
-	}); err != nil {
-		return false, wrapDbErr(err)
+	r, err := d.Repository(repo)
+	if err != nil {
+		return false, err
 	}
 
-	return private, nil
+	return r.IsPrivate(), nil
 }
 
 // IsHidden returns true if the repository is hidden.
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) IsHidden(repo string) (bool, error) {
-	repo = utils.SanitizeRepo(repo)
-	var hidden bool
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		row := tx.QueryRow("SELECT hidden FROM repo WHERE name = ?", repo)
-		return row.Scan(&hidden)
-	}); err != nil {
-		return false, wrapDbErr(err)
+	r, err := d.Repository(repo)
+	if err != nil {
+		return false, err
 	}
 
-	return hidden, nil
+	return r.IsHidden(), nil
 }
 
 // SetHidden sets the hidden flag of a repository.
@@ -401,6 +427,10 @@ func (d *SqliteBackend) IsHidden(repo string) (bool, error) {
 // It implements backend.Backend.
 func (d *SqliteBackend) SetHidden(repo string, hidden bool) error {
 	repo = utils.SanitizeRepo(repo)
+
+	// Delete cache
+	d.cache.Delete(repo)
+
 	return wrapDbErr(wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		var count int
 		if err := tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo); err != nil {
@@ -418,16 +448,12 @@ func (d *SqliteBackend) SetHidden(repo string, hidden bool) error {
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) ProjectName(repo string) (string, error) {
-	repo = utils.SanitizeRepo(repo)
-	var name string
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
-		row := tx.QueryRow("SELECT project_name FROM repo WHERE name = ?", repo)
-		return row.Scan(&name)
-	}); err != nil {
-		return "", wrapDbErr(err)
+	r, err := d.Repository(repo)
+	if err != nil {
+		return "", err
 	}
 
-	return name, nil
+	return r.ProjectName(), nil
 }
 
 // SetDescription sets the description of a repository.
@@ -435,6 +461,10 @@ func (d *SqliteBackend) ProjectName(repo string) (string, error) {
 // It implements backend.Backend.
 func (d *SqliteBackend) SetDescription(repo string, desc string) error {
 	repo = utils.SanitizeRepo(repo)
+
+	// Delete cache
+	d.cache.Delete(repo)
+
 	return wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 		var count int
 		if err := tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo); err != nil {
@@ -443,7 +473,7 @@ func (d *SqliteBackend) SetDescription(repo string, desc string) error {
 		if count == 0 {
 			return ErrRepoNotExist
 		}
-		_, err := tx.Exec("UPDATE repo SET description = ? WHERE name = ?", desc, repo)
+		_, err := tx.Exec("UPDATE repo SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?", desc, repo)
 		return err
 	})
 }
@@ -453,6 +483,10 @@ func (d *SqliteBackend) SetDescription(repo string, desc string) error {
 // It implements backend.Backend.
 func (d *SqliteBackend) SetPrivate(repo string, private bool) error {
 	repo = utils.SanitizeRepo(repo)
+
+	// Delete cache
+	d.cache.Delete(repo)
+
 	return wrapDbErr(
 		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 			var count int
@@ -462,7 +496,7 @@ func (d *SqliteBackend) SetPrivate(repo string, private bool) error {
 			if count == 0 {
 				return ErrRepoNotExist
 			}
-			_, err := tx.Exec("UPDATE repo SET private = ? WHERE name = ?", private, repo)
+			_, err := tx.Exec("UPDATE repo SET private = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?", private, repo)
 			return err
 		}),
 	)
@@ -473,6 +507,10 @@ func (d *SqliteBackend) SetPrivate(repo string, private bool) error {
 // It implements backend.Backend.
 func (d *SqliteBackend) SetProjectName(repo string, name string) error {
 	repo = utils.SanitizeRepo(repo)
+
+	// Delete cache
+	d.cache.Delete(repo)
+
 	return wrapDbErr(
 		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
 			var count int
@@ -482,7 +520,7 @@ func (d *SqliteBackend) SetProjectName(repo string, name string) error {
 			if count == 0 {
 				return ErrRepoNotExist
 			}
-			_, err := tx.Exec("UPDATE repo SET project_name = ? WHERE name = ?", name, repo)
+			_, err := tx.Exec("UPDATE repo SET project_name = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?", name, repo)
 			return err
 		}),
 	)
@@ -578,4 +616,36 @@ func (d *SqliteBackend) initRepos() error {
 	}
 
 	return nil
+}
+
+// TODO: implement a caching interface.
+type cache struct {
+	b     *SqliteBackend
+	repos *lru.Cache[string, *Repo]
+}
+
+func newCache(b *SqliteBackend, size int) *cache {
+	if size <= 0 {
+		size = 1
+	}
+	c := &cache{b: b}
+	cache, _ := lru.New[string, *Repo](size)
+	c.repos = cache
+	return c
+}
+
+func (c *cache) Get(repo string) (*Repo, bool) {
+	return c.repos.Get(repo)
+}
+
+func (c *cache) Set(repo string, r *Repo) {
+	c.repos.Add(repo, r)
+}
+
+func (c *cache) Delete(repo string) {
+	c.repos.Remove(repo)
+}
+
+func (c *cache) Len() int {
+	return c.repos.Len()
 }
