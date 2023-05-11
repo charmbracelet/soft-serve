@@ -1,9 +1,5 @@
 FROM alpine:latest
 
-RUN apk update && apk add --update git bash openssh && rm -rf /var/cache/apk/*
-
-COPY soft /usr/local/bin/soft
-
 # Create directories
 WORKDIR /soft-serve
 # Expose data volume
@@ -25,3 +21,7 @@ EXPOSE 9418/tcp
 
 # Set the default command
 ENTRYPOINT [ "/usr/local/bin/soft", "serve" ]
+
+RUN apk update && apk add --update git bash openssh && rm -rf /var/cache/apk/*
+
+COPY soft /usr/local/bin/soft
