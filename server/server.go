@@ -62,7 +62,7 @@ func NewServer(ctx context.Context) (*Server, error) {
 	}
 
 	// Add cron jobs.
-	srv.Cron.AddFunc(jobSpecs["mirror"], srv.mirrorJob())
+	_, _ = srv.Cron.AddFunc(jobSpecs["mirror"], srv.mirrorJob())
 
 	srv.SSHServer, err = sshsrv.NewSSHServer(ctx)
 	if err != nil {
