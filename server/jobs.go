@@ -26,11 +26,13 @@ func (s *Server) mirrorJob() func() {
 		}
 
 		// Divide the work up among the number of CPUs.
-		wq := sync.NewWorkQueue(runtime.GOMAXPROCS(0))
+		wq := sync.NewWorkPool(s.ctx, runtime.GOMAXPROCS(0),
+			sync.WithWorkPoolLogger(logger.Errorf),
+		)
 
+		logger.Debug("updating mirror repos")
 		for _, repo := range repos {
 			if repo.IsMirror() {
-				logger.Debug("updating mirror", "repo", repo.Name())
 				r, err := repo.Open()
 				if err != nil {
 					logger.Error("error opening repository", "repo", repo.Name(), "err", err)
@@ -50,7 +52,6 @@ func (s *Server) mirrorJob() func() {
 						logger.Error("error running git remote update", "repo", name, "err", err)
 					}
 
-					logger.Debug("mirror updated", "repo", name)
 				})
 			}
 		}
