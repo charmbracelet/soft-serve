@@ -83,7 +83,7 @@ func (i Item) Title() string {
 }
 
 // Description returns the item description. Implements list.DefaultItem.
-func (i Item) Description() string { return i.repo.Description() }
+func (i Item) Description() string { return strings.TrimSpace(i.repo.Description()) }
 
 // FilterValue implements list.Item.
 func (i Item) FilterValue() string { return i.Title() }
@@ -199,13 +199,16 @@ func (d *ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	s.WriteRune('\n')
 	s.WriteString(desc)
 	s.WriteRune('\n')
-	cmd := common.TruncateString(i.Command(), m.Width()-styles.Base.GetHorizontalFrameSize())
-	cmd = styles.Command.Render(cmd)
+
+	cmd := i.Command()
+	cmdStyler := styles.Command.Render
 	if d.copiedIdx == index {
-		cmd += " " + styles.Desc.Render("(copied to clipboard)")
+		cmd = "(copied to clipboard)"
+		cmdStyler = styles.Desc.Render
 		d.copiedIdx = -1
 	}
-	s.WriteString(cmd)
+	cmd = common.TruncateString(cmd, m.Width()-styles.Base.GetHorizontalFrameSize())
+	s.WriteString(cmdStyler(cmd))
 	fmt.Fprint(w,
 		d.common.Zone.Mark(i.ID(),
 			styles.Base.Render(s.String()),
