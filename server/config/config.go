@@ -190,11 +190,11 @@ func parseConfig(path string) (*Config, error) {
 func ParseConfig(path string) (*Config, error) {
 	cfg, err := parseConfig(path)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	if err := cfg.validate(); err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	return cfg, nil
