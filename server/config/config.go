@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/caarlos0/env/v7"
+	"github.com/caarlos0/env/v8"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"golang.org/x/crypto/ssh"
@@ -158,7 +158,7 @@ func parseConfig(path string) (*Config, error) {
 	initialAdminKeys := append([]string{}, cfg.InitialAdminKeys...)
 
 	// Override with environment variables
-	if err := env.Parse(cfg, env.Options{
+	if err := env.ParseWithOptions(cfg, env.Options{
 		Prefix: "SOFT_SERVE_",
 	}); err != nil {
 		return cfg, fmt.Errorf("parse environment variables: %w", err)
