@@ -18,7 +18,7 @@ require (
 )
 
 require (
-	github.com/caarlos0/env/v7 v7.1.0
+	github.com/caarlos0/env/v8 v8.0.0
 	github.com/charmbracelet/keygen v0.4.2
 	github.com/charmbracelet/log v0.2.1
 	github.com/charmbracelet/ssh v0.0.0-20221117183211-483d43d97103
