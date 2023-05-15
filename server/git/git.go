@@ -69,6 +69,8 @@ func EnsureWithin(reposDir string, repo string) error {
 	return nil
 }
 
+// EnsureDefaultBranch ensures the repo has a default branch.
+// It will prefer choosing "main" or "master" if available.
 func EnsureDefaultBranch(ctx context.Context, scmd ServiceCommand) error {
 	r, err := git.Open(scmd.Dir)
 	if err != nil {

@@ -151,14 +151,9 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 			return err
 		}
 
-		rr, err := git.Init(rp, true)
+		_, err := git.Init(rp, true)
 		if err != nil {
 			d.logger.Debug("failed to create repository", "err", err)
-			return err
-		}
-
-		if err := rr.UpdateServerInfo(); err != nil {
-			d.logger.Debug("failed to update server info", "err", err)
 			return err
 		}
 

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/charmbracelet/log"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -66,21 +67,35 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		scmd.CmdFunc(cmd)
 	}
 
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return err
+	var (
+		err    error
+		stdin  io.WriteCloser
+		stdout io.ReadCloser
+		stderr io.ReadCloser
+	)
+
+	if scmd.Stdin != nil {
+		stdin, err = cmd.StdinPipe()
+		if err != nil {
+			return err
+		}
 	}
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
+	if scmd.Stdout != nil {
+		stdout, err = cmd.StdoutPipe()
+		if err != nil {
+			return err
+		}
 	}
 
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
+	if scmd.Stderr != nil {
+		stderr, err = cmd.StderrPipe()
+		if err != nil {
+			return err
+		}
 	}
 
+	log.Debugf("git service command in %q: %s", cmd.Dir, cmd.String())
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -88,36 +103,71 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 	errg, ctx := errgroup.WithContext(ctx)
 
 	// stdin
-	errg.Go(func() error {
-		defer stdin.Close() // nolint: errcheck
-		_, err := io.Copy(stdin, scmd.Stdin)
-		return err
-	})
+	if scmd.Stdin != nil {
+		errg.Go(func() error {
+			if scmd.StdinHandler != nil {
+				return scmd.StdinHandler(scmd.Stdin, stdin)
+			} else {
+				return defaultStdinHandler(scmd.Stdin, stdin)
+			}
+		})
+	}
 
 	// stdout
-	errg.Go(func() error {
-		_, err := io.Copy(scmd.Stdout, stdout)
-		return err
-	})
+	if scmd.Stdout != nil {
+		errg.Go(func() error {
+			if scmd.StdoutHandler != nil {
+				return scmd.StdoutHandler(scmd.Stdout, stdout)
+			} else {
+				return defaultStdoutHandler(scmd.Stdout, stdout)
+			}
+		})
+	}
 
 	// stderr
-	errg.Go(func() error {
-		_, err := io.Copy(scmd.Stderr, stderr)
-		return err
-	})
+	if scmd.Stderr != nil {
+		errg.Go(func() error {
+			if scmd.StderrHandler != nil {
+				return scmd.StderrHandler(scmd.Stderr, stderr)
+			} else {
+				return defaultStderrHandler(scmd.Stderr, stderr)
+			}
+		})
+	}
 
 	return errors.Join(errg.Wait(), cmd.Wait())
 }
 
 // ServiceCommand is used to run a git service command.
 type ServiceCommand struct {
-	Stdin   io.Reader
-	Stdout  io.Writer
-	Stderr  io.Writer
-	Dir     string
-	Env     []string
-	Args    []string
-	CmdFunc func(*exec.Cmd)
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
+	Dir    string
+	Env    []string
+	Args   []string
+
+	// Modifier functions
+	CmdFunc       func(*exec.Cmd)
+	StdinHandler  func(io.Reader, io.WriteCloser) error
+	StdoutHandler func(io.Writer, io.ReadCloser) error
+	StderrHandler func(io.Writer, io.ReadCloser) error
+}
+
+func defaultStdinHandler(in io.Reader, stdin io.WriteCloser) error {
+	defer stdin.Close() // nolint: errcheck
+	_, err := io.Copy(stdin, in)
+	return err
+}
+
+func defaultStdoutHandler(out io.Writer, stdout io.ReadCloser) error {
+	_, err := io.Copy(out, stdout)
+	return err
+}
+
+func defaultStderrHandler(err io.Writer, stderr io.ReadCloser) error {
+	_, erro := io.Copy(err, stderr)
+	return erro
 }
 
 // UploadPack runs the git upload-pack protocol against the provided repo.
