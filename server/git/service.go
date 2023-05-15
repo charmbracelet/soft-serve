@@ -49,7 +49,7 @@ type ServiceHandler func(ctx context.Context, cmd ServiceCommand) error
 
 // gitServiceHandler is the default service handler using the git binary.
 func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) error {
-	cmd := exec.CommandContext(ctx, "git", svc.Name()) // nolint: gosec
+	cmd := exec.CommandContext(ctx, "git", "-c", "uploadpack.allowFilter=true", svc.Name()) // nolint: gosec
 	cmd.Dir = scmd.Dir
 	if len(scmd.Args) > 0 {
 		cmd.Args = append(cmd.Args, scmd.Args...)
