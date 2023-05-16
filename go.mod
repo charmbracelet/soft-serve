@@ -1,6 +1,6 @@
 module github.com/charmbracelet/soft-serve
 
-go 1.18
+go 1.20
 
 require (
 	github.com/alecthomas/chroma v0.10.0
