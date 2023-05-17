@@ -194,13 +194,13 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			func() {
-				cmd := s.Command()
+				cmdLine := s.Command()
 				ctx := s.Context()
 				be := ss.be.WithContext(ctx)
-				if len(cmd) >= 2 && strings.HasPrefix(cmd[0], "git") {
-					gc := cmd[0]
+
+				if len(cmdLine) >= 2 && strings.HasPrefix(cmdLine[0], "git") {
 					// repo should be in the form of "repo.git"
-					name := utils.SanitizeRepo(cmd[1])
+					name := utils.SanitizeRepo(cmdLine[1])
 					pk := s.PublicKey()
 					ak := backend.MarshalAuthorizedKey(pk)
 					access := cfg.Backend.AccessLevelByPublicKey(name, pk)
@@ -218,12 +218,27 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 						"SOFT_SERVE_REPO_NAME=" + name,
 						"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
 						"SOFT_SERVE_PUBLIC_KEY=" + ak,
+						"SOFT_SERVE_USERNAME=" + ctx.User(),
 					}
 
-					ss.logger.Debug("git middleware", "cmd", gc, "access", access.String())
+					// Add ssh session & config environ
+					envs = append(envs, s.Environ()...)
+					envs = append(envs, cfg.Environ()...)
+
 					repoDir := filepath.Join(reposDir, repo)
-					switch gc {
-					case git.ReceivePackBin:
+					service := git.Service(cmdLine[0])
+					cmd := git.ServiceCommand{
+						Stdin:  s,
+						Stdout: s,
+						Stderr: s.Stderr(),
+						Env:    envs,
+						Dir:    repoDir,
+					}
+
+					ss.logger.Debug("git middleware", "cmd", service, "access", access.String())
+
+					switch service {
+					case git.ReceivePackService:
 						if access < backend.ReadWriteAccess {
 							sshFatal(s, git.ErrNotAuthed)
 							return
@@ -234,27 +249,34 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 								sshFatal(s, err)
 								return
 							}
+
 							createRepoCounter.WithLabelValues(ak, s.User(), name).Inc()
 						}
-						if err := git.ReceivePack(s.Context(), s, s, s.Stderr(), repoDir, envs...); err != nil {
+
+						if err := git.ReceivePack(ctx, cmd); err != nil {
 							sshFatal(s, git.ErrSystemMalfunction)
 						}
+
+						if err := git.EnsureDefaultBranch(ctx, cmd); err != nil {
+							sshFatal(s, git.ErrSystemMalfunction)
+						}
+
 						receivePackCounter.WithLabelValues(ak, s.User(), name).Inc()
 						return
-					case git.UploadPackBin, git.UploadArchiveBin:
+					case git.UploadPackService, git.UploadArchiveService:
 						if access < backend.ReadOnlyAccess {
 							sshFatal(s, git.ErrNotAuthed)
 							return
 						}
 
-						gitPack := git.UploadPack
+						handler := git.UploadPack
 						counter := uploadPackCounter
-						if gc == git.UploadArchiveBin {
-							gitPack = git.UploadArchive
+						if service == git.UploadArchiveService {
+							handler = git.UploadArchive
 							counter = uploadArchiveCounter
 						}
 
-						err := gitPack(ctx, s, s, s.Stderr(), repoDir, envs...)
+						err := handler(ctx, cmd)
 						if errors.Is(err, git.ErrInvalidRepo) {
 							sshFatal(s, git.ErrInvalidRepo)
 						} else if err != nil {
