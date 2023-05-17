@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
+	"github.com/charmbracelet/soft-serve/server/cache"
+	"github.com/charmbracelet/soft-serve/server/cache/noop"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/charmbracelet/ssh"
@@ -58,6 +60,8 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 		is.NoErr(os.RemoveAll(dp))
 	})
 	ctx := context.TODO()
+	ca, _ := noop.NewCache(ctx)
+	ctx = cache.WithContext(ctx, ca)
 	cfg := config.DefaultConfig()
 	ctx = config.WithContext(ctx, cfg)
 	fb, err := sqlite.NewSqliteBackend(ctx)
