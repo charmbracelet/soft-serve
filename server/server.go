@@ -10,6 +10,8 @@ import (
 
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
+	"github.com/charmbracelet/soft-serve/server/cache"
+	"github.com/charmbracelet/soft-serve/server/cache/lru"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/cron"
 	"github.com/charmbracelet/soft-serve/server/daemon"
@@ -43,6 +45,16 @@ func NewServer(ctx context.Context) (*Server, error) {
 	cfg := config.FromContext(ctx)
 
 	var err error
+
+	if c := cache.FromContext(ctx); c == nil {
+		lruCache, err := lru.NewCache(ctx, lru.WithSize(1000))
+		if err != nil {
+			return nil, fmt.Errorf("create default cache: %w", err)
+		}
+
+		ctx = cache.WithContext(ctx, lruCache)
+	}
+
 	if cfg.Backend == nil {
 		sb, err := sqlite.NewSqliteBackend(ctx)
 		if err != nil {
