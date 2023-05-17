@@ -256,18 +256,22 @@ func DefaultConfig() *Config {
 		log.Errorf("failed to parse config: %v", err)
 	}
 
-	// Write config if it doesn't exist
-	if _, err := os.Stat(cp); os.IsNotExist(err) {
-		if err := WriteConfig(cp, cfg); err != nil {
-			log.Fatal("failed to write config", "err", err)
-		}
-	}
-
 	if err := cfg.validate(); err != nil {
 		log.Fatal(err)
 	}
 
 	return cfg
+}
+
+// Exist returns true if the configuration file exists.
+func (c *Config) Exist() bool {
+	_, err := os.Stat(filepath.Join(c.DataPath, "config.yaml"))
+	return err == nil
+}
+
+// WriteConfig writes the configuration in the default path.
+func (c *Config) WriteConfig() error {
+	return WriteConfig(filepath.Join(c.DataPath, "config.yaml"), c)
 }
 
 // WithBackend sets the backend for the configuration.
