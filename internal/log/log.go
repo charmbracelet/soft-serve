@@ -32,6 +32,10 @@ func NewDefaultLogger() *log.Logger {
 
 	if debug, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_DEBUG")); debug {
 		logger.SetLevel(log.DebugLevel)
+
+		if verbose, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_VERBOSE")); verbose {
+			logger.SetReportCaller(true)
+		}
 	}
 
 	logger.SetTimeFormat(cfg.Log.TimeFormat)

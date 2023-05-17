@@ -200,13 +200,6 @@ func (r *Repository) CommitsByPage(ref *Reference, page, size int) (Commits, err
 	return commits, nil
 }
 
-// UpdateServerInfo updates the repository server info.
-func (r *Repository) UpdateServerInfo() error {
-	cmd := git.NewCommand("update-server-info")
-	_, err := cmd.RunInDir(r.Path)
-	return err
-}
-
 // Config returns the config value for the given key.
 func (r *Repository) Config(key string, opts ...ConfigOptions) (string, error) {
 	dir, err := gitDir(r.Repository)
