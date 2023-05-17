@@ -22,7 +22,15 @@ var (
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
+
+			// Set up config
 			cfg := config.DefaultConfig()
+			if !cfg.Exist() {
+				if err := cfg.WriteConfig(); err != nil {
+					return fmt.Errorf("failed to write default config: %w", err)
+				}
+			}
+
 			ctx = config.WithContext(ctx, cfg)
 			cmd.SetContext(ctx)
 

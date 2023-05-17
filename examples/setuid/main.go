@@ -45,7 +45,13 @@ func main() {
 		log.Fatal("Setuid error", "err", err)
 	}
 	ctx := context.Background()
+	// Set up config
 	cfg := config.DefaultConfig()
+	if !cfg.Exist() {
+		if err := cfg.WriteConfig(); err != nil {
+			log.Fatal("failed to write default config: %w", err)
+		}
+	}
 	ctx = config.WithContext(ctx, cfg)
 	cfg.SSH.ListenAddr = fmt.Sprintf(":%d", *port)
 	s, err := server.NewServer(ctx)
