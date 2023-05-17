@@ -18,7 +18,8 @@ func TestParseMultipleKeys(t *testing.T) {
 		is.NoErr(os.Unsetenv("SOFT_SERVE_INITIAL_ADMIN_KEYS"))
 		is.NoErr(os.Unsetenv("SOFT_SERVE_DATA_PATH"))
 	})
-	cfg := DefaultConfig()
+	cfg, err := NewConfig("")
+	is.NoErr(err)
 	is.Equal(cfg.InitialAdminKeys, []string{
 		"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINMwLvyV3ouVrTysUYGoJdl5Vgn5BACKov+n9PlzfPwH",
 		"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFxIobhwtfdwN7m1TFt9wx3PsfvcAkISGPxmbmbauST8",
@@ -36,7 +37,7 @@ func TestMergeInitAdminKeys(t *testing.T) {
 	fp := filepath.Join(t.TempDir(), "config.yaml")
 	err = os.WriteFile(fp, bts, 0o644)
 	is.NoErr(err)
-	cfg, err := ParseConfig(fp)
+	cfg, err := NewConfig(fp)
 	is.NoErr(err)
 	is.Equal(cfg.InitialAdminKeys, []string{
 		"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINMwLvyV3ouVrTysUYGoJdl5Vgn5BACKov+n9PlzfPwH",
@@ -57,7 +58,7 @@ func TestValidateInitAdminKeys(t *testing.T) {
 	fp := filepath.Join(t.TempDir(), "config.yaml")
 	err = os.WriteFile(fp, bts, 0o644)
 	is.NoErr(err)
-	cfg, err := ParseConfig(fp)
+	cfg, err := NewConfig(fp)
 	is.NoErr(err)
 	is.Equal(cfg.InitialAdminKeys, []string{
 		"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINMwLvyV3ouVrTysUYGoJdl5Vgn5BACKov+n9PlzfPwH",

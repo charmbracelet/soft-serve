@@ -316,7 +316,7 @@ var (
 
 			logger.Info("Writing config...")
 			defer logger.Info("Done!")
-			return config.WriteConfig(filepath.Join(cfg.DataPath, "config.yaml"), cfg)
+			return cfg.WriteConfig()
 		},
 	}
 )

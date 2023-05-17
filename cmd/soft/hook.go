@@ -31,7 +31,7 @@ var (
 		Hidden: true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			cfg, err := config.ParseConfig(configPath)
+			cfg, err := config.NewConfig(configPath)
 			if err != nil {
 				return fmt.Errorf("could not parse config: %w", err)
 			}
