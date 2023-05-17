@@ -36,16 +36,6 @@ func (d *SqliteBackend) PostUpdate(stdout io.Writer, stderr io.Writer, repo stri
 
 	var wg sync.WaitGroup
 
-	// Update server info
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := updateServerInfo(d, repo); err != nil {
-			d.logger.Error("error updating server-info", "repo", repo, "err", err)
-			return
-		}
-	}()
-
 	// Populate last-modified file.
 	wg.Add(1)
 	go func() {
@@ -57,20 +47,6 @@ func (d *SqliteBackend) PostUpdate(stdout io.Writer, stderr io.Writer, repo stri
 	}()
 
 	wg.Wait()
-}
-
-func updateServerInfo(d *SqliteBackend, repo string) error {
-	rr, err := d.Repository(repo)
-	if err != nil {
-		return err
-	}
-
-	r, err := rr.Open()
-	if err != nil {
-		return err
-	}
-
-	return r.UpdateServerInfo()
 }
 
 func populateLastModified(d *SqliteBackend, repo string) error {
