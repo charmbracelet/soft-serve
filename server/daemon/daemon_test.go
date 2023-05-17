@@ -14,6 +14,8 @@ import (
 
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
+	"github.com/charmbracelet/soft-serve/server/cache"
+	"github.com/charmbracelet/soft-serve/server/cache/noop"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/server/test"
@@ -34,6 +36,8 @@ func TestMain(m *testing.M) {
 	os.Setenv("SOFT_SERVE_GIT_IDLE_TIMEOUT", "1")
 	os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort()))
 	ctx := context.TODO()
+	ca, _ := noop.NewCache(ctx)
+	ctx = cache.WithContext(ctx, ca)
 	cfg := config.DefaultConfig()
 	if err := cfg.WriteConfig(); err != nil {
 		log.Fatal("failed to write default config: %w", err)

@@ -6,6 +6,7 @@ import (
 	"runtime/debug"
 
 	"github.com/charmbracelet/log"
+	_ "github.com/charmbracelet/soft-serve/internal/init" // initialize registry
 	. "github.com/charmbracelet/soft-serve/internal/log"
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
