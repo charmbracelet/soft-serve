@@ -11,6 +11,10 @@ var configFileTmpl = template.Must(template.New("config").Parse(`# Soft Serve Se
 # This is the name that will be displayed in the UI.
 name: "{{ .Name }}"
 
+# Cache configuration.
+# The cache backend to use. The default backend is "lru" memory cache.
+cache: "{{ .Cache }}"
+
 # Logging configuration.
 log:
   # Log format to use. Valid values are "json", "logfmt", and "text".

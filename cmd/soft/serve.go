@@ -24,11 +24,9 @@ var (
 			ctx := cmd.Context()
 
 			// Set up config
-			cfg := config.DefaultConfig()
-			if !cfg.Exist() {
-				if err := cfg.WriteConfig(); err != nil {
-					return fmt.Errorf("failed to write default config: %w", err)
-				}
+			cfg, err := config.NewConfig("")
+			if err != nil {
+				return err
 			}
 
 			ctx = config.WithContext(ctx, cfg)

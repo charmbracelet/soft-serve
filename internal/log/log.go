@@ -2,7 +2,6 @@ package log
 
 import (
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,14 +14,11 @@ var contextKey = &struct{ string }{"logger"}
 
 // NewDefaultLogger returns a new logger with default settings.
 func NewDefaultLogger() *log.Logger {
-	dp := os.Getenv("SOFT_SERVE_DATA_PATH")
-	if dp == "" {
-		dp = "data"
-	}
-
-	cfg, err := config.ParseConfig(filepath.Join(dp, "config.yaml"))
-	if err != nil {
-		log.Errorf("failed to parse config: %v", err)
+	cfg := config.DefaultConfig()
+	if cfg.Exist() {
+		if err := config.ParseConfig(cfg, cfg.FilePath()); err != nil {
+			log.Errorf("failed to parse config: %v", err)
+		}
 	}
 
 	logger := log.NewWithOptions(os.Stderr, log.Options{
