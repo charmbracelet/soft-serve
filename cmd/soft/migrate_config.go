@@ -37,7 +37,15 @@ var (
 			keyPath := os.Getenv("SOFT_SERVE_KEY_PATH")
 			reposPath := os.Getenv("SOFT_SERVE_REPO_PATH")
 			bindAddr := os.Getenv("SOFT_SERVE_BIND_ADDRESS")
+
+			// Set up config
 			cfg := config.DefaultConfig()
+			if !cfg.Exist() {
+				if err := cfg.WriteConfig(); err != nil {
+					return fmt.Errorf("failed to write default config: %w", err)
+				}
+			}
+
 			ctx = config.WithContext(ctx, cfg)
 			sb, err := sqlite.NewSqliteBackend(ctx)
 			if err != nil {

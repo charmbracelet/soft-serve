@@ -27,6 +27,9 @@ func setupServer(tb testing.TB) (*Server, *config.Config, string) {
 	tb.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort()))
 	ctx := context.TODO()
 	cfg := config.DefaultConfig()
+	if err := cfg.WriteConfig(); err != nil {
+		tb.Fatal("failed to write default config: %w", err)
+	}
 	ctx = config.WithContext(ctx, cfg)
 	tb.Log("configuring server")
 	s, err := NewServer(ctx)
