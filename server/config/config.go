@@ -298,6 +298,17 @@ func (c *Config) WriteConfig() error {
 	return os.WriteFile(fp, []byte(newConfigFile(c)), 0o644) // nolint: errcheck
 }
 
+// Exist returns true if the configuration file exists.
+func (c *Config) Exist() bool {
+	_, err := os.Stat(filepath.Join(c.DataPath, "config.yaml"))
+	return err == nil
+}
+
+// WriteConfig writes the configuration in the default path.
+func (c *Config) WriteConfig() error {
+	return WriteConfig(filepath.Join(c.DataPath, "config.yaml"), c)
+}
+
 // WithBackend sets the backend for the configuration.
 // TODO: remove in favor of backend.FromContext.
 func (c *Config) WithBackend(backend backend.Backend) *Config {
