@@ -31,6 +31,7 @@ require (
 	github.com/muesli/roff v0.1.0
 	github.com/prometheus/client_golang v1.15.1
 	github.com/robfig/cron/v3 v3.0.1
+	github.com/rogpeppe/go-internal v1.10.0
 	github.com/spf13/cobra v1.7.0
 	go.uber.org/automaxprocs v1.5.2
 	goji.io v2.0.2+incompatible
@@ -73,7 +74,6 @@ require (
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/sahilm/fuzzy v0.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/yuin/goldmark v1.5.2 // indirect

@@ -1,0 +1,71 @@
+# add key to admin
+soft user add-pubkey admin "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL"
+soft user info admin
+soft info
+cmp stdout info.txt
+
+
+# list users
+soft user list
+cmp stdout list1.txt
+
+
+# create a new user
+soft user create foo --key "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI+DnTb1n/0KL6/VOQTea8qLovTiZix"
+soft user list
+cmp stdout list2.txt
+
+
+# get new user info
+soft user info foo
+cmp stdout foo_info1.txt
+
+
+# make user admin
+soft user set-admin foo true
+soft user info foo
+cmp stdout foo_info2.txt
+
+
+# remove admin
+soft user set-admin foo false
+soft user info foo
+cmp stdout foo_info3.txt
+
+
+# remove key from user
+soft user remove-pubkey foo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI+DnTb1n/0KL6/VOQTea8qLovTiZix"
+soft user info foo
+cmp stdout foo_info4.txt
+
+
+-- info.txt --
+Username: admin
+Admin: true
+Public keys:
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL
+-- list1.txt --
+admin
+-- list2.txt --
+admin
+foo
+-- foo_info1.txt --
+Username: foo
+Admin: false
+Public keys:
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI+DnTb1n/0KL6/VOQTea8qLovTiZix
+-- foo_info2.txt --
+Username: foo
+Admin: true
+Public keys:
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI+DnTb1n/0KL6/VOQTea8qLovTiZix
+-- foo_info3.txt --
+Username: foo
+Admin: false
+Public keys:
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI+DnTb1n/0KL6/VOQTea8qLovTiZix
+-- foo_info4.txt --
+Username: foo
+Admin: false
+Public keys:
