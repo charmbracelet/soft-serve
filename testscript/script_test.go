@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,11 +20,17 @@ var update = flag.Bool("update", false, "update script files")
 
 func TestScript(t *testing.T) {
 	flag.Parse()
+	var lock sync.Mutex
+
+	// we'll use this key to talk with soft serve, and since testscript changes
+	// the cwd, we need to get its full path here
 	key, err := filepath.Abs("./testdata/admin1")
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// git does not handle 0600, and on clone, will save the files with its
+	// default perm, 0644, which is too open for ssh.
 	for _, f := range []string{
 		"admin1",
 		"admin2",
@@ -40,6 +47,7 @@ func TestScript(t *testing.T) {
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft": func(ts *testscript.TestScript, _ bool, args []string) {
+				// TODO: maybe use plain ssh client here?
 				args = append([]string{
 					"-F", "/dev/null",
 					"-o", "StrictHostKeyChecking=no",
@@ -88,10 +96,17 @@ func TestScript(t *testing.T) {
 				},
 			}
 			ctx := config.WithContext(context.Background(), &cfg)
+
+			// prevent race condition in lipgloss...
+			// this will probably be autofixed when we start using the colors
+			// from the ssh session instead of the server.
+			// XXX: take another look at this soon
+			lock.Lock()
 			srv, err := server.NewServer(ctx)
 			if err != nil {
 				return err
 			}
+			lock.Unlock()
 			go func() {
 				if err := srv.Start(); err != nil {
 					e.T().Fatal(err)
