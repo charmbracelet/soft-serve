@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/server"
 	"github.com/charmbracelet/soft-serve/server/config"
@@ -42,19 +43,39 @@ func TestScript(t *testing.T) {
 			},
 		},
 		Setup: func(e *testscript.Env) error {
-			cfg := config.DefaultConfig()
-			cfg.InitialAdminKeys = []string{
-				"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl",
-			}
-			cfg.DataPath = t.TempDir()
-
 			sshPort := test.RandomPort()
 			e.Setenv("SSH_PORT", fmt.Sprintf("%d", sshPort))
-			cfg.SSH.ListenAddr = fmt.Sprintf("localhost:%d", sshPort)
-			cfg.HTTP.ListenAddr = fmt.Sprintf("localhost:%d", test.RandomPort())
-			cfg.Git.ListenAddr = fmt.Sprintf("localhost:%d", test.RandomPort())
-			cfg.Stats.ListenAddr = fmt.Sprintf("localhost:%d", test.RandomPort())
-			ctx := config.WithContext(context.Background(), cfg)
+			data := t.TempDir()
+			cfg := config.Config{
+				Name:     "Test Soft Serve",
+				DataPath: data,
+				InitialAdminKeys: []string{
+					"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl",
+				},
+				SSH: config.SSHConfig{
+					ListenAddr:    fmt.Sprintf("localhost:%d", sshPort),
+					PublicURL:     fmt.Sprintf("ssh://localhost:%d", sshPort),
+					KeyPath:       filepath.Join(data, "ssh", "soft_serve_host_ed25519"),
+					ClientKeyPath: filepath.Join(data, "ssh", "soft_serve_client_ed25519"),
+				},
+				Git: config.GitConfig{
+					ListenAddr:     fmt.Sprintf("localhost:%d", test.RandomPort()),
+					IdleTimeout:    3,
+					MaxConnections: 32,
+				},
+				HTTP: config.HTTPConfig{
+					ListenAddr: fmt.Sprintf("localhost:%d", test.RandomPort()),
+					PublicURL:  fmt.Sprintf("http://localhost:%d", test.RandomPort()),
+				},
+				Stats: config.StatsConfig{
+					ListenAddr: fmt.Sprintf("localhost:%d", test.RandomPort()),
+				},
+				Log: config.LogConfig{
+					Format:     "text",
+					TimeFormat: time.DateTime,
+				},
+			}
+			ctx := config.WithContext(context.Background(), &cfg)
 			srv, err := server.NewServer(ctx)
 			if err != nil {
 				return err
