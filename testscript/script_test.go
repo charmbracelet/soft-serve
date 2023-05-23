@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -21,6 +22,17 @@ func TestScript(t *testing.T) {
 	key, err := filepath.Abs("./testdata/admin1")
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	for _, f := range []string{
+		"admin1",
+		"admin2",
+		"user1",
+		"user2",
+	} {
+		if err := os.Chmod(filepath.Join("./testdata/", f), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	testscript.Run(t, testscript.Params{
