@@ -6,6 +6,21 @@ soft info
 cmp stdout info.txt
 
 
+# list admin pubkeys
+soft pubkey list
+cmp stdout admin_key_list1.txt
+
+# remove key
+soft pubkey remove "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL"
+soft pubkey list
+cmp stdout admin_key_list2.txt
+
+# add key back key
+soft pubkey add "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL"
+soft pubkey list
+cmp stdout admin_key_list1.txt
+
+
 # list users
 soft user list
 cmp stdout list1.txt
@@ -39,6 +54,18 @@ soft user remove-pubkey foo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI
 soft user info foo
 cmp stdout foo_info4.txt
 
+# rename user
+soft user set-username foo foo2
+soft user info foo2
+cmp stdout foo_info5.txt
+
+
+# remove user
+soft user delete foo2
+cmp stdout foo_delete.txt
+soft user list
+cmp stdout list1.txt
+
 
 -- info.txt --
 Username: admin
@@ -70,3 +97,13 @@ Public keys:
 Username: foo
 Admin: false
 Public keys:
+-- foo_info5.txt --
+Username: foo2
+Admin: false
+Public keys:
+-- admin_key_list1.txt --
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL
+-- admin_key_list2.txt --
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl
+-- foo_delete.txt --
