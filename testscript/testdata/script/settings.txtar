@@ -1,14 +1,19 @@
+# vi: set ft=conf
+# check default allow-keyless
 soft settings allow-keyless true
 soft settings allow-keyless
 cmp stdout allow-keyless1.txt
 
+# change allow-keyless and check
 soft settings allow-keyless false
 soft settings allow-keyless
 cmp stdout allow-keyless2.txt
 
+# check default anon-access
 soft settings anon-access
 cmp stdout anon-access1.txt
 
+# chaneg anon-access to all available options, and check them
 soft settings anon-access no-access
 soft settings anon-access
 cmp stdout anon-access2.txt

@@ -1,3 +1,4 @@
+# vi: set ft=conf
 # add key to admin
 soft user add-pubkey admin "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL"
 soft user info admin

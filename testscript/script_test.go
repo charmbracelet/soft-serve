@@ -2,6 +2,7 @@ package testscript
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -12,7 +13,10 @@ import (
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
+var update = flag.Bool("update", false, "update script files")
+
 func TestScript(t *testing.T) {
+	flag.Parse()
 	key, err := filepath.Abs("./testdata/admin1")
 	if err != nil {
 		t.Fatal(err)
@@ -20,7 +24,7 @@ func TestScript(t *testing.T) {
 
 	testscript.Run(t, testscript.Params{
 		Dir:           "testdata/script",
-		UpdateScripts: true,
+		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft": func(ts *testscript.TestScript, _ bool, args []string) {
 				args = append([]string{
