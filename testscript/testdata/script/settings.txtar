@@ -1,0 +1,41 @@
+soft settings allow-keyless true
+soft settings allow-keyless
+cmp stdout allow-keyless1.txt
+
+soft settings allow-keyless false
+soft settings allow-keyless
+cmp stdout allow-keyless2.txt
+
+soft settings anon-access
+cmp stdout anon-access1.txt
+
+soft settings anon-access no-access
+soft settings anon-access
+cmp stdout anon-access2.txt
+
+soft settings anon-access read-only
+soft settings anon-access
+cmp stdout anon-access3.txt
+
+soft settings anon-access read-write
+soft settings anon-access
+cmp stdout anon-access4.txt
+
+soft settings anon-access admin-access
+soft settings anon-access
+cmp stdout anon-access5.txt
+
+-- allow-keyless1.txt --
+true
+-- allow-keyless2.txt --
+false
+-- anon-access1.txt --
+read-only
+-- anon-access2.txt --
+no-access
+-- anon-access3.txt --
+read-only
+-- anon-access4.txt --
+read-write
+-- anon-access5.txt --
+admin-access

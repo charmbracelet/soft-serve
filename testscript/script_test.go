@@ -2,11 +2,13 @@ package testscript
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 
 	"github.com/charmbracelet/soft-serve/server"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
@@ -28,7 +30,7 @@ func TestScript(t *testing.T) {
 					"-o", "IdentityAgent=none",
 					"-o", "IdentitiesOnly=yes",
 					"-i", key,
-					"-p", "23231",
+					"-p", ts.Getenv("SSH_PORT"),
 					"localhost",
 					"--",
 				}, args...)
@@ -41,7 +43,13 @@ func TestScript(t *testing.T) {
 				"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl",
 			}
 			cfg.DataPath = t.TempDir()
-			e.T().Log("using", cfg.DataPath, "as data path")
+
+			sshPort := test.RandomPort()
+			e.Setenv("SSH_PORT", fmt.Sprintf("%d", sshPort))
+			cfg.SSH.ListenAddr = fmt.Sprintf("localhost:%d", sshPort)
+			cfg.HTTP.ListenAddr = fmt.Sprintf("localhost:%d", test.RandomPort())
+			cfg.Git.ListenAddr = fmt.Sprintf("localhost:%d", test.RandomPort())
+			cfg.Stats.ListenAddr = fmt.Sprintf("localhost:%d", test.RandomPort())
 			ctx := config.WithContext(context.Background(), cfg)
 			srv, err := server.NewServer(ctx)
 			if err != nil {
