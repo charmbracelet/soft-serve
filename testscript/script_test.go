@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -21,6 +22,8 @@ var update = flag.Bool("update", false, "update script files")
 func TestScript(t *testing.T) {
 	flag.Parse()
 	var lock sync.Mutex
+
+	t.Setenv("SOFT_SERVE_TEST_NO_HOOKS", "1")
 
 	// we'll use this key to talk with soft serve, and since testscript changes
 	// the cwd, we need to get its full path here
@@ -42,24 +45,52 @@ func TestScript(t *testing.T) {
 		}
 	}
 
+	sshArgs := []string{
+		"-F", "/dev/null",
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "IdentityAgent=none",
+		"-o", "IdentitiesOnly=yes",
+		"-i", key,
+	}
+
+	check := func(ts *testscript.TestScript, err error, neg bool) {
+		if neg && err == nil {
+			ts.Fatalf("expected error, got nil")
+		}
+		if !neg {
+			ts.Check(err)
+		}
+	}
+
 	testscript.Run(t, testscript.Params{
 		Dir:           "testdata/script",
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"soft": func(ts *testscript.TestScript, _ bool, args []string) {
+			"soft": func(ts *testscript.TestScript, neg bool, args []string) {
 				// TODO: maybe use plain ssh client here?
-				args = append([]string{
-					"-F", "/dev/null",
-					"-o", "StrictHostKeyChecking=no",
-					"-o", "UserKnownHostsFile=/dev/null",
-					"-o", "IdentityAgent=none",
-					"-o", "IdentitiesOnly=yes",
-					"-i", key,
-					"-p", ts.Getenv("SSH_PORT"),
-					"localhost",
-					"--",
-				}, args...)
-				ts.Check(ts.Exec("ssh", args...))
+				args = append(
+					sshArgs,
+					append([]string{
+						"-p", ts.Getenv("SSH_PORT"),
+						"localhost",
+						"--",
+					}, args...)...,
+				)
+				check(ts, ts.Exec("ssh", args...), neg)
+			},
+			"git": func(ts *testscript.TestScript, _ bool, args []string) {
+				ts.Setenv(
+					"GIT_SSH_COMMAND",
+					strings.Join(append([]string{"ssh"}, sshArgs...), " "),
+				)
+				ts.Check(ts.Exec("git", args...))
+			},
+			"mkreadme": func(ts *testscript.TestScript, _ bool, args []string) {
+				if len(args) != 1 {
+					ts.Fatalf("must have exactly 1 arg, the filename, got %d", len(args))
+				}
+				ts.Check(os.WriteFile(ts.MkAbs(args[0]), []byte("# example\ntest project"), 0o644))
 			},
 		},
 		Setup: func(e *testscript.Env) error {
