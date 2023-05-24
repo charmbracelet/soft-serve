@@ -113,7 +113,9 @@ func TestScript(t *testing.T) {
 				}
 			}()
 			e.Defer(func() {
-				if err := srv.Shutdown(context.Background()); err != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				if err := srv.Shutdown(ctx); err != nil {
 					e.T().Fatal(err)
 				}
 			})
