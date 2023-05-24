@@ -1,4 +1,8 @@
 # vi: set ft=conf
+
+# convert crlf on windows
+[windows] unix2dos repo3.txt
+
 # import private
 soft repo import --private repo1 https://github.com/charmbracelet/catwalk.git
 soft repo private repo1

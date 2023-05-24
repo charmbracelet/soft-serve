@@ -1,4 +1,8 @@
 # vi: set ft=conf
+
+# convert crlf on windows
+[windows] unix2dos info1.txt info2.txt tree.txt
+
 # import a repo
 soft repo import --mirror charmbracelet/catwalk https://github.com/charmbracelet/catwalk.git
 
@@ -64,9 +68,6 @@ cmp stdout info2.txt
 soft repo blob charmbracelet/test LICENSE
 stdout '.*Creative Commons.*'
 
-[windows] unix2dos info1.txt
-[windows] unix2dos info2.txt
-[windows] unix2dos tree.txt
 
 -- info1.txt --
 Project Name:

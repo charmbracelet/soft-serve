@@ -1,4 +1,8 @@
 # vi: set ft=conf
+
+# convert crlf on windows
+[windows] unix2dos info1.txt info2.txt
+
 # get original username
 soft info
 cmpenv stdout info1.txt

@@ -1,4 +1,8 @@
 # vi: set ft=conf
+
+# convert crlf on windows
+[windows] unix2dos info.txt admin_key_list1.txt admin_key_list2.txt list1.txt list2.txt foo_info1.txt foo_info2.txt foo_info3.txt foo_info4.txt foo_info5.txt
+
 # add key to admin
 soft user add-pubkey admin "$ADMIN2_AUTHORIZED_KEY"
 soft user info admin
