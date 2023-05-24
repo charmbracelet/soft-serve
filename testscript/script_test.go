@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -138,11 +139,13 @@ func TestScript(t *testing.T) {
 				return err
 			}
 			lock.Unlock()
+
 			go func() {
 				if err := srv.Start(); err != nil {
 					e.T().Fatal(err)
 				}
 			}()
+
 			e.Defer(func() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
@@ -150,6 +153,20 @@ func TestScript(t *testing.T) {
 					e.T().Fatal(err)
 				}
 			})
+
+			// wait until the server is up
+			for {
+				conn, _ := net.DialTimeout(
+					"tcp",
+					net.JoinHostPort("localhost", fmt.Sprintf("%d", sshPort)),
+					time.Second,
+				)
+				if conn != nil {
+					conn.Close()
+					break
+				}
+			}
+
 			return nil
 		},
 	})
