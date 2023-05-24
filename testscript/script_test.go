@@ -75,11 +75,13 @@ func TestScript(t *testing.T) {
 					}, args...)...,
 				)
 				if runtime.GOOS == "windows" {
-					cmd := exec.Command("ssh", args...)
+					cmd := exec.Command("ssh.exe", args...)
 					out, err := cmd.CombinedOutput()
-					ts.Logf("RUNNING %v: output: %s error: %v", cmd.Args, string(out), err)
+					ts.Logf("WINDOWS RAN %v:\n\tOUTPUT: %s\n\tERROR: %v", cmd.Args, string(out), err)
+					check(ts, err, neg)
+				} else {
+					check(ts, ts.Exec("ssh", args...), neg)
 				}
-				check(ts, ts.Exec("ssh", args...), neg)
 			},
 			"git": func(ts *testscript.TestScript, neg bool, args []string) {
 				ts.Setenv(
