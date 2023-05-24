@@ -69,7 +69,6 @@ func TestScript(t *testing.T) {
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft": func(ts *testscript.TestScript, neg bool, args []string) {
-				// TODO: maybe use plain ssh client here?
 				args = append(
 					sshArgs,
 					append([]string{
@@ -80,18 +79,22 @@ func TestScript(t *testing.T) {
 				)
 				check(ts, ts.Exec("ssh", args...), neg)
 			},
-			"git": func(ts *testscript.TestScript, _ bool, args []string) {
+			"git": func(ts *testscript.TestScript, neg bool, args []string) {
 				ts.Setenv(
 					"GIT_SSH_COMMAND",
 					strings.Join(append([]string{"ssh"}, sshArgs...), " "),
 				)
-				ts.Check(ts.Exec("git", args...))
+				args = append([]string{
+					"-c", "user.email=john@example.com",
+					"-c", "user.name=John Doe",
+				}, args...)
+				check(ts, ts.Exec("git", args...), neg)
 			},
-			"mkreadme": func(ts *testscript.TestScript, _ bool, args []string) {
+			"mkreadme": func(ts *testscript.TestScript, neg bool, args []string) {
 				if len(args) != 1 {
 					ts.Fatalf("must have exactly 1 arg, the filename, got %d", len(args))
 				}
-				ts.Check(os.WriteFile(ts.MkAbs(args[0]), []byte("# example\ntest project"), 0o644))
+				check(ts, os.WriteFile(ts.MkAbs(args[0]), []byte("# example\ntest project"), 0o644), neg)
 			},
 		},
 		Setup: func(e *testscript.Env) error {
