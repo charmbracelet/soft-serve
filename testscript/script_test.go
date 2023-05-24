@@ -76,11 +76,11 @@ func TestScript(t *testing.T) {
 						HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 					},
 				)
-				check(ts, err, neg)
+				ts.Check(err)
 				defer cli.Close()
 
 				sess, err := cli.NewSession()
-				check(ts, err, neg)
+				ts.Check(err)
 				defer sess.Close()
 
 				sess.Stdout = ts.Stdout()
