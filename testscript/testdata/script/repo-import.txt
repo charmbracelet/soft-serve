@@ -1,0 +1,26 @@
+# vi: set ft=conf
+# import private
+soft repo import --private repo1 https://github.com/charmbracelet/catwalk.git
+soft repo private repo1
+stdout 'true'
+
+# import hidden
+soft repo import --hidden repo2 https://github.com/charmbracelet/catwalk.git
+soft repo hidden repo2
+stdout 'true'
+
+# import with name and description
+soft repo import --name 'repo33' --description 'descriptive' repo3 https://github.com/charmbracelet/catwalk.git
+soft repo info repo3
+cmp stdout repo3.txt
+
+-- repo3.txt --
+Project Name: repo33
+Repository: repo3
+Description: descriptive
+Private: false
+Hidden: false
+Mirror: false
+Default Branch: main
+Branches:
+  - main
