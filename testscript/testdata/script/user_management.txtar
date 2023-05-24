@@ -1,78 +1,71 @@
 # vi: set ft=conf
 # add key to admin
-soft user add-pubkey admin "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL"
+soft user add-pubkey admin "$ADMIN2_AUTHORIZED_KEY"
 soft user info admin
 soft info
-cmp stdout info.txt
+cmpenv stdout info.txt
 
 
 # list admin pubkeys
 soft pubkey list
-cmp stdout admin_key_list1.txt
+cmpenv stdout admin_key_list1.txt
 
 # remove key
-soft pubkey remove "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL"
+soft pubkey remove $ADMIN2_AUTHORIZED_KEY
 soft pubkey list
-cmp stdout admin_key_list2.txt
+cmpenv stdout admin_key_list2.txt
 
 # add key back key
-soft pubkey add "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL"
+soft pubkey add $ADMIN2_AUTHORIZED_KEY
 soft pubkey list
-cmp stdout admin_key_list1.txt
-
+cmpenv stdout admin_key_list1.txt
 
 # list users
 soft user list
-cmp stdout list1.txt
-
+cmpenv stdout list1.txt
 
 # create a new user
-soft user create foo --key "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI+DnTb1n/0KL6/VOQTea8qLovTiZix"
+soft user create foo --key "$USER1_AUTHORIZED_KEY"
 soft user list
-cmp stdout list2.txt
-
+cmpenv stdout list2.txt
 
 # get new user info
 soft user info foo
-cmp stdout foo_info1.txt
-
+cmpenv stdout foo_info1.txt
 
 # make user admin
 soft user set-admin foo true
 soft user info foo
-cmp stdout foo_info2.txt
-
+cmpenv stdout foo_info2.txt
 
 # remove admin
 soft user set-admin foo false
 soft user info foo
-cmp stdout foo_info3.txt
-
+cmpenv stdout foo_info3.txt
 
 # remove key from user
-soft user remove-pubkey foo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI+DnTb1n/0KL6/VOQTea8qLovTiZix"
+soft user remove-pubkey foo "$USER1_AUTHORIZED_KEY"
 soft user info foo
-cmp stdout foo_info4.txt
+cmpenv stdout foo_info4.txt
 
 # rename user
 soft user set-username foo foo2
 soft user info foo2
-cmp stdout foo_info5.txt
-
+cmpenv stdout foo_info5.txt
 
 # remove user
 soft user delete foo2
-cmp stdout foo_delete.txt
+! stdout .
 soft user list
-cmp stdout list1.txt
+cmpenv stdout list1.txt
 
 
 -- info.txt --
 Username: admin
 Admin: true
 Public keys:
-  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl
-  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL
+  $ADMIN1_AUTHORIZED_KEY
+  $ADMIN2_AUTHORIZED_KEY
 -- list1.txt --
 admin
 -- list2.txt --
@@ -82,17 +75,17 @@ foo
 Username: foo
 Admin: false
 Public keys:
-  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI+DnTb1n/0KL6/VOQTea8qLovTiZix
+  $USER1_AUTHORIZED_KEY
 -- foo_info2.txt --
 Username: foo
 Admin: true
 Public keys:
-  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI+DnTb1n/0KL6/VOQTea8qLovTiZix
+  $USER1_AUTHORIZED_KEY
 -- foo_info3.txt --
 Username: foo
 Admin: false
 Public keys:
-  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzXnhJ/6SrlHZI+DnTb1n/0KL6/VOQTea8qLovTiZix
+  $USER1_AUTHORIZED_KEY
 -- foo_info4.txt --
 Username: foo
 Admin: false
@@ -102,8 +95,7 @@ Username: foo2
 Admin: false
 Public keys:
 -- admin_key_list1.txt --
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjUeXhBzj18/WZbqcD1aPJlCALzBMMZxhpaU45KgVqL
+$ADMIN1_AUTHORIZED_KEY
+$ADMIN2_AUTHORIZED_KEY
 -- admin_key_list2.txt --
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl
--- foo_delete.txt --
+$ADMIN1_AUTHORIZED_KEY

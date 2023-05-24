@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/soft-serve/server"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/test"
@@ -28,25 +29,18 @@ func TestScript(t *testing.T) {
 
 	t.Setenv("SOFT_SERVE_TEST_NO_HOOKS", "1")
 
-	// we'll use this key to talk with soft serve, and since testscript changes
-	// the cwd, we need to get its full path here
-	key, err := filepath.Abs("./testdata/admin1")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// git does not handle 0600, and on clone, will save the files with its
-	// default perm, 0644, which is too open for ssh.
-	for _, f := range []string{
-		"admin1",
-		"admin2",
-		"user1",
-		"user2",
-	} {
-		if err := os.Chmod(filepath.Join("./testdata/", f), 0o600); err != nil {
+	mkkey := func(name string) (string, *keygen.SSHKeyPair) {
+		path := filepath.Join(t.TempDir(), name)
+		pair, err := keygen.New(path, keygen.WithKeyType(keygen.Ed25519), keygen.WithWrite())
+		if err != nil {
 			t.Fatal(err)
 		}
+		return path, pair
 	}
+
+	key, admin1 := mkkey("admin1")
+	_, admin2 := mkkey("admin2")
+	_, user1 := mkkey("user1")
 
 	sshArgs := []string{
 		"-F", "/dev/null",
@@ -108,13 +102,14 @@ func TestScript(t *testing.T) {
 		Setup: func(e *testscript.Env) error {
 			sshPort := test.RandomPort()
 			e.Setenv("SSH_PORT", fmt.Sprintf("%d", sshPort))
+			e.Setenv("ADMIN1_AUTHORIZED_KEY", admin1.AuthorizedKey())
+			e.Setenv("ADMIN2_AUTHORIZED_KEY", admin2.AuthorizedKey())
+			e.Setenv("USER1_AUTHORIZED_KEY", user1.AuthorizedKey())
 			data := t.TempDir()
 			cfg := config.Config{
-				Name:     "Test Soft Serve",
-				DataPath: data,
-				InitialAdminKeys: []string{
-					"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl",
-				},
+				Name:             "Test Soft Serve",
+				DataPath:         data,
+				InitialAdminKeys: []string{admin1.AuthorizedKey()},
 				SSH: config.SSHConfig{
 					ListenAddr:    fmt.Sprintf("localhost:%d", sshPort),
 					PublicURL:     fmt.Sprintf("ssh://localhost:%d", sshPort),

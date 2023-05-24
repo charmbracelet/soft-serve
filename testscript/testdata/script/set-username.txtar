@@ -1,19 +1,20 @@
 # vi: set ft=conf
-# set-username
+# get original username
 soft info
-cmp stdout info1.txt
+cmpenv stdout info1.txt
 
+# set another username
 soft set-username test
 soft info
-cmp stdout info2.txt
+cmpenv stdout info2.txt
 
 -- info1.txt --
 Username: admin
 Admin: true
 Public keys:
-  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl
+  $ADMIN1_AUTHORIZED_KEY
 -- info2.txt --
 Username: test
 Admin: true
 Public keys:
-  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl
+  $ADMIN1_AUTHORIZED_KEY
