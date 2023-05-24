@@ -10,7 +10,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/charmbracelet/wish v1.1.1
 	github.com/dustin/go-humanize v1.0.1
-	github.com/go-git/go-git/v5 v5.6.1
+	github.com/go-git/go-git/v5 v5.7.0
 	github.com/matryer/is v1.4.1
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.15.1
@@ -20,7 +20,7 @@ require (
 require (
 	github.com/caarlos0/env/v8 v8.0.0
 	github.com/charmbracelet/keygen v0.4.2
-	github.com/charmbracelet/log v0.2.1
+	github.com/charmbracelet/log v0.2.2
 	github.com/charmbracelet/ssh v0.0.0-20221117183211-483d43d97103
 	github.com/gobwas/glob v0.2.3
 	github.com/gogs/git-module v1.8.2
