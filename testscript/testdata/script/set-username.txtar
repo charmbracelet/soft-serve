@@ -1,0 +1,19 @@
+# vi: set ft=conf
+# set-username
+soft info
+cmp stdout info1.txt
+
+soft set-username test
+soft info
+cmp stdout info2.txt
+
+-- info1.txt --
+Username: admin
+Admin: true
+Public keys:
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl
+-- info2.txt --
+Username: test
+Admin: true
+Public keys:
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJI/1tawpdPmzuJcTGTJ+QReqB6cRUdKj4iQIdJUFdrl
