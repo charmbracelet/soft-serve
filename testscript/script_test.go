@@ -62,7 +62,7 @@ func TestScript(t *testing.T) {
 	}
 
 	testscript.Run(t, testscript.Params{
-		Dir:           "testdata/script",
+		Dir:           "./testdata/",
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft": func(ts *testscript.TestScript, neg bool, args []string) {
