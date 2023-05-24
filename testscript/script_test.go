@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -72,6 +74,11 @@ func TestScript(t *testing.T) {
 						"--",
 					}, args...)...,
 				)
+				if runtime.GOOS == "windows" {
+					cmd := exec.Command("ssh", args...)
+					out, err := cmd.CombinedOutput()
+					ts.Logf("RUNNING %v: output: %s error: %v", cmd.Args, string(out), err)
+				}
 				check(ts, ts.Exec("ssh", args...), neg)
 			},
 			"git": func(ts *testscript.TestScript, neg bool, args []string) {
