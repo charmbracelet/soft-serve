@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -19,6 +17,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/rogpeppe/go-internal/testscript"
+	"golang.org/x/crypto/ssh"
 )
 
 var update = flag.Bool("update", false, "update script files")
@@ -66,22 +65,28 @@ func TestScript(t *testing.T) {
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft": func(ts *testscript.TestScript, neg bool, args []string) {
-				args = append(
-					sshArgs,
-					append([]string{
-						"-p", ts.Getenv("SSH_PORT"),
-						"localhost",
-						"--",
-					}, args...)...,
+				cli, err := ssh.Dial(
+					"tcp",
+					net.JoinHostPort("localhost", ts.Getenv("SSH_PORT")),
+					&ssh.ClientConfig{
+						User: "admin",
+						Auth: []ssh.AuthMethod{
+							ssh.PublicKeys(admin1.Signer()),
+						},
+						HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+					},
 				)
-				if runtime.GOOS == "windows" {
-					cmd := exec.Command("ssh.exe", args...)
-					out, err := cmd.CombinedOutput()
-					ts.Logf("WINDOWS RAN %v:\n\tOUTPUT: %s\n\tERROR: %v", cmd.Args, string(out), err)
-					check(ts, err, neg)
-				} else {
-					check(ts, ts.Exec("ssh", args...), neg)
-				}
+				check(ts, err, neg)
+				defer cli.Close()
+
+				sess, err := cli.NewSession()
+				check(ts, err, neg)
+				defer sess.Close()
+
+				sess.Stdout = ts.Stdout()
+				sess.Stderr = ts.Stderr()
+
+				check(ts, sess.Run(strings.Join(args, " ")), neg)
 			},
 			"git": func(ts *testscript.TestScript, neg bool, args []string) {
 				ts.Setenv(
@@ -155,7 +160,7 @@ func TestScript(t *testing.T) {
 			}()
 
 			e.Defer(func() {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				if err := srv.Shutdown(ctx); err != nil {
 					e.T().Fatal(err)

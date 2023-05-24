@@ -2,45 +2,30 @@
 # check default allow-keyless
 soft settings allow-keyless true
 soft settings allow-keyless
-cmp stdout allow-keyless1.txt
+stdout 'true.*'
 
 # change allow-keyless and check
 soft settings allow-keyless false
 soft settings allow-keyless
-cmp stdout allow-keyless2.txt
+stdout 'false.*'
 
 # check default anon-access
 soft settings anon-access
-cmp stdout anon-access1.txt
+stdout 'read-only.*'
 
 # chaneg anon-access to all available options, and check them
 soft settings anon-access no-access
 soft settings anon-access
-cmp stdout anon-access2.txt
+stdout 'no-access.*'
 
 soft settings anon-access read-only
 soft settings anon-access
-cmp stdout anon-access3.txt
+stdout 'read-only.*'
 
 soft settings anon-access read-write
 soft settings anon-access
-cmp stdout anon-access4.txt
+stdout 'read-write.*'
 
 soft settings anon-access admin-access
 soft settings anon-access
-cmp stdout anon-access5.txt
-
--- allow-keyless1.txt --
-true
--- allow-keyless2.txt --
-false
--- anon-access1.txt --
-read-only
--- anon-access2.txt --
-no-access
--- anon-access3.txt --
-read-only
--- anon-access4.txt --
-read-write
--- anon-access5.txt --
-admin-access
+stdout 'admin-access.*'
