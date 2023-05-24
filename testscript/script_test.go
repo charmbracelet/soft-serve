@@ -1,9 +1,11 @@
 package testscript
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -41,70 +43,14 @@ func TestScript(t *testing.T) {
 	_, admin2 := mkkey("admin2")
 	_, user1 := mkkey("user1")
 
-	sshArgs := []string{
-		"-F", "/dev/null",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "UserKnownHostsFile=/dev/null",
-		"-o", "IdentityAgent=none",
-		"-o", "IdentitiesOnly=yes",
-		"-o", "ServerAliveInterval=60",
-		"-i", key,
-	}
-
-	check := func(ts *testscript.TestScript, err error, neg bool) {
-		if neg && err == nil {
-			ts.Fatalf("expected error, got nil")
-		}
-		if !neg {
-			ts.Check(err)
-		}
-	}
-
 	testscript.Run(t, testscript.Params{
 		Dir:           "./testdata/",
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"soft": func(ts *testscript.TestScript, neg bool, args []string) {
-				cli, err := ssh.Dial(
-					"tcp",
-					net.JoinHostPort("localhost", ts.Getenv("SSH_PORT")),
-					&ssh.ClientConfig{
-						User: "admin",
-						Auth: []ssh.AuthMethod{
-							ssh.PublicKeys(admin1.Signer()),
-						},
-						HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-					},
-				)
-				ts.Check(err)
-				defer cli.Close()
-
-				sess, err := cli.NewSession()
-				ts.Check(err)
-				defer sess.Close()
-
-				sess.Stdout = ts.Stdout()
-				sess.Stderr = ts.Stderr()
-
-				check(ts, sess.Run(strings.Join(args, " ")), neg)
-			},
-			"git": func(ts *testscript.TestScript, neg bool, args []string) {
-				ts.Setenv(
-					"GIT_SSH_COMMAND",
-					strings.Join(append([]string{"ssh"}, sshArgs...), " "),
-				)
-				args = append([]string{
-					"-c", "user.email=john@example.com",
-					"-c", "user.name=John Doe",
-				}, args...)
-				check(ts, ts.Exec("git", args...), neg)
-			},
-			"mkreadme": func(ts *testscript.TestScript, neg bool, args []string) {
-				if len(args) != 1 {
-					ts.Fatalf("must have exactly 1 arg, the filename, got %d", len(args))
-				}
-				check(ts, os.WriteFile(ts.MkAbs(args[0]), []byte("# example\ntest project"), 0o644), neg)
-			},
+			"soft":     cmdSoft(admin1.Signer()),
+			"git":      cmdGit(key),
+			"mkreadme": cmdMkReadMe,
+			"unix2dos": cmdUNIX2DOS,
 		},
 		Setup: func(e *testscript.Env) error {
 			sshPort := test.RandomPort()
@@ -183,4 +129,90 @@ func TestScript(t *testing.T) {
 			return nil
 		},
 	})
+}
+
+func cmdSoft(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []string) {
+	return func(ts *testscript.TestScript, neg bool, args []string) {
+		cli, err := ssh.Dial(
+			"tcp",
+			net.JoinHostPort("localhost", ts.Getenv("SSH_PORT")),
+			&ssh.ClientConfig{
+				User:            "admin",
+				Auth:            []ssh.AuthMethod{ssh.PublicKeys(key)},
+				HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			},
+		)
+		ts.Check(err)
+		defer cli.Close()
+
+		sess, err := cli.NewSession()
+		ts.Check(err)
+		defer sess.Close()
+
+		sess.Stdout = ts.Stdout()
+		sess.Stderr = ts.Stderr()
+
+		check(ts, sess.Run(strings.Join(args, " ")), neg)
+	}
+}
+
+// cmdUNIX2DOS converts files from UNIX line endings to DOS line endings.
+func cmdUNIX2DOS(ts *testscript.TestScript, neg bool, args []string) {
+	if neg {
+		ts.Fatalf("unsupported: ! unix2dos")
+	}
+	if len(args) < 1 {
+		ts.Fatalf("usage: unix2dos paths...")
+	}
+	for _, arg := range args {
+		filename := ts.MkAbs(arg)
+		data, err := ioutil.ReadFile(filename)
+		if err != nil {
+			ts.Fatalf("%s: %v", filename, err)
+		}
+		data = bytes.Join(bytes.Split(data, []byte{'\n'}), []byte{'\r', '\n'})
+		//nolint:gosec
+		if err := ioutil.WriteFile(filename, data, 0o666); err != nil {
+			ts.Fatalf("%s: %v", filename, err)
+		}
+	}
+}
+
+func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string) {
+	return func(ts *testscript.TestScript, neg bool, args []string) {
+		sshArgs := []string{
+			"-F", "/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "IdentityAgent=none",
+			"-o", "IdentitiesOnly=yes",
+			"-o", "ServerAliveInterval=60",
+			"-i", key,
+		}
+		ts.Setenv(
+			"GIT_SSH_COMMAND",
+			strings.Join(append([]string{"ssh"}, sshArgs...), " "),
+		)
+		args = append([]string{
+			"-c", "user.email=john@example.com",
+			"-c", "user.name=John Doe",
+		}, args...)
+		check(ts, ts.Exec("git", args...), neg)
+	}
+}
+
+func cmdMkReadMe(ts *testscript.TestScript, neg bool, args []string) {
+	if len(args) != 1 {
+		ts.Fatalf("must have exactly 1 arg, the filename, got %d", len(args))
+	}
+	check(ts, os.WriteFile(ts.MkAbs(args[0]), []byte("# example\ntest project"), 0o644), neg)
+}
+
+func check(ts *testscript.TestScript, err error, neg bool) {
+	if neg && err == nil {
+		ts.Fatalf("expected error, got nil")
+	}
+	if !neg {
+		ts.Check(err)
+	}
 }

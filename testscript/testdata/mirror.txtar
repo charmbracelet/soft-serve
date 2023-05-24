@@ -64,10 +64,14 @@ cmp stdout info2.txt
 soft repo blob charmbracelet/test LICENSE
 stdout '.*Creative Commons.*'
 
+[windows] unix2dos info1.txt
+[windows] unix2dos info2.txt
+[windows] unix2dos tree.txt
+
 -- info1.txt --
-Project Name: 
+Project Name:
 Repository: charmbracelet/catwalk
-Description: 
+Description:
 Private: false
 Hidden: false
 Mirror: true
