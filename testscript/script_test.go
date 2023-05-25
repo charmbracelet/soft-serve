@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -47,8 +46,8 @@ func TestScript(t *testing.T) {
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft":     cmdSoft(admin1.Signer()),
 			"git":      cmdGit(key),
-			"mkreadme": cmdMkReadMe,
-			"unix2dos": cmdUNIX2DOS,
+			"mkreadme": cmdMkReadme,
+			"unix2dos": cmdUnix2Dos,
 		},
 		Setup: func(e *testscript.Env) error {
 			sshPort := test.RandomPort()
@@ -154,8 +153,7 @@ func cmdSoft(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []st
 	}
 }
 
-// cmdUNIX2DOS converts files from UNIX line endings to DOS line endings.
-func cmdUNIX2DOS(ts *testscript.TestScript, neg bool, args []string) {
+func cmdUnix2Dos(ts *testscript.TestScript, neg bool, args []string) {
 	if neg {
 		ts.Fatalf("unsupported: ! unix2dos")
 	}
@@ -164,13 +162,18 @@ func cmdUNIX2DOS(ts *testscript.TestScript, neg bool, args []string) {
 	}
 	for _, arg := range args {
 		filename := ts.MkAbs(arg)
-		data, err := ioutil.ReadFile(filename)
+		data, err := os.ReadFile(filename)
 		if err != nil {
 			ts.Fatalf("%s: %v", filename, err)
 		}
-		data = bytes.Join(bytes.Split(data, []byte{'\n'}), []byte{'\r', '\n'})
-		//nolint:gosec
-		if err := ioutil.WriteFile(filename, data, 0o666); err != nil {
+
+		// First ensure we don't have any `\r\n` there already then replace all
+		// `\n` with `\r\n`.
+		// This should prevent creating `\r\r\n`.
+		data = bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'})
+		data = bytes.ReplaceAll(data, []byte{'\n'}, []byte{'\r', '\n'})
+
+		if err := os.WriteFile(filename, data, 0o644); err != nil {
 			ts.Fatalf("%s: %v", filename, err)
 		}
 	}
@@ -199,11 +202,12 @@ func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string)
 	}
 }
 
-func cmdMkReadMe(ts *testscript.TestScript, neg bool, args []string) {
+func cmdMkReadme(ts *testscript.TestScript, neg bool, args []string) {
 	if len(args) != 1 {
-		ts.Fatalf("must have exactly 1 arg, the filename, got %d", len(args))
+		ts.Fatalf("usage: mkreadme path")
 	}
-	check(ts, os.WriteFile(ts.MkAbs(args[0]), []byte("# example\ntest project"), 0o644), neg)
+	content := []byte("# example\ntest project")
+	check(ts, os.WriteFile(ts.MkAbs(args[0]), content, 0o644), neg)
 }
 
 func check(ts *testscript.TestScript, err error, neg bool) {
