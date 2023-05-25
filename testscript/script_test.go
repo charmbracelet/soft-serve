@@ -156,7 +156,6 @@ func cmdSoft(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []st
 
 // cmdUNIX2DOS converts files from UNIX line endings to DOS line endings.
 func cmdUNIX2DOS(ts *testscript.TestScript, neg bool, args []string) {
-	return
 	if neg {
 		ts.Fatalf("unsupported: ! unix2dos")
 	}
