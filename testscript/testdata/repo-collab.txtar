@@ -1,0 +1,18 @@
+# vi: set ft=conf
+# setup
+soft repo import test https://github.com/charmbracelet/catwalk.git
+soft user create foo --key "$USER1_AUTHORIZED_KEY"
+
+# list collabs
+soft repo collab list test
+! stdout .
+
+# add collab
+soft repo collab add test foo
+soft repo collab list test
+stdout 'foo'
+
+# remove collab
+soft repo collab remove test foo
+soft repo collab list test
+! stdout .

@@ -1,0 +1,96 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix info1.txt info2.txt tree.txt
+
+# import a repo
+soft repo import --mirror charmbracelet/catwalk https://github.com/charmbracelet/catwalk.git
+
+# check repo info
+soft repo info charmbracelet/catwalk
+cmp stdout info1.txt
+
+# check repo list
+soft repo list
+stdout charmbracelet/catwalk
+
+# is-mirror?
+soft repo is-mirror charmbracelet/catwalk
+stdout true
+
+# set project name
+soft repo project-name charmbracelet/catwalk catwalk
+soft repo list
+stdout catwalk
+
+
+# check description
+soft repo description charmbracelet/catwalk
+! stdout .
+
+# set description
+soft repo description charmbracelet/catwalk "testing repo"
+soft repo description charmbracelet/catwalk
+stdout 'testing repo'
+
+# rename
+soft repo rename charmbracelet/catwalk charmbracelet/test
+soft repo list
+stdout charmbracelet/test # TODO: shouldn't this still show the project-name?
+
+# check its not private
+soft repo private charmbracelet/test
+stdout false
+
+# make it private
+soft repo private charmbracelet/test  true
+soft repo private charmbracelet/test
+stdout true
+
+# check its not hidden
+soft repo hidden charmbracelet/test
+stdout false
+
+# make it hidden
+soft repo hidden charmbracelet/test  true
+soft repo hidden charmbracelet/test
+stdout true
+
+# print tree
+soft repo tree charmbracelet/test
+cmp stdout tree.txt
+
+# check repo info again
+soft repo info charmbracelet/test
+cmp stdout info2.txt
+
+# get a file
+soft repo blob charmbracelet/test LICENSE
+stdout '.*Creative Commons.*'
+
+
+-- info1.txt --
+Project Name:
+Repository: charmbracelet/catwalk
+Description:
+Private: false
+Hidden: false
+Mirror: true
+Default Branch: main
+Branches:
+  - main
+-- info2.txt --
+Project Name: catwalk
+Repository: charmbracelet/test
+Description: testing repo
+Private: true
+Hidden: true
+Mirror: true
+Default Branch: main
+Branches:
+  - main
+-- tree.txt --
+drwxrwxrwx	-	 30k
+drwxrwxrwx	-	 50k
+-rw-r--r--	19 kB	 LICENSE
+-rw-r--r--	1.1 kB	 README.md

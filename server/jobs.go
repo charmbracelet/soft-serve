@@ -51,7 +51,6 @@ func (s *Server) mirrorJob() func() {
 					if _, err := cmd.RunInDir(r.Path); err != nil {
 						logger.Error("error running git remote update", "repo", name, "err", err)
 					}
-
 				})
 			}
 		}

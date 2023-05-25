@@ -1,6 +1,11 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/spf13/cobra"
+)
 
 func repoCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -53,9 +58,12 @@ func repoCommand() *cobra.Command {
 
 				branches, _ := r.Branches()
 				tags, _ := r.Tags()
-				cmd.Println("Project Name:", rr.ProjectName())
+
+				// project name and description are optional, handle trailing
+				// whitespace to avoid breaking tests.
+				cmd.Println(strings.TrimSpace(fmt.Sprint("Project Name: ", rr.ProjectName())))
 				cmd.Println("Repository:", rr.Name())
-				cmd.Println("Description:", rr.Description())
+				cmd.Println(strings.TrimSpace(fmt.Sprint("Description: ", rr.Description())))
 				cmd.Println("Private:", rr.IsPrivate())
 				cmd.Println("Hidden:", rr.IsHidden())
 				cmd.Println("Mirror:", rr.IsMirror())

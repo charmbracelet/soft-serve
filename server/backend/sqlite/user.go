@@ -42,7 +42,8 @@ func (u *User) PublicKeys() []ssh.PublicKey {
 		if err := tx.Select(&keyStrings, `SELECT public_key
 			FROM public_key
 			INNER JOIN user ON user.id = public_key.user_id
-			WHERE user.username = ?;`, u.username); err != nil {
+			WHERE user.username = ?
+			ORDER BY public_key.id asc;`, u.username); err != nil {
 			return err
 		}
 

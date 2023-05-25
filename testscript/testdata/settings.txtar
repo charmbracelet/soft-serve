@@ -1,0 +1,31 @@
+# vi: set ft=conf
+# check default allow-keyless
+soft settings allow-keyless true
+soft settings allow-keyless
+stdout 'true.*'
+
+# change allow-keyless and check
+soft settings allow-keyless false
+soft settings allow-keyless
+stdout 'false.*'
+
+# check default anon-access
+soft settings anon-access
+stdout 'read-only.*'
+
+# chaneg anon-access to all available options, and check them
+soft settings anon-access no-access
+soft settings anon-access
+stdout 'no-access.*'
+
+soft settings anon-access read-only
+soft settings anon-access
+stdout 'read-only.*'
+
+soft settings anon-access read-write
+soft settings anon-access
+stdout 'read-write.*'
+
+soft settings anon-access admin-access
+soft settings anon-access
+stdout 'admin-access.*'

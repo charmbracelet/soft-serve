@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/charmbracelet/log"
@@ -158,6 +159,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		s.Cron.Stop()
 		return nil
 	})
+	if closer, ok := s.Backend.(io.Closer); ok {
+		defer closer.Close() // nolint: errcheck
+	}
 	return errg.Wait()
 }
 
@@ -172,5 +176,8 @@ func (s *Server) Close() error {
 		s.Cron.Stop()
 		return nil
 	})
+	if closer, ok := s.Backend.(io.Closer); ok {
+		defer closer.Close() // nolint: errcheck
+	}
 	return errg.Wait()
 }

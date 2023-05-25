@@ -1,0 +1,24 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix info1.txt info2.txt
+
+# get original username
+soft info
+cmpenv stdout info1.txt
+
+# set another username
+soft set-username test
+soft info
+cmpenv stdout info2.txt
+
+-- info1.txt --
+Username: admin
+Admin: true
+Public keys:
+  $ADMIN1_AUTHORIZED_KEY
+-- info2.txt --
+Username: test
+Admin: true
+Public keys:
+  $ADMIN1_AUTHORIZED_KEY

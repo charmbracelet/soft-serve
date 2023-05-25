@@ -1,0 +1,78 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix tree.txt readme.md branch_list.1.txt
+
+# create a repo
+soft repo create repo1 -d 'description' -H -p -n 'repo11'
+soft repo hidden repo1
+stdout true
+soft repo private repo1
+stdout true
+soft repo description repo1
+stdout 'description'
+
+# clone repo
+git clone ssh://localhost:$SSH_PORT/repo1 repo1
+
+# create some files, commits, tags...
+mkreadme ./repo1/README.md
+git -C repo1 add -A
+git -C repo1 commit -m 'first'
+git -C repo1 tag v0.1.0
+git -C repo1 push origin HEAD
+git -C repo1 push origin HEAD --tags
+
+# list tags
+soft repo tag list repo1
+stdout 'v0.1.0'
+
+# delete tag
+soft repo tag delete repo1 v0.1.0
+soft repo tag list repo1
+! stdout .
+
+# print tree
+soft repo tree repo1
+cmp stdout tree.txt
+
+# cat blob
+soft repo blob repo1 README.md
+cmp stdout readme.md
+
+# cat blob that doesn't exist
+! soft repo blob repo1 README.txt
+! stdout .
+stderr '.*revision does not exist.*'
+
+# check main branch
+soft repo branch default repo1
+stdout master
+
+# create a new branch
+git -C repo1 checkout -b branch1
+git -C repo1 push origin branch1
+soft repo branch list repo1
+cmp stdout branch_list.1.txt
+
+# change default branch
+soft repo branch default repo1 branch1
+soft repo branch default repo1
+stdout branch1
+
+# cannot delete main branch
+! soft repo branch delete repo1 branch1
+
+# delete other branch
+soft repo branch delete repo1 master
+soft repo branch list repo1
+stdout branch1
+
+-- tree.txt --
+-rw-r--r--	22 B	 README.md
+-- readme.md --
+# example
+test project
+-- branch_list.1.txt --
+branch1
+master
