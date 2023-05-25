@@ -1,7 +1,7 @@
 # vi: set ft=conf
 
-# convert crlf on windows
-[windows] unix2dos info1.txt info2.txt
+# convert crlf to lf on windows
+[windows] dos2unix info1.txt info2.txt
 
 # get original username
 soft info

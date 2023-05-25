@@ -1,7 +1,7 @@
 # vi: set ft=conf
 
-# convert crlf on windows
-[windows] unix2dos tree.txt readme.md branch_list.1.txt
+# convert crlf to lf on windows
+[windows] dos2unix tree.txt readme.md branch_list.1.txt
 
 # create a repo
 soft repo create repo1 -d 'description' -H -p -n 'repo11'
