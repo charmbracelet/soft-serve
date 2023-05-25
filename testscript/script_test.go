@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -41,19 +40,12 @@ func TestScript(t *testing.T) {
 	_, admin2 := mkkey("admin2")
 	_, user1 := mkkey("user1")
 
-	cf, kh := "/dev/null", "/dev/null"
-	// Create tmp files for windows
-	if runtime.GOOS == "windows" {
-		cf = filepath.Join(t.TempDir(), "config")
-		kh = filepath.Join(t.TempDir(), "known_hosts")
-	}
-
 	testscript.Run(t, testscript.Params{
 		Dir:           "./testdata/",
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft":     cmdSoft(admin1.Signer()),
-			"git":      cmdGit(key, cf, kh),
+			"git":      cmdGit(key),
 			"mkreadme": cmdMkReadme,
 			"dos2unix": cmdDos2Unix,
 		},
@@ -63,6 +55,8 @@ func TestScript(t *testing.T) {
 			e.Setenv("ADMIN1_AUTHORIZED_KEY", admin1.AuthorizedKey())
 			e.Setenv("ADMIN2_AUTHORIZED_KEY", admin2.AuthorizedKey())
 			e.Setenv("USER1_AUTHORIZED_KEY", user1.AuthorizedKey())
+			e.Setenv("SSH_KNOWN_HOSTS_FILE", filepath.Join(t.TempDir(), "known_hosts"))
+			e.Setenv("SSH_KNOWN_CONFIG_FILE", filepath.Join(t.TempDir(), "config"))
 			data := t.TempDir()
 			cfg := config.Config{
 				Name:             "Test Soft Serve",
@@ -185,17 +179,24 @@ func cmdDos2Unix(ts *testscript.TestScript, neg bool, args []string) {
 	}
 }
 
-func cmdGit(key, configfile, knownhosts string) func(ts *testscript.TestScript, neg bool, args []string) {
+var sshConfig = `
+UserKnownHostsFile=%q
+StrictHostKeyChecking=no
+IdentityAgent=none
+IdentitiesOnly=yes
+ServerAliveInterval=60
+`
+
+func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string) {
 	return func(ts *testscript.TestScript, neg bool, args []string) {
+		ts.Check(os.WriteFile(
+			ts.Getenv("SSH_KNOWN_CONFIG_FILE"),
+			[]byte(fmt.Sprintf(sshConfig, ts.Getenv("SSH_KNOWN_HOSTS_FILE"))),
+			0o600,
+		))
 		sshArgs := []string{
-			"-F", configfile,
-			"-o", "UserKnownHostsFile=" + knownhosts,
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentityAgent=none",
-			"-o", "IdentitiesOnly=yes",
-			"-o", "ServerAliveInterval=60",
-			// Escape the key path for Windows.
-			"-i", strings.ReplaceAll(key, `\`, `\\`),
+			"-F", filepath.ToSlash(ts.Getenv("SSH_KNOWN_CONFIG_FILE")),
+			"-i", filepath.ToSlash(key),
 		}
 		ts.Setenv(
 			"GIT_SSH_COMMAND",
