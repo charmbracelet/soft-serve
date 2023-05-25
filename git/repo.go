@@ -62,11 +62,6 @@ func Open(path string) (*Repository, error) {
 	}, nil
 }
 
-// Name returns the name of the repository.
-func (r *Repository) Name() string {
-	return filepath.Base(r.Path)
-}
-
 // HEAD returns the HEAD reference for a repository.
 func (r *Repository) HEAD() (*Reference, error) {
 	rn, err := r.Repository.SymbolicRef(git.SymbolicRefOptions{Name: "HEAD"})
