@@ -13,7 +13,7 @@ stdout 'false.*'
 soft settings anon-access
 stdout 'read-only.*'
 
-# chaneg anon-access to all available options, and check them
+# change anon-access to all available options, and check them
 soft settings anon-access no-access
 soft settings anon-access
 stdout 'no-access.*'
@@ -29,3 +29,9 @@ stdout 'read-write.*'
 soft settings anon-access admin-access
 soft settings anon-access
 stdout 'admin-access.*'
+
+# try to set a bad access
+! soft settings anon-access nope
+! stdout .
+stderr .
+

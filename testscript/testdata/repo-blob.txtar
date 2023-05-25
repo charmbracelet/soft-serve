@@ -1,0 +1,51 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix blob1.txt blob2.txt blob3.txt
+
+# create a repo
+soft repo create repo1
+
+# clone repo
+git clone ssh://localhost:$SSH_PORT/repo1 repo1
+
+# create some files, commits, tags...
+mkfile ./repo1/README.md '# Hello\n\nwelcome'
+mkfile ./repo1/main.go 'package main\nconst foo = 2\n'
+mkfile ./repo1/.hidden ''
+mkdir ./repo1/folder
+mkdir ./repo1/.folder
+mkfile ./repo1/folder/lib.c '//#include <stdio.h>'
+git -C repo1 add -A
+git -C repo1 commit -m 'first'
+git -C repo1 push origin HEAD
+
+# print root blob
+soft repo blob repo1 README.md
+cmp stdout blob1.txt
+
+# print file blob with revision with line numbers and colors
+soft repo blob repo1 master main.go -l -c
+cmp stdout blob2.txt
+
+
+# print file blob with revision within folder with lineno
+soft repo blob repo1 master folder/lib.c -l
+cmp stdout blob3.txt
+
+# print blob of folder that does not exist
+! soft repo blob repo1 folder/nope.txt
+! stdout .
+stderr 'revision does not exist'
+
+# print blob of bad revision
+! soft repo blob repo1 badrev README.md
+! stdout .
+stderr 'revision does not exist'
+
+-- blob1.txt --
+# Hello\n\nwelcome
+-- blob2.txt --
+ [38;5;239m1[0m [38;5;236m│[0m [38;5;204m[0m[38;5;204mpackage[0m main[38;5;255m\[0mnconst foo [38;5;187m=[0m [38;5;85m2[0m[38;5;255m\[0mn
+-- blob3.txt --
+ 1 │ //#include <stdio.h>

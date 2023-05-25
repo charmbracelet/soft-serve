@@ -46,7 +46,7 @@ func TestScript(t *testing.T) {
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft":     cmdSoft(admin1.Signer()),
 			"git":      cmdGit(key),
-			"mkreadme": cmdMkReadme,
+			"mkfile":   cmdMkfile,
 			"dos2unix": cmdDos2Unix,
 		},
 		Setup: func(e *testscript.Env) error {
@@ -211,12 +211,15 @@ func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string)
 	}
 }
 
-func cmdMkReadme(ts *testscript.TestScript, neg bool, args []string) {
-	if len(args) != 1 {
-		ts.Fatalf("usage: mkreadme path")
+func cmdMkfile(ts *testscript.TestScript, neg bool, args []string) {
+	if len(args) < 2 {
+		ts.Fatalf("usage: mkfile path content")
 	}
-	content := []byte("# example\ntest project")
-	check(ts, os.WriteFile(ts.MkAbs(args[0]), content, 0o644), neg)
+	check(ts, os.WriteFile(
+		ts.MkAbs(args[0]),
+		[]byte(strings.Join(args[1:], " ")),
+		0o644,
+	), neg)
 }
 
 func check(ts *testscript.TestScript, err error, neg bool) {

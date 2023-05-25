@@ -1,0 +1,25 @@
+# vi: set ft=conf
+[windows] dos2unix help.txt
+
+soft --help
+cmpenv stdout help.txt
+
+-- help.txt --
+Soft Serve is a self-hostable Git server for the command line.
+
+Usage:
+  ssh -p $SSH_PORT localhost [command]
+
+Available Commands:
+  help         Help about any command
+  info         Show your info
+  pubkey       Manage your public keys
+  repo         Manage repositories
+  set-username Set your username
+  settings     Manage server settings
+  user         Manage users
+
+Flags:
+  -h, --help   help for this command
+
+Use "ssh -p $SSH_PORT localhost [command] --help" for more information about a command.
