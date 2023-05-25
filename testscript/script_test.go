@@ -180,11 +180,12 @@ func cmdDos2Unix(ts *testscript.TestScript, neg bool, args []string) {
 }
 
 var sshConfig = `
-UserKnownHostsFile=%q
-StrictHostKeyChecking=no
-IdentityAgent=none
-IdentitiesOnly=yes
-ServerAliveInterval=60
+Host *
+  UserKnownHostsFile %q
+  StrictHostKeyChecking no
+  IdentityAgent none
+  IdentitiesOnly yes
+  ServerAliveInterval 60
 `
 
 func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string) {
