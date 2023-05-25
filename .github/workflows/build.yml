@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build:
-    uses: charmbracelet/meta/.github/workflows/build.yml@main
+    uses: charmbracelet/meta/.github/workflows/build.yml@crlf
 
   snapshot:
     uses: charmbracelet/meta/.github/workflows/snapshot.yml@main
