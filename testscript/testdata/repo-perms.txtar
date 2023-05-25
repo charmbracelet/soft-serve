@@ -1,0 +1,89 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix info.txt
+
+# create a repo & user1 with admin
+soft repo create repo1 -p
+soft user create user1 -k "$USER1_AUTHORIZED_KEY"
+
+# setup repo
+git clone ssh://localhost:$SSH_PORT/repo1 repo1
+mkfile ./repo1/README.md '# Project\nfoo'
+git -C repo1 add -A
+git -C repo1 commit -m 'first'
+git -C repo1 tag v1.0.0
+git -C repo1 push origin HEAD
+git -C repo1 push origin HEAD --tags
+
+# admin can access it
+soft repo tree repo1
+soft repo blob repo1 README.md
+soft repo description repo1 'desc'
+soft repo project-name repo1 'proj'
+soft repo private repo1
+soft repo info repo1
+cmp stdout info.txt
+
+# verify no collab
+soft repo collab list repo1
+! stdout .
+
+# regular user can't access it
+! usoft repo info repo1
+stderr 'Unauthorized'
+! usoft repo tree repo1
+stderr 'Unauthorized'
+! usoft repo tag list repo1
+stderr 'Unauthorized'
+! usoft repo tag delete repo1 v1.0.0
+stderr 'Unauthorized'
+! usoft repo blob repo1 README.md
+stderr 'Unauthorized'
+! usoft repo description repo1
+stderr 'Unauthorized'
+! usoft repo description repo1 'new desc'
+stderr 'Unauthorized'
+! usoft repo project-name repo1
+stderr 'Unauthorized'
+! usoft repo private repo1 true
+stderr 'Unauthorized'
+! usoft repo private repo1
+stderr 'Unauthorized'
+! usoft repo rename repo1 repo11
+stderr 'Unauthorized'
+! usoft repo branch default repo1
+stderr 'Unauthorized'
+! usoft repo branch default repo1 main
+stderr 'Unauthorized'
+! usoft repo delete repo1
+stderr 'Unauthorized'
+
+# add user1 as collab
+soft repo collab add repo1 user1
+soft repo collab list repo1
+stdout user1
+usoft repo collab list repo1
+stdout user1
+
+# verify user1 has access now
+usoft repo info repo1
+cmp stdout info.txt
+
+# delete
+usoft repo delete repo1
+usoft repo list
+! stdout .
+
+-- info.txt --
+Project Name: proj
+Repository: repo1
+Description: desc
+Private: true
+Hidden: false
+Mirror: false
+Default Branch: master
+Branches:
+  - master
+Tags:
+  - v1.0.0

@@ -1,7 +1,7 @@
 # vi: set ft=conf
 
 # convert crlf to lf on windows
-[windows] dos2unix tree.txt readme.md branch_list.1.txt
+[windows] dos2unix tree.txt readme.md branch_list.1.txt info.txt
 
 # create a repo
 soft repo create repo1 -d 'description' -H -p -n 'repo11'
@@ -24,6 +24,10 @@ git -C repo1 commit -m 'first'
 git -C repo1 tag v0.1.0
 git -C repo1 push origin HEAD
 git -C repo1 push origin HEAD --tags
+
+# info
+soft repo info repo1
+cmp stdout info.txt
 
 # list tags
 soft repo tag list repo1
@@ -77,3 +81,15 @@ stdout branch1
 -- branch_list.1.txt --
 branch1
 master
+-- info.txt --
+Project Name: repo11
+Repository: repo1
+Description: description
+Private: true
+Hidden: true
+Mirror: false
+Default Branch: master
+Branches:
+  - master
+Tags:
+  - v0.1.0
