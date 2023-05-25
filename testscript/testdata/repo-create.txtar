@@ -11,12 +11,14 @@ soft repo private repo1
 stdout true
 soft repo description repo1
 stdout 'description'
+soft repo project-name repo1
+stdout 'repo1'
 
 # clone repo
 git clone ssh://localhost:$SSH_PORT/repo1 repo1
 
 # create some files, commits, tags...
-mkreadme ./repo1/README.md
+mkfile ./repo1/README.md '# Project\nfoo'
 git -C repo1 add -A
 git -C repo1 commit -m 'first'
 git -C repo1 tag v0.1.0
@@ -69,10 +71,9 @@ soft repo branch list repo1
 stdout branch1
 
 -- tree.txt --
--rw-r--r--	22 B	 README.md
+-rw-r--r--	14 B	 README.md
 -- readme.md --
-# example
-test project
+# Project\nfoo
 -- branch_list.1.txt --
 branch1
 master

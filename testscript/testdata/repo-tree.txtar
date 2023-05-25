@@ -10,12 +10,12 @@ soft repo create repo1
 git clone ssh://localhost:$SSH_PORT/repo1 repo1
 
 # create some files, commits, tags...
-mkreadme ./repo1/README.md
-mkreadme ./repo1/b.md
-mkreadme ./repo1/.hidden
+mkfile ./repo1/README.md '# Hello'
+mkfile ./repo1/b.md 'hi'
+mkfile ./repo1/.hidden ''
 mkdir ./repo1/folder
 mkdir ./repo1/.folder
-mkreadme ./repo1/folder/aa.md
+mkfile ./repo1/folder/aa.md 'hello'
 git -C repo1 add -A
 git -C repo1 commit -m 'first'
 git -C repo1 push origin HEAD
@@ -44,10 +44,10 @@ stderr 'revision does not exist'
 
 -- tree1.txt --
 drwxrwxrwx	-	 folder
--rw-r--r--	22 B	 .hidden
--rw-r--r--	22 B	 README.md
--rw-r--r--	22 B	 b.md
+-rw-r--r--	-	 .hidden
+-rw-r--r--	7 B	 README.md
+-rw-r--r--	2 B	 b.md
 -- tree2.txt --
--rw-r--r--	22 B	 aa.md
+-rw-r--r--	5 B	 aa.md
 -- tree3.txt --
--rw-r--r--	22 B	 b.md
+-rw-r--r--	2 B	 b.md
