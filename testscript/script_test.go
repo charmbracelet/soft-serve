@@ -154,6 +154,8 @@ func cmdSoft(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []st
 }
 
 func cmdUnix2Dos(ts *testscript.TestScript, neg bool, args []string) {
+	// now this should not be needed indeed
+	return
 	if neg {
 		ts.Fatalf("unsupported: ! unix2dos")
 	}
