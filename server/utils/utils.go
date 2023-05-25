@@ -40,8 +40,11 @@ func ValidateRepo(repo string) error {
 		return fmt.Errorf("repo cannot be empty")
 	}
 
+	fmt.Println("ACTUAL REPO NAME IS", repo)
+
 	for _, r := range repo {
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' && r != '_' && r != '.' && r != '/' {
+			fmt.Println("INVALID CHAR", r, string(r))
 			return fmt.Errorf("repo can only contain letters, numbers, hyphens, underscores, periods, and slashes")
 		}
 	}
