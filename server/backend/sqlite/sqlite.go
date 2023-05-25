@@ -603,9 +603,6 @@ func (d *SqliteBackend) RemoveCollaborator(repo string, username string) error {
 }
 
 func (d *SqliteBackend) initRepo(repo string) error {
-	if os.Getenv("SOFT_SERVE_TEST_NO_HOOKS") == "1" {
-		return nil
-	}
 	return hooks.GenerateHooks(d.ctx, d.cfg, repo)
 }
 

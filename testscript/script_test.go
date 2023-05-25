@@ -28,8 +28,6 @@ func TestScript(t *testing.T) {
 	flag.Parse()
 	var lock sync.Mutex
 
-	t.Setenv("SOFT_SERVE_TEST_NO_HOOKS", "1")
-
 	mkkey := func(name string) (string, *keygen.SSHKeyPair) {
 		path := filepath.Join(t.TempDir(), name)
 		pair, err := keygen.New(path, keygen.WithKeyType(keygen.Ed25519), keygen.WithWrite())
