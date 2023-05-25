@@ -44,7 +44,6 @@ func ValidateRepo(repo string) error {
 
 	for _, r := range repo {
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' && r != '_' && r != '.' && r != '/' {
-			fmt.Println("INVALID CHAR", r, string(r))
 			return fmt.Errorf("repo can only contain letters, numbers, hyphens, underscores, periods, and slashes")
 		}
 	}
