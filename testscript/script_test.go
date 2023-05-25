@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -47,7 +48,7 @@ func TestScript(t *testing.T) {
 			"soft":     cmdSoft(admin1.Signer()),
 			"git":      cmdGit(key),
 			"mkreadme": cmdMkReadme,
-			"unix2dos": cmdUnix2Dos,
+			"dos2unix": cmdDos2Unix,
 		},
 		Setup: func(e *testscript.Env) error {
 			sshPort := test.RandomPort()
@@ -153,14 +154,13 @@ func cmdSoft(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []st
 	}
 }
 
-func cmdUnix2Dos(ts *testscript.TestScript, neg bool, args []string) {
-	// now this should not be needed indeed
-	return
+// P.S. Windows sucks!
+func cmdDos2Unix(ts *testscript.TestScript, neg bool, args []string) {
 	if neg {
-		ts.Fatalf("unsupported: ! unix2dos")
+		ts.Fatalf("unsupported: ! dos2unix")
 	}
 	if len(args) < 1 {
-		ts.Fatalf("usage: unix2dos paths...")
+		ts.Fatalf("usage: dos2unix paths...")
 	}
 	for _, arg := range args {
 		filename := ts.MkAbs(arg)
@@ -169,11 +169,8 @@ func cmdUnix2Dos(ts *testscript.TestScript, neg bool, args []string) {
 			ts.Fatalf("%s: %v", filename, err)
 		}
 
-		// First ensure we don't have any `\r\n` there already then replace all
-		// `\n` with `\r\n`.
-		// This should prevent creating `\r\r\n`.
+		// Replace all '\r\n' with '\n'.
 		data = bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'})
-		data = bytes.ReplaceAll(data, []byte{'\n'}, []byte{'\r', '\n'})
 
 		if err := os.WriteFile(filename, data, 0o644); err != nil {
 			ts.Fatalf("%s: %v", filename, err)
@@ -184,13 +181,25 @@ func cmdUnix2Dos(ts *testscript.TestScript, neg bool, args []string) {
 func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string) {
 	return func(ts *testscript.TestScript, neg bool, args []string) {
 		sshArgs := []string{
-			"-F", "/dev/null",
 			"-o", "StrictHostKeyChecking=no",
-			"-o", "UserKnownHostsFile=/dev/null",
 			"-o", "IdentityAgent=none",
 			"-o", "IdentitiesOnly=yes",
 			"-o", "ServerAliveInterval=60",
-			"-i", key,
+			// Escape the key path for Windows.
+			"-i", strings.ReplaceAll(key, `\`, `\\`),
+		}
+		// Windows null device
+		// https://stackoverflow.com/a/36746090/10913628
+		if runtime.GOOS == "windows" {
+			sshArgs = append(sshArgs, []string{
+				"-F", `$nul`,
+				"-o", `UserKnownHostsFile=$nul`,
+			}...)
+		} else {
+			sshArgs = append(sshArgs, []string{
+				"-F", "/dev/null",
+				"-o", "UserKnownHostsFile=/dev/null",
+			}...)
 		}
 		ts.Setenv(
 			"GIT_SSH_COMMAND",

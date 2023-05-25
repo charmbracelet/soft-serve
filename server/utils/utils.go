@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"path/filepath"
+	"path"
 	"strings"
 	"unicode"
 )
@@ -10,7 +10,9 @@ import (
 // SanitizeRepo returns a sanitized version of the given repository name.
 func SanitizeRepo(repo string) string {
 	repo = strings.TrimPrefix(repo, "/")
-	repo = filepath.Clean(repo)
+	// We're using path instead of filepath here because this is not OS dependent
+	// looking at you Windows
+	repo = path.Clean(repo)
 	repo = strings.TrimSuffix(repo, ".git")
 	return repo
 }
@@ -39,8 +41,6 @@ func ValidateRepo(repo string) error {
 	if repo == "" {
 		return fmt.Errorf("repo cannot be empty")
 	}
-
-	fmt.Println("ACTUAL REPO NAME IS", repo)
 
 	for _, r := range repo {
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' && r != '_' && r != '.' && r != '/' {
