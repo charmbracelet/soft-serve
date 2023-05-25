@@ -41,12 +41,19 @@ func TestScript(t *testing.T) {
 	_, admin2 := mkkey("admin2")
 	_, user1 := mkkey("user1")
 
+	cf, kh := "/dev/null", "/dev/null"
+	// Create tmp files for windows
+	if runtime.GOOS == "windows" {
+		cf = filepath.Join(t.TempDir(), "config")
+		kh = filepath.Join(t.TempDir(), "known_hosts")
+	}
+
 	testscript.Run(t, testscript.Params{
 		Dir:           "./testdata/",
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft":     cmdSoft(admin1.Signer()),
-			"git":      cmdGit(key),
+			"git":      cmdGit(key, cf, kh),
 			"mkreadme": cmdMkReadme,
 			"dos2unix": cmdDos2Unix,
 		},
@@ -178,28 +185,17 @@ func cmdDos2Unix(ts *testscript.TestScript, neg bool, args []string) {
 	}
 }
 
-func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string) {
+func cmdGit(key, configfile, knownhosts string) func(ts *testscript.TestScript, neg bool, args []string) {
 	return func(ts *testscript.TestScript, neg bool, args []string) {
 		sshArgs := []string{
+			"-F", configfile,
+			"-o", "UserKnownHostsFile=" + knownhosts,
 			"-o", "StrictHostKeyChecking=no",
 			"-o", "IdentityAgent=none",
 			"-o", "IdentitiesOnly=yes",
 			"-o", "ServerAliveInterval=60",
 			// Escape the key path for Windows.
 			"-i", strings.ReplaceAll(key, `\`, `\\`),
-		}
-		// Windows null device
-		// https://stackoverflow.com/a/36746090/10913628
-		if runtime.GOOS == "windows" {
-			sshArgs = append(sshArgs, []string{
-				"-F", `$nul`,
-				"-o", `UserKnownHostsFile=$nul`,
-			}...)
-		} else {
-			sshArgs = append(sshArgs, []string{
-				"-F", "/dev/null",
-				"-o", "UserKnownHostsFile=/dev/null",
-			}...)
 		}
 		ts.Setenv(
 			"GIT_SSH_COMMAND",
