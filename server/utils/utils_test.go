@@ -43,6 +43,7 @@ func TestSanitizeRepo(t *testing.T) {
 		{"Upper", "Upper"},
 		{"with/slash", "with/slash"},
 		{"with.dot", "with.dot"},
+		{"/with_forward_slash", "with_forward_slash"},
 		{"withgitsuffix.git", "withgitsuffix"},
 	}
 	for _, c := range cases {
