@@ -1,0 +1,53 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix tree1.txt tree2.txt tree3.txt
+
+# create a repo
+soft repo create repo1
+
+# clone repo
+git clone ssh://localhost:$SSH_PORT/repo1 repo1
+
+# create some files, commits, tags...
+mkreadme ./repo1/README.md
+mkreadme ./repo1/b.md
+mkreadme ./repo1/.hidden
+mkdir ./repo1/folder
+mkdir ./repo1/.folder
+mkreadme ./repo1/folder/aa.md
+git -C repo1 add -A
+git -C repo1 commit -m 'first'
+git -C repo1 push origin HEAD
+
+# print root tree
+soft repo tree repo1
+cmp stdout tree1.txt
+
+# print folder tree
+soft repo tree repo1 folder
+cmp stdout tree2.txt
+
+# print file tree with revision
+soft repo tree repo1 master b.md
+cmp stdout tree3.txt
+
+# print tree of folder that does not exist
+! soft repo tree repo1 folder2
+! stdout .
+stderr 'File not found'
+
+# print tree of bad revision
+! soft repo tree repo1 badrev folder
+! stdout .
+stderr 'revision does not exist'
+
+-- tree1.txt --
+drwxrwxrwx	-	 folder
+-rw-r--r--	22 B	 .hidden
+-rw-r--r--	22 B	 README.md
+-rw-r--r--	22 B	 b.md
+-- tree2.txt --
+-rw-r--r--	22 B	 aa.md
+-- tree3.txt --
+-rw-r--r--	22 B	 b.md
