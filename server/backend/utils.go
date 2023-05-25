@@ -16,6 +16,7 @@ func LatestFile(r Repository, pattern string) (string, string, error) {
 
 // Readme returns the repository's README.
 func Readme(r Repository) (readme string, path string, err error) {
-	readme, path, err = LatestFile(r, "README*")
+	pattern := "[rR][eE][aA][dD][mM][eE]*"
+	readme, path, err = LatestFile(r, pattern)
 	return
 }
