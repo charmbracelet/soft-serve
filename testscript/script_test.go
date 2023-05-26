@@ -45,6 +45,7 @@ func TestScript(t *testing.T) {
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft":     cmdSoft(admin1.Signer()),
+			"usoft":    cmdSoft(user1.Signer()),
 			"git":      cmdGit(key),
 			"mkfile":   cmdMkfile,
 			"dos2unix": cmdDos2Unix,
