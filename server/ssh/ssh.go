@@ -37,6 +37,13 @@ var (
 		Help:      "The total number of public key auth requests",
 	}, []string{"key", "user", "allowed"})
 
+	noAuthCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "ssh",
+		Name:      "none_auth_total",
+		Help:      "The total number of none auth requests",
+	}, []string{"user", "allowed"})
+
 	keyboardInteractiveCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
 		Subsystem: "ssh",
@@ -121,6 +128,10 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		return nil, err
 	}
 
+	// Custom ServerConfig
+	// which handles "none" auth method
+	s.srv.ServerConfigCallback = s.ServerConfigCallback
+
 	if cfg.SSH.MaxTimeout > 0 {
 		s.srv.MaxTimeout = time.Duration(cfg.SSH.MaxTimeout) * time.Second
 	}
@@ -183,6 +194,26 @@ func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.Keyboard
 	ac := s.cfg.Backend.AllowKeyless()
 	keyboardInteractiveCounter.WithLabelValues(ctx.User(), strconv.FormatBool(ac)).Inc()
 	return ac
+}
+
+// NoClientAuthCallback handles "none" auth method.
+func (s *SSHServer) NoClientAuthCallback(meta gossh.ConnMetadata) (*gossh.Permissions, error) {
+	ac := s.cfg.Backend.AllowKeyless()
+	keyboardInteractiveCounter.WithLabelValues(meta.User(), strconv.FormatBool(ac)).Inc()
+	perms := &gossh.Permissions{}
+	if !ac {
+		return perms, fmt.Errorf("keyless access not allowed")
+	}
+
+	return perms, nil
+}
+
+// ServerConfigCallback returns a custom ssh.ServerConfig.
+func (s *SSHServer) ServerConfigCallback(ctx ssh.Context) *gossh.ServerConfig {
+	return &gossh.ServerConfig{
+		NoClientAuth:         true,
+		NoClientAuthCallback: s.NoClientAuthCallback,
+	}
 }
 
 // Middleware adds Git server functionality to the ssh.Server. Repos are stored
