@@ -45,7 +45,6 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 		cmd := s.Command()
 		initialRepo := ""
 		if len(cmd) == 1 {
-			// I might be wrong but I think this is never true...
 			initialRepo = cmd[0]
 			auth := cfg.Backend.AccessLevelByPublicKey(initialRepo, s.PublicKey())
 			if auth < backend.ReadOnlyAccess {
