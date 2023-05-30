@@ -9,11 +9,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -38,6 +41,48 @@ var (
 	ErrTimeout = errors.New("I/O timeout reached")
 )
 
+var uploadPackCounter = promauto.NewCounter(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "git",
+	Name:      "upload_pack_total",
+	Help:      "Total times git-upload-pack was run",
+})
+
+var uploadPackDuration = promauto.NewCounter(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "git",
+	Name:      "upload_pack_seconds_total",
+	Help:      "Total time spent running git-upload-pack was run",
+})
+
+var uploadArchiveCounter = promauto.NewCounter(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "git",
+	Name:      "upload_archive_total",
+	Help:      "Total times git-upload-archive was run",
+})
+
+var uploadArchiveDuration = promauto.NewCounter(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "git",
+	Name:      "upload_archive_seconds_total",
+	Help:      "Total time spent running git-upload-archive was run",
+})
+
+var receivePackCounter = promauto.NewCounter(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "git",
+	Name:      "receive_pack_total",
+	Help:      "Total times git-receive-pack was run",
+})
+
+var receivePackDuration = promauto.NewCounter(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "git",
+	Name:      "receive_pack_seconds_total",
+	Help:      "Total time spent running git-receive-pack was run",
+})
+
 // Git protocol commands.
 const (
 	ReceivePackBin   = "git-receive-pack"
@@ -47,6 +92,9 @@ const (
 
 // UploadPack runs the git upload-pack protocol against the provided repo.
 func UploadPack(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, repoDir string, envs ...string) error {
+	start := time.Now()
+	defer uploadPackDuration.Add(time.Since(start).Seconds())
+	uploadPackCounter.Inc()
 	exists, err := fileExists(repoDir)
 	if !exists {
 		return ErrInvalidRepo
@@ -54,11 +102,14 @@ func UploadPack(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, 
 	if err != nil {
 		return err
 	}
-	return RunGit(ctx, in, out, er, "", envs, UploadPackBin[4:], repoDir)
+	return runGit(ctx, in, out, er, "", envs, UploadPackBin[4:], repoDir)
 }
 
 // UploadArchive runs the git upload-archive protocol against the provided repo.
 func UploadArchive(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, repoDir string, envs ...string) error {
+	start := time.Now()
+	defer uploadArchiveDuration.Add(time.Since(start).Seconds())
+	uploadArchiveCounter.Inc()
 	exists, err := fileExists(repoDir)
 	if !exists {
 		return ErrInvalidRepo
@@ -66,19 +117,22 @@ func UploadArchive(ctx context.Context, in io.Reader, out io.Writer, er io.Write
 	if err != nil {
 		return err
 	}
-	return RunGit(ctx, in, out, er, "", envs, UploadArchiveBin[4:], repoDir)
+	return runGit(ctx, in, out, er, "", envs, UploadArchiveBin[4:], repoDir)
 }
 
 // ReceivePack runs the git receive-pack protocol against the provided repo.
 func ReceivePack(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, repoDir string, envs ...string) error {
-	if err := RunGit(ctx, in, out, er, "", envs, ReceivePackBin[4:], repoDir); err != nil {
+	start := time.Now()
+	defer receivePackDuration.Add(time.Since(start).Seconds())
+	receivePackCounter.Inc()
+	if err := runGit(ctx, in, out, er, "", envs, ReceivePackBin[4:], repoDir); err != nil {
 		return err
 	}
-	return EnsureDefaultBranch(ctx, in, out, er, repoDir)
+	return ensureDefaultBranch(ctx, in, out, er, repoDir)
 }
 
-// RunGit runs a git command in the given repo.
-func RunGit(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, dir string, envs []string, args ...string) error {
+// runGit runs a git command in the given repo.
+func runGit(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, dir string, envs []string, args ...string) error {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("rungit")
 	c := exec.CommandContext(ctx, "git", args...)
@@ -114,11 +168,11 @@ func RunGit(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, dir 
 		return err
 	}
 
-	errg, ctx := errgroup.WithContext(ctx)
+	errg, _ := errgroup.WithContext(ctx)
 
 	// stdin
 	errg.Go(func() error {
-		defer stdin.Close()
+		defer stdin.Close() // nolint:errcheck
 
 		_, err := io.Copy(stdin, in)
 		return err
@@ -190,7 +244,7 @@ func fileExists(path string) (bool, error) {
 	return true, err
 }
 
-func EnsureDefaultBranch(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, repoPath string) error {
+func ensureDefaultBranch(ctx context.Context, in io.Reader, out io.Writer, er io.Writer, repoPath string) error {
 	r, err := git.Open(repoPath)
 	if err != nil {
 		return err
@@ -205,7 +259,7 @@ func EnsureDefaultBranch(ctx context.Context, in io.Reader, out io.Writer, er io
 	// Rename the default branch to the first branch available
 	_, err = r.HEAD()
 	if err == git.ErrReferenceNotExist {
-		err = RunGit(ctx, in, out, er, repoPath, []string{}, "branch", "-M", brs[0])
+		err = runGit(ctx, in, out, er, repoPath, []string{}, "branch", "-M", brs[0])
 		if err != nil {
 			return err
 		}

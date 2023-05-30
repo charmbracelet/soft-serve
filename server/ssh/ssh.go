@@ -13,7 +13,6 @@ import (
 
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
-	"github.com/charmbracelet/promwish"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
@@ -108,12 +107,6 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 			// Logging middleware.
 			lm.MiddlewareWithLogger(logger.
 				StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})),
-			// Metrics middleware.
-			promwish.MiddlewareRegistry(
-				prometheus.DefaultRegisterer,
-				prometheus.Labels{"app": "soft-serve"},
-				promwish.DefaultCommandFn,
-			),
 		),
 	}
 

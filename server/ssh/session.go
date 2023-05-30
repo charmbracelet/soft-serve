@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
@@ -23,6 +24,13 @@ var tuiSessionCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 	Namespace: "soft_serve",
 	Subsystem: "ssh",
 	Name:      "tui_session_total",
+	Help:      "The total number of TUI sessions",
+}, []string{"term"})
+
+var tuiSessionDuration = promauto.NewCounterVec(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "ssh",
+	Name:      "tui_session_seconds_total",
 	Help:      "The total number of TUI sessions",
 }, []string{"term"})
 
@@ -59,9 +67,16 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 			tea.WithAltScreen(),
 			tea.WithoutCatchPanics(),
 			tea.WithMouseCellMotion(),
+			tea.WithContext(ctx),
 		)
 
 		tuiSessionCounter.WithLabelValues(pty.Term).Inc()
+
+		start := time.Now()
+		go func() {
+			<-ctx.Done()
+			tuiSessionDuration.WithLabelValues(pty.Term).Add(time.Since(start).Seconds())
+		}()
 
 		return p
 	}
