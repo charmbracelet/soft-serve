@@ -19,19 +19,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var (
-	tuiSessionCounter = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "soft_serve",
-		Subsystem: "ssh",
-		Name:      "tui_session_total",
-		Help:      "The total number of TUI sessions",
-	}, []string{"key", "user", "repo", "term"})
-)
+var tuiSessionCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "ssh",
+	Name:      "tui_session_total",
+	Help:      "The total number of TUI sessions",
+}, []string{"term"})
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
 func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 	return func(s ssh.Session) *tea.Program {
-		ak := backend.MarshalAuthorizedKey(s.PublicKey())
 		pty, _, active := s.Pty()
 		if !active {
 			return nil
@@ -40,6 +37,7 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 		cmd := s.Command()
 		initialRepo := ""
 		if len(cmd) == 1 {
+			// I might be wrong but I think this is never true...
 			initialRepo = cmd[0]
 			auth := cfg.Backend.AccessLevelByPublicKey(initialRepo, s.PublicKey())
 			if auth < backend.ReadOnlyAccess {
@@ -63,7 +61,7 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 			tea.WithMouseCellMotion(),
 		)
 
-		tuiSessionCounter.WithLabelValues(ak, s.User(), initialRepo, pty.Term).Inc()
+		tuiSessionCounter.WithLabelValues(pty.Term).Inc()
 
 		return p
 	}
