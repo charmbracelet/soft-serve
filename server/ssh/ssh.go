@@ -35,42 +35,63 @@ var (
 		Subsystem: "ssh",
 		Name:      "public_key_auth_total",
 		Help:      "The total number of public key auth requests",
-	}, []string{"key", "user", "allowed"})
+	}, []string{"allowed"})
 
 	keyboardInteractiveCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
 		Subsystem: "ssh",
 		Name:      "keyboard_interactive_auth_total",
 		Help:      "The total number of keyboard interactive auth requests",
-	}, []string{"user", "allowed"})
+	}, []string{"allowed"})
 
 	uploadPackCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
-		Subsystem: "ssh",
-		Name:      "git_upload_pack_total",
+		Subsystem: "git",
+		Name:      "upload_pack_total",
 		Help:      "The total number of git-upload-pack requests",
-	}, []string{"key", "user", "repo"})
+	}, []string{"repo"})
 
 	receivePackCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
-		Subsystem: "ssh",
-		Name:      "git_receive_pack_total",
+		Subsystem: "git",
+		Name:      "receive_pack_total",
 		Help:      "The total number of git-receive-pack requests",
-	}, []string{"key", "user", "repo"})
+	}, []string{"repo"})
 
 	uploadArchiveCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
-		Subsystem: "ssh",
-		Name:      "git_upload_archive_total",
+		Subsystem: "git",
+		Name:      "upload_archive_total",
 		Help:      "The total number of git-upload-archive requests",
-	}, []string{"key", "user", "repo"})
+	}, []string{"repo"})
+
+	uploadPackSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "git",
+		Name:      "upload_pack_seconds_total",
+		Help:      "The total time spent on git-upload-pack requests",
+	}, []string{"repo"})
+
+	receivePackSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "git",
+		Name:      "receive_pack_seconds_total",
+		Help:      "The total time spent on git-receive-pack requests",
+	}, []string{"repo"})
+
+	uploadArchiveSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "git",
+		Name:      "upload_archive_seconds_total",
+		Help:      "The total time spent on git-upload-archive requests",
+	}, []string{"repo"})
 
 	createRepoCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
 		Subsystem: "ssh",
 		Name:      "create_repo_total",
 		Help:      "The total number of create repo requests",
-	}, []string{"key", "user", "repo"})
+	}, []string{"repo"})
 )
 
 // SSHServer is a SSH server that implements the git protocol.
@@ -168,7 +189,7 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 
 	ak := backend.MarshalAuthorizedKey(pk)
 	defer func(allowed *bool) {
-		publicKeyCounter.WithLabelValues(ak, ctx.User(), strconv.FormatBool(*allowed)).Inc()
+		publicKeyCounter.WithLabelValues(strconv.FormatBool(*allowed)).Inc()
 	}(&allowed)
 
 	ac := s.cfg.Backend.AccessLevelByPublicKey("", pk)
@@ -181,7 +202,7 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 // This is used after all public key authentication has failed.
 func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
 	ac := s.cfg.Backend.AllowKeyless()
-	keyboardInteractiveCounter.WithLabelValues(ctx.User(), strconv.FormatBool(ac)).Inc()
+	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
 	return ac
 }
 
@@ -194,6 +215,7 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			func() {
+				start := time.Now()
 				cmd := s.Command()
 				ctx := s.Context()
 				be := ss.be.WithContext(ctx)
@@ -224,6 +246,10 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 					repoDir := filepath.Join(reposDir, repo)
 					switch gc {
 					case git.ReceivePackBin:
+						receivePackCounter.WithLabelValues(name).Inc()
+						defer func() {
+							receivePackSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
+						}()
 						if access < backend.ReadWriteAccess {
 							sshFatal(s, git.ErrNotAuthed)
 							return
@@ -234,12 +260,11 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 								sshFatal(s, err)
 								return
 							}
-							createRepoCounter.WithLabelValues(ak, s.User(), name).Inc()
+							createRepoCounter.WithLabelValues(name).Inc()
 						}
 						if err := git.ReceivePack(s.Context(), s, s, s.Stderr(), repoDir, envs...); err != nil {
 							sshFatal(s, git.ErrSystemMalfunction)
 						}
-						receivePackCounter.WithLabelValues(ak, s.User(), name).Inc()
 						return
 					case git.UploadPackBin, git.UploadArchiveBin:
 						if access < backend.ReadOnlyAccess {
@@ -248,10 +273,19 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 						}
 
 						gitPack := git.UploadPack
-						counter := uploadPackCounter
-						if gc == git.UploadArchiveBin {
+						switch gc {
+						case git.UploadArchiveBin:
 							gitPack = git.UploadArchive
-							counter = uploadArchiveCounter
+							uploadArchiveCounter.WithLabelValues(name).Inc()
+							defer func() {
+								uploadArchiveSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
+							}()
+						default:
+							uploadPackCounter.WithLabelValues(name).Inc()
+							defer func() {
+								uploadPackSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
+							}()
+
 						}
 
 						err := gitPack(ctx, s, s, s.Stderr(), repoDir, envs...)
@@ -261,7 +295,6 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 							sshFatal(s, git.ErrSystemMalfunction)
 						}
 
-						counter.WithLabelValues(ak, s.User(), name).Inc()
 					}
 				}
 			}()

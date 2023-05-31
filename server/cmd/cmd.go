@@ -15,13 +15,20 @@ import (
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/cobra"
 )
 
-var (
-	// sessionCtxKey is the key for the session in the context.
-	sessionCtxKey = &struct{ string }{"session"}
-)
+// sessionCtxKey is the key for the session in the context.
+var sessionCtxKey = &struct{ string }{"session"}
+
+var cliCommandCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "cli",
+	Name:      "commands_total",
+	Help:      "Total times each command was called",
+}, []string{"command"})
 
 var templateFuncs = template.FuncMap{
 	"trim":                    strings.TrimSpace,
@@ -75,8 +82,16 @@ func rpad(s string, padding int) string {
 	return fmt.Sprintf(template, s)
 }
 
+func cmdName(args []string) string {
+	if len(args) == 0 {
+		return ""
+	}
+	return args[0]
+}
+
 // rootCommand is the root command for the server.
 func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
+	cliCommandCounter.WithLabelValues(cmdName(s.Command())).Inc()
 	rootCmd := &cobra.Command{
 		Short:        "Soft Serve is a self-hostable Git server for the command line.",
 		SilenceUsage: true,

@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
@@ -19,19 +20,23 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var (
-	tuiSessionCounter = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "soft_serve",
-		Subsystem: "ssh",
-		Name:      "tui_session_total",
-		Help:      "The total number of TUI sessions",
-	}, []string{"key", "user", "repo", "term"})
-)
+var tuiSessionCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "ssh",
+	Name:      "tui_session_total",
+	Help:      "The total number of TUI sessions",
+}, []string{"repo", "term"})
+
+var tuiSessionDuration = promauto.NewCounterVec(prometheus.CounterOpts{
+	Namespace: "soft_serve",
+	Subsystem: "ssh",
+	Name:      "tui_session_seconds_total",
+	Help:      "The total number of TUI sessions",
+}, []string{"repo", "term"})
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
 func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 	return func(s ssh.Session) *tea.Program {
-		ak := backend.MarshalAuthorizedKey(s.PublicKey())
 		pty, _, active := s.Pty()
 		if !active {
 			return nil
@@ -61,9 +66,16 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 			tea.WithAltScreen(),
 			tea.WithoutCatchPanics(),
 			tea.WithMouseCellMotion(),
+			tea.WithContext(ctx),
 		)
 
-		tuiSessionCounter.WithLabelValues(ak, s.User(), initialRepo, pty.Term).Inc()
+		tuiSessionCounter.WithLabelValues(initialRepo, pty.Term).Inc()
+
+		start := time.Now()
+		go func() {
+			<-ctx.Done()
+			tuiSessionDuration.WithLabelValues(initialRepo, pty.Term).Add(time.Since(start).Seconds())
+		}()
 
 		return p
 	}
