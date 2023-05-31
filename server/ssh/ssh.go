@@ -46,23 +46,44 @@ var (
 
 	uploadPackCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
-		Subsystem: "ssh",
-		Name:      "git_upload_pack_total",
+		Subsystem: "git",
+		Name:      "upload_pack_total",
 		Help:      "The total number of git-upload-pack requests",
 	}, []string{"repo"})
 
 	receivePackCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
-		Subsystem: "ssh",
-		Name:      "git_receive_pack_total",
+		Subsystem: "git",
+		Name:      "receive_pack_total",
 		Help:      "The total number of git-receive-pack requests",
 	}, []string{"repo"})
 
 	uploadArchiveCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
-		Subsystem: "ssh",
-		Name:      "git_upload_archive_total",
+		Subsystem: "git",
+		Name:      "upload_archive_total",
 		Help:      "The total number of git-upload-archive requests",
+	}, []string{"repo"})
+
+	uploadPackSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "git",
+		Name:      "upload_pack_seconds_total",
+		Help:      "The total time spent on git-upload-pack requests",
+	}, []string{"repo"})
+
+	receivePackSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "git",
+		Name:      "receive_pack_seconds_total",
+		Help:      "The total time spent on git-receive-pack requests",
+	}, []string{"repo"})
+
+	uploadArchiveSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "soft_serve",
+		Subsystem: "git",
+		Name:      "upload_archive_seconds_total",
+		Help:      "The total time spent on git-upload-archive requests",
 	}, []string{"repo"})
 
 	createRepoCounter = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -193,78 +214,88 @@ func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.Keyboard
 func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
-			func() {
-				cmd := s.Command()
-				ctx := s.Context()
-				be := ss.be.WithContext(ctx)
-				if len(cmd) >= 2 && strings.HasPrefix(cmd[0], "git") {
-					gc := cmd[0]
-					// repo should be in the form of "repo.git"
-					name := utils.SanitizeRepo(cmd[1])
-					pk := s.PublicKey()
-					ak := backend.MarshalAuthorizedKey(pk)
-					access := cfg.Backend.AccessLevelByPublicKey(name, pk)
-					// git bare repositories should end in ".git"
-					// https://git-scm.com/docs/gitrepository-layout
-					repo := name + ".git"
-					reposDir := filepath.Join(cfg.DataPath, "repos")
-					if err := git.EnsureWithin(reposDir, repo); err != nil {
-						sshFatal(s, err)
-						return
-					}
-
-					// Environment variables to pass down to git hooks.
-					envs := []string{
-						"SOFT_SERVE_REPO_NAME=" + name,
-						"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
-						"SOFT_SERVE_PUBLIC_KEY=" + ak,
-					}
-
-					ss.logger.Debug("git middleware", "cmd", gc, "access", access.String())
-					repoDir := filepath.Join(reposDir, repo)
-					switch gc {
-					case git.ReceivePackBin:
-						if access < backend.ReadWriteAccess {
-							sshFatal(s, git.ErrNotAuthed)
-							return
-						}
-						if _, err := be.Repository(name); err != nil {
-							if _, err := be.CreateRepository(name, backend.RepositoryOptions{Private: false}); err != nil {
-								log.Errorf("failed to create repo: %s", err)
-								sshFatal(s, err)
-								return
-							}
-							createRepoCounter.WithLabelValues(name).Inc()
-						}
-						if err := git.ReceivePack(s.Context(), s, s, s.Stderr(), repoDir, envs...); err != nil {
-							sshFatal(s, git.ErrSystemMalfunction)
-						}
-						receivePackCounter.WithLabelValues(name).Inc()
-						return
-					case git.UploadPackBin, git.UploadArchiveBin:
-						if access < backend.ReadOnlyAccess {
-							sshFatal(s, git.ErrNotAuthed)
-							return
-						}
-
-						gitPack := git.UploadPack
-						counter := uploadPackCounter
-						if gc == git.UploadArchiveBin {
-							gitPack = git.UploadArchive
-							counter = uploadArchiveCounter
-						}
-
-						err := gitPack(ctx, s, s, s.Stderr(), repoDir, envs...)
-						if errors.Is(err, git.ErrInvalidRepo) {
-							sshFatal(s, git.ErrInvalidRepo)
-						} else if err != nil {
-							sshFatal(s, git.ErrSystemMalfunction)
-						}
-
-						counter.WithLabelValues(name).Inc()
-					}
+			start := time.Now()
+			cmd := s.Command()
+			ctx := s.Context()
+			be := ss.be.WithContext(ctx)
+			if len(cmd) >= 2 && strings.HasPrefix(cmd[0], "git") {
+				gc := cmd[0]
+				// repo should be in the form of "repo.git"
+				name := utils.SanitizeRepo(cmd[1])
+				pk := s.PublicKey()
+				ak := backend.MarshalAuthorizedKey(pk)
+				access := cfg.Backend.AccessLevelByPublicKey(name, pk)
+				// git bare repositories should end in ".git"
+				// https://git-scm.com/docs/gitrepository-layout
+				repo := name + ".git"
+				reposDir := filepath.Join(cfg.DataPath, "repos")
+				if err := git.EnsureWithin(reposDir, repo); err != nil {
+					sshFatal(s, err)
+					return
 				}
-			}()
+
+				// Environment variables to pass down to git hooks.
+				envs := []string{
+					"SOFT_SERVE_REPO_NAME=" + name,
+					"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
+					"SOFT_SERVE_PUBLIC_KEY=" + ak,
+				}
+
+				ss.logger.Debug("git middleware", "cmd", gc, "access", access.String())
+				repoDir := filepath.Join(reposDir, repo)
+				switch gc {
+				case git.ReceivePackBin:
+					receivePackCounter.WithLabelValues(name).Inc()
+					defer func() {
+						receivePackSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
+					}()
+					if access < backend.ReadWriteAccess {
+						sshFatal(s, git.ErrNotAuthed)
+						return
+					}
+					if _, err := be.Repository(name); err != nil {
+						if _, err := be.CreateRepository(name, backend.RepositoryOptions{Private: false}); err != nil {
+							log.Errorf("failed to create repo: %s", err)
+							sshFatal(s, err)
+							return
+						}
+						createRepoCounter.WithLabelValues(name).Inc()
+					}
+					if err := git.ReceivePack(s.Context(), s, s, s.Stderr(), repoDir, envs...); err != nil {
+						sshFatal(s, git.ErrSystemMalfunction)
+					}
+					return
+				case git.UploadPackBin, git.UploadArchiveBin:
+					if access < backend.ReadOnlyAccess {
+						sshFatal(s, git.ErrNotAuthed)
+						return
+					}
+
+					gitPack := git.UploadPack
+					switch gc {
+					case git.UploadArchiveBin:
+						gitPack = git.UploadArchive
+						uploadArchiveCounter.WithLabelValues(name).Inc()
+						defer func() {
+							uploadArchiveSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
+						}()
+					default:
+						uploadPackCounter.WithLabelValues(name).Inc()
+						defer func() {
+							uploadPackSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
+						}()
+
+					}
+
+					err := gitPack(ctx, s, s, s.Stderr(), repoDir, envs...)
+					if errors.Is(err, git.ErrInvalidRepo) {
+						sshFatal(s, git.ErrInvalidRepo)
+					} else if err != nil {
+						sshFatal(s, git.ErrSystemMalfunction)
+					}
+
+				}
+			}
 			sh(s)
 		}
 	}

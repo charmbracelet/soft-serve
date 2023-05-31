@@ -25,14 +25,14 @@ var tuiSessionCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 	Subsystem: "ssh",
 	Name:      "tui_session_total",
 	Help:      "The total number of TUI sessions",
-}, []string{"term"})
+}, []string{"repo", "term"})
 
 var tuiSessionDuration = promauto.NewCounterVec(prometheus.CounterOpts{
 	Namespace: "soft_serve",
 	Subsystem: "ssh",
 	Name:      "tui_session_seconds_total",
 	Help:      "The total number of TUI sessions",
-}, []string{"term"})
+}, []string{"repo", "term"})
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
 func SessionHandler(cfg *config.Config) bm.ProgramHandler {
@@ -69,12 +69,12 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 			tea.WithContext(ctx),
 		)
 
-		tuiSessionCounter.WithLabelValues(pty.Term).Inc()
+		tuiSessionCounter.WithLabelValues(initialRepo, pty.Term).Inc()
 
 		start := time.Now()
 		go func() {
 			<-ctx.Done()
-			tuiSessionDuration.WithLabelValues(pty.Term).Add(time.Since(start).Seconds())
+			tuiSessionDuration.WithLabelValues(initialRepo, pty.Term).Add(time.Since(start).Seconds())
 		}()
 
 		return p
