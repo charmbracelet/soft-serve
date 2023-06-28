@@ -13,7 +13,7 @@ require (
 	github.com/go-git/go-git/v5 v5.7.0
 	github.com/matryer/is v1.4.1
 	github.com/muesli/reflow v0.3.0
-	github.com/muesli/termenv v0.15.1
+	github.com/muesli/termenv v0.15.2
 	github.com/sergi/go-diff v1.1.0
 )
 
