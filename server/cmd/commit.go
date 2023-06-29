@@ -47,23 +47,29 @@ func commitCommand() *cobra.Command {
 				return err
 			}
 
-			var s strings.Builder
-			var pr strings.Builder
+			c := string(patch)
 
-			diffChroma := &gansi.CodeBlockElement{
-				Code:     patch,
-				Language: "diff",
+			if color {
+				var s strings.Builder
+				var pr strings.Builder
+
+				diffChroma := &gansi.CodeBlockElement{
+					Code:     patch,
+					Language: "diff",
+				}
+
+				err = diffChroma.Render(&pr, renderCtx())
+
+				if err != nil {
+					s.WriteString(fmt.Sprintf("\n%s", err.Error()))
+				} else {
+					s.WriteString(fmt.Sprintf("\n%s", pr.String()))
+				}
+
+				c = s.String()
 			}
 
-			err = diffChroma.Render(&pr, renderCtx())
-
-			if err != nil {
-				s.WriteString(fmt.Sprintf("\n%s", err.Error()))
-			} else {
-				s.WriteString(fmt.Sprintf("\n%s", pr.String()))
-			}
-
-			cmd.Println(s.String())
+			cmd.Println(c)
 
 			return nil
 		},
