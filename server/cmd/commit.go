@@ -39,7 +39,7 @@ func commitCommand() *cobra.Command {
 
 			commit := &git.Commit{
 				Commit: raw_commit,
-				Hash:   git.Hash(rn),
+				Hash:   git.Hash(commitSHA),
 			}
 
 			patch, err := r.Patch(commit)
