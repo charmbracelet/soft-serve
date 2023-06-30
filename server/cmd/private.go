@@ -13,7 +13,8 @@ func privateCommand() *cobra.Command {
 		Short: "Set or get a repository private property",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			be, _ := fromContext(cmd)
 			rn := strings.TrimSuffix(args[0], ".git")
 
 			switch len(args) {
@@ -22,7 +23,7 @@ func privateCommand() *cobra.Command {
 					return err
 				}
 
-				isPrivate, err := cfg.Backend.IsPrivate(rn)
+				isPrivate, err := be.IsPrivate(ctx, rn)
 				if err != nil {
 					return err
 				}
@@ -36,7 +37,7 @@ func privateCommand() *cobra.Command {
 				if err := checkIfCollab(cmd, args); err != nil {
 					return err
 				}
-				if err := cfg.Backend.SetPrivate(rn, isPrivate); err != nil {
+				if err := be.SetPrivate(ctx, rn, isPrivate); err != nil {
 					return err
 				}
 			}

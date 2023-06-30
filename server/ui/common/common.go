@@ -3,8 +3,11 @@ package common
 import (
 	"context"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/auth"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/ui/keymap"
 	"github.com/charmbracelet/soft-serve/server/ui/styles"
@@ -30,25 +33,30 @@ type Common struct {
 	Styles        *styles.Styles
 	KeyMap        *keymap.KeyMap
 	Zone          *zone.Manager
-	Output        *termenv.Output
+	Renderer      *lipgloss.Renderer
 	Logger        *log.Logger
 }
 
 // NewCommon returns a new Common struct.
-func NewCommon(ctx context.Context, out *termenv.Output, width, height int) Common {
+func NewCommon(ctx context.Context, re *lipgloss.Renderer, width, height int) Common {
 	if ctx == nil {
 		ctx = context.TODO()
 	}
 	return Common{
-		ctx:    ctx,
-		Width:  width,
-		Height: height,
-		Output: out,
-		Styles: styles.DefaultStyles(),
-		KeyMap: keymap.DefaultKeyMap(),
-		Zone:   zone.New(),
-		Logger: log.FromContext(ctx).WithPrefix("ui"),
+		ctx:      ctx,
+		Width:    width,
+		Height:   height,
+		Styles:   styles.DefaultStyles(re),
+		KeyMap:   keymap.DefaultKeyMap(),
+		Zone:     zone.New(),
+		Logger:   log.FromContext(ctx).WithPrefix("ui"),
+		Renderer: re,
 	}
+}
+
+// Output returns the termenv output.
+func (c *Common) Output() *termenv.Output {
+	return c.Renderer.Output()
 }
 
 // SetValue sets a value in the context.
@@ -64,11 +72,11 @@ func (c *Common) SetSize(width, height int) {
 
 // Config returns the server config.
 func (c *Common) Config() *config.Config {
-	v := c.ctx.Value(ConfigKey)
-	if cfg, ok := v.(*config.Config); ok {
-		return cfg
-	}
-	return nil
+	return config.FromContext(c.ctx)
+}
+
+func (c *Common) Context() context.Context {
+	return c.ctx
 }
 
 // Repo returns the repository.
@@ -87,4 +95,14 @@ func (c *Common) PublicKey() ssh.PublicKey {
 		return p
 	}
 	return nil
+}
+
+// Backend returns the server backend.
+func (c *Common) Backend() *backend.Backend {
+	return backend.FromContext(c.ctx)
+}
+
+// User returns the current user from context.
+func (c *Common) User() auth.User {
+	return auth.UserFromContext(c.ctx)
 }

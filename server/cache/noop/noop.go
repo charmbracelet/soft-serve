@@ -6,10 +6,14 @@ import (
 	"github.com/charmbracelet/soft-serve/server/cache"
 )
 
+func init() {
+	cache.Register("noop", newCache)
+}
+
 type noopCache struct{}
 
-// NewCache returns a new Cache.
-func NewCache(_ context.Context, _ ...cache.Option) (cache.Cache, error) {
+// newCache returns a new Cache.
+func newCache(_ context.Context, _ ...cache.Option) (cache.Cache, error) {
 	return &noopCache{}, nil
 }
 

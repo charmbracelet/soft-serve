@@ -9,9 +9,6 @@ import (
 	"github.com/charmbracelet/log"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
-	"github.com/charmbracelet/soft-serve/server/cache"
-	"github.com/charmbracelet/soft-serve/server/cache/lru"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/cron"
 	"github.com/charmbracelet/soft-serve/server/daemon"
@@ -29,11 +26,11 @@ type Server struct {
 	HTTPServer  *web.HTTPServer
 	StatsServer *stats.StatsServer
 	Cron        *cron.CronScheduler
-	Config      *config.Config
-	Backend     backend.Backend
+	Backend     *backend.Backend
 
 	logger *log.Logger
 	ctx    context.Context
+	cfg    *config.Config
 }
 
 // NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
@@ -42,35 +39,14 @@ type Server struct {
 // restricted to that key. If authKey is not provided, the server will be
 // publicly writable until configured otherwise by cloning the `config` repo.
 func NewServer(ctx context.Context) (*Server, error) {
-	cfg := config.FromContext(ctx)
-
 	var err error
-
-	if c := cache.FromContext(ctx); c == nil {
-		lruCache, err := lru.NewCache(ctx, lru.WithSize(1000))
-		if err != nil {
-			return nil, fmt.Errorf("create default cache: %w", err)
-		}
-
-		ctx = cache.WithContext(ctx, lruCache)
-	}
-
-	if cfg.Backend == nil {
-		sb, err := sqlite.NewSqliteBackend(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("create backend: %w", err)
-		}
-
-		cfg = cfg.WithBackend(sb)
-		ctx = backend.WithContext(ctx, sb)
-	}
 
 	srv := &Server{
 		Cron:    cron.NewCronScheduler(ctx),
-		Config:  cfg,
-		Backend: cfg.Backend,
+		Backend: backend.FromContext(ctx),
 		logger:  log.FromContext(ctx).WithPrefix("server"),
 		ctx:     ctx,
+		cfg:     config.FromContext(ctx),
 	}
 
 	// Add cron jobs.
@@ -117,28 +93,28 @@ func start(ctx context.Context, fn func() error) error {
 func (s *Server) Start() error {
 	errg, ctx := errgroup.WithContext(s.ctx)
 	errg.Go(func() error {
-		s.logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
+		s.logger.Print("Starting Git daemon", "addr", s.cfg.GitDaemon.ListenAddr)
 		if err := start(ctx, s.GitDaemon.Start); !errors.Is(err, daemon.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		s.logger.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
+		s.logger.Print("Starting HTTP server", "addr", s.cfg.HTTP.ListenAddr)
 		if err := start(ctx, s.HTTPServer.ListenAndServe); !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		s.logger.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
+		s.logger.Print("Starting SSH server", "addr", s.cfg.SSH.ListenAddr)
 		if err := start(ctx, s.SSHServer.ListenAndServe); !errors.Is(err, ssh.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
-		s.logger.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
+		s.logger.Print("Starting Stats server", "addr", s.cfg.Stats.ListenAddr)
 		if err := start(ctx, s.StatsServer.ListenAndServe); !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}

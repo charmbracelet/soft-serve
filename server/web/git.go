@@ -15,9 +15,11 @@ import (
 
 	"github.com/charmbracelet/log"
 	gitb "github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -32,7 +34,7 @@ type GitRoute struct {
 	handler http.HandlerFunc
 
 	cfg    *config.Config
-	be     backend.Backend
+	be     *backend.Backend
 	logger *log.Logger
 }
 
@@ -65,10 +67,6 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 
 		if g.cfg != nil {
 			ctx = config.WithContext(ctx, g.cfg)
-		}
-
-		if g.be != nil {
-			ctx = backend.WithContext(ctx, g.be.WithContext(ctx))
 		}
 
 		if g.logger != nil {
@@ -186,32 +184,36 @@ func withAccess(fn http.HandlerFunc) http.HandlerFunc {
 		be := backend.FromContext(ctx)
 		logger := log.FromContext(ctx)
 
-		if !be.AllowKeyless() {
+		if !be.AllowKeyless(ctx) {
 			renderForbidden(w)
 			return
 		}
 
 		repo := pat.Param(r, "repo")
 		service := git.Service(pat.Param(r, "service"))
-		access := be.AccessLevel(repo, "")
+		ac, err := be.AccessLevel(ctx, repo, nil)
+		if err != nil {
+			renderUnauthorized(w)
+			return
+		}
 
 		switch service {
 		case git.ReceivePackService:
-			if access < backend.ReadWriteAccess {
+			if ac < access.ReadWriteAccess {
 				renderUnauthorized(w)
 				return
 			}
 
 			// Create the repo if it doesn't exist.
-			if _, err := be.Repository(repo); err != nil {
-				if _, err := be.CreateRepository(repo, backend.RepositoryOptions{}); err != nil {
+			if _, err := be.Repository(ctx, repo); err != nil {
+				if _, err := be.CreateRepository(ctx, repo, store.RepositoryOptions{}); err != nil {
 					logger.Error("failed to create repository", "repo", repo, "err", err)
 					renderInternalServerError(w)
 					return
 				}
 			}
 		default:
-			if access < backend.ReadOnlyAccess {
+			if ac < access.ReadOnlyAccess {
 				renderUnauthorized(w)
 				return
 			}
@@ -243,9 +245,9 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 
 	version := r.Header.Get("Git-Protocol")
 
+	var stdout bytes.Buffer
 	cmd := git.ServiceCommand{
-		Stdin:  r.Body,
-		Stdout: w,
+		Stdout: &stdout,
 		Dir:    dir,
 		Args:   []string{"--stateless-rpc"},
 	}
@@ -255,53 +257,53 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle gzip encoding
-	cmd.StdinHandler = func(in io.Reader, stdin io.WriteCloser) (err error) {
-		// We know that `in` is an `io.ReadCloser` because it's `r.Body`.
-		reader := in.(io.ReadCloser)
-		defer reader.Close() // nolint: errcheck
-		switch r.Header.Get("Content-Encoding") {
-		case "gzip":
-			reader, err = gzip.NewReader(reader)
-			if err != nil {
-				return err
-			}
-			defer reader.Close() // nolint: errcheck
+	reader := r.Body
+	defer reader.Close() // nolint: errcheck
+	switch r.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err := gzip.NewReader(reader)
+		if err != nil {
+			logger.Errorf("failed to create gzip reader: %v", err)
+			renderInternalServerError(w)
+			return
 		}
+		defer reader.Close() // nolint: errcheck
+	}
 
-		_, err = io.Copy(stdin, reader)
-		return err
+	cmd.Stdin = reader
+
+	if err := service.Handler(ctx, cmd); err != nil {
+		logger.Errorf("error executing service: %s", err)
+		renderInternalServerError(w)
+		return
 	}
 
 	// Handle buffered output
 	// Useful when using proxies
-	cmd.StdoutHandler = func(out io.Writer, stdout io.ReadCloser) error {
-		// We know that `out` is an `http.ResponseWriter`.
-		flusher, ok := out.(http.Flusher)
-		if !ok {
-			return fmt.Errorf("expected http.ResponseWriter to be an http.Flusher, got %T", out)
-		}
 
-		p := make([]byte, 1024)
-		for {
-			nRead, err := stdout.Read(p)
-			if err == io.EOF {
-				break
-			}
-			nWrite, err := out.Write(p[:nRead])
-			if err != nil {
-				return err
-			}
-			if nRead != nWrite {
-				return fmt.Errorf("failed to write data: %d read, %d written", nRead, nWrite)
-			}
-			flusher.Flush()
-		}
-
-		return nil
+	// We know that `out` is an `http.ResponseWriter`.
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		logger.Errorf("expected http.ResponseWriter to be an http.Flusher, got %T", w)
+		return
 	}
 
-	if err := service.Handler(ctx, cmd); err != nil {
-		logger.Errorf("error executing service: %s", err)
+	p := make([]byte, 1024)
+	for {
+		nRead, err := stdout.Read(p)
+		if err == io.EOF {
+			break
+		}
+		nWrite, err := w.Write(p[:nRead])
+		if err != nil {
+			logger.Errorf("failed to write data: %v", err)
+			return
+		}
+		if nRead != nWrite {
+			logger.Errorf("failed to write data: %d read, %d written", nRead, nWrite)
+			return
+		}
+		flusher.Flush()
 	}
 }
 
@@ -400,10 +402,7 @@ func getServiceType(r *http.Request) git.Service {
 }
 
 func isSmart(r *http.Request, service git.Service) bool {
-	if r.Header.Get("Content-Type") == fmt.Sprintf("application/x-%s-request", service) {
-		return true
-	}
-	return false
+	return r.Header.Get("Content-Type") == fmt.Sprintf("application/x-%s-request", service)
 }
 
 func updateServerInfo(ctx context.Context, dir string) error {

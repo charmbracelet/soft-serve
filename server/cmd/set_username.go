@@ -1,6 +1,9 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/charmbracelet/soft-serve/server/auth"
+	"github.com/spf13/cobra"
+)
 
 func setUsernameCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -8,13 +11,15 @@ func setUsernameCommand() *cobra.Command {
 		Short: "Set your username",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, s := fromContext(cmd)
-			user, err := cfg.Backend.UserByPublicKey(s.PublicKey())
+			ctx := cmd.Context()
+			be, s := fromContext(cmd)
+			_, err := be.Authenticate(ctx, auth.NewPublicKey(s.PublicKey()))
 			if err != nil {
 				return err
 			}
 
-			return cfg.Backend.SetUsername(user.Username(), args[0])
+			return nil
+			// return be.SetUsername(ctx, user.Username(), args[0])
 		},
 	}
 

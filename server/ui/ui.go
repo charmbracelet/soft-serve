@@ -47,7 +47,8 @@ type UI struct {
 
 // New returns a new UI model.
 func New(c common.Common, initialRepo string) *UI {
-	serverName := c.Config().Name
+	cfg := c.Config()
+	serverName := cfg.Name
 	h := header.New(c, serverName)
 	ui := &UI{
 		serverName:  serverName,
@@ -284,11 +285,11 @@ func (ui *UI) View() string {
 }
 
 func (ui *UI) openRepo(rn string) (backend.Repository, error) {
-	cfg := ui.common.Config()
-	if cfg == nil {
-		return nil, errors.New("config is nil")
+	be := ui.common.Backend()
+	if be == nil {
+		return nil, errors.New("backend is nil")
 	}
-	repos, err := cfg.Backend.Repositories()
+	repos, err := be.Repositories(ui.common.Context(), 1, 10)
 	if err != nil {
 		ui.common.Logger.Debugf("ui: failed to list repos: %v", err)
 		return nil, err

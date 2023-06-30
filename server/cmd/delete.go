@@ -10,9 +10,10 @@ func deleteCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			be, _ := fromContext(cmd)
 			name := args[0]
-			if err := cfg.Backend.DeleteRepository(name); err != nil {
+			if err := be.DeleteRepository(ctx, name); err != nil {
 				return err
 			}
 			return nil

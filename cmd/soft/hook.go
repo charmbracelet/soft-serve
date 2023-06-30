@@ -13,15 +13,12 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/spf13/cobra"
 )
 
 var (
-	configPath string
-
 	logFileCtxKey = struct{}{}
 
 	hookCmd = &cobra.Command{
@@ -31,13 +28,7 @@ var (
 		Hidden: true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			cfg, err := config.NewConfig(configPath)
-			if err != nil {
-				return fmt.Errorf("could not parse config: %w", err)
-			}
-
-			ctx = config.WithContext(ctx, cfg)
-
+			cfg := config.FromContext(ctx)
 			logPath := filepath.Join(cfg.DataPath, "log", "hooks.log")
 			f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
@@ -50,15 +41,6 @@ var (
 			ctx = log.WithContext(ctx, logger)
 			cmd.SetContext(ctx)
 
-			// Set up the backend
-			// TODO: support other backends
-			sb, err := sqlite.NewSqliteBackend(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to create sqlite backend: %w", err)
-			}
-
-			cfg = cfg.WithBackend(sb)
-
 			return nil
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
@@ -69,8 +51,7 @@ var (
 
 	hooksRunE = func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
-		cfg := config.FromContext(ctx)
-		hks := cfg.Backend.(backend.Hooks)
+		be := backend.FromContext(ctx)
 
 		// This is set in the server before invoking git-receive-pack/git-upload-pack
 		repoName := os.Getenv("SOFT_SERVE_REPO_NAME")
@@ -103,22 +84,22 @@ var (
 
 			switch cmdName {
 			case hooks.PreReceiveHook:
-				hks.PreReceive(stdout, stderr, repoName, opts)
+				be.PreReceive(ctx, stdout, stderr, repoName, opts)
 			case hooks.PostReceiveHook:
-				hks.PostReceive(stdout, stderr, repoName, opts)
+				be.PostReceive(ctx, stdout, stderr, repoName, opts)
 			}
 		case hooks.UpdateHook:
 			if len(args) != 3 {
 				return fmt.Errorf("invalid update hook input: %s", args)
 			}
 
-			hks.Update(stdout, stderr, repoName, backend.HookArg{
+			be.Update(ctx, stdout, stderr, repoName, backend.HookArg{
 				OldSha:  args[0],
 				NewSha:  args[1],
 				RefName: args[2],
 			})
 		case hooks.PostUpdateHook:
-			hks.PostUpdate(stdout, stderr, repoName, args...)
+			be.PostUpdate(ctx, stdout, stderr, repoName, args...)
 		}
 
 		// Custom hooks
@@ -159,7 +140,6 @@ var (
 )
 
 func init() {
-	hookCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "path to config file")
 	hookCmd.AddCommand(
 		preReceiveCmd,
 		updateCmd,

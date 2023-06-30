@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/server/ui/components/viewport"
+	"github.com/charmbracelet/soft-serve/server/uiutils"
 	"github.com/muesli/reflow/wrap"
 	"github.com/muesli/termenv"
 )
@@ -463,7 +464,7 @@ func (l *Log) loadDiffCmd() tea.Msg {
 func renderCtx() gansi.RenderContext {
 	return gansi.NewRenderContext(gansi.Options{
 		ColorProfile: termenv.TrueColor,
-		Styles:       common.StyleConfig(),
+		Styles:       uiutils.StyleConfig(),
 	})
 }
 

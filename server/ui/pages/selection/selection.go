@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/code"
@@ -51,7 +52,7 @@ func New(c common.Common) *Selection {
 		ts[i] = b.String()
 	}
 	t := tabs.New(c, ts)
-	t.TabSeparator = lipgloss.NewStyle()
+	t.TabSeparator = c.Renderer.NewStyle()
 	t.TabInactive = c.Styles.TopLevelNormalTab.Copy()
 	t.TabActive = c.Styles.TopLevelActiveTab.Copy()
 	t.TabDot = c.Styles.TopLevelActiveTabDot.Copy()
@@ -181,21 +182,23 @@ func (s *Selection) FullHelp() [][]key.Binding {
 
 // Init implements tea.Model.
 func (s *Selection) Init() tea.Cmd {
-	var readmeCmd tea.Cmd
+	ctx := s.common.Context()
 	cfg := s.common.Config()
-	if cfg == nil {
+	var readmeCmd tea.Cmd
+	be := s.common.Backend()
+	if be == nil {
 		return nil
 	}
 
 	pk := s.common.PublicKey()
-	if pk == nil && !cfg.Backend.AllowKeyless() {
+	if pk == nil && !be.AllowKeyless(ctx) {
 		return nil
 	}
 
-	repos, err := cfg.Backend.Repositories()
-	if err != nil {
-		return common.ErrorCmd(err)
-	}
+	// TODO: fixme
+	repos, _ := be.Repositories(ctx, 1, 10)
+	user := s.common.User()
+
 	sortedItems := make(Items, 0)
 	for _, r := range repos {
 		if r.Name() == ".soft-serve" {
@@ -210,9 +213,10 @@ func (s *Selection) Init() tea.Cmd {
 		if r.IsHidden() {
 			continue
 		}
-		al := cfg.Backend.AccessLevelByPublicKey(r.Name(), pk)
-		if al >= backend.ReadOnlyAccess {
-			item, err := NewItem(r, cfg)
+
+		al, _ := be.AccessLevel(ctx, r.Name(), user)
+		if al >= access.ReadOnlyAccess {
+			item, err := NewItem(cfg, r)
 			if err != nil {
 				s.common.Logger.Debugf("ui: failed to create item for %s: %v", r.Name(), err)
 				continue
@@ -286,15 +290,15 @@ func (s *Selection) View() string {
 	wm, hm := s.getMargins()
 	switch s.activePane {
 	case selectorPane:
-		ss := lipgloss.NewStyle().
+		ss := s.common.Renderer.NewStyle().
 			Width(s.common.Width - wm).
 			Height(s.common.Height - hm)
 		view = ss.Render(s.selector.View())
 	case readmePane:
-		rs := lipgloss.NewStyle().
+		rs := s.common.Renderer.NewStyle().
 			Height(s.common.Height - hm)
 		status := fmt.Sprintf("☰ %.f%%", s.readme.ScrollPercent()*100)
-		readmeStatus := lipgloss.NewStyle().
+		readmeStatus := s.common.Renderer.NewStyle().
 			Align(lipgloss.Right).
 			Width(s.common.Width - wm).
 			Foreground(s.common.Styles.InactiveBorderColor).

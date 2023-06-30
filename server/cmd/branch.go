@@ -31,9 +31,10 @@ func branchListCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			be, _ := fromContext(cmd)
 			rn := strings.TrimSuffix(args[0], ".git")
-			rr, err := cfg.Backend.Repository(rn)
+			ctx := cmd.Context()
+			rr, err := be.Repository(ctx, rn)
 			if err != nil {
 				return err
 			}
@@ -61,14 +62,16 @@ func branchDefaultCommand() *cobra.Command {
 		Short: "Set or get the default branch",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			be, _ := fromContext(cmd)
 			rn := strings.TrimSuffix(args[0], ".git")
 			switch len(args) {
 			case 1:
 				if err := checkIfReadable(cmd, args); err != nil {
 					return err
 				}
-				rr, err := cfg.Backend.Repository(rn)
+
+				rr, err := be.Repository(ctx, rn)
 				if err != nil {
 					return err
 				}
@@ -89,7 +92,7 @@ func branchDefaultCommand() *cobra.Command {
 					return err
 				}
 
-				rr, err := cfg.Backend.Repository(rn)
+				rr, err := be.Repository(ctx, rn)
 				if err != nil {
 					return err
 				}
@@ -132,9 +135,10 @@ func branchDeleteCommand() *cobra.Command {
 		Short:             "Delete a branch",
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			be, _ := fromContext(cmd)
 			rn := strings.TrimSuffix(args[0], ".git")
-			rr, err := cfg.Backend.Repository(rn)
+			rr, err := be.Repository(ctx, rn)
 			if err != nil {
 				return err
 			}

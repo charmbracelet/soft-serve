@@ -45,15 +45,7 @@ func main() {
 		log.Fatal("Setuid error", "err", err)
 	}
 	ctx := context.Background()
-	// Set up config
-	cfg := config.DefaultConfig()
-	if !cfg.Exist() {
-		if err := cfg.WriteConfig(); err != nil {
-			log.Fatal("failed to write default config: %w", err)
-		}
-	}
-	ctx = config.WithContext(ctx, cfg)
-	cfg.SSH.ListenAddr = fmt.Sprintf(":%d", *port)
+	config.SSH.ListenAddr = fmt.Sprintf(":%d", *port)
 	s, err := server.NewServer(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -62,7 +54,7 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Print("Starting SSH server", "addr", cfg.SSH.ListenAddr)
+	log.Print("Starting SSH server", "addr", config.SSH.ListenAddr)
 	go func() {
 		if err := s.SSHServer.Serve(ls); err != nil {
 			log.Fatal(err)
@@ -71,7 +63,7 @@ func main() {
 
 	<-done
 
-	log.Print("Stopping SSH server", "addr", cfg.SSH.ListenAddr)
+	log.Print("Stopping SSH server", "addr", config.SSH.ListenAddr)
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer func() { cancel() }()
 	if err := s.Shutdown(ctx); err != nil {

@@ -8,14 +8,13 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/keygen"
-	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/charmbracelet/ssh"
 	"github.com/matryer/is"
 	gossh "golang.org/x/crypto/ssh"
 )
 
-func setupServer(tb testing.TB) (*Server, *config.Config, string) {
+func setupServer(tb testing.TB) (*Server, string) {
 	tb.Helper()
 	tb.Log("creating keypair")
 	pub, pkPath := createKeyPair(tb)
@@ -26,11 +25,6 @@ func setupServer(tb testing.TB) (*Server, *config.Config, string) {
 	tb.Setenv("SOFT_SERVE_SSH_LISTEN_ADDR", sshPort)
 	tb.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort()))
 	ctx := context.TODO()
-	cfg := config.DefaultConfig()
-	if err := cfg.WriteConfig(); err != nil {
-		tb.Fatal("failed to write default config: %w", err)
-	}
-	ctx = config.WithContext(ctx, cfg)
 	tb.Log("configuring server")
 	s, err := NewServer(ctx)
 	if err != nil {
@@ -43,7 +37,7 @@ func setupServer(tb testing.TB) (*Server, *config.Config, string) {
 	tb.Cleanup(func() {
 		s.Close()
 	})
-	return s, cfg, pkPath
+	return s, pkPath
 }
 
 func createKeyPair(tb testing.TB) (ssh.PublicKey, string) {

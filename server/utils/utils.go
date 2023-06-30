@@ -15,6 +15,13 @@ func SanitizeRepo(repo string) string {
 	return repo
 }
 
+// RepoPath returns the path to the repository.
+func RepoPath(dataPath, repo string) string {
+	repo = SanitizeRepo(repo) + ".git"
+	repo = strings.ReplaceAll(repo, "/", string(filepath.Separator))
+	return filepath.Join(dataPath, repo)
+}
+
 // ValidateUsername returns an error if any of the given usernames are invalid.
 func ValidateUsername(username string) error {
 	if username == "" {

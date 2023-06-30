@@ -9,9 +9,13 @@ import (
 	"unicode"
 
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/access"
+	"github.com/charmbracelet/soft-serve/server/auth"
+	"github.com/charmbracelet/soft-serve/server/auth/sqlite"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/errors"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -19,8 +23,8 @@ import (
 )
 
 var (
-	// sessionCtxKey is the key for the session in the context.
-	sessionCtxKey = &struct{ string }{"session"}
+	// contextKeySession is the key for the session in the context.
+	contextKeySession = &struct{ string }{"session"}
 )
 
 var templateFuncs = template.FuncMap{
@@ -76,7 +80,8 @@ func rpad(s string, padding int) string {
 }
 
 // rootCommand is the root command for the server.
-func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
+func rootCommand(ctx context.Context, s ssh.Session) *cobra.Command {
+	cfg := config.FromContext(ctx)
 	rootCmd := &cobra.Command{
 		Short:        "Soft Serve is a self-hostable Git server for the command line.",
 		SilenceUsage: true,
@@ -110,18 +115,25 @@ func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
 		})
 	})
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	rootCmd.SetContext(ctx)
 	rootCmd.AddCommand(
 		repoCommand(),
 	)
 
-	user, _ := cfg.Backend.UserByPublicKey(s.PublicKey())
-	isAdmin := isPublicKeyAdmin(cfg, s.PublicKey()) || (user != nil && user.IsAdmin())
+	be := backend.FromContext(ctx)
+	pka := auth.NewPublicKey(s.PublicKey())
+	user, _ := be.Authenticate(ctx, pka)
+	isAdmin := isPublicKeyAdmin(ctx, s.PublicKey()) || (user != nil && user.IsAdmin())
 	if user != nil || isAdmin {
 		if isAdmin {
 			rootCmd.AddCommand(
 				settingsCommand(),
-				userCommand(),
 			)
+			if sb, ok := be.Auth.(*sqlite.SqliteAuthStore); ok {
+				rootCmd.AddCommand(
+					userCommand(sb),
+				)
+			}
 		}
 
 		rootCmd.AddCommand(
@@ -134,11 +146,11 @@ func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
 	return rootCmd
 }
 
-func fromContext(cmd *cobra.Command) (*config.Config, ssh.Session) {
+func fromContext(cmd *cobra.Command) (*backend.Backend, ssh.Session) {
 	ctx := cmd.Context()
-	cfg := config.FromContext(ctx)
-	s := ctx.Value(sessionCtxKey).(ssh.Session)
-	return cfg, s
+	s := ctx.Value(contextKeySession).(ssh.Session)
+	be := backend.FromContext(ctx)
+	return be, s
 }
 
 func checkIfReadable(cmd *cobra.Command, args []string) error {
@@ -146,18 +158,33 @@ func checkIfReadable(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		repo = args[0]
 	}
-	cfg, s := fromContext(cmd)
+
+	be, s := fromContext(cmd)
 	rn := utils.SanitizeRepo(repo)
-	auth := cfg.Backend.AccessLevelByPublicKey(rn, s.PublicKey())
-	if auth < backend.ReadOnlyAccess {
+	ctx := cmd.Context()
+	pka := auth.NewPublicKey(s.PublicKey())
+
+	user, err := be.Authenticate(ctx, pka)
+	if err != nil {
 		return errors.ErrUnauthorized
 	}
+
+	auth, err := be.AccessLevel(ctx, rn, user)
+	if err != nil {
+		return errors.ErrUnauthorized
+	}
+
+	if auth < access.ReadOnlyAccess {
+		return errors.ErrUnauthorized
+	}
+
 	return nil
 }
 
-func isPublicKeyAdmin(cfg *config.Config, pk ssh.PublicKey) bool {
+func isPublicKeyAdmin(ctx context.Context, pk ssh.PublicKey) bool {
+	cfg := config.FromContext(ctx)
 	for _, k := range cfg.AdminKeys() {
-		if backend.KeysEqual(pk, k) {
+		if sshutils.KeysEqual(pk, k) {
 			return true
 		}
 	}
@@ -165,12 +192,14 @@ func isPublicKeyAdmin(cfg *config.Config, pk ssh.PublicKey) bool {
 }
 
 func checkIfAdmin(cmd *cobra.Command, _ []string) error {
-	cfg, s := fromContext(cmd)
-	if isPublicKeyAdmin(cfg, s.PublicKey()) {
+	ctx := cmd.Context()
+	be, s := fromContext(cmd)
+	if isPublicKeyAdmin(ctx, s.PublicKey()) {
 		return nil
 	}
 
-	user, _ := cfg.Backend.UserByPublicKey(s.PublicKey())
+	pka := auth.NewPublicKey(s.PublicKey())
+	user, _ := be.Authenticate(ctx, pka)
 	if user == nil {
 		return errors.ErrUnauthorized
 	}
@@ -187,17 +216,36 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		repo = args[0]
 	}
-	cfg, s := fromContext(cmd)
+
+	ctx := cmd.Context()
+	be, s := fromContext(cmd)
+
+	if isPublicKeyAdmin(ctx, s.PublicKey()) {
+		return nil
+	}
+
 	rn := utils.SanitizeRepo(repo)
-	auth := cfg.Backend.AccessLevelByPublicKey(rn, s.PublicKey())
-	if auth < backend.ReadWriteAccess {
+	pka := auth.NewPublicKey(s.PublicKey())
+	user, err := be.Authenticate(ctx, pka)
+	if err != nil {
+		return errors.ErrUnauthorized
+	}
+
+	auth, err := be.AccessLevel(ctx, rn, user)
+	if err != nil {
+		return errors.ErrUnauthorized
+	}
+
+	if auth < access.ReadWriteAccess {
 		return errors.ErrUnauthorized
 	}
 	return nil
 }
 
 // Middleware is the Soft Serve middleware that handles SSH commands.
-func Middleware(cfg *config.Config, logger *log.Logger) wish.Middleware {
+func Middleware(ctx context.Context, logger *log.Logger) wish.Middleware {
+	be := backend.FromContext(ctx)
+	cfg := config.FromContext(ctx)
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			func() {
@@ -216,18 +264,12 @@ func Middleware(cfg *config.Config, logger *log.Logger) wish.Middleware {
 					}
 				}
 
-				// Here we copy the server's config and replace the backend
-				// with a new one that uses the session's context.
 				var ctx context.Context = s.Context()
-				scfg := *cfg
-				cfg = &scfg
-				be := cfg.Backend.WithContext(ctx)
-				cfg.Backend = be
-				ctx = config.WithContext(ctx, cfg)
 				ctx = backend.WithContext(ctx, be)
-				ctx = context.WithValue(ctx, sessionCtxKey, s)
+				ctx = context.WithValue(ctx, contextKeySession, s)
+				ctx = config.WithContext(ctx, cfg)
 
-				rootCmd := rootCommand(cfg, s)
+				rootCmd := rootCommand(ctx, s)
 				rootCmd.SetArgs(args)
 				if len(args) == 0 {
 					// otherwise it'll default to os.Args, which is not what we want.

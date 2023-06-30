@@ -17,7 +17,8 @@ func treeCommand() *cobra.Command {
 		Args:              cobra.RangeArgs(1, 3),
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			be, _ := fromContext(cmd)
 			rn := args[0]
 			path := ""
 			ref := ""
@@ -28,7 +29,7 @@ func treeCommand() *cobra.Command {
 				ref = args[1]
 				path = args[2]
 			}
-			rr, err := cfg.Backend.Repository(rn)
+			rr, err := be.Repository(ctx, rn)
 			if err != nil {
 				return err
 			}

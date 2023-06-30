@@ -1,87 +1,18 @@
 package config
 
 import (
-	"context"
-	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/caarlos0/env/v8"
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )
-
-// SSHConfig is the configuration for the SSH server.
-type SSHConfig struct {
-	// ListenAddr is the address on which the SSH server will listen.
-	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
-
-	// PublicURL is the public URL of the SSH server.
-	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
-
-	// KeyPath is the path to the SSH server's private key.
-	KeyPath string `env:"KEY_PATH" yaml:"key_path"`
-
-	// ClientKeyPath is the path to the server's client private key.
-	ClientKeyPath string `env:"CLIENT_KEY_PATH" yaml:"client_key_path"`
-
-	// MaxTimeout is the maximum number of seconds a connection can take.
-	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout"`
-
-	// IdleTimeout is the number of seconds a connection can be idle before it is closed.
-	IdleTimeout int `env:"IDLE_TIMEOUT" yaml:"idle_timeout"`
-}
-
-// GitConfig is the Git daemon configuration for the server.
-type GitConfig struct {
-	// ListenAddr is the address on which the Git daemon will listen.
-	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
-
-	// MaxTimeout is the maximum number of seconds a connection can take.
-	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout"`
-
-	// IdleTimeout is the number of seconds a connection can be idle before it is closed.
-	IdleTimeout int `env:"IDLE_TIMEOUT" yaml:"idle_timeout"`
-
-	// MaxConnections is the maximum number of concurrent connections.
-	MaxConnections int `env:"MAX_CONNECTIONS" yaml:"max_connections"`
-}
-
-// HTTPConfig is the HTTP configuration for the server.
-type HTTPConfig struct {
-	// ListenAddr is the address on which the HTTP server will listen.
-	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
-
-	// TLSKeyPath is the path to the TLS private key.
-	TLSKeyPath string `env:"TLS_KEY_PATH" yaml:"tls_key_path"`
-
-	// TLSCertPath is the path to the TLS certificate.
-	TLSCertPath string `env:"TLS_CERT_PATH" yaml:"tls_cert_path"`
-
-	// PublicURL is the public URL of the HTTP server.
-	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
-}
-
-// StatsConfig is the configuration for the stats server.
-type StatsConfig struct {
-	// ListenAddr is the address on which the stats server will listen.
-	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
-}
-
-// LogConfig is the logger configuration.
-type LogConfig struct {
-	// Format is the format of the logs.
-	// Valid values are "json", "logfmt", and "text".
-	Format string `env:"FORMAT" yaml:"format"`
-
-	// Time format for the log `ts` field.
-	// Format must be described in Golang's time format.
-	TimeFormat string `env:"TIME_FORMAT" yaml:"time_format"`
-}
 
 // Config is the configuration for Soft Serve.
 type Config struct {
@@ -91,8 +22,8 @@ type Config struct {
 	// SSH is the configuration for the SSH server.
 	SSH SSHConfig `envPrefix:"SSH_" yaml:"ssh"`
 
-	// Git is the configuration for the Git daemon.
-	Git GitConfig `envPrefix:"GIT_" yaml:"git"`
+	// GitDaemon is the configuration for the GitDaemon daemon.
+	GitDaemon GitDaemonConfig `envPrefix:"GIT_DAEMON_" yaml:"git_daemon"`
 
 	// HTTP is the configuration for the HTTP server.
 	HTTP HTTPConfig `envPrefix:"HTTP_" yaml:"http"`
@@ -104,48 +35,38 @@ type Config struct {
 	Log LogConfig `envPrefix:"LOG_" yaml:"log"`
 
 	// Cache is the cache backend to use.
-	Cache string `env:"CACHE" yaml:"cache"`
+	Cache CacheConfig `env:"CACHE" yaml:"cache"`
+
+	// Database is the database configuration.
+	Database DatabaseConfig `envPrefix:"DATABASE_" yaml:"database"`
+
+	// Backend is the backend to use.
+	Backend BackendConfig `envPrefix:"BACKEND_" yaml:"backend"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" yaml:"-"`
-
-	// Backend is the Git backend to use.
-	Backend backend.Backend `yaml:"-"`
 }
 
 // Environ returns the config as a list of environment variables.
+// TODO: use pointer receiver
 func (c *Config) Environ() []string {
-	envs := []string{}
-	if c == nil {
-		return envs
-	}
+	envs := append([]string{},
+		"SOFT_SERVE_NAME="+c.Name,
+		"SOFT_SERVE_DATA_PATH="+c.DataPath,
+		"SOFT_SERVE_INITIAL_ADMIN_KEYS="+strings.Join(c.InitialAdminKeys, "\n"),
+	)
 
-	// TODO: do this dynamically
-	envs = append(envs, []string{
-		fmt.Sprintf("SOFT_SERVE_NAME=%s", c.Name),
-		fmt.Sprintf("SOFT_SERVE_DATA_PATH=%s", c.DataPath),
-		fmt.Sprintf("SOFT_SERVE_INITIAL_ADMIN_KEYS=%s", strings.Join(c.InitialAdminKeys, "\n")),
-		fmt.Sprintf("SOFT_SERVE_SSH_LISTEN_ADDR=%s", c.SSH.ListenAddr),
-		fmt.Sprintf("SOFT_SERVE_SSH_PUBLIC_URL=%s", c.SSH.PublicURL),
-		fmt.Sprintf("SOFT_SERVE_SSH_KEY_PATH=%s", c.SSH.KeyPath),
-		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_KEY_PATH=%s", c.SSH.ClientKeyPath),
-		fmt.Sprintf("SOFT_SERVE_SSH_MAX_TIMEOUT=%d", c.SSH.MaxTimeout),
-		fmt.Sprintf("SOFT_SERVE_SSH_IDLE_TIMEOUT=%d", c.SSH.IdleTimeout),
-		fmt.Sprintf("SOFT_SERVE_GIT_LISTEN_ADDR=%s", c.Git.ListenAddr),
-		fmt.Sprintf("SOFT_SERVE_GIT_MAX_TIMEOUT=%d", c.Git.MaxTimeout),
-		fmt.Sprintf("SOFT_SERVE_GIT_IDLE_TIMEOUT=%d", c.Git.IdleTimeout),
-		fmt.Sprintf("SOFT_SERVE_GIT_MAX_CONNECTIONS=%d", c.Git.MaxConnections),
-		fmt.Sprintf("SOFT_SERVE_HTTP_LISTEN_ADDR=%s", c.HTTP.ListenAddr),
-		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_KEY_PATH=%s", c.HTTP.TLSKeyPath),
-		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_CERT_PATH=%s", c.HTTP.TLSCertPath),
-		fmt.Sprintf("SOFT_SERVE_HTTP_PUBLIC_URL=%s", c.HTTP.PublicURL),
-		fmt.Sprintf("SOFT_SERVE_STATS_LISTEN_ADDR=%s", c.Stats.ListenAddr),
-		fmt.Sprintf("SOFT_SERVE_LOG_FORMAT=%s", c.Log.Format),
-		fmt.Sprintf("SOFT_SERVE_LOG_TIME_FORMAT=%s", c.Log.TimeFormat),
-	}...)
+	envs = append(envs, c.SSH.Environ()...)
+	envs = append(envs, c.GitDaemon.Environ()...)
+	envs = append(envs, c.HTTP.Environ()...)
+	envs = append(envs, c.Stats.Environ()...)
+	envs = append(envs, c.Log.Environ()...)
+	envs = append(envs, c.Cache.Environ()...)
+	envs = append(envs, c.Database.Environ()...)
+	envs = append(envs, c.Backend.Environ()...)
 
 	return envs
 }
@@ -175,32 +96,25 @@ func parseEnv(v interface{}) error {
 	return nil
 }
 
-// ParseConfig parses the configuration from environment variables the given
-// file.
-func ParseConfig(v interface{}, path string) error {
-	return errors.Join(parseFile(v, path), parseEnv(v))
+// ParseConfig parses the configuration file to server configuration.
+func ParseConfig(c *Config, path string) error {
+	return parseConfig(c, path)
 }
 
-// NewConfig retruns a new Config with values populated from environment
-// variables and config file.
-//
-// If the config file does not exist, it will be created with the default
-// values.
-//
-// Environment variables will override values in the config file except for the
-// initial_admin_keys.
-//
-// If path is empty, the default config file path will be used.
-func NewConfig(path string) (*Config, error) {
-	cfg := DefaultConfig()
+func parseConfig(cfg *Config, path string) error {
+	if cfg == nil {
+		cfg = DefaultConfig()
+	}
+
 	if path != "" {
+		// TODO: make config aware of config.yaml path
 		cfg.DataPath = filepath.Dir(path)
 	}
 
-	// Parse file
-	if cfg.Exist() {
+	exist := cfg.Exist()
+	if exist {
 		if err := parseFile(cfg, cfg.FilePath()); err != nil {
-			return cfg, err
+			return err
 		}
 	}
 
@@ -208,7 +122,7 @@ func NewConfig(path string) (*Config, error) {
 	initialAdminKeys := append([]string{}, cfg.InitialAdminKeys...)
 
 	if err := parseEnv(cfg); err != nil {
-		return cfg, err
+		return err
 	}
 
 	// Merge initial admin keys from environment variables.
@@ -219,35 +133,30 @@ func NewConfig(path string) (*Config, error) {
 	// Validate keys
 	pks := make([]string, 0)
 	for _, key := range parseAuthKeys(cfg.InitialAdminKeys) {
-		ak := backend.MarshalAuthorizedKey(key)
+		ak := sshutils.MarshalAuthorizedKey(key)
 		pks = append(pks, ak)
 	}
 
 	cfg.InitialAdminKeys = pks
 
-	// Reset datapath to config dir.
-	// This is necessary because the environment variable may be set to
-	// a different directory.
-	// cfg.DataPath = dataPath
-
 	if err := cfg.validate(); err != nil {
-		return cfg, err
+		return err
 	}
 
-	return cfg, cfg.WriteConfig()
+	return nil
 }
 
-// DefaultConfig returns a Config with the default values.
+// DefaultConfig returns the default config.
 func DefaultConfig() *Config {
 	dataPath := os.Getenv("SOFT_SERVE_DATA_PATH")
 	if dataPath == "" {
 		dataPath = "data"
 	}
 
-	cfg := &Config{
-		Name:     "Soft Serve",
-		DataPath: dataPath,
-		Cache:    "lru",
+	return &Config{
+		Name:             "Soft Serve",
+		DataPath:         dataPath,
+		InitialAdminKeys: []string{},
 		SSH: SSHConfig{
 			ListenAddr:    ":23231",
 			PublicURL:     "ssh://localhost:23231",
@@ -256,7 +165,7 @@ func DefaultConfig() *Config {
 			MaxTimeout:    0,
 			IdleTimeout:   0,
 		},
-		Git: GitConfig{
+		GitDaemon: GitDaemonConfig{
 			ListenAddr:     ":9418",
 			MaxTimeout:     0,
 			IdleTimeout:    3,
@@ -273,9 +182,20 @@ func DefaultConfig() *Config {
 			Format:     "text",
 			TimeFormat: time.DateTime,
 		},
+		Cache: CacheConfig{
+			Backend: "lru",
+		},
+		Database: DatabaseConfig{
+			Driver:     "sqlite",
+			DataSource: "soft-serve.db",
+		},
+		Backend: BackendConfig{
+			Settings: "sqlite",
+			Access:   "sqlite",
+			Auth:     "sqlite",
+			Store:    "sqlite",
+		},
 	}
-
-	return cfg
 }
 
 // FilePath returns the expected config file path.
@@ -289,20 +209,33 @@ func (c *Config) Exist() bool {
 	return err == nil
 }
 
+// ReadConfig parses the configuration file.
+func (c *Config) ReadConfig() error {
+	return parseConfig(c, c.FilePath())
+}
+
 // WriteConfig writes the configuration in the default path.
 func (c *Config) WriteConfig() error {
+	return WriteConfig(c)
+}
+
+// ReposPath returns the expected repositories path.
+func (c *Config) ReposPath() string {
+	return filepath.Join(c.DataPath, "repos")
+}
+
+// WriteConfig writes the configuration in the default path.
+func WriteConfig(c *Config) error {
+	if c == nil {
+		return fmt.Errorf("nil config")
+	}
+
 	fp := c.FilePath()
 	if err := os.MkdirAll(filepath.Dir(fp), os.ModePerm); err != nil {
 		return err
 	}
-	return os.WriteFile(fp, []byte(newConfigFile(c)), 0o644) // nolint: errcheck
-}
 
-// WithBackend sets the backend for the configuration.
-// TODO: remove in favor of backend.FromContext.
-func (c *Config) WithBackend(backend backend.Backend) *Config {
-	c.Backend = backend
-	return c
+	return os.WriteFile(fp, []byte(newConfigFile(c)), 0o644) // nolint: errcheck
 }
 
 func (c *Config) validate() error {
@@ -316,7 +249,6 @@ func (c *Config) validate() error {
 	}
 
 	c.SSH.PublicURL = strings.TrimSuffix(c.SSH.PublicURL, "/")
-	c.HTTP.PublicURL = strings.TrimSuffix(c.HTTP.PublicURL, "/")
 
 	if c.SSH.KeyPath != "" && !filepath.IsAbs(c.SSH.KeyPath) {
 		c.SSH.KeyPath = filepath.Join(c.DataPath, c.SSH.KeyPath)
@@ -326,12 +258,21 @@ func (c *Config) validate() error {
 		c.SSH.ClientKeyPath = filepath.Join(c.DataPath, c.SSH.ClientKeyPath)
 	}
 
+	c.HTTP.PublicURL = strings.TrimSuffix(c.HTTP.PublicURL, "/")
+
 	if c.HTTP.TLSKeyPath != "" && !filepath.IsAbs(c.HTTP.TLSKeyPath) {
 		c.HTTP.TLSKeyPath = filepath.Join(c.DataPath, c.HTTP.TLSKeyPath)
 	}
 
 	if c.HTTP.TLSCertPath != "" && !filepath.IsAbs(c.HTTP.TLSCertPath) {
 		c.HTTP.TLSCertPath = filepath.Join(c.DataPath, c.HTTP.TLSCertPath)
+	}
+
+	switch c.Database.Driver {
+	case "sqlite":
+		if c.Database.DataSource != "" && !filepath.IsAbs(c.Database.DataSource) {
+			c.Database.DataSource = filepath.Join(c.DataPath, c.Database.DataSource)
+		}
 	}
 
 	return nil
@@ -345,7 +286,7 @@ func parseAuthKeys(aks []string) []ssh.PublicKey {
 			// key is a file
 			key = strings.TrimSpace(string(bts))
 		}
-		if pk, _, err := backend.ParseAuthorizedKey(key); err == nil {
+		if pk, _, err := sshutils.ParseAuthorizedKey(key); err == nil {
 			pks = append(pks, pk)
 		}
 	}
@@ -354,21 +295,10 @@ func parseAuthKeys(aks []string) []ssh.PublicKey {
 
 // AdminKeys returns the server admin keys.
 func (c *Config) AdminKeys() []ssh.PublicKey {
-	return parseAuthKeys(c.InitialAdminKeys)
-}
-
-var configCtxKey = struct{ string }{"config"}
-
-// WithContext returns a new context with the configuration attached.
-func WithContext(ctx context.Context, cfg *Config) context.Context {
-	return context.WithValue(ctx, configCtxKey, cfg)
-}
-
-// FromContext returns the configuration from the context.
-func FromContext(ctx context.Context) *Config {
-	if c, ok := ctx.Value(configCtxKey).(*Config); ok {
-		return c
+	if c.InitialAdminKeys == nil {
+		return []ssh.PublicKey{}
 	}
 
-	return DefaultConfig()
+	log.Print(c.InitialAdminKeys)
+	return parseAuthKeys(c.InitialAdminKeys)
 }

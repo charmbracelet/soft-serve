@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
@@ -50,7 +51,7 @@ type GitDaemon struct {
 	finished chan struct{}
 	conns    connections
 	cfg      *config.Config
-	be       backend.Backend
+	be       *backend.Backend
 	wg       sync.WaitGroup
 	once     sync.Once
 	logger   *log.Logger
@@ -59,7 +60,7 @@ type GitDaemon struct {
 // NewDaemon returns a new Git daemon.
 func NewGitDaemon(ctx context.Context) (*GitDaemon, error) {
 	cfg := config.FromContext(ctx)
-	addr := cfg.Git.ListenAddr
+	addr := cfg.GitDaemon.ListenAddr
 	d := &GitDaemon{
 		ctx:      ctx,
 		addr:     addr,
@@ -110,7 +111,7 @@ func (d *GitDaemon) Start() error {
 		}
 
 		// Close connection if there are too many open connections.
-		if d.conns.Size()+1 >= d.cfg.Git.MaxConnections {
+		if d.conns.Size()+1 >= d.cfg.GitDaemon.MaxConnections {
 			d.logger.Debugf("git: max connections reached, closing %s", conn.RemoteAddr())
 			d.fatal(conn, git.ErrMaxConnections)
 			continue
@@ -134,14 +135,14 @@ func (d *GitDaemon) fatal(c net.Conn, err error) {
 // handleClient handles a git protocol client.
 func (d *GitDaemon) handleClient(conn net.Conn) {
 	ctx, cancel := context.WithCancel(context.Background())
-	idleTimeout := time.Duration(d.cfg.Git.IdleTimeout) * time.Second
+	idleTimeout := time.Duration(d.cfg.GitDaemon.IdleTimeout) * time.Second
 	c := &serverConn{
 		Conn:          conn,
 		idleTimeout:   idleTimeout,
 		closeCanceler: cancel,
 	}
-	if d.cfg.Git.MaxTimeout > 0 {
-		dur := time.Duration(d.cfg.Git.MaxTimeout) * time.Second
+	if d.cfg.GitDaemon.MaxTimeout > 0 {
+		dur := time.Duration(d.cfg.GitDaemon.MaxTimeout) * time.Second
 		c.maxDeadline = time.Now().Add(dur)
 	}
 	d.conns.Add(c)
@@ -227,9 +228,9 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			}
 		}
 
-		be := d.be.WithContext(ctx)
-		if !be.AllowKeyless() {
-			d.fatal(c, git.ErrNotAuthed)
+		be := d.be
+		if !be.AllowKeyless(ctx) {
+			d.fatal(c, git.ErrUnauthorized)
 			return
 		}
 
@@ -243,18 +244,18 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		reposDir := filepath.Join(d.cfg.DataPath, "repos")
 		if err := git.EnsureWithin(reposDir, repo); err != nil {
 			d.logger.Debugf("git: error ensuring repo path: %v", err)
-			d.fatal(c, git.ErrInvalidRepo)
+			d.fatal(c, git.ErrNotExist)
 			return
 		}
 
-		if _, err := d.be.Repository(repo); err != nil {
-			d.fatal(c, git.ErrInvalidRepo)
+		if _, err := d.be.Repository(ctx, repo); err != nil {
+			d.fatal(c, git.ErrNotExist)
 			return
 		}
 
-		auth := be.AccessLevel(name, "")
-		if auth < backend.ReadOnlyAccess {
-			d.fatal(c, git.ErrNotAuthed)
+		auth, err := be.AccessLevel(ctx, name, nil)
+		if err != nil || auth < access.ReadOnlyAccess {
+			d.fatal(c, git.ErrUnauthorized)
 			return
 		}
 

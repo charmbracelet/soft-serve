@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS settings;
+
+DROP TABLE IF EXISTS user;
+
+DROP TABLE IF EXISTS public_key;
+
+DROP TABLE IF EXISTS repo;
+
+DROP TABLE IF EXISTS collab;
+
+

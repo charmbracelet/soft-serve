@@ -8,7 +8,7 @@ import (
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/server/ui/common"
+	"github.com/charmbracelet/soft-serve/server/uiutils"
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 )
@@ -34,7 +34,7 @@ func blobCommand() *cobra.Command {
 		Args:              cobra.RangeArgs(1, 3),
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			be, _ := fromContext(cmd)
 			rn := args[0]
 			ref := ""
 			fp := ""
@@ -46,7 +46,8 @@ func blobCommand() *cobra.Command {
 				fp = args[2]
 			}
 
-			repo, err := cfg.Backend.Repository(rn)
+			ctx := cmd.Context()
+			repo, err := be.Repository(ctx, rn)
 			if err != nil {
 				return err
 			}
@@ -150,7 +151,7 @@ func withFormatting(p, c string) (string, error) {
 		Language: lang,
 	}
 	r := strings.Builder{}
-	styles := common.StyleConfig()
+	styles := uiutils.StyleConfig()
 	styles.CodeBlock.Margin = &zero
 	rctx := gansi.NewRenderContext(gansi.Options{
 		Styles:       styles,

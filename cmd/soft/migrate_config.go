@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	gitm "github.com/gogs/git-module"
 	"github.com/spf13/cobra"
@@ -30,7 +31,7 @@ var (
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 
-			logger := log.FromContext(ctx)
+			logger := log.FromContext(ctx).With()
 			// Disable logging timestamp
 			logger.SetReportTimestamp(false)
 
@@ -38,15 +39,6 @@ var (
 			reposPath := os.Getenv("SOFT_SERVE_REPO_PATH")
 			bindAddr := os.Getenv("SOFT_SERVE_BIND_ADDRESS")
 
-			// Set up config
-			cfg := config.DefaultConfig()
-			if !cfg.Exist() {
-				if err := cfg.WriteConfig(); err != nil {
-					return fmt.Errorf("failed to write default config: %w", err)
-				}
-			}
-
-			ctx = config.WithContext(ctx, cfg)
 			sb, err := sqlite.NewSqliteBackend(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to create sqlite backend: %w", err)
@@ -55,7 +47,7 @@ var (
 			// FIXME: Admin user gets created when the database is created.
 			sb.DeleteUser("admin") // nolint: errcheck
 
-			cfg = cfg.WithBackend(sb)
+			cfg := config.FromContext(ctx)
 
 			// Set SSH listen address
 			logger.Info("Setting SSH listen address...")
@@ -135,7 +127,7 @@ var (
 
 			// Set server settings
 			logger.Info("Setting server settings...")
-			if cfg.Backend.SetAllowKeyless(ocfg.AllowKeyless) != nil {
+			if sb.SetAllowKeyless(ocfg.AllowKeyless) != nil {
 				fmt.Fprintf(os.Stderr, "failed to set allow keyless\n")
 			}
 			anon := backend.ParseAccessLevel(ocfg.AnonAccess)
@@ -284,11 +276,11 @@ var (
 			for _, user := range ocfg.Users {
 				keys := make(map[string]ssh.PublicKey)
 				for _, key := range user.PublicKeys {
-					pk, _, err := backend.ParseAuthorizedKey(key)
+					pk, _, err := sshutils.ParseAuthorizedKey(key)
 					if err != nil {
 						continue
 					}
-					ak := backend.MarshalAuthorizedKey(pk)
+					ak := sshutils.MarshalAuthorizedKey(pk)
 					keys[ak] = pk
 				}
 
@@ -316,7 +308,7 @@ var (
 
 			logger.Info("Writing config...")
 			defer logger.Info("Done!")
-			return cfg.WriteConfig()
+			return config.WriteConfig(config.DefaultConfig())
 		},
 	}
 )

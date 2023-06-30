@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/ssh"
@@ -119,7 +120,7 @@ func (d *SqliteBackend) AccessLevel(repo string, username string) backend.Access
 // It implements backend.Backend.
 func (d *SqliteBackend) AccessLevelByPublicKey(repo string, pk ssh.PublicKey) backend.AccessLevel {
 	for _, k := range d.cfg.AdminKeys() {
-		if backend.KeysEqual(pk, k) {
+		if sshutils.KeysEqual(pk, k) {
 			return backend.AdminAccess
 		}
 	}
@@ -149,7 +150,7 @@ func (d *SqliteBackend) AddPublicKey(username string, pk ssh.PublicKey) error {
 			}
 
 			_, err := tx.Exec(`INSERT INTO public_key (user_id, public_key, updated_at)
-			VALUES (?, ?, CURRENT_TIMESTAMP);`, userID, backend.MarshalAuthorizedKey(pk))
+			VALUES (?, ?, CURRENT_TIMESTAMP);`, userID, sshutils.MarshalAuthorizedKey(pk))
 			return err
 		}),
 	)
@@ -192,7 +193,7 @@ func (d *SqliteBackend) CreateUser(username string, opts backend.UserOptions) (b
 				}
 
 				defer stmt.Close() // nolint: errcheck
-				if _, err := stmt.Exec(userID, backend.MarshalAuthorizedKey(pk)); err != nil {
+				if _, err := stmt.Exec(userID, sshutils.MarshalAuthorizedKey(pk)); err != nil {
 					return err
 				}
 			}
@@ -235,7 +236,7 @@ func (d *SqliteBackend) RemovePublicKey(username string, pk ssh.PublicKey) error
 		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
 			_, err := tx.Exec(`DELETE FROM public_key
 			WHERE user_id = (SELECT id FROM user WHERE username = ?)
-			AND public_key = ?;`, username, backend.MarshalAuthorizedKey(pk))
+			AND public_key = ?;`, username, sshutils.MarshalAuthorizedKey(pk))
 			return err
 		}),
 	)
@@ -338,7 +339,7 @@ func (d *SqliteBackend) UserByPublicKey(pk ssh.PublicKey) (backend.User, error) 
 		return tx.Get(&username, `SELECT user.username
 			FROM public_key
 			INNER JOIN user ON user.id = public_key.user_id
-			WHERE public_key.public_key = ?;`, backend.MarshalAuthorizedKey(pk))
+			WHERE public_key.public_key = ?;`, sshutils.MarshalAuthorizedKey(pk))
 	}); err != nil {
 		return nil, wrapDbErr(err)
 	}

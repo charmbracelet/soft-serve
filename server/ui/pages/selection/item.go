@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/dustin/go-humanize"
 )
@@ -54,7 +55,7 @@ type Item struct {
 }
 
 // New creates a new Item.
-func NewItem(repo backend.Repository, cfg *config.Config) (Item, error) {
+func NewItem(cfg *config.Config, repo store.Repository) (Item, error) {
 	var lastUpdate *time.Time
 	lu := repo.UpdatedAt()
 	if !lu.IsZero() {
@@ -136,7 +137,7 @@ func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
 			d.copiedIdx = idx
-			d.common.Output.Copy(item.Command())
+			d.common.Output().Copy(item.Command())
 			return m.SetItem(idx, item)
 		}
 	}

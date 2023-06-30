@@ -15,8 +15,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/cache"
-	"github.com/charmbracelet/soft-serve/server/cache/noop"
-	"github.com/charmbracelet/soft-serve/server/config"
+	_ "github.com/charmbracelet/soft-serve/server/cache/noop" // noop driver
 	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
@@ -36,18 +35,12 @@ func TestMain(m *testing.M) {
 	os.Setenv("SOFT_SERVE_GIT_IDLE_TIMEOUT", "1")
 	os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort()))
 	ctx := context.TODO()
-	ca, _ := noop.NewCache(ctx)
+	ca, _ := cache.New(ctx, "noop")
 	ctx = cache.WithContext(ctx, ca)
-	cfg := config.DefaultConfig()
-	if err := cfg.WriteConfig(); err != nil {
-		log.Fatal("failed to write default config: %w", err)
-	}
-	ctx = config.WithContext(ctx, cfg)
 	fb, err := sqlite.NewSqliteBackend(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	cfg = cfg.WithBackend(fb)
 	ctx = backend.WithContext(ctx, fb)
 	d, err := NewGitDaemon(ctx)
 	if err != nil {
@@ -96,8 +89,8 @@ func TestInvalidRepo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	if out != git.ErrInvalidRepo.Error() {
-		t.Fatalf("expected %q error, got %q", git.ErrInvalidRepo, out)
+	if out != git.ErrNotExist.Error() {
+		t.Fatalf("expected %q error, got %q", git.ErrNotExist, out)
 	}
 }
 

@@ -32,8 +32,6 @@ type SqliteBackend struct { //nolint: revive
 	cache cache.Cache
 }
 
-var _ backend.Backend = (*SqliteBackend)(nil)
-
 func (d *SqliteBackend) reposPath() string {
 	return filepath.Join(d.dp, "repos")
 }
@@ -73,7 +71,7 @@ func NewSqliteBackend(ctx context.Context) (*SqliteBackend, error) {
 }
 
 // WithContext returns a shallow copy of SqliteBackend with the given context.
-func (d SqliteBackend) WithContext(ctx context.Context) backend.Backend {
+func (d SqliteBackend) WithContext(ctx context.Context) *SqliteBackend {
 	d.ctx = ctx
 	return &d
 }

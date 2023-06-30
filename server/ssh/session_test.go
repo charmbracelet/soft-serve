@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/cache"
-	"github.com/charmbracelet/soft-serve/server/cache/noop"
-	"github.com/charmbracelet/soft-serve/server/config"
+	_ "github.com/charmbracelet/soft-serve/server/cache/noop" // noop driver
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/charmbracelet/ssh"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -60,17 +60,15 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 		is.NoErr(os.RemoveAll(dp))
 	})
 	ctx := context.TODO()
-	ca, _ := noop.NewCache(ctx)
+	ca, _ := cache.New(ctx, "noop")
 	ctx = cache.WithContext(ctx, ca)
-	cfg := config.DefaultConfig()
-	ctx = config.WithContext(ctx, cfg)
 	fb, err := sqlite.NewSqliteBackend(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	cfg = cfg.WithBackend(fb)
+	ctx = backend.WithContext(ctx, fb)
 	return testsession.New(tb, &ssh.Server{
-		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256)(func(s ssh.Session) {
+		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(fb), termenv.ANSI256)(func(s ssh.Session) {
 			_, _, active := s.Pty()
 			if !active {
 				os.Exit(1)

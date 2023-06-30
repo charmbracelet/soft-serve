@@ -7,6 +7,10 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
+func init() {
+	cache.Register("lru", newCache)
+}
+
 // Cache is a memory cache that uses a LRU cache policy.
 type Cache struct {
 	cache   *lru.Cache[string, any]
@@ -32,8 +36,8 @@ func WithEvictCallback(cb func(key string, value any)) cache.Option {
 	}
 }
 
-// NewCache returns a new Cache.
-func NewCache(_ context.Context, opts ...cache.Option) (cache.Cache, error) {
+// newCache returns a new Cache.
+func newCache(_ context.Context, opts ...cache.Option) (cache.Cache, error) {
 	c := &Cache{}
 	for _, opt := range opts {
 		opt(c)

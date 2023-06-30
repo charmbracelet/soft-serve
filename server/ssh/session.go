@@ -1,14 +1,18 @@
 package ssh
 
 import (
+	"context"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
-	. "github.com/charmbracelet/soft-serve/internal/log"
+	"github.com/charmbracelet/soft-serve/server/access"
+	"github.com/charmbracelet/soft-serve/server/auth"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/errors"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/soft-serve/server/ui"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/ssh"
@@ -29,31 +33,39 @@ var (
 )
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
-func SessionHandler(cfg *config.Config) bm.ProgramHandler {
+func SessionHandler(ctx context.Context) bm.ProgramHandler {
+	be := backend.FromContext(ctx)
+	cfg := config.FromContext(ctx)
+	logger := log.FromContext(ctx).WithPrefix("ssh-pty")
 	return func(s ssh.Session) *tea.Program {
-		ak := backend.MarshalAuthorizedKey(s.PublicKey())
+		ctx := backend.WithContext(s.Context(), be)
+		ctx = config.WithContext(ctx, cfg)
+		ctx = log.WithContext(ctx, logger)
+
+		ak := sshutils.MarshalAuthorizedKey(s.PublicKey())
 		pty, _, active := s.Pty()
 		if !active {
 			return nil
 		}
 
 		cmd := s.Command()
-		initialRepo := ""
+		var initialRepo string
 		if len(cmd) == 1 {
+			user, _ := be.Authenticate(ctx, auth.NewPublicKey(s.PublicKey()))
 			initialRepo = cmd[0]
-			auth := cfg.Backend.AccessLevelByPublicKey(initialRepo, s.PublicKey())
-			if auth < backend.ReadOnlyAccess {
+			auth, _ := be.AccessLevel(ctx, initialRepo, user)
+			if auth < access.ReadOnlyAccess {
 				wish.Fatalln(s, errors.ErrUnauthorized)
 				return nil
 			}
 		}
 
 		envs := &sessionEnv{s}
-		output := termenv.NewOutput(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
-		logger := NewDefaultLogger()
-		ctx := log.WithContext(s.Context(), logger)
+		output := lipgloss.NewRenderer(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
+		// FIXME: detect color profile and dark background from ssh.Session
+		output.SetColorProfile(termenv.ANSI256)
+		output.SetHasDarkBackground(true)
 		c := common.NewCommon(ctx, output, pty.Window.Width, pty.Window.Height)
-		c.SetValue(common.ConfigKey, cfg)
 		m := ui.New(c, initialRepo)
 		p := tea.NewProgram(m,
 			tea.WithInput(s),

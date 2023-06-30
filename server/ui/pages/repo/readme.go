@@ -84,8 +84,7 @@ func (r *Readme) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.ref = msg
 		cmds = append(cmds, r.Init())
 	case EmptyRepoMsg:
-		r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(),
-			r.repo.Name()), ".md")
+		r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(), r.repo.Name()), ".md")
 	}
 	c, cmd := r.code.Update(msg)
 	r.code = c.(*code.Code)

@@ -105,7 +105,7 @@ func (t *Tabs) View() string {
 			s.WriteString(sep.String())
 		}
 	}
-	return lipgloss.NewStyle().
+	return t.common.Renderer.NewStyle().
 		MaxWidth(t.common.Width).
 		Render(s.String())
 }

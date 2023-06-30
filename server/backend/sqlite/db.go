@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/jmoiron/sqlx"
 	"modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
@@ -64,7 +65,7 @@ func (d *SqliteBackend) init() error {
 			// Don't use cfg.AdminKeys since it also includes the internal key
 			// used for internal api access.
 			for _, k := range d.cfg.InitialAdminKeys {
-				pk, _, err := backend.ParseAuthorizedKey(k)
+				pk, _, err := sshutils.ParseAuthorizedKey(k)
 				if err != nil {
 					d.logger.Error("error parsing initial admin key, skipping", "key", k, "err", err)
 					continue
@@ -77,7 +78,7 @@ func (d *SqliteBackend) init() error {
 				}
 
 				defer stmt.Close() // nolint: errcheck
-				if _, err := stmt.Exec(userID, backend.MarshalAuthorizedKey(pk)); err != nil {
+				if _, err := stmt.Exec(userID, sshutils.MarshalAuthorizedKey(pk)); err != nil {
 					return err
 				}
 			}

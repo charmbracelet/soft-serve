@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/spf13/cobra"
 )
 
@@ -18,9 +18,10 @@ func createCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			be, _ := fromContext(cmd)
 			name := args[0]
-			if _, err := cfg.Backend.CreateRepository(name, backend.RepositoryOptions{
+			if _, err := be.CreateRepository(ctx, name, store.RepositoryOptions{
 				Private:     private,
 				Description: description,
 				ProjectName: projectName,

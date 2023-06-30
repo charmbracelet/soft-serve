@@ -140,7 +140,7 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	name = nameStyle.Render(name)
 	size = sizeStyle.Render(size)
 	modeStr := modeStyle.Render(mode.String())
-	truncate := lipgloss.NewStyle().MaxWidth(m.Width() -
+	truncate := d.common.Renderer.NewStyle().MaxWidth(m.Width() -
 		s.Selector.GetHorizontalFrameSize() -
 		s.Selector.GetWidth())
 	fmt.Fprint(w,

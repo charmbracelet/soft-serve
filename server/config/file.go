@@ -12,8 +12,37 @@ var configFileTmpl = template.Must(template.New("config").Parse(`# Soft Serve Se
 name: "{{ .Name }}"
 
 # Cache configuration.
-# The cache backend to use. The default backend is "lru" memory cache.
-cache: "{{ .Cache }}"
+cache:
+  # The cache backend to use. The default backend is "lru" memory cache.
+  backend: "{{ .Cache.Backend }}"
+
+# Database configuration.
+database:
+  # The database driver to use. The default driver is "sqlite".
+  driver: "{{ .Database.Driver }}"
+  # The data source to the database. For sqlite, this is the path to the
+  # database file.
+  data_source:"{{ .Database.DataSource }}"
+
+# Backend configuration defines the backend for server settings, repositories,
+# authentication, and authorization.
+backend:
+  # Settings is the server settings backend.
+  # The default is "sqlite" which stores server settings as a key-value pair in
+  # the database.
+  settings: "{{ .Backend.Settings }}"
+  # Access is the authorization backend.
+  # The default is "sqlite" which stores access rules in the database.
+  access: "{{ .Backend.Access }}"
+  # Auth is the authentication backend.
+  # The default is "sqlite" which stores and manages users in the database.
+  auth: "{{ .Backend.Auth }}"
+  # Store is the repository storage backend.
+  # The default is "filesqlite" which stores repositories in the filesystem and
+  # the sqlite database.
+  # Git repositories are stored in the filesystem and their metadata are stored
+  # in both the filesystem and database.
+  store: "{{ .Backend.Store }}"
 
 # Logging configuration.
 log:
@@ -48,19 +77,19 @@ ssh:
   idle_timeout: {{ .SSH.IdleTimeout }}
 
 # The Git daemon configuration.
-git:
+git_daemon:
   # The address on which the Git daemon will listen.
-  listen_addr: "{{ .Git.ListenAddr }}"
+  listen_addr: "{{ .GitDaemon.ListenAddr }}"
 
   # The maximum number of seconds a connection can take.
   # A value of 0 means no timeout.
-  max_timeout: {{ .Git.MaxTimeout }}
+  max_timeout: {{ .GitDaemon.MaxTimeout }}
 
   # The number of seconds a connection can be idle before it is closed.
-  idle_timeout: {{ .Git.IdleTimeout }}
+  idle_timeout: {{ .GitDaemon.IdleTimeout }}
 
   # The maximum number of concurrent connections.
-  max_connections: {{ .Git.MaxConnections }}
+  max_connections: {{ .GitDaemon.MaxConnections }}
 
 # The HTTP server configuration.
 http:
@@ -81,6 +110,11 @@ http:
 # The stats server configuration.
 stats:
   # The address on which the stats server will listen.
+  # Note that by default, the stats server binds to "localhost".
+  # This won't make it accessible from other networks.
+  # If you're running Soft Serve on a container, you probably want it to be
+  # accessible to other networks. To do so, change the listen address to
+  # ":PORT" or "0.0.0.0:PORT".
   listen_addr: "{{ .Stats.ListenAddr }}"
 
 # Additional admin keys.

@@ -13,7 +13,8 @@ func projectName() *cobra.Command {
 		Short:   "Set or get the project name for a repository",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			be, _ := fromContext(cmd)
 			rn := strings.TrimSuffix(args[0], ".git")
 			switch len(args) {
 			case 1:
@@ -21,7 +22,7 @@ func projectName() *cobra.Command {
 					return err
 				}
 
-				pn, err := cfg.Backend.ProjectName(rn)
+				pn, err := be.ProjectName(ctx, rn)
 				if err != nil {
 					return err
 				}
@@ -31,7 +32,7 @@ func projectName() *cobra.Command {
 				if err := checkIfCollab(cmd, args); err != nil {
 					return err
 				}
-				if err := cfg.Backend.SetProjectName(rn, strings.Join(args[1:], " ")); err != nil {
+				if err := be.SetProjectName(ctx, rn, strings.Join(args[1:], " ")); err != nil {
 					return err
 				}
 			}

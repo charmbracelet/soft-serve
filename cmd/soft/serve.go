@@ -11,10 +11,13 @@ import (
 
 	"github.com/charmbracelet/soft-serve/server"
 	"github.com/charmbracelet/soft-serve/server/config"
+	_ "github.com/charmbracelet/soft-serve/server/config" // init config
 	"github.com/spf13/cobra"
 )
 
 var (
+	migrate bool
+
 	serveCmd = &cobra.Command{
 		Use:   "serve",
 		Short: "Start the server",
@@ -22,15 +25,7 @@ var (
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-
-			// Set up config
-			cfg, err := config.NewConfig("")
-			if err != nil {
-				return err
-			}
-
-			ctx = config.WithContext(ctx, cfg)
-			cmd.SetContext(ctx)
+			cfg := config.FromContext(ctx)
 
 			// Create custom hooks directory if it doesn't exist
 			customHooksPath := filepath.Join(cfg.DataPath, "hooks")
@@ -77,3 +72,7 @@ var (
 		},
 	}
 )
+
+func init() {
+	serveCmd.Flags().BoolVar(&migrate, "migrate", false, "run database migrations")
+}

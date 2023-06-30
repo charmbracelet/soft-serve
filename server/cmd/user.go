@@ -2,15 +2,17 @@ package cmd
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/log"
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/auth/sqlite"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 )
 
-func userCommand() *cobra.Command {
+func userCommand(sb *sqlite.SqliteAuthStore) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "user",
 		Aliases: []string{"users"},
@@ -25,11 +27,11 @@ func userCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			var pubkeys []ssh.PublicKey
-			cfg, _ := fromContext(cmd)
 			username := args[0]
 			if key != "" {
-				pk, _, err := backend.ParseAuthorizedKey(key)
+				pk, _, err := sshutils.ParseAuthorizedKey(key)
 				if err != nil {
 					return err
 				}
@@ -37,12 +39,12 @@ func userCommand() *cobra.Command {
 				pubkeys = []ssh.PublicKey{pk}
 			}
 
-			opts := backend.UserOptions{
+			opts := sqlite.UserOptions{
 				Admin:      admin,
 				PublicKeys: pubkeys,
 			}
 
-			_, err := cfg.Backend.CreateUser(username, opts)
+			_, err := sb.CreateUser(ctx, username, opts)
 			return err
 		},
 	}
@@ -56,10 +58,10 @@ func userCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
 			username := args[0]
 
-			return cfg.Backend.DeleteUser(username)
+			return sb.DeleteUser(ctx, username)
 		},
 	}
 
@@ -70,8 +72,8 @@ func userCommand() *cobra.Command {
 		Args:              cobra.NoArgs,
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, _ := fromContext(cmd)
-			users, err := cfg.Backend.Users()
+			ctx := cmd.Context()
+			users, err := sb.Users(ctx)
 			if err != nil {
 				return err
 			}
@@ -91,15 +93,15 @@ func userCommand() *cobra.Command {
 		Args:              cobra.MinimumNArgs(2),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
 			username := args[0]
 			pubkey := strings.Join(args[1:], " ")
-			pk, _, err := backend.ParseAuthorizedKey(pubkey)
+			pk, _, err := sshutils.ParseAuthorizedKey(pubkey)
 			if err != nil {
 				return err
 			}
 
-			return cfg.Backend.AddPublicKey(username, pk)
+			return sb.AddPublicKey(ctx, username, pk)
 		},
 	}
 
@@ -109,16 +111,16 @@ func userCommand() *cobra.Command {
 		Args:              cobra.MinimumNArgs(2),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
 			username := args[0]
 			pubkey := strings.Join(args[1:], " ")
 			log.Debugf("key is %q", pubkey)
-			pk, _, err := backend.ParseAuthorizedKey(pubkey)
+			pk, _, err := sshutils.ParseAuthorizedKey(pubkey)
 			if err != nil {
 				return err
 			}
 
-			return cfg.Backend.RemovePublicKey(username, pk)
+			return sb.RemovePublicKey(ctx, username, pk)
 		},
 	}
 
@@ -128,10 +130,11 @@ func userCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
 			username := args[0]
+			isAdmin, _ := strconv.ParseBool(args[1])
 
-			return cfg.Backend.SetAdmin(username, args[1] == "true")
+			return sb.SetAdmin(ctx, username, isAdmin)
 		},
 	}
 
@@ -141,10 +144,10 @@ func userCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
 			username := args[0]
 
-			user, err := cfg.Backend.User(username)
+			user, err := sb.User(ctx, username)
 			if err != nil {
 				return err
 			}
@@ -155,7 +158,7 @@ func userCommand() *cobra.Command {
 			cmd.Printf("Admin: %t\n", isAdmin)
 			cmd.Printf("Public keys:\n")
 			for _, pk := range user.PublicKeys() {
-				cmd.Printf("  %s\n", backend.MarshalAuthorizedKey(pk))
+				cmd.Printf("  %s\n", sshutils.MarshalAuthorizedKey(pk))
 			}
 
 			return nil
@@ -168,11 +171,11 @@ func userCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
 			username := args[0]
 			newUsername := args[1]
 
-			return cfg.Backend.SetUsername(username, newUsername)
+			return sb.SetUsername(ctx, username, newUsername)
 		},
 	}
 

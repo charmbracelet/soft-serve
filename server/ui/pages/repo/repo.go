@@ -165,6 +165,7 @@ func (r *Repo) Init() tea.Cmd {
 
 // Update implements tea.Model.
 func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cfg := r.common.Config()
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case RepoMsg:
@@ -212,7 +213,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if r.selectedRepo != nil {
 			cmds = append(cmds, r.updateStatusBarCmd)
 			urlID := fmt.Sprintf("%s-url", r.selectedRepo.Name())
-			cmd := common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
+			cmd := common.CloneCmd(cfg.SSH.PublicURL, r.selectedRepo.Name())
 			if msg, ok := msg.(tea.MouseMsg); ok && r.common.Zone.Get(urlID).InBounds(msg) {
 				cmds = append(cmds, copyCmd(cmd, "Command copied to clipboard"))
 			}
@@ -234,9 +235,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case CopyMsg:
 		txt := msg.Text
-		if cfg := r.common.Config(); cfg != nil {
-			r.common.Output.Copy(txt)
-		}
+		r.common.Output().Copy(txt)
 		cmds = append(cmds, func() tea.Msg {
 			return statusbar.StatusBarMsg{
 				Value: msg.Message,
@@ -324,10 +323,11 @@ func (r *Repo) View() string {
 }
 
 func (r *Repo) headerView() string {
+	cfg := r.common.Config()
 	if r.selectedRepo == nil {
 		return ""
 	}
-	truncate := lipgloss.NewStyle().MaxWidth(r.common.Width)
+	truncate := r.common.Renderer.NewStyle().MaxWidth(r.common.Width)
 	name := r.selectedRepo.ProjectName()
 	if name == "" {
 		name = r.selectedRepo.Name()
@@ -344,9 +344,7 @@ func (r *Repo) headerView() string {
 		Width(r.common.Width - lipgloss.Width(desc) - 1).
 		Align(lipgloss.Right)
 	var url string
-	if cfg := r.common.Config(); cfg != nil {
-		url = common.CloneCmd(cfg.SSH.PublicURL, r.selectedRepo.Name())
-	}
+	url = common.CloneCmd(cfg.SSH.PublicURL, r.selectedRepo.Name())
 	url = common.TruncateString(url, r.common.Width-lipgloss.Width(desc)-1)
 	url = r.common.Zone.Mark(
 		fmt.Sprintf("%s-url", r.selectedRepo.Name()),

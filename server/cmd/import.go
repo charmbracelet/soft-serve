@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/spf13/cobra"
 )
 
@@ -19,10 +19,11 @@ func importCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			be, _ := fromContext(cmd)
 			name := args[0]
 			remote := args[1]
-			if _, err := cfg.Backend.ImportRepository(name, remote, backend.RepositoryOptions{
+			if _, err := be.ImportRepository(ctx, name, remote, store.RepositoryOptions{
 				Private:     private,
 				Description: description,
 				ProjectName: projectName,

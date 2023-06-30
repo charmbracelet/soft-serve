@@ -2,6 +2,12 @@ package cache
 
 import (
 	"context"
+	"fmt"
+)
+
+var (
+	// ErrNotFound is returned when a cache is not found.
+	ErrNotFound = fmt.Errorf("cache not found")
 )
 
 // ItemOption is an option for setting cache items.

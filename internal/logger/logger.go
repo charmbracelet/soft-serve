@@ -1,6 +1,7 @@
-package log
+package logger
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"strings"
@@ -10,17 +11,8 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 )
 
-var contextKey = &struct{ string }{"logger"}
-
 // NewDefaultLogger returns a new logger with default settings.
-func NewDefaultLogger() *log.Logger {
-	cfg := config.DefaultConfig()
-	if cfg.Exist() {
-		if err := config.ParseConfig(cfg, cfg.FilePath()); err != nil {
-			log.Errorf("failed to parse config: %v", err)
-		}
-	}
-
+func NewDefaultLogger(ctx context.Context) *log.Logger {
 	logger := log.NewWithOptions(os.Stderr, log.Options{
 		ReportTimestamp: true,
 		TimeFormat:      time.DateOnly,
@@ -34,6 +26,7 @@ func NewDefaultLogger() *log.Logger {
 		}
 	}
 
+	cfg := config.FromContext(ctx)
 	logger.SetTimeFormat(cfg.Log.TimeFormat)
 
 	switch strings.ToLower(cfg.Log.Format) {

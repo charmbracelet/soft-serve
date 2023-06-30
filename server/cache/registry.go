@@ -14,7 +14,7 @@ var (
 	mtx      sync.RWMutex
 
 	// ErrCacheNotFound is returned when a cache is not found.
-	ErrCacheNotFound = fmt.Errorf("cache not found")
+	ErrCacheNotFound = fmt.Errorf("cache driver not found")
 )
 
 // Register registers a cache.
@@ -26,13 +26,13 @@ func Register(name string, fn Constructor) {
 }
 
 // New returns a new cache.
-func New(name string, ctx context.Context, opts ...Option) (Cache, error) {
+func New(ctx context.Context, name string, opts ...Option) (Cache, error) {
 	mtx.RLock()
 	fn, ok := registry[name]
 	mtx.RUnlock()
 
 	if !ok {
-		return nil, ErrCacheNotFound
+		return nil, ErrNotFound
 	}
 
 	return fn(ctx, opts...)

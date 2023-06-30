@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	vp "github.com/charmbracelet/soft-serve/server/ui/components/viewport"
+	"github.com/charmbracelet/soft-serve/server/uiutils"
 	"github.com/muesli/termenv"
 )
 
@@ -20,8 +21,12 @@ const (
 )
 
 var (
-	lineDigitStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("239"))
-	lineBarStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("236"))
+	lineDigitStyle = func(r *lipgloss.Renderer) lipgloss.Style {
+		return r.NewStyle().Foreground(lipgloss.Color("239"))
+	}
+	lineBarStyle = func(r *lipgloss.Renderer) lipgloss.Style {
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("236"))
+	}
 )
 
 // Code is a code snippet.
@@ -48,10 +53,10 @@ func New(c common.Common, content, extension string) *Code {
 		extension:      extension,
 		Viewport:       vp.New(c),
 		NoContentStyle: c.Styles.NoContent.Copy(),
-		LineDigitStyle: lineDigitStyle,
-		LineBarStyle:   lineBarStyle,
+		LineDigitStyle: lineDigitStyle(c.Renderer),
+		LineBarStyle:   lineBarStyle(c.Renderer),
 	}
-	st := common.StyleConfig()
+	st := uiutils.StyleConfig()
 	r.styleConfig = st
 	r.renderContext = gansi.NewRenderContext(gansi.Options{
 		ColorProfile: termenv.TrueColor,
@@ -212,7 +217,7 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 		s := strings.Builder{}
 		rc := r.renderContext
 		if r.showLineNumber {
-			st := common.StyleConfig()
+			st := uiutils.StyleConfig()
 			var m uint
 			st.CodeBlock.Margin = &m
 			rc = gansi.NewRenderContext(gansi.Options{
@@ -227,7 +232,7 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 		c = s.String()
 		if r.showLineNumber {
 			var ml int
-			c, ml = withLineNumber(c)
+			c, ml = r.withLineNumber(c)
 			width -= ml
 		}
 	}
@@ -235,10 +240,10 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 	// https://github.com/muesli/reflow/issues/43
 	//
 	// TODO: solve this upstream in Glamour/Reflow.
-	return lipgloss.NewStyle().Width(width).Render(c), nil
+	return r.common.Renderer.NewStyle().Width(width).Render(c), nil
 }
 
-func withLineNumber(s string) (string, int) {
+func (r *Code) withLineNumber(s string) (string, int) {
 	lines := strings.Split(s, "\n")
 	// NB: len() is not a particularly safe way to count string width (because
 	// it's counting bytes instead of runes) but in this case it's okay
@@ -247,8 +252,8 @@ func withLineNumber(s string) (string, int) {
 	for i, l := range lines {
 		digit := fmt.Sprintf("%*d", mll, i+1)
 		bar := "│"
-		digit = lineDigitStyle.Render(digit)
-		bar = lineBarStyle.Render(bar)
+		digit = r.LineDigitStyle.Render(digit)
+		bar = r.LineBarStyle.Render(bar)
 		if i < len(lines)-1 || len(l) != 0 {
 			// If the final line was a newline we'll get an empty string for
 			// the final line, so drop the newline altogether.

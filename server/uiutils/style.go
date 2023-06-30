@@ -1,8 +1,8 @@
-package common
+package uiutils
 
 import (
 	"github.com/charmbracelet/glamour"
-	gansi "github.com/charmbracelet/glamour/ansi"
+	"github.com/charmbracelet/glamour/ansi"
 )
 
 func strptr(s string) *string {
@@ -10,7 +10,7 @@ func strptr(s string) *string {
 }
 
 // StyleConfig returns the default Glamour style configuration.
-func StyleConfig() gansi.StyleConfig {
+func StyleConfig() ansi.StyleConfig {
 	noColor := strptr("")
 	s := glamour.DarkStyleConfig
 	s.H1.BackgroundColor = noColor
