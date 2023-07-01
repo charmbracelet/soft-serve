@@ -3,10 +3,12 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
+	"github.com/charmbracelet/soft-serve/server/ui/styles"
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 )
@@ -14,6 +16,7 @@ import (
 // commitCommand returns a command that prints the contents of a commit.
 func commitCommand() *cobra.Command {
 	var color bool
+	var patchOnly bool
 
 	cmd := &cobra.Command{
 		Use:               "commit SHA",
@@ -47,35 +50,58 @@ func commitCommand() *cobra.Command {
 				return err
 			}
 
-			c := string(patch)
-
-			if color {
-				var s strings.Builder
-				var pr strings.Builder
-
-				diffChroma := &gansi.CodeBlockElement{
-					Code:     patch,
-					Language: "diff",
-				}
-
-				err = diffChroma.Render(&pr, renderCtx())
-
-				if err != nil {
-					s.WriteString(fmt.Sprintf("\n%s", err.Error()))
-				} else {
-					s.WriteString(fmt.Sprintf("\n%s", pr.String()))
-				}
-
-				c = s.String()
+			diff, err := r.Diff(commit)
+			if err != nil {
+				return err
 			}
 
-			cmd.Println(c)
+			commonStyle := styles.DefaultStyles()
+			style := commonStyle.Log
+
+			s := strings.Builder{}
+			commitLine := "commit " + commitSHA
+			authorLine := "Author: " + commit.Author.Name
+			dateLine := "Date:   " + commit.Committer.When.Format(time.UnixDate)
+			msgLine := strings.ReplaceAll(commit.Message, "\r\n", "\n")
+			statsLine := renderStats(diff, commonStyle, color)
+			diffLine := renderDiff(patch, color)
+
+			if patchOnly {
+				cmd.Println(
+					diffLine,
+				)
+				return nil
+			}
+
+			if color {
+				s.WriteString(fmt.Sprintf("%s\n%s\n%s\n%s\n",
+					style.CommitHash.Render(commitLine),
+					style.CommitAuthor.Render(authorLine),
+					style.CommitDate.Render(dateLine),
+					style.CommitBody.Render(msgLine),
+				))
+			} else {
+				s.WriteString(fmt.Sprintf("%s\n%s\n%s\n%s\n",
+					commitLine,
+					authorLine,
+					dateLine,
+					msgLine,
+				))
+			}
+
+			s.WriteString(statsLine)
+			s.WriteString(diffLine)
+
+			cmd.Println(
+				s.String(),
+			)
 
 			return nil
 		},
 	}
 
 	cmd.Flags().BoolVarP(&color, "color", "c", false, "Colorize output")
+	cmd.Flags().BoolVarP(&patchOnly, "patch", "p", false, "Output patch only")
 
 	return cmd
 }
@@ -85,4 +111,54 @@ func renderCtx() gansi.RenderContext {
 		ColorProfile: termenv.TrueColor,
 		Styles:       common.StyleConfig(),
 	})
+}
+
+func renderDiff(patch string, color bool) string {
+
+	c := string(patch)
+
+	if color {
+		var s strings.Builder
+		var pr strings.Builder
+
+		diffChroma := &gansi.CodeBlockElement{
+			Code:     patch,
+			Language: "diff",
+		}
+
+		err := diffChroma.Render(&pr, renderCtx())
+
+		if err != nil {
+			s.WriteString(fmt.Sprintf("\n%s", err.Error()))
+		} else {
+			s.WriteString(fmt.Sprintf("\n%s", pr.String()))
+		}
+
+		c = s.String()
+	}
+
+	return c
+}
+
+func renderStats(diff *git.Diff, commonStyle *styles.Styles, color bool) string {
+	style := commonStyle.Log
+	c := diff.Stats().String()
+
+	if color {
+		s := strings.Split(c, "\n")
+
+		for i, line := range s {
+			ch := strings.Split(line, "|")
+			if len(ch) > 1 {
+				adddel := ch[len(ch)-1]
+				adddel = strings.ReplaceAll(adddel, "+", style.CommitStatsAdd.Render("+"))
+				adddel = strings.ReplaceAll(adddel, "-", style.CommitStatsDel.Render("-"))
+				s[i] = strings.Join(ch[:len(ch)-1], "|") + "|" + adddel
+			}
+		}
+
+		return strings.Join(s, "\n")
+	}
+
+	return c
 }
