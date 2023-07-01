@@ -89,8 +89,10 @@ func commitCommand() *cobra.Command {
 				))
 			}
 
-			s.WriteString(statsLine)
-			s.WriteString(diffLine)
+			s.WriteString(fmt.Sprintf("\n%s\n%s",
+				statsLine,
+				diffLine,
+			))
 
 			cmd.Println(
 				s.String(),
