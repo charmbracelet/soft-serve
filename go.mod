@@ -31,7 +31,7 @@ require (
 	github.com/muesli/roff v0.1.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rogpeppe/go-internal v1.10.1-0.20230524175051-ec119421bb97
+	github.com/rogpeppe/go-internal v1.11.0
 	github.com/spf13/cobra v1.7.0
 	go.uber.org/automaxprocs v1.5.2
 	goji.io v2.0.2+incompatible
