@@ -54,6 +54,9 @@ func init() {
 func main() {
 	logger := NewDefaultLogger()
 
+	// Set global logger
+	log.SetDefault(logger)
+
 	// Set the max number of processes to the number of CPUs
 	// This is useful when running soft serve in a container
 	if _, err := maxprocs.Set(maxprocs.Logger(logger.Debugf)); err != nil {

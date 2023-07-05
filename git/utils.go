@@ -1,6 +1,7 @@
 package git
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/gobwas/glob"
@@ -48,4 +49,26 @@ func LatestFile(repo *Repository, pattern string) (string, string, error) {
 		}
 	}
 	return "", "", ErrFileNotFound
+}
+
+// Returns true if path is a directory containing an `objects` directory and a
+// `HEAD` file.
+func isGitDir(path string) bool {
+	stat, err := os.Stat(filepath.Join(path, "objects"))
+	if err != nil {
+		return false
+	}
+	if !stat.IsDir() {
+		return false
+	}
+
+	stat, err = os.Stat(filepath.Join(path, "HEAD"))
+	if err != nil {
+		return false
+	}
+	if stat.IsDir() {
+		return false
+	}
+
+	return true
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,40 +41,6 @@ var (
 	// ErrServerClosed indicates that the server has been closed.
 	ErrServerClosed = fmt.Errorf("git: %w", net.ErrClosed)
 )
-
-// connections synchronizes access to to a net.Conn pool.
-type connections struct {
-	m  map[net.Conn]struct{}
-	mu sync.Mutex
-}
-
-func (m *connections) Add(c net.Conn) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.m[c] = struct{}{}
-}
-
-func (m *connections) Close(c net.Conn) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	_ = c.Close()
-	delete(m.m, c)
-}
-
-func (m *connections) Size() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return len(m.m)
-}
-
-func (m *connections) CloseAll() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for c := range m.m {
-		_ = c.Close()
-		delete(m.m, c)
-	}
-}
 
 // GitDaemon represents a Git daemon.
 type GitDaemon struct {
@@ -213,24 +180,51 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		gitPack := git.UploadPack
-		counter := uploadPackGitCounter
-		cmd := string(split[0])
-		switch cmd {
-		case git.UploadPackBin:
-			gitPack = git.UploadPack
-		case git.UploadArchiveBin:
-			gitPack = git.UploadArchive
+		var handler git.ServiceHandler
+		var counter *prometheus.CounterVec
+		service := git.Service(split[0])
+		switch service {
+		case git.UploadPackService:
+			handler = git.UploadPack
+			counter = uploadPackGitCounter
+		case git.UploadArchiveService:
+			handler = git.UploadArchive
 			counter = uploadArchiveGitCounter
 		default:
 			d.fatal(c, git.ErrInvalidRequest)
 			return
 		}
 
-		opts := bytes.Split(split[1], []byte{'\x00'})
-		if len(opts) == 0 {
-			d.fatal(c, git.ErrInvalidRequest)
+		opts := bytes.SplitN(split[1], []byte{0}, 3)
+		if len(opts) < 2 {
+			d.fatal(c, git.ErrInvalidRequest) // nolint: errcheck
 			return
+		}
+
+		host := strings.TrimPrefix(string(opts[1]), "host=")
+		extraParams := map[string]string{}
+
+		if len(opts) > 2 {
+			buf := bytes.TrimPrefix(opts[2], []byte{0})
+			for _, o := range bytes.Split(buf, []byte{0}) {
+				opt := string(o)
+				if opt == "" {
+					continue
+				}
+
+				kv := strings.SplitN(opt, "=", 2)
+				if len(kv) != 2 {
+					d.logger.Errorf("git: invalid option %q", opt)
+					continue
+				}
+
+				extraParams[kv[0]] = kv[1]
+			}
+
+			version := extraParams["version"]
+			if version != "" {
+				d.logger.Debugf("git: protocol version %s", version)
+			}
 		}
 
 		be := d.be.WithContext(ctx)
@@ -240,14 +234,21 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		}
 
 		name := utils.SanitizeRepo(string(opts[0]))
-		d.logger.Debugf("git: connect %s %s %s", c.RemoteAddr(), cmd, name)
-		defer d.logger.Debugf("git: disconnect %s %s %s", c.RemoteAddr(), cmd, name)
+		d.logger.Debugf("git: connect %s %s %s", c.RemoteAddr(), service, name)
+		defer d.logger.Debugf("git: disconnect %s %s %s", c.RemoteAddr(), service, name)
+
 		// git bare repositories should end in ".git"
 		// https://git-scm.com/docs/gitrepository-layout
 		repo := name + ".git"
 		reposDir := filepath.Join(d.cfg.DataPath, "repos")
 		if err := git.EnsureWithin(reposDir, repo); err != nil {
-			d.fatal(c, err)
+			d.logger.Debugf("git: error ensuring repo path: %v", err)
+			d.fatal(c, git.ErrInvalidRepo)
+			return
+		}
+
+		if _, err := d.be.Repository(repo); err != nil {
+			d.fatal(c, git.ErrInvalidRepo)
 			return
 		}
 
@@ -261,9 +262,33 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		envs := []string{
 			"SOFT_SERVE_REPO_NAME=" + name,
 			"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
+			"SOFT_SERVE_HOST=" + host,
 		}
 
-		if err := gitPack(ctx, c, c, c, filepath.Join(reposDir, repo), envs...); err != nil {
+		// Add git protocol environment variable.
+		if len(extraParams) > 0 {
+			var gitProto string
+			for k, v := range extraParams {
+				if len(gitProto) > 0 {
+					gitProto += ":"
+				}
+				gitProto += k + "=" + v
+			}
+			envs = append(envs, "GIT_PROTOCOL="+gitProto)
+		}
+
+		envs = append(envs, d.cfg.Environ()...)
+
+		cmd := git.ServiceCommand{
+			Stdin:  c,
+			Stdout: c,
+			Stderr: c,
+			Env:    envs,
+			Dir:    filepath.Join(reposDir, repo),
+		}
+
+		if err := handler(ctx, cmd); err != nil {
+			d.logger.Debugf("git: error handling request: %v", err)
 			d.fatal(c, err)
 			return
 		}
@@ -294,53 +319,5 @@ func (d *GitDaemon) Shutdown(ctx context.Context) error {
 		return ctx.Err()
 	case <-finished:
 		return err
-	}
-}
-
-type serverConn struct {
-	net.Conn
-
-	idleTimeout   time.Duration
-	maxDeadline   time.Time
-	closeCanceler context.CancelFunc
-}
-
-func (c *serverConn) Write(p []byte) (n int, err error) {
-	c.updateDeadline()
-	n, err = c.Conn.Write(p)
-	if _, isNetErr := err.(net.Error); isNetErr && c.closeCanceler != nil {
-		c.closeCanceler()
-	}
-	return
-}
-
-func (c *serverConn) Read(b []byte) (n int, err error) {
-	c.updateDeadline()
-	n, err = c.Conn.Read(b)
-	if _, isNetErr := err.(net.Error); isNetErr && c.closeCanceler != nil {
-		c.closeCanceler()
-	}
-	return
-}
-
-func (c *serverConn) Close() (err error) {
-	err = c.Conn.Close()
-	if c.closeCanceler != nil {
-		c.closeCanceler()
-	}
-	return
-}
-
-func (c *serverConn) updateDeadline() {
-	switch {
-	case c.idleTimeout > 0:
-		idleDeadline := time.Now().Add(c.idleTimeout)
-		if idleDeadline.Unix() < c.maxDeadline.Unix() || c.maxDeadline.IsZero() {
-			c.Conn.SetDeadline(idleDeadline)
-			return
-		}
-		fallthrough
-	default:
-		c.Conn.SetDeadline(c.maxDeadline)
 	}
 }
