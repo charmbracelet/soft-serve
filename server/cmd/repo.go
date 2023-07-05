@@ -18,6 +18,7 @@ func repoCommand() *cobra.Command {
 		blobCommand(),
 		branchCommand(),
 		collabCommand(),
+		commitCommand(),
 		createCommand(),
 		deleteCommand(),
 		descriptionCommand(),
