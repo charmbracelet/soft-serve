@@ -12,10 +12,10 @@ import (
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite" // sqlite driver
 )
 
@@ -25,7 +25,7 @@ type SqliteBackend struct { //nolint: revive
 	cfg    *config.Config
 	ctx    context.Context
 	dp     string
-	db     *sqlx.DB
+	db     *db.DB
 	logger *log.Logger
 
 	// Repositories cache
@@ -46,7 +46,7 @@ func NewSqliteBackend(ctx context.Context) (*SqliteBackend, error) {
 		return nil, err
 	}
 
-	db, err := sqlx.Connect("sqlite", filepath.Join(dataPath, "soft-serve.db"+
+	db, err := db.Open("sqlite", filepath.Join(dataPath, "soft-serve.db"+
 		"?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"))
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (d SqliteBackend) WithContext(ctx context.Context) backend.Backend {
 // It implements backend.Backend.
 func (d *SqliteBackend) AllowKeyless() bool {
 	var allow bool
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		return tx.Get(&allow, "SELECT value FROM settings WHERE key = ?;", "allow_keyless")
 	}); err != nil {
 		return false
@@ -99,7 +99,7 @@ func (d *SqliteBackend) AllowKeyless() bool {
 // It implements backend.Backend.
 func (d *SqliteBackend) AnonAccess() backend.AccessLevel {
 	var level string
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		return tx.Get(&level, "SELECT value FROM settings WHERE key = ?;", "anon_access")
 	}); err != nil {
 		return backend.NoAccess
@@ -112,8 +112,8 @@ func (d *SqliteBackend) AnonAccess() backend.AccessLevel {
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) SetAllowKeyless(allow bool) error {
-	return wrapDbErr(
-		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	return db.WrapError(
+		d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 			_, err := tx.Exec("UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?;", allow, "allow_keyless")
 			return err
 		}),
@@ -124,8 +124,8 @@ func (d *SqliteBackend) SetAllowKeyless(allow bool) error {
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) SetAnonAccess(level backend.AccessLevel) error {
-	return wrapDbErr(
-		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	return db.WrapError(
+		d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 			_, err := tx.Exec("UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?;", level.String(), "anon_access")
 			return err
 		}),
@@ -144,7 +144,7 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		if _, err := tx.Exec(`INSERT INTO repo (name, project_name, description, private, mirror, hidden, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`,
 			name, opts.ProjectName, opts.Description, opts.Private, opts.Mirror, opts.Hidden); err != nil {
@@ -160,7 +160,7 @@ func (d *SqliteBackend) CreateRepository(name string, opts backend.RepositoryOpt
 		return nil
 	}); err != nil {
 		d.logger.Debug("failed to create repository in database", "err", err)
-		return nil, wrapDbErr(err)
+		return nil, db.WrapError(err)
 	}
 
 	r := &Repo{
@@ -226,7 +226,7 @@ func (d *SqliteBackend) DeleteRepository(name string) error {
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
-	return wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	return d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		// Delete repo from cache
 		defer d.cache.Delete(name)
 
@@ -263,7 +263,7 @@ func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 		return ErrRepoExist
 	}
 
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		// Delete cache
 		defer d.cache.Delete(oldName)
 
@@ -283,7 +283,7 @@ func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 
 		return nil
 	}); err != nil {
-		return wrapDbErr(err)
+		return db.WrapError(err)
 	}
 
 	return nil
@@ -295,7 +295,7 @@ func (d *SqliteBackend) RenameRepository(oldName string, newName string) error {
 func (d *SqliteBackend) Repositories() ([]backend.Repository, error) {
 	repos := make([]backend.Repository, 0)
 
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		rows, err := tx.Query("SELECT name FROM repo")
 		if err != nil {
 			return err
@@ -327,7 +327,7 @@ func (d *SqliteBackend) Repositories() ([]backend.Repository, error) {
 
 		return nil
 	}); err != nil {
-		return nil, wrapDbErr(err)
+		return nil, db.WrapError(err)
 	}
 
 	return repos, nil
@@ -349,10 +349,10 @@ func (d *SqliteBackend) Repository(repo string) (backend.Repository, error) {
 	}
 
 	var count int
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		return tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo)
 	}); err != nil {
-		return nil, wrapDbErr(err)
+		return nil, db.WrapError(err)
 	}
 
 	if count == 0 {
@@ -429,7 +429,7 @@ func (d *SqliteBackend) SetHidden(repo string, hidden bool) error {
 	// Delete cache
 	d.cache.Delete(repo)
 
-	return wrapDbErr(wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	return db.WrapError(d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		var count int
 		if err := tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo); err != nil {
 			return err
@@ -463,7 +463,7 @@ func (d *SqliteBackend) SetDescription(repo string, desc string) error {
 	// Delete cache
 	d.cache.Delete(repo)
 
-	return wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	return d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		var count int
 		if err := tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo); err != nil {
 			return err
@@ -485,8 +485,8 @@ func (d *SqliteBackend) SetPrivate(repo string, private bool) error {
 	// Delete cache
 	d.cache.Delete(repo)
 
-	return wrapDbErr(
-		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	return db.WrapError(
+		d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 			var count int
 			if err := tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo); err != nil {
 				return err
@@ -509,8 +509,8 @@ func (d *SqliteBackend) SetProjectName(repo string, name string) error {
 	// Delete cache
 	d.cache.Delete(repo)
 
-	return wrapDbErr(
-		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	return db.WrapError(
+		d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 			var count int
 			if err := tx.Get(&count, "SELECT COUNT(*) FROM repo WHERE name = ?", repo); err != nil {
 				return err
@@ -534,7 +534,7 @@ func (d *SqliteBackend) AddCollaborator(repo string, username string) error {
 	}
 
 	repo = utils.SanitizeRepo(repo)
-	return wrapDbErr(wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	return db.WrapError(d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		_, err := tx.Exec(`INSERT INTO collab (user_id, repo_id, updated_at)
 			VALUES (
 			(SELECT id FROM user WHERE username = ?),
@@ -552,13 +552,13 @@ func (d *SqliteBackend) AddCollaborator(repo string, username string) error {
 func (d *SqliteBackend) Collaborators(repo string) ([]string, error) {
 	repo = utils.SanitizeRepo(repo)
 	var users []string
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		return tx.Select(&users, `SELECT user.username FROM user
 			INNER JOIN collab ON user.id = collab.user_id
 			INNER JOIN repo ON repo.id = collab.repo_id
 			WHERE repo.name = ?`, repo)
 	}); err != nil {
-		return nil, wrapDbErr(err)
+		return nil, db.WrapError(err)
 	}
 
 	return users, nil
@@ -570,13 +570,13 @@ func (d *SqliteBackend) Collaborators(repo string) ([]string, error) {
 func (d *SqliteBackend) IsCollaborator(repo string, username string) (bool, error) {
 	repo = utils.SanitizeRepo(repo)
 	var count int
-	if err := wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 		return tx.Get(&count, `SELECT COUNT(*) FROM user
 			INNER JOIN collab ON user.id = collab.user_id
 			INNER JOIN repo ON repo.id = collab.repo_id
 			WHERE repo.name = ? AND user.username = ?`, repo, username)
 	}); err != nil {
-		return false, wrapDbErr(err)
+		return false, db.WrapError(err)
 	}
 
 	return count > 0, nil
@@ -587,8 +587,8 @@ func (d *SqliteBackend) IsCollaborator(repo string, username string) (bool, erro
 // It implements backend.Backend.
 func (d *SqliteBackend) RemoveCollaborator(repo string, username string) error {
 	repo = utils.SanitizeRepo(repo)
-	return wrapDbErr(
-		wrapTx(d.db, d.ctx, func(tx *sqlx.Tx) error {
+	return db.WrapError(
+		d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
 			_, err := tx.Exec(`DELETE FROM collab
 			WHERE user_id = (SELECT id FROM user WHERE username = ?)
 			AND repo_id = (SELECT id FROM repo WHERE name = ?)`, username, repo)

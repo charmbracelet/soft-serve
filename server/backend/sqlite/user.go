@@ -5,15 +5,15 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/utils"
-	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/ssh"
 )
 
 // User represents a user.
 type User struct {
 	username string
-	db       *sqlx.DB
+	db       *db.DB
 }
 
 var _ backend.User = (*User)(nil)
@@ -23,7 +23,7 @@ var _ backend.User = (*User)(nil)
 // It implements backend.User.
 func (u *User) IsAdmin() bool {
 	var admin bool
-	if err := wrapTx(u.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := u.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		return tx.Get(&admin, "SELECT admin FROM user WHERE username = ?", u.username)
 	}); err != nil {
 		return false
@@ -37,7 +37,7 @@ func (u *User) IsAdmin() bool {
 // It implements backend.User.
 func (u *User) PublicKeys() []ssh.PublicKey {
 	var keys []ssh.PublicKey
-	if err := wrapTx(u.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := u.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		var keyStrings []string
 		if err := tx.Select(&keyStrings, `SELECT public_key
 			FROM public_key
@@ -142,8 +142,8 @@ func (d *SqliteBackend) AddPublicKey(username string, pk ssh.PublicKey) error {
 		return err
 	}
 
-	return wrapDbErr(
-		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	return db.WrapError(
+		d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 			var userID int
 			if err := tx.Get(&userID, "SELECT id FROM user WHERE username = ?", username); err != nil {
 				return err
@@ -166,7 +166,7 @@ func (d *SqliteBackend) CreateUser(username string, opts backend.UserOptions) (b
 	}
 
 	var user *User
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		stmt, err := tx.Prepare("INSERT INTO user (username, admin, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP);")
 		if err != nil {
 			return err
@@ -205,7 +205,7 @@ func (d *SqliteBackend) CreateUser(username string, opts backend.UserOptions) (b
 		}
 		return nil
 	}); err != nil {
-		return nil, wrapDbErr(err)
+		return nil, db.WrapError(err)
 	}
 
 	return user, nil
@@ -220,8 +220,8 @@ func (d *SqliteBackend) DeleteUser(username string) error {
 		return err
 	}
 
-	return wrapDbErr(
-		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	return db.WrapError(
+		d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 			_, err := tx.Exec("DELETE FROM user WHERE username = ?", username)
 			return err
 		}),
@@ -232,8 +232,8 @@ func (d *SqliteBackend) DeleteUser(username string) error {
 //
 // It implements backend.Backend.
 func (d *SqliteBackend) RemovePublicKey(username string, pk ssh.PublicKey) error {
-	return wrapDbErr(
-		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	return db.WrapError(
+		d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 			_, err := tx.Exec(`DELETE FROM public_key
 			WHERE user_id = (SELECT id FROM user WHERE username = ?)
 			AND public_key = ?;`, username, backend.MarshalAuthorizedKey(pk))
@@ -250,7 +250,7 @@ func (d *SqliteBackend) ListPublicKeys(username string) ([]ssh.PublicKey, error)
 	}
 
 	keys := make([]ssh.PublicKey, 0)
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		var keyStrings []string
 		if err := tx.Select(&keyStrings, `SELECT public_key
 			FROM public_key
@@ -269,7 +269,7 @@ func (d *SqliteBackend) ListPublicKeys(username string) ([]ssh.PublicKey, error)
 
 		return nil
 	}); err != nil {
-		return nil, wrapDbErr(err)
+		return nil, db.WrapError(err)
 	}
 
 	return keys, nil
@@ -284,8 +284,8 @@ func (d *SqliteBackend) SetUsername(username string, newUsername string) error {
 		return err
 	}
 
-	return wrapDbErr(
-		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	return db.WrapError(
+		d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 			_, err := tx.Exec("UPDATE user SET username = ? WHERE username = ?", newUsername, username)
 			return err
 		}),
@@ -301,8 +301,8 @@ func (d *SqliteBackend) SetAdmin(username string, admin bool) error {
 		return err
 	}
 
-	return wrapDbErr(
-		wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	return db.WrapError(
+		d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 			_, err := tx.Exec("UPDATE user SET admin = ? WHERE username = ?", admin, username)
 			return err
 		}),
@@ -318,10 +318,10 @@ func (d *SqliteBackend) User(username string) (backend.User, error) {
 		return nil, err
 	}
 
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		return tx.Get(&username, "SELECT username FROM user WHERE username = ?", username)
 	}); err != nil {
-		return nil, wrapDbErr(err)
+		return nil, db.WrapError(err)
 	}
 
 	return &User{
@@ -335,13 +335,13 @@ func (d *SqliteBackend) User(username string) (backend.User, error) {
 // It implements backend.Backend.
 func (d *SqliteBackend) UserByPublicKey(pk ssh.PublicKey) (backend.User, error) {
 	var username string
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		return tx.Get(&username, `SELECT user.username
 			FROM public_key
 			INNER JOIN user ON user.id = public_key.user_id
 			WHERE public_key.public_key = ?;`, backend.MarshalAuthorizedKey(pk))
 	}); err != nil {
-		return nil, wrapDbErr(err)
+		return nil, db.WrapError(err)
 	}
 
 	return &User{
@@ -355,10 +355,10 @@ func (d *SqliteBackend) UserByPublicKey(pk ssh.PublicKey) (backend.User, error) 
 // It implements backend.Backend.
 func (d *SqliteBackend) Users() ([]string, error) {
 	var users []string
-	if err := wrapTx(d.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		return tx.Select(&users, "SELECT username FROM user")
 	}); err != nil {
-		return nil, wrapDbErr(err)
+		return nil, db.WrapError(err)
 	}
 
 	return users, nil

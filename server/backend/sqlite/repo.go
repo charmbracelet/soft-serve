@@ -10,7 +10,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/jmoiron/sqlx"
+	"github.com/charmbracelet/soft-serve/server/db"
 )
 
 var _ backend.Repository = (*Repo)(nil)
@@ -19,7 +19,7 @@ var _ backend.Repository = (*Repo)(nil)
 type Repo struct {
 	name string
 	path string
-	db   *sqlx.DB
+	db   *db.DB
 
 	// cache
 	// updatedAt is cached in "last-modified" file.
@@ -42,7 +42,7 @@ func (r *Repo) Description() string {
 	}
 
 	var desc string
-	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := r.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		return tx.Get(&desc, "SELECT description FROM repo WHERE name = ?", r.name)
 	}); err != nil {
 		return ""
@@ -63,7 +63,7 @@ func (r *Repo) IsMirror() bool {
 	}
 
 	var mirror bool
-	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := r.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		return tx.Get(&mirror, "SELECT mirror FROM repo WHERE name = ?", r.name)
 	}); err != nil {
 		return false
@@ -84,7 +84,7 @@ func (r *Repo) IsPrivate() bool {
 	}
 
 	var private bool
-	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := r.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		return tx.Get(&private, "SELECT private FROM repo WHERE name = ?", r.name)
 	}); err != nil {
 		return false
@@ -119,7 +119,7 @@ func (r *Repo) ProjectName() string {
 	}
 
 	var name string
-	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := r.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		return tx.Get(&name, "SELECT project_name FROM repo WHERE name = ?", r.name)
 	}); err != nil {
 		return ""
@@ -140,7 +140,7 @@ func (r *Repo) IsHidden() bool {
 	}
 
 	var hidden bool
-	if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
+	if err := r.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 		return tx.Get(&hidden, "SELECT hidden FROM repo WHERE name = ?", r.name)
 	}); err != nil {
 		return false
@@ -170,7 +170,7 @@ func (r *Repo) UpdatedAt() time.Time {
 	}
 
 	if updatedAt.IsZero() {
-		if err := wrapTx(r.db, context.Background(), func(tx *sqlx.Tx) error {
+		if err := r.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
 			return tx.Get(&updatedAt, "SELECT updated_at FROM repo WHERE name = ?", r.name)
 		}); err != nil {
 			return time.Time{}
