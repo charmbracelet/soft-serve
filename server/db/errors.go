@@ -11,6 +11,9 @@ import (
 var (
 	// ErrDuplicateKey is a constraint violation error.
 	ErrDuplicateKey = errors.New("duplicate key value violates table constraint")
+
+	// ErrRecordNotFound is returned when a record is not found.
+	ErrRecordNotFound = errors.New("record not found")
 )
 
 // WrapError is a convenient function that unite various database driver
@@ -18,7 +21,7 @@ var (
 func WrapError(err error) error {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return err
+			return ErrRecordNotFound
 		}
 		// Handle sqlite constraint error.
 		if liteErr, ok := err.(*sqlite.Error); ok {
