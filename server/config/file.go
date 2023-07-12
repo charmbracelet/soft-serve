@@ -79,6 +79,15 @@ stats:
   # The address on which the stats server will listen.
   listen_addr: "{{ .Stats.ListenAddr }}"
 
+# The database configuration.
+db:
+  # The database driver to use.
+  # Valid values are "sqlite3", "sqlite", "postgres", and "mysql".
+  driver: "{{ .DB.Driver }}"
+  # The database data source name.
+  # This is driver specific and can be a file path or connection string.
+  data_source: "{{ .DB.DataSource }}"
+
 # Additional admin keys.
 #initial_admin_keys:
 #  - "ssh-rsa AAAAB3NzaC1yc2..."

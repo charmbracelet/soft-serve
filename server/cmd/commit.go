@@ -24,11 +24,12 @@ func commitCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			_, be, _ := fromContext(cmd)
 			repoName := args[0]
 			commitSHA := args[1]
 
-			rr, err := cfg.Backend.Repository(repoName)
+			rr, err := be.Repository(ctx, repoName)
 			if err != nil {
 				return err
 			}

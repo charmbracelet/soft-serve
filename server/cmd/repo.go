@@ -40,9 +40,10 @@ func repoCommand() *cobra.Command {
 			Args:              cobra.ExactArgs(1),
 			PersistentPreRunE: checkIfReadable,
 			RunE: func(cmd *cobra.Command, args []string) error {
-				cfg, _ := fromContext(cmd)
+				ctx := cmd.Context()
+				_, be, _ := fromContext(cmd)
 				rn := args[0]
-				rr, err := cfg.Backend.Repository(rn)
+				rr, err := be.Repository(ctx, rn)
 				if err != nil {
 					return err
 				}

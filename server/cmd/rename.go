@@ -10,10 +10,11 @@ func renameCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			_, be, _ := fromContext(cmd)
 			oldName := args[0]
 			newName := args[1]
-			if err := cfg.Backend.RenameRepository(oldName, newName); err != nil {
+			if err := be.RenameRepository(ctx, oldName, newName); err != nil {
 				return err
 			}
 			return nil

@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/prometheus/client_golang/prometheus"
@@ -50,7 +51,7 @@ type GitDaemon struct {
 	finished chan struct{}
 	conns    connections
 	cfg      *config.Config
-	be       backend.Backend
+	be       *backend.Backend
 	wg       sync.WaitGroup
 	once     sync.Once
 	logger   *log.Logger
@@ -227,8 +228,8 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			}
 		}
 
-		be := d.be.WithContext(ctx)
-		if !be.AllowKeyless() {
+		be := d.be
+		if !be.AllowKeyless(ctx) {
 			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
@@ -247,13 +248,13 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		if _, err := d.be.Repository(repo); err != nil {
+		if _, err := d.be.Repository(ctx, repo); err != nil {
 			d.fatal(c, git.ErrInvalidRepo)
 			return
 		}
 
-		auth := be.AccessLevel(name, "")
-		if auth < backend.ReadOnlyAccess {
+		auth := be.AccessLevel(ctx, name, "")
+		if auth < store.ReadOnlyAccess {
 			d.fatal(c, git.ErrNotAuthed)
 			return
 		}

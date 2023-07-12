@@ -17,6 +17,8 @@ import (
 	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -98,7 +100,7 @@ var (
 type SSHServer struct {
 	srv    *ssh.Server
 	cfg    *config.Config
-	be     backend.Backend
+	be     *backend.Backend
 	ctx    context.Context
 	logger *log.Logger
 }
@@ -120,9 +122,9 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		rm.MiddlewareWithLogger(
 			logger,
 			// BubbleTea middleware.
-			bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256),
+			bm.MiddlewareWithProgramHandler(SessionHandler(s.be, cfg), termenv.ANSI256),
 			// CLI middleware.
-			cm.Middleware(cfg, logger),
+			cm.Middleware(s.be, cfg, logger),
 			// Git middleware.
 			s.Middleware(cfg),
 			// Logging middleware.
@@ -187,21 +189,21 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 		return false
 	}
 
-	ak := backend.MarshalAuthorizedKey(pk)
+	ak := sshutils.MarshalAuthorizedKey(pk)
 	defer func(allowed *bool) {
 		publicKeyCounter.WithLabelValues(strconv.FormatBool(*allowed)).Inc()
 	}(&allowed)
 
-	ac := s.cfg.Backend.AccessLevelByPublicKey("", pk)
+	ac := s.be.AccessLevelByPublicKey(ctx, "", pk)
 	s.logger.Debugf("access level for %q: %s", ak, ac)
-	allowed = ac >= backend.ReadWriteAccess
+	allowed = ac >= store.ReadWriteAccess
 	return
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
 // This is used after all public key authentication has failed.
 func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
-	ac := s.cfg.Backend.AllowKeyless()
+	ac := s.be.AllowKeyless(ctx)
 	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
 	return ac
 }
@@ -217,15 +219,16 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 			func() {
 				start := time.Now()
 				cmdLine := s.Command()
-				ctx := s.Context()
-				be := ss.be.WithContext(ctx)
+				var ctx context.Context = s.Context()
+				be := ss.be
+				ctx = backend.WithContext(ctx, be)
 
 				if len(cmdLine) >= 2 && strings.HasPrefix(cmdLine[0], "git") {
 					// repo should be in the form of "repo.git"
 					name := utils.SanitizeRepo(cmdLine[1])
 					pk := s.PublicKey()
-					ak := backend.MarshalAuthorizedKey(pk)
-					access := cfg.Backend.AccessLevelByPublicKey(name, pk)
+					ak := sshutils.MarshalAuthorizedKey(pk)
+					access := ss.be.AccessLevelByPublicKey(ctx, name, pk)
 					// git bare repositories should end in ".git"
 					// https://git-scm.com/docs/gitrepository-layout
 					repo := name + ".git"
@@ -240,7 +243,7 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 						"SOFT_SERVE_REPO_NAME=" + name,
 						"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
 						"SOFT_SERVE_PUBLIC_KEY=" + ak,
-						"SOFT_SERVE_USERNAME=" + ctx.User(),
+						"SOFT_SERVE_USERNAME=" + s.User(),
 					}
 
 					// Add ssh session & config environ
@@ -265,12 +268,12 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 						defer func() {
 							receivePackSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
 						}()
-						if access < backend.ReadWriteAccess {
+						if access < store.ReadWriteAccess {
 							sshFatal(s, git.ErrNotAuthed)
 							return
 						}
-						if _, err := be.Repository(name); err != nil {
-							if _, err := be.CreateRepository(name, backend.RepositoryOptions{Private: false}); err != nil {
+						if _, err := be.Repository(ctx, name); err != nil {
+							if _, err := be.CreateRepository(ctx, name, store.RepositoryOptions{Private: false}); err != nil {
 								log.Errorf("failed to create repo: %s", err)
 								sshFatal(s, err)
 								return
@@ -289,7 +292,7 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 						receivePackCounter.WithLabelValues(name).Inc()
 						return
 					case git.UploadPackService, git.UploadArchiveService:
-						if access < backend.ReadOnlyAccess {
+						if access < store.ReadOnlyAccess {
 							sshFatal(s, git.ErrNotAuthed)
 							return
 						}

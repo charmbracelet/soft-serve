@@ -13,8 +13,8 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/spf13/cobra"
 )
@@ -49,15 +49,16 @@ var (
 			logger.SetOutput(f)
 			ctx = log.WithContext(ctx, logger)
 			cmd.SetContext(ctx)
+			db, err := db.Open(cfg.DB.Driver, cfg.DB.DataSource)
+			if err != nil {
+				return fmt.Errorf("open database: %w", err)
+			}
 
 			// Set up the backend
 			// TODO: support other backends
-			sb, err := sqlite.NewSqliteBackend(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to create sqlite backend: %w", err)
-			}
-
-			cfg = cfg.WithBackend(sb)
+			sb := backend.New(ctx, cfg, db)
+			ctx = backend.WithContext(ctx, sb)
+			cmd.SetContext(ctx)
 
 			return nil
 		},
@@ -69,8 +70,7 @@ var (
 
 	hooksRunE = func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
-		cfg := config.FromContext(ctx)
-		hks := cfg.Backend.(backend.Hooks)
+		hks := backend.FromContext(ctx)
 
 		// This is set in the server before invoking git-receive-pack/git-upload-pack
 		repoName := os.Getenv("SOFT_SERVE_REPO_NAME")
@@ -83,7 +83,7 @@ var (
 		customHookPath := filepath.Join(filepath.Dir(configPath), "hooks", cmdName)
 
 		var buf bytes.Buffer
-		opts := make([]backend.HookArg, 0)
+		opts := make([]hooks.HookArg, 0)
 
 		switch cmdName {
 		case hooks.PreReceiveHook, hooks.PostReceiveHook:
@@ -94,7 +94,7 @@ var (
 				if len(fields) != 3 {
 					return fmt.Errorf("invalid hook input: %s", scanner.Text())
 				}
-				opts = append(opts, backend.HookArg{
+				opts = append(opts, hooks.HookArg{
 					OldSha:  fields[0],
 					NewSha:  fields[1],
 					RefName: fields[2],
@@ -103,22 +103,22 @@ var (
 
 			switch cmdName {
 			case hooks.PreReceiveHook:
-				hks.PreReceive(stdout, stderr, repoName, opts)
+				hks.PreReceive(ctx, stdout, stderr, repoName, opts)
 			case hooks.PostReceiveHook:
-				hks.PostReceive(stdout, stderr, repoName, opts)
+				hks.PostReceive(ctx, stdout, stderr, repoName, opts)
 			}
 		case hooks.UpdateHook:
 			if len(args) != 3 {
 				return fmt.Errorf("invalid update hook input: %s", args)
 			}
 
-			hks.Update(stdout, stderr, repoName, backend.HookArg{
+			hks.Update(ctx, stdout, stderr, repoName, hooks.HookArg{
 				OldSha:  args[0],
 				NewSha:  args[1],
 				RefName: args[2],
 			})
 		case hooks.PostUpdateHook:
-			hks.PostUpdate(stdout, stderr, repoName, args...)
+			hks.PostUpdate(ctx, stdout, stderr, repoName, args...)
 		}
 
 		// Custom hooks

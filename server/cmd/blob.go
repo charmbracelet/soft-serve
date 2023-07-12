@@ -34,7 +34,8 @@ func blobCommand() *cobra.Command {
 		Args:              cobra.RangeArgs(1, 3),
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			_, be, _ := fromContext(cmd)
 			rn := args[0]
 			ref := ""
 			fp := ""
@@ -46,7 +47,7 @@ func blobCommand() *cobra.Command {
 				fp = args[2]
 			}
 
-			repo, err := cfg.Backend.Repository(rn)
+			repo, err := be.Repository(ctx, rn)
 			if err != nil {
 				return err
 			}

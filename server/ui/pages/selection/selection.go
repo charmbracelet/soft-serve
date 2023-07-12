@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/code"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
@@ -187,12 +188,14 @@ func (s *Selection) Init() tea.Cmd {
 		return nil
 	}
 
+	ctx := s.common.Context()
+	be := s.common.Backend()
 	pk := s.common.PublicKey()
-	if pk == nil && !cfg.Backend.AllowKeyless() {
+	if pk == nil && !be.AllowKeyless(ctx) {
 		return nil
 	}
 
-	repos, err := cfg.Backend.Repositories()
+	repos, err := be.Repositories(ctx)
 	if err != nil {
 		return common.ErrorCmd(err)
 	}
@@ -210,8 +213,8 @@ func (s *Selection) Init() tea.Cmd {
 		if r.IsHidden() {
 			continue
 		}
-		al := cfg.Backend.AccessLevelByPublicKey(r.Name(), pk)
-		if al >= backend.ReadOnlyAccess {
+		al := be.AccessLevelByPublicKey(ctx, r.Name(), pk)
+		if al >= store.ReadOnlyAccess {
 			item, err := NewItem(r, cfg)
 			if err != nil {
 				s.common.Logger.Debugf("ui: failed to create item for %s: %v", r.Name(), err)

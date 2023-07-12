@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/ui/keymap"
 	"github.com/charmbracelet/soft-serve/server/ui/styles"
@@ -62,13 +63,19 @@ func (c *Common) SetSize(width, height int) {
 	c.Height = height
 }
 
+// Context returns the context.
+func (c *Common) Context() context.Context {
+	return c.ctx
+}
+
 // Config returns the server config.
 func (c *Common) Config() *config.Config {
-	v := c.ctx.Value(ConfigKey)
-	if cfg, ok := v.(*config.Config); ok {
-		return cfg
-	}
-	return nil
+	return config.FromContext(c.ctx)
+}
+
+// Backend returns the Soft Serve backend.
+func (c *Common) Backend() *backend.Backend {
+	return backend.FromContext(c.ctx)
 }
 
 // Repo returns the repository.

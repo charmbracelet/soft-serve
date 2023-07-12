@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/errors"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/ui"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/ssh"
@@ -35,19 +37,22 @@ var tuiSessionDuration = promauto.NewCounterVec(prometheus.CounterOpts{
 }, []string{"repo", "term"})
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
-func SessionHandler(cfg *config.Config) bm.ProgramHandler {
+func SessionHandler(be *backend.Backend, cfg *config.Config) bm.ProgramHandler {
 	return func(s ssh.Session) *tea.Program {
 		pty, _, active := s.Pty()
 		if !active {
 			return nil
 		}
 
+		var ctx context.Context = s.Context()
+		ctx = backend.WithContext(ctx, be)
+		ctx = config.WithContext(ctx, cfg)
 		cmd := s.Command()
 		initialRepo := ""
 		if len(cmd) == 1 {
 			initialRepo = cmd[0]
-			auth := cfg.Backend.AccessLevelByPublicKey(initialRepo, s.PublicKey())
-			if auth < backend.ReadOnlyAccess {
+			auth := be.AccessLevelByPublicKey(ctx, initialRepo, s.PublicKey())
+			if auth < store.ReadOnlyAccess {
 				wish.Fatalln(s, errors.ErrUnauthorized)
 				return nil
 			}
@@ -56,7 +61,7 @@ func SessionHandler(cfg *config.Config) bm.ProgramHandler {
 		envs := &sessionEnv{s}
 		output := termenv.NewOutput(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
 		logger := NewDefaultLogger()
-		ctx := log.WithContext(s.Context(), logger)
+		ctx = log.WithContext(ctx, logger)
 		c := common.NewCommon(ctx, output, pty.Window.Width, pty.Window.Height)
 		c.SetValue(common.ConfigKey, cfg)
 		m := ui.New(c, initialRepo)

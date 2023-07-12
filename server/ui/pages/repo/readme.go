@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/code"
 )
@@ -21,7 +22,7 @@ type Readme struct {
 	common     common.Common
 	code       *code.Code
 	ref        RefMsg
-	repo       backend.Repository
+	repo       store.Repository
 	readmePath string
 }
 

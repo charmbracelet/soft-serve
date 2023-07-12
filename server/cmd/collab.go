@@ -27,11 +27,12 @@ func collabAddCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			_, be, _ := fromContext(cmd)
 			repo := args[0]
 			username := args[1]
 
-			return cfg.Backend.AddCollaborator(repo, username)
+			return be.AddCollaborator(ctx, repo, username)
 		},
 	}
 
@@ -45,11 +46,12 @@ func collabRemoveCommand() *cobra.Command {
 		Short:             "Remove a collaborator from a repo",
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			_, be, _ := fromContext(cmd)
 			repo := args[0]
 			username := args[1]
 
-			return cfg.Backend.RemoveCollaborator(repo, username)
+			return be.RemoveCollaborator(ctx, repo, username)
 		},
 	}
 
@@ -63,9 +65,10 @@ func collabListCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			_, be, _ := fromContext(cmd)
 			repo := args[0]
-			collabs, err := cfg.Backend.Collaborators(repo)
+			collabs, err := be.Collaborators(ctx, repo)
 			if err != nil {
 				return err
 			}

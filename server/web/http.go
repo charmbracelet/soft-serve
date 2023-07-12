@@ -13,7 +13,7 @@ import (
 type HTTPServer struct {
 	ctx    context.Context
 	cfg    *config.Config
-	be     backend.Backend
+	be     *backend.Backend
 	server *http.Server
 }
 

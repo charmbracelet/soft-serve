@@ -9,7 +9,8 @@ func hiddenCommand() *cobra.Command {
 		Aliases: []string{"hide"},
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			_, be, _ := fromContext(cmd)
 			repo := args[0]
 			switch len(args) {
 			case 1:
@@ -17,7 +18,7 @@ func hiddenCommand() *cobra.Command {
 					return err
 				}
 
-				hidden, err := cfg.Backend.IsHidden(repo)
+				hidden, err := be.IsHidden(ctx, repo)
 				if err != nil {
 					return err
 				}
@@ -29,7 +30,7 @@ func hiddenCommand() *cobra.Command {
 				}
 
 				hidden := args[1] == "true"
-				if err := cfg.Backend.SetHidden(repo, hidden); err != nil {
+				if err := be.SetHidden(ctx, repo, hidden); err != nil {
 					return err
 				}
 			}

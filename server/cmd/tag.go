@@ -28,9 +28,10 @@ func tagListCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			_, be, _ := fromContext(cmd)
 			rn := strings.TrimSuffix(args[0], ".git")
-			rr, err := cfg.Backend.Repository(rn)
+			rr, err := be.Repository(ctx, rn)
 			if err != nil {
 				return err
 			}
@@ -60,9 +61,10 @@ func tagDeleteCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			_, be, _ := fromContext(cmd)
 			rn := strings.TrimSuffix(args[0], ".git")
-			rr, err := cfg.Backend.Repository(rn)
+			rr, err := be.Repository(ctx, rn)
 			if err != nil {
 				return err
 			}

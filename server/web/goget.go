@@ -36,7 +36,7 @@ Redirecting to docs at <a href="https://godoc.org/{{ .ImportRoot }}/{{ .Repo }}"
 // GoGetHandler handles go get requests.
 type GoGetHandler struct {
 	cfg *config.Config
-	be  backend.Backend
+	be  *backend.Backend
 }
 
 var _ http.Handler = (*GoGetHandler)(nil)
@@ -44,7 +44,8 @@ var _ http.Handler = (*GoGetHandler)(nil)
 func (g GoGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	repo := pattern.Path(r.Context())
 	repo = utils.SanitizeRepo(repo)
-	be := g.be.WithContext(r.Context())
+	ctx := r.Context()
+	be := g.be
 
 	// Handle go get requests.
 	//
@@ -62,7 +63,7 @@ func (g GoGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// find the repo
 		for {
-			if _, err := be.Repository(repo); err == nil {
+			if _, err := be.Repository(ctx, repo); err == nil {
 				break
 			}
 

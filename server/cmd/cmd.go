@@ -12,6 +12,8 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/errors"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -90,7 +92,7 @@ func cmdName(args []string) string {
 }
 
 // rootCommand is the root command for the server.
-func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
+func rootCommand(be *backend.Backend, cfg *config.Config, s ssh.Session) *cobra.Command {
 	cliCommandCounter.WithLabelValues(cmdName(s.Command())).Inc()
 	rootCmd := &cobra.Command{
 		Short:        "Soft Serve is a self-hostable Git server for the command line.",
@@ -129,7 +131,7 @@ func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
 		repoCommand(),
 	)
 
-	user, _ := cfg.Backend.UserByPublicKey(s.PublicKey())
+	user, _ := be.UserByPublicKey(s.Context(), s.PublicKey())
 	isAdmin := isPublicKeyAdmin(cfg, s.PublicKey()) || (user != nil && user.IsAdmin())
 	if user != nil || isAdmin {
 		if isAdmin {
@@ -149,11 +151,12 @@ func rootCommand(cfg *config.Config, s ssh.Session) *cobra.Command {
 	return rootCmd
 }
 
-func fromContext(cmd *cobra.Command) (*config.Config, ssh.Session) {
+func fromContext(cmd *cobra.Command) (*config.Config, *backend.Backend, ssh.Session) {
 	ctx := cmd.Context()
 	cfg := config.FromContext(ctx)
+	be := backend.FromContext(ctx)
 	s := ctx.Value(sessionCtxKey).(ssh.Session)
-	return cfg, s
+	return cfg, be, s
 }
 
 func checkIfReadable(cmd *cobra.Command, args []string) error {
@@ -161,10 +164,10 @@ func checkIfReadable(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		repo = args[0]
 	}
-	cfg, s := fromContext(cmd)
+	_, be, s := fromContext(cmd)
 	rn := utils.SanitizeRepo(repo)
-	auth := cfg.Backend.AccessLevelByPublicKey(rn, s.PublicKey())
-	if auth < backend.ReadOnlyAccess {
+	auth := be.AccessLevelByPublicKey(cmd.Context(), rn, s.PublicKey())
+	if auth < store.ReadOnlyAccess {
 		return errors.ErrUnauthorized
 	}
 	return nil
@@ -172,7 +175,7 @@ func checkIfReadable(cmd *cobra.Command, args []string) error {
 
 func isPublicKeyAdmin(cfg *config.Config, pk ssh.PublicKey) bool {
 	for _, k := range cfg.AdminKeys() {
-		if backend.KeysEqual(pk, k) {
+		if sshutils.KeysEqual(pk, k) {
 			return true
 		}
 	}
@@ -180,12 +183,13 @@ func isPublicKeyAdmin(cfg *config.Config, pk ssh.PublicKey) bool {
 }
 
 func checkIfAdmin(cmd *cobra.Command, _ []string) error {
-	cfg, s := fromContext(cmd)
+	ctx := cmd.Context()
+	cfg, be, s := fromContext(cmd)
 	if isPublicKeyAdmin(cfg, s.PublicKey()) {
 		return nil
 	}
 
-	user, _ := cfg.Backend.UserByPublicKey(s.PublicKey())
+	user, _ := be.UserByPublicKey(ctx, s.PublicKey())
 	if user == nil {
 		return errors.ErrUnauthorized
 	}
@@ -202,17 +206,19 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		repo = args[0]
 	}
-	cfg, s := fromContext(cmd)
+
+	ctx := cmd.Context()
+	_, be, s := fromContext(cmd)
 	rn := utils.SanitizeRepo(repo)
-	auth := cfg.Backend.AccessLevelByPublicKey(rn, s.PublicKey())
-	if auth < backend.ReadWriteAccess {
+	auth := be.AccessLevelByPublicKey(ctx, rn, s.PublicKey())
+	if auth < store.ReadWriteAccess {
 		return errors.ErrUnauthorized
 	}
 	return nil
 }
 
 // Middleware is the Soft Serve middleware that handles SSH commands.
-func Middleware(cfg *config.Config, logger *log.Logger) wish.Middleware {
+func Middleware(be *backend.Backend, cfg *config.Config, logger *log.Logger) wish.Middleware {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
 			func() {
@@ -236,13 +242,11 @@ func Middleware(cfg *config.Config, logger *log.Logger) wish.Middleware {
 				var ctx context.Context = s.Context()
 				scfg := *cfg
 				cfg = &scfg
-				be := cfg.Backend.WithContext(ctx)
-				cfg.Backend = be
 				ctx = config.WithContext(ctx, cfg)
 				ctx = backend.WithContext(ctx, be)
 				ctx = context.WithValue(ctx, sessionCtxKey, s)
 
-				rootCmd := rootCommand(cfg, s)
+				rootCmd := rootCommand(be, cfg, s)
 				rootCmd.SetArgs(args)
 				if len(args) == 0 {
 					// otherwise it'll default to os.Args, which is not what we want.

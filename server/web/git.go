@@ -18,6 +18,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -32,7 +33,7 @@ type GitRoute struct {
 	handler http.HandlerFunc
 
 	cfg    *config.Config
-	be     backend.Backend
+	be     *backend.Backend
 	logger *log.Logger
 }
 
@@ -68,7 +69,7 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 		}
 
 		if g.be != nil {
-			ctx = backend.WithContext(ctx, g.be.WithContext(ctx))
+			ctx = backend.WithContext(ctx, g.be)
 		}
 
 		if g.logger != nil {
@@ -186,32 +187,32 @@ func withAccess(fn http.HandlerFunc) http.HandlerFunc {
 		be := backend.FromContext(ctx)
 		logger := log.FromContext(ctx)
 
-		if !be.AllowKeyless() {
+		if !be.AllowKeyless(ctx) {
 			renderForbidden(w)
 			return
 		}
 
 		repo := pat.Param(r, "repo")
 		service := git.Service(pat.Param(r, "service"))
-		access := be.AccessLevel(repo, "")
+		access := be.AccessLevel(ctx, repo, "")
 
 		switch service {
 		case git.ReceivePackService:
-			if access < backend.ReadWriteAccess {
+			if access < store.ReadWriteAccess {
 				renderUnauthorized(w)
 				return
 			}
 
 			// Create the repo if it doesn't exist.
-			if _, err := be.Repository(repo); err != nil {
-				if _, err := be.CreateRepository(repo, backend.RepositoryOptions{}); err != nil {
+			if _, err := be.Repository(ctx, repo); err != nil {
+				if _, err := be.CreateRepository(ctx, repo, store.RepositoryOptions{}); err != nil {
 					logger.Error("failed to create repository", "repo", repo, "err", err)
 					renderInternalServerError(w)
 					return
 				}
 			}
 		default:
-			if access < backend.ReadOnlyAccess {
+			if access < store.ReadOnlyAccess {
 				renderUnauthorized(w)
 				return
 			}

@@ -4,16 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/charmbracelet/log"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/cron"
 	"github.com/charmbracelet/soft-serve/server/daemon"
+	"github.com/charmbracelet/soft-serve/server/db"
 	sshsrv "github.com/charmbracelet/soft-serve/server/ssh"
 	"github.com/charmbracelet/soft-serve/server/stats"
 	"github.com/charmbracelet/soft-serve/server/web"
@@ -29,7 +28,8 @@ type Server struct {
 	StatsServer *stats.StatsServer
 	Cron        *cron.CronScheduler
 	Config      *config.Config
-	Backend     backend.Backend
+	Backend     *backend.Backend
+	DB          *db.DB
 
 	logger *log.Logger
 	ctx    context.Context
@@ -42,28 +42,24 @@ type Server struct {
 // publicly writable until configured otherwise by cloning the `config` repo.
 func NewServer(ctx context.Context) (*Server, error) {
 	cfg := config.FromContext(ctx)
-
-	var err error
-	if cfg.Backend == nil {
-		sb, err := sqlite.NewSqliteBackend(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("create backend: %w", err)
-		}
-
-		cfg = cfg.WithBackend(sb)
-		ctx = backend.WithContext(ctx, sb)
+	db, err := db.Open(cfg.DB.Driver, cfg.DB.DataSource)
+	if err != nil {
+		return nil, fmt.Errorf("open database: %w", err)
 	}
 
+	be := backend.New(ctx, cfg, db)
+	ctx = backend.WithContext(ctx, be)
 	srv := &Server{
 		Cron:    cron.NewCronScheduler(ctx),
 		Config:  cfg,
-		Backend: cfg.Backend,
+		Backend: be,
+		DB:      db,
 		logger:  log.FromContext(ctx).WithPrefix("server"),
 		ctx:     ctx,
 	}
 
 	// Add cron jobs.
-	_, _ = srv.Cron.AddFunc(jobSpecs["mirror"], srv.mirrorJob())
+	_, _ = srv.Cron.AddFunc(jobSpecs["mirror"], srv.mirrorJob(be))
 
 	srv.SSHServer, err = sshsrv.NewSSHServer(ctx)
 	if err != nil {
@@ -159,9 +155,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		s.Cron.Stop()
 		return nil
 	})
-	if closer, ok := s.Backend.(io.Closer); ok {
-		defer closer.Close() // nolint: errcheck
-	}
+	defer s.DB.Close() // nolint: errcheck
 	return errg.Wait()
 }
 
@@ -176,8 +170,6 @@ func (s *Server) Close() error {
 		s.Cron.Stop()
 		return nil
 	})
-	if closer, ok := s.Backend.(io.Closer); ok {
-		defer closer.Close() // nolint: errcheck
-	}
+	defer s.DB.Close() // nolint: errcheck
 	return errg.Wait()
 }

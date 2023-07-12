@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/server/ui/components/header"
@@ -283,12 +283,15 @@ func (ui *UI) View() string {
 	)
 }
 
-func (ui *UI) openRepo(rn string) (backend.Repository, error) {
+func (ui *UI) openRepo(rn string) (store.Repository, error) {
 	cfg := ui.common.Config()
 	if cfg == nil {
 		return nil, errors.New("config is nil")
 	}
-	repos, err := cfg.Backend.Repositories()
+
+	ctx := ui.common.Context()
+	be := ui.common.Backend()
+	repos, err := be.Repositories(ctx)
 	if err != nil {
 		ui.common.Logger.Debugf("ui: failed to list repos: %v", err)
 		return nil, err

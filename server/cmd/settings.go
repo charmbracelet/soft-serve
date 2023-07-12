@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/spf13/cobra"
 )
 
@@ -21,13 +21,14 @@ func settingsCommand() *cobra.Command {
 			Args:              cobra.RangeArgs(0, 1),
 			PersistentPreRunE: checkIfAdmin,
 			RunE: func(cmd *cobra.Command, args []string) error {
-				cfg, _ := fromContext(cmd)
+				ctx := cmd.Context()
+				_, be, _ := fromContext(cmd)
 				switch len(args) {
 				case 0:
-					cmd.Println(cfg.Backend.AllowKeyless())
+					cmd.Println(be.AllowKeyless(ctx))
 				case 1:
 					v, _ := strconv.ParseBool(args[0])
-					if err := cfg.Backend.SetAllowKeyless(v); err != nil {
+					if err := be.SetAllowKeyless(ctx, v); err != nil {
 						return err
 					}
 				}
@@ -37,7 +38,7 @@ func settingsCommand() *cobra.Command {
 		},
 	)
 
-	als := []string{backend.NoAccess.String(), backend.ReadOnlyAccess.String(), backend.ReadWriteAccess.String(), backend.AdminAccess.String()}
+	als := []string{store.NoAccess.String(), store.ReadOnlyAccess.String(), store.ReadWriteAccess.String(), store.AdminAccess.String()}
 	cmd.AddCommand(
 		&cobra.Command{
 			Use:               "anon-access [ACCESS_LEVEL]",
@@ -46,16 +47,17 @@ func settingsCommand() *cobra.Command {
 			ValidArgs:         als,
 			PersistentPreRunE: checkIfAdmin,
 			RunE: func(cmd *cobra.Command, args []string) error {
-				cfg, _ := fromContext(cmd)
+				ctx := cmd.Context()
+				_, be, _ := fromContext(cmd)
 				switch len(args) {
 				case 0:
-					cmd.Println(cfg.Backend.AnonAccess())
+					cmd.Println(be.AnonAccess(ctx))
 				case 1:
-					al := backend.ParseAccessLevel(args[0])
+					al := store.ParseAccessLevel(args[0])
 					if al < 0 {
 						return fmt.Errorf("invalid access level: %s. Please choose one of the following: %s", args[0], als)
 					}
-					if err := cfg.Backend.SetAnonAccess(al); err != nil {
+					if err := be.SetAnonAccess(ctx, al); err != nil {
 						return err
 					}
 				}

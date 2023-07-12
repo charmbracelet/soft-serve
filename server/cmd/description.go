@@ -13,7 +13,8 @@ func descriptionCommand() *cobra.Command {
 		Short:   "Set or get the description for a repository",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, _ := fromContext(cmd)
+			ctx := cmd.Context()
+			_, be, _ := fromContext(cmd)
 			rn := strings.TrimSuffix(args[0], ".git")
 			switch len(args) {
 			case 1:
@@ -21,7 +22,7 @@ func descriptionCommand() *cobra.Command {
 					return err
 				}
 
-				desc, err := cfg.Backend.Description(rn)
+				desc, err := be.Description(ctx, rn)
 				if err != nil {
 					return err
 				}
@@ -31,7 +32,7 @@ func descriptionCommand() *cobra.Command {
 				if err := checkIfCollab(cmd, args); err != nil {
 					return err
 				}
-				if err := cfg.Backend.SetDescription(rn, strings.Join(args[1:], " ")); err != nil {
+				if err := be.SetDescription(ctx, rn, strings.Join(args[1:], " ")); err != nil {
 					return err
 				}
 			}

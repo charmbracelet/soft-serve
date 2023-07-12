@@ -13,8 +13,10 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	gitm "github.com/gogs/git-module"
 	"github.com/spf13/cobra"
@@ -39,15 +41,15 @@ var (
 			bindAddr := os.Getenv("SOFT_SERVE_BIND_ADDRESS")
 			cfg := config.DefaultConfig()
 			ctx = config.WithContext(ctx, cfg)
-			sb, err := sqlite.NewSqliteBackend(ctx)
+			db, err := db.Open(cfg.DB.Driver, cfg.DB.DataSource)
 			if err != nil {
-				return fmt.Errorf("failed to create sqlite backend: %w", err)
+				return fmt.Errorf("open database: %w", err)
 			}
 
-			// FIXME: Admin user gets created when the database is created.
-			sb.DeleteUser("admin") // nolint: errcheck
+			sb := backend.New(ctx, cfg, db)
 
-			cfg = cfg.WithBackend(sb)
+			// FIXME: Admin user gets created when the database is created.
+			sb.DeleteUser(ctx, "admin") // nolint: errcheck
 
 			// Set SSH listen address
 			logger.Info("Setting SSH listen address...")
@@ -127,12 +129,12 @@ var (
 
 			// Set server settings
 			logger.Info("Setting server settings...")
-			if cfg.Backend.SetAllowKeyless(ocfg.AllowKeyless) != nil {
+			if sb.SetAllowKeyless(ctx, ocfg.AllowKeyless) != nil {
 				fmt.Fprintf(os.Stderr, "failed to set allow keyless\n")
 			}
-			anon := backend.ParseAccessLevel(ocfg.AnonAccess)
+			anon := store.ParseAccessLevel(ocfg.AnonAccess)
 			if anon >= 0 {
-				if err := sb.SetAnonAccess(anon); err != nil {
+				if err := sb.SetAnonAccess(ctx, anon); err != nil {
 					fmt.Fprintf(os.Stderr, "failed to set anon access: %s\n", err)
 				}
 			}
@@ -169,7 +171,7 @@ var (
 						return fmt.Errorf("failed to copy repo: %w", err)
 					}
 
-					if _, err := sb.CreateRepository(dir.Name(), backend.RepositoryOptions{}); err != nil {
+					if _, err := sb.CreateRepository(ctx, dir.Name(), store.RepositoryOptions{}); err != nil {
 						fmt.Fprintf(os.Stderr, "failed to create repository: %s\n", err)
 					}
 				}
@@ -231,7 +233,7 @@ var (
 					}
 
 					// Create `.soft-serve` repository and add readme
-					if _, err := sb.CreateRepository(".soft-serve", backend.RepositoryOptions{
+					if _, err := sb.CreateRepository(ctx, ".soft-serve", store.RepositoryOptions{
 						ProjectName: "Home",
 						Description: "Soft Serve home repository",
 						Hidden:      true,
@@ -252,20 +254,20 @@ var (
 					r.Private = false
 				}
 
-				if err := sb.SetProjectName(repo, name); err != nil {
+				if err := sb.SetProjectName(ctx, repo, name); err != nil {
 					logger.Errorf("failed to set repo name to %s: %s", repo, err)
 				}
 
-				if err := sb.SetDescription(repo, r.Note); err != nil {
+				if err := sb.SetDescription(ctx, repo, r.Note); err != nil {
 					logger.Errorf("failed to set repo description to %s: %s", repo, err)
 				}
 
-				if err := sb.SetPrivate(repo, r.Private); err != nil {
+				if err := sb.SetPrivate(ctx, repo, r.Private); err != nil {
 					logger.Errorf("failed to set repo private to %s: %s", repo, err)
 				}
 
 				for _, collab := range r.Collabs {
-					if err := sb.AddCollaborator(repo, collab); err != nil {
+					if err := sb.AddCollaborator(ctx, repo, collab); err != nil {
 						logger.Errorf("failed to add repo collab to %s: %s", repo, err)
 					}
 				}
@@ -276,11 +278,11 @@ var (
 			for _, user := range ocfg.Users {
 				keys := make(map[string]ssh.PublicKey)
 				for _, key := range user.PublicKeys {
-					pk, _, err := backend.ParseAuthorizedKey(key)
+					pk, _, err := sshutils.ParseAuthorizedKey(key)
 					if err != nil {
 						continue
 					}
-					ak := backend.MarshalAuthorizedKey(pk)
+					ak := sshutils.MarshalAuthorizedKey(pk)
 					keys[ak] = pk
 				}
 
@@ -292,7 +294,7 @@ var (
 				username := strings.ToLower(user.Name)
 				username = strings.ReplaceAll(username, " ", "-")
 				logger.Infof("Creating user %q", username)
-				if _, err := sb.CreateUser(username, backend.UserOptions{
+				if _, err := sb.CreateUser(ctx, username, store.UserOptions{
 					Admin:      user.Admin,
 					PublicKeys: pubkeys,
 				}); err != nil {
@@ -300,7 +302,7 @@ var (
 				}
 
 				for _, repo := range user.CollabRepos {
-					if err := sb.AddCollaborator(repo, username); err != nil {
+					if err := sb.AddCollaborator(ctx, repo, username); err != nil {
 						logger.Errorf("failed to add user collab to %s: %s\n", repo, err)
 					}
 				}

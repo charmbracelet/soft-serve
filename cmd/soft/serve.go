@@ -11,10 +11,15 @@ import (
 
 	"github.com/charmbracelet/soft-serve/server"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/db/migrate"
 	"github.com/spf13/cobra"
 )
 
 var (
+	autoMigrate bool
+	rollback    bool
+
 	serveCmd = &cobra.Command{
 		Use:   "serve",
 		Short: "Start the server",
@@ -44,6 +49,21 @@ var (
 				os.MkdirAll(logPath, os.ModePerm) // nolint: errcheck
 			}
 
+			db, err := db.Open(cfg.DB.Driver, cfg.DB.DataSource)
+			if err != nil {
+				return fmt.Errorf("open database: %w", err)
+			}
+
+			if rollback {
+				if err := migrate.Rollback(ctx, db); err != nil {
+					return fmt.Errorf("rollback error: %w", err)
+				}
+			} else if autoMigrate {
+				if err := migrate.Migrate(ctx, db); err != nil {
+					return fmt.Errorf("migration error: %w", err)
+				}
+			}
+
 			s, err := server.NewServer(ctx)
 			if err != nil {
 				return fmt.Errorf("start server: %w", err)
@@ -71,3 +91,9 @@ var (
 		},
 	}
 )
+
+func init() {
+	serveCmd.Flags().BoolVarP(&autoMigrate, "auto-migrate", "", false, "automatically run database migrations")
+	serveCmd.Flags().BoolVarP(&rollback, "rollback", "", false, "rollback the last database migration")
+	rootCmd.AddCommand(serveCmd)
+}
