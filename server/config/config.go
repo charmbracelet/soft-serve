@@ -272,14 +272,20 @@ func WriteConfig(path string, cfg *Config) error {
 	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644) // nolint: errcheck
 }
 
+// DataPath returns the path to the data directory.
+func DataPath() string {
+	dp := os.Getenv("SOFT_SERVE_DATA_PATH")
+	if dp == "" {
+		dp = "data"
+	}
+
+	return dp
+}
+
 // DefaultConfig returns a Config with the values populated with the defaults
 // or specified environment variables.
 func DefaultConfig() *Config {
-	dataPath := os.Getenv("SOFT_SERVE_DATA_PATH")
-	if dataPath == "" {
-		dataPath = "data"
-	}
-
+	dataPath := DataPath()
 	cp := filepath.Join(dataPath, "config.yaml")
 	cfg, err := parseConfig(cp)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {

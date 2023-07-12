@@ -7,7 +7,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
-	. "github.com/charmbracelet/soft-serve/internal/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/errors"
@@ -37,7 +36,7 @@ var tuiSessionDuration = promauto.NewCounterVec(prometheus.CounterOpts{
 }, []string{"repo", "term"})
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
-func SessionHandler(be *backend.Backend, cfg *config.Config) bm.ProgramHandler {
+func SessionHandler(be *backend.Backend, cfg *config.Config, logger *log.Logger) bm.ProgramHandler {
 	return func(s ssh.Session) *tea.Program {
 		pty, _, active := s.Pty()
 		if !active {
@@ -60,8 +59,7 @@ func SessionHandler(be *backend.Backend, cfg *config.Config) bm.ProgramHandler {
 
 		envs := &sessionEnv{s}
 		output := termenv.NewOutput(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
-		logger := NewDefaultLogger()
-		ctx = log.WithContext(ctx, logger)
+		ctx = log.WithContext(ctx, logger.WithPrefix("tui"))
 		c := common.NewCommon(ctx, output, pty.Window.Width, pty.Window.Height)
 		c.SetValue(common.ConfigKey, cfg)
 		m := ui.New(c, initialRepo)

@@ -122,7 +122,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		rm.MiddlewareWithLogger(
 			logger,
 			// BubbleTea middleware.
-			bm.MiddlewareWithProgramHandler(SessionHandler(s.be, cfg), termenv.ANSI256),
+			bm.MiddlewareWithProgramHandler(SessionHandler(s.be, cfg, logger), termenv.ANSI256),
 			// CLI middleware.
 			cm.Middleware(s.be, cfg, logger),
 			// Git middleware.

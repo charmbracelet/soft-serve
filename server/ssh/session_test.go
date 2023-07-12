@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
@@ -64,15 +64,15 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 	ctx = config.WithContext(ctx, cfg)
 	db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	if err != nil {
-		log.Fatal(err)
+		tb.Fatal(err)
 	}
 	if err := migrate.Migrate(ctx, db); err != nil {
-		log.Fatal(err)
+		tb.Fatal(err)
 	}
 	be := backend.New(ctx, cfg, db)
 	ctx = backend.WithContext(ctx, be)
 	return testsession.New(tb, &ssh.Server{
-		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(be, cfg), termenv.ANSI256)(func(s ssh.Session) {
+		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(be, cfg, log.FromContext(ctx)), termenv.ANSI256)(func(s ssh.Session) {
 			_, _, active := s.Pty()
 			if !active {
 				os.Exit(1)

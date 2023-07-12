@@ -6,8 +6,8 @@ import (
 	"runtime"
 
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/internal/sync"
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/sync"
 )
 
 var jobSpecs = map[string]string{

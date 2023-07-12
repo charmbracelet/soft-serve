@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"runtime/debug"
+	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
-	. "github.com/charmbracelet/soft-serve/internal/log"
+	"github.com/charmbracelet/soft-serve/server/config"
 	_ "github.com/lib/pq" // postgres driver
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
@@ -54,14 +57,19 @@ func init() {
 }
 
 func main() {
-	logger := NewDefaultLogger()
+	logger := newDefaultLogger()
 
 	// Set global logger
 	log.SetDefault(logger)
 
+	var opts []maxprocs.Option
+	if config.IsVerbose() {
+		opts = append(opts, maxprocs.Logger(logger.Debugf))
+	}
+
 	// Set the max number of processes to the number of CPUs
 	// This is useful when running soft serve in a container
-	if _, err := maxprocs.Set(maxprocs.Logger(logger.Debugf)); err != nil {
+	if _, err := maxprocs.Set(opts...); err != nil {
 		logger.Warn("couldn't set automaxprocs", "error", err)
 	}
 
@@ -69,4 +77,39 @@ func main() {
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
+}
+
+// newDefaultLogger returns a new logger with default settings.
+func newDefaultLogger() *log.Logger {
+	dp := config.DataPath()
+	cfg, err := config.ParseConfig(filepath.Join(dp, "config.yaml"))
+	if err != nil {
+		log.Errorf("failed to parse config: %v", err)
+	}
+
+	logger := log.NewWithOptions(os.Stderr, log.Options{
+		ReportTimestamp: true,
+		TimeFormat:      time.DateOnly,
+	})
+
+	switch {
+	case config.IsVerbose():
+		logger.SetReportCaller(true)
+		fallthrough
+	case config.IsDebug():
+		logger.SetLevel(log.DebugLevel)
+	}
+
+	logger.SetTimeFormat(cfg.Log.TimeFormat)
+
+	switch strings.ToLower(cfg.Log.Format) {
+	case "json":
+		logger.SetFormatter(log.JSONFormatter)
+	case "logfmt":
+		logger.SetFormatter(log.LogfmtFormatter)
+	case "text":
+		logger.SetFormatter(log.TextFormatter)
+	}
+
+	return logger
 }
