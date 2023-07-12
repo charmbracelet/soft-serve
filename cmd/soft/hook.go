@@ -21,7 +21,7 @@ import (
 var (
 	configPath string
 
-	logFileCtxKey = struct{}{}
+	dbCtxKey = struct{ string }{"db"}
 
 	hookCmd = &cobra.Command{
 		Use:    "hook",
@@ -37,17 +37,23 @@ var (
 
 			ctx = config.WithContext(ctx, cfg)
 			cmd.SetContext(ctx)
-			db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
+			dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 			if err != nil {
 				return fmt.Errorf("open database: %w", err)
 			}
 
+			ctx = db.WithContext(ctx, dbx)
+
 			// Set up the backend
-			sb := backend.New(ctx, cfg, db)
+			sb := backend.New(ctx, cfg, dbx)
 			ctx = backend.WithContext(ctx, sb)
 			cmd.SetContext(ctx)
 
 			return nil
+		},
+		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
+			db := db.FromContext(cmd.Context())
+			return db.Close()
 		},
 	}
 

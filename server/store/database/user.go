@@ -16,7 +16,7 @@ type userStore struct{}
 
 var _ store.UserStore = (*userStore)(nil)
 
-// AddPublicKeyByUsername implements store.UserStore
+// AddPublicKeyByUsername implements store.UserStore.
 func (*userStore) AddPublicKeyByUsername(ctx context.Context, tx *db.Tx, username string, pk ssh.PublicKey) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
@@ -36,7 +36,7 @@ func (*userStore) AddPublicKeyByUsername(ctx context.Context, tx *db.Tx, usernam
 	return err
 }
 
-// CreateUser implements store.UserStore
+// CreateUser implements store.UserStore.
 func (*userStore) CreateUser(ctx context.Context, tx *db.Tx, username string, isAdmin bool, pks []ssh.PublicKey) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
@@ -68,7 +68,7 @@ func (*userStore) CreateUser(ctx context.Context, tx *db.Tx, username string, is
 	return nil
 }
 
-// DeleteUserByUsername implements store.UserStore
+// DeleteUserByUsername implements store.UserStore.
 func (*userStore) DeleteUserByUsername(ctx context.Context, tx *db.Tx, username string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
@@ -80,7 +80,7 @@ func (*userStore) DeleteUserByUsername(ctx context.Context, tx *db.Tx, username 
 	return err
 }
 
-// FindUserByPublicKey implements store.UserStore
+// FindUserByPublicKey implements store.UserStore.
 func (*userStore) FindUserByPublicKey(ctx context.Context, tx *db.Tx, pk ssh.PublicKey) (models.User, error) {
 	var m models.User
 	query := tx.Rebind(`SELECT users.*
@@ -91,7 +91,7 @@ func (*userStore) FindUserByPublicKey(ctx context.Context, tx *db.Tx, pk ssh.Pub
 	return m, err
 }
 
-// FindUserByUsername implements store.UserStore
+// FindUserByUsername implements store.UserStore.
 func (*userStore) FindUserByUsername(ctx context.Context, tx *db.Tx, username string) (models.User, error) {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
@@ -104,7 +104,7 @@ func (*userStore) FindUserByUsername(ctx context.Context, tx *db.Tx, username st
 	return m, err
 }
 
-// GetAllUsers implements store.UserStore
+// GetAllUsers implements store.UserStore.
 func (*userStore) GetAllUsers(ctx context.Context, tx *db.Tx) ([]models.User, error) {
 	var ms []models.User
 	query := tx.Rebind(`SELECT * FROM users;`)
@@ -112,7 +112,7 @@ func (*userStore) GetAllUsers(ctx context.Context, tx *db.Tx) ([]models.User, er
 	return ms, err
 }
 
-// ListPublicKeysByUserID implements store.UserStore.
+// ListPublicKeysByUserID implements store.UserStore..
 func (*userStore) ListPublicKeysByUserID(ctx context.Context, tx *db.Tx, id int64) ([]ssh.PublicKey, error) {
 	var aks []string
 	query := tx.Rebind(`SELECT public_key FROM public_keys
@@ -164,7 +164,7 @@ func (*userStore) ListPublicKeysByUsername(ctx context.Context, tx *db.Tx, usern
 	return pks, nil
 }
 
-// RemovePublicKeyByUsername implements store.UserStore
+// RemovePublicKeyByUsername implements store.UserStore.
 func (*userStore) RemovePublicKeyByUsername(ctx context.Context, tx *db.Tx, username string, pk ssh.PublicKey) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
@@ -178,7 +178,7 @@ func (*userStore) RemovePublicKeyByUsername(ctx context.Context, tx *db.Tx, user
 	return err
 }
 
-// SetAdminByUsername implements store.UserStore
+// SetAdminByUsername implements store.UserStore.
 func (*userStore) SetAdminByUsername(ctx context.Context, tx *db.Tx, username string, isAdmin bool) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
@@ -190,7 +190,7 @@ func (*userStore) SetAdminByUsername(ctx context.Context, tx *db.Tx, username st
 	return err
 }
 
-// SetUsernameByUsername implements store.UserStore
+// SetUsernameByUsername implements store.UserStore.
 func (*userStore) SetUsernameByUsername(ctx context.Context, tx *db.Tx, username string, newUsername string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {

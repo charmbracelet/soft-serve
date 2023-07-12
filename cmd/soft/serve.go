@@ -57,6 +57,8 @@ var (
 				return fmt.Errorf("open database: %w", err)
 			}
 
+			defer db.Close() // nolint: errcheck
+
 			if rollback {
 				if err := migrate.Rollback(ctx, db); err != nil {
 					return fmt.Errorf("rollback error: %w", err)
@@ -67,7 +69,7 @@ var (
 				}
 			}
 
-			s, err := server.NewServer(ctx)
+			s, err := server.NewServer(ctx, db)
 			if err != nil {
 				return fmt.Errorf("start server: %w", err)
 			}

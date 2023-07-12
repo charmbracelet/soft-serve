@@ -86,7 +86,7 @@ func (d *Backend) User(ctx context.Context, username string) (store.User, error)
 
 	var m models.User
 	var pks []ssh.PublicKey
-	if err := d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		m, err = d.store.FindUserByUsername(ctx, tx, username)
 		if err != nil {
@@ -111,7 +111,7 @@ func (d *Backend) User(ctx context.Context, username string) (store.User, error)
 func (d *Backend) UserByPublicKey(ctx context.Context, pk ssh.PublicKey) (store.User, error) {
 	var m models.User
 	var pks []ssh.PublicKey
-	if err := d.db.TransactionContext(context.Background(), func(tx *db.Tx) error {
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		m, err = d.store.FindUserByPublicKey(ctx, tx, pk)
 		if err != nil {

@@ -40,13 +40,9 @@ type Server struct {
 // key can be provided with authKey. If authKey is provided, access will be
 // restricted to that key. If authKey is not provided, the server will be
 // publicly writable until configured otherwise by cloning the `config` repo.
-func NewServer(ctx context.Context) (*Server, error) {
+func NewServer(ctx context.Context, db *db.DB) (*Server, error) {
+	var err error
 	cfg := config.FromContext(ctx)
-	db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
-	if err != nil {
-		return nil, fmt.Errorf("open database: %w", err)
-	}
-
 	be := backend.New(ctx, cfg, db)
 	ctx = backend.WithContext(ctx, be)
 	srv := &Server{
@@ -84,47 +80,33 @@ func NewServer(ctx context.Context) (*Server, error) {
 	return srv, nil
 }
 
-func start(ctx context.Context, fn func() error) error {
-	errc := make(chan error, 1)
-	go func() {
-		errc <- fn()
-	}()
-
-	select {
-	case err := <-errc:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
 // Start starts the SSH server.
 func (s *Server) Start() error {
-	errg, ctx := errgroup.WithContext(s.ctx)
+	errg, _ := errgroup.WithContext(s.ctx)
 	errg.Go(func() error {
 		s.logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
-		if err := start(ctx, s.GitDaemon.Start); !errors.Is(err, daemon.ErrServerClosed) {
+		if err := s.GitDaemon.Start(); !errors.Is(err, daemon.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
 		s.logger.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
-		if err := start(ctx, s.HTTPServer.ListenAndServe); !errors.Is(err, http.ErrServerClosed) {
+		if err := s.HTTPServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
 		s.logger.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
-		if err := start(ctx, s.SSHServer.ListenAndServe); !errors.Is(err, ssh.ErrServerClosed) {
+		if err := s.SSHServer.ListenAndServe(); !errors.Is(err, ssh.ErrServerClosed) {
 			return err
 		}
 		return nil
 	})
 	errg.Go(func() error {
 		s.logger.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
-		if err := start(ctx, s.StatsServer.ListenAndServe); !errors.Is(err, http.ErrServerClosed) {
+		if err := s.StatsServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
@@ -138,7 +120,7 @@ func (s *Server) Start() error {
 
 // Shutdown lets the server gracefully shutdown.
 func (s *Server) Shutdown(ctx context.Context) error {
-	var errg errgroup.Group
+	errg, ctx := errgroup.WithContext(ctx)
 	errg.Go(func() error {
 		return s.GitDaemon.Shutdown(ctx)
 	})
@@ -155,7 +137,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		s.Cron.Stop()
 		return nil
 	})
-	defer s.DB.Close() // nolint: errcheck
+	// defer s.DB.Close() // nolint: errcheck
 	return errg.Wait()
 }
 
@@ -170,6 +152,6 @@ func (s *Server) Close() error {
 		s.Cron.Stop()
 		return nil
 	})
-	defer s.DB.Close() // nolint: errcheck
+	// defer s.DB.Close() // nolint: errcheck
 	return errg.Wait()
 }

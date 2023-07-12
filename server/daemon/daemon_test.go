@@ -42,6 +42,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close() // nolint: errcheck
 	if err := migrate.Migrate(ctx, db); err != nil {
 		log.Fatal(err)
 	}

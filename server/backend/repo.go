@@ -177,7 +177,6 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 func (d *Backend) Repositories(ctx context.Context) ([]store.Repository, error) {
 	repos := make([]store.Repository, 0)
 
-	d.logger.Debugf("get all repositories %v %v %v", ctx, d.db, d.store)
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		ms, err := d.store.GetAllRepos(ctx, tx)
 		if err != nil {

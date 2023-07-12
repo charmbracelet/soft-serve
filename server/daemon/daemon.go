@@ -95,7 +95,7 @@ func (d *GitDaemon) Start() error {
 			default:
 				d.logger.Debugf("git: error accepting connection: %v", err)
 			}
-			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+			if ne, ok := err.(net.Error); ok && ne.Temporary() { // nolint: staticcheck
 				if tempDelay == 0 {
 					tempDelay = 5 * time.Millisecond
 				} else {
@@ -147,7 +147,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 	}
 	d.conns.Add(c)
 	defer func() {
-		d.conns.Close(c)
+		d.conns.Close(c) // nolint: errcheck
 	}()
 
 	readc := make(chan struct{}, 1)
@@ -303,7 +303,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 func (d *GitDaemon) Close() error {
 	d.once.Do(func() { close(d.finished) })
 	err := d.listener.Close()
-	d.conns.CloseAll()
+	d.conns.CloseAll() // nolint: errcheck
 	return err
 }
 

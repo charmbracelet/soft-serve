@@ -13,7 +13,7 @@ type repoStore struct{}
 
 var _ store.RepositoryStore = (*repoStore)(nil)
 
-// CreateRepo implements store.RepositoryStore
+// CreateRepo implements store.RepositoryStore.
 func (*repoStore) CreateRepo(ctx context.Context, tx *db.Tx, name string, projectName string, description string, isPrivate bool, isHidden bool, isMirror bool) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind(`INSERT INTO repos (name, project_name, description, private, mirror, hidden, updated_at)
@@ -23,7 +23,7 @@ func (*repoStore) CreateRepo(ctx context.Context, tx *db.Tx, name string, projec
 	return db.WrapError(err)
 }
 
-// DeleteRepoByName implements store.RepositoryStore
+// DeleteRepoByName implements store.RepositoryStore.
 func (*repoStore) DeleteRepoByName(ctx context.Context, tx *db.Tx, name string) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("DELETE FROM repos WHERE name = ?;")
@@ -31,7 +31,7 @@ func (*repoStore) DeleteRepoByName(ctx context.Context, tx *db.Tx, name string) 
 	return db.WrapError(err)
 }
 
-// GetAllRepos implements store.RepositoryStore
+// GetAllRepos implements store.RepositoryStore.
 func (*repoStore) GetAllRepos(ctx context.Context, tx *db.Tx) ([]models.Repo, error) {
 	var repos []models.Repo
 	query := tx.Rebind("SELECT * FROM repos;")
@@ -39,7 +39,7 @@ func (*repoStore) GetAllRepos(ctx context.Context, tx *db.Tx) ([]models.Repo, er
 	return repos, db.WrapError(err)
 }
 
-// GetRepoByName implements store.RepositoryStore
+// GetRepoByName implements store.RepositoryStore.
 func (*repoStore) GetRepoByName(ctx context.Context, tx *db.Tx, name string) (models.Repo, error) {
 	var repo models.Repo
 	name = utils.SanitizeRepo(name)
@@ -48,7 +48,7 @@ func (*repoStore) GetRepoByName(ctx context.Context, tx *db.Tx, name string) (mo
 	return repo, db.WrapError(err)
 }
 
-// GetRepoDescriptionByName implements store.RepositoryStore
+// GetRepoDescriptionByName implements store.RepositoryStore.
 func (*repoStore) GetRepoDescriptionByName(ctx context.Context, tx *db.Tx, name string) (string, error) {
 	var description string
 	name = utils.SanitizeRepo(name)
@@ -57,7 +57,7 @@ func (*repoStore) GetRepoDescriptionByName(ctx context.Context, tx *db.Tx, name 
 	return description, db.WrapError(err)
 }
 
-// GetRepoIsHiddenByName implements store.RepositoryStore
+// GetRepoIsHiddenByName implements store.RepositoryStore.
 func (*repoStore) GetRepoIsHiddenByName(ctx context.Context, tx *db.Tx, name string) (bool, error) {
 	var isHidden bool
 	name = utils.SanitizeRepo(name)
@@ -66,7 +66,7 @@ func (*repoStore) GetRepoIsHiddenByName(ctx context.Context, tx *db.Tx, name str
 	return isHidden, db.WrapError(err)
 }
 
-// GetRepoIsMirrorByName implements store.RepositoryStore
+// GetRepoIsMirrorByName implements store.RepositoryStore.
 func (*repoStore) GetRepoIsMirrorByName(ctx context.Context, tx *db.Tx, name string) (bool, error) {
 	var isMirror bool
 	name = utils.SanitizeRepo(name)
@@ -75,7 +75,7 @@ func (*repoStore) GetRepoIsMirrorByName(ctx context.Context, tx *db.Tx, name str
 	return isMirror, db.WrapError(err)
 }
 
-// GetRepoIsPrivateByName implements store.RepositoryStore
+// GetRepoIsPrivateByName implements store.RepositoryStore.
 func (*repoStore) GetRepoIsPrivateByName(ctx context.Context, tx *db.Tx, name string) (bool, error) {
 	var isPrivate bool
 	name = utils.SanitizeRepo(name)
@@ -84,7 +84,7 @@ func (*repoStore) GetRepoIsPrivateByName(ctx context.Context, tx *db.Tx, name st
 	return isPrivate, db.WrapError(err)
 }
 
-// GetRepoProjectNameByName implements store.RepositoryStore
+// GetRepoProjectNameByName implements store.RepositoryStore.
 func (*repoStore) GetRepoProjectNameByName(ctx context.Context, tx *db.Tx, name string) (string, error) {
 	var pname string
 	name = utils.SanitizeRepo(name)
@@ -93,7 +93,7 @@ func (*repoStore) GetRepoProjectNameByName(ctx context.Context, tx *db.Tx, name 
 	return pname, db.WrapError(err)
 }
 
-// SetRepoDescriptionByName implements store.RepositoryStore
+// SetRepoDescriptionByName implements store.RepositoryStore.
 func (*repoStore) SetRepoDescriptionByName(ctx context.Context, tx *db.Tx, name string, description string) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET description = ? WHERE name = ?;")
@@ -101,7 +101,7 @@ func (*repoStore) SetRepoDescriptionByName(ctx context.Context, tx *db.Tx, name 
 	return db.WrapError(err)
 }
 
-// SetRepoIsHiddenByName implements store.RepositoryStore
+// SetRepoIsHiddenByName implements store.RepositoryStore.
 func (*repoStore) SetRepoIsHiddenByName(ctx context.Context, tx *db.Tx, name string, isHidden bool) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET hidden = ? WHERE name = ?;")
@@ -109,7 +109,7 @@ func (*repoStore) SetRepoIsHiddenByName(ctx context.Context, tx *db.Tx, name str
 	return db.WrapError(err)
 }
 
-// SetRepoIsPrivateByName implements store.RepositoryStore
+// SetRepoIsPrivateByName implements store.RepositoryStore.
 func (*repoStore) SetRepoIsPrivateByName(ctx context.Context, tx *db.Tx, name string, isPrivate bool) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET private = ? WHERE name = ?;")
@@ -117,7 +117,7 @@ func (*repoStore) SetRepoIsPrivateByName(ctx context.Context, tx *db.Tx, name st
 	return db.WrapError(err)
 }
 
-// SetRepoNameByName implements store.RepositoryStore
+// SetRepoNameByName implements store.RepositoryStore.
 func (*repoStore) SetRepoNameByName(ctx context.Context, tx *db.Tx, name string, newName string) error {
 	name = utils.SanitizeRepo(name)
 	newName = utils.SanitizeRepo(newName)
@@ -126,7 +126,7 @@ func (*repoStore) SetRepoNameByName(ctx context.Context, tx *db.Tx, name string,
 	return db.WrapError(err)
 }
 
-// SetRepoProjectNameByName implements store.RepositoryStore
+// SetRepoProjectNameByName implements store.RepositoryStore.
 func (*repoStore) SetRepoProjectNameByName(ctx context.Context, tx *db.Tx, name string, projectName string) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET project_name = ? WHERE name = ?;")

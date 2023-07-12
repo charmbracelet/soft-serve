@@ -22,7 +22,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/rogpeppe/go-internal/testscript"
 	"golang.org/x/crypto/ssh"
-	_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite" // sqlite Driver
 )
 
 const dbOpts = "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
@@ -118,7 +118,7 @@ func TestScript(t *testing.T) {
 			// from the ssh session instead of the server.
 			// XXX: take another look at this soon
 			lock.Lock()
-			srv, err := server.NewServer(ctx)
+			srv, err := server.NewServer(ctx, db)
 			if err != nil {
 				return err
 			}
@@ -131,6 +131,7 @@ func TestScript(t *testing.T) {
 			}()
 
 			e.Defer(func() {
+				defer db.Close() // nolint: errcheck
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				if err := srv.Shutdown(ctx); err != nil {

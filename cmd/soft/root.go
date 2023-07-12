@@ -13,6 +13,7 @@ import (
 	_ "github.com/lib/pq" // postgres driver
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
+
 	_ "modernc.org/sqlite" // sqlite driver
 )
 

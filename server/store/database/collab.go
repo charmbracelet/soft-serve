@@ -14,7 +14,7 @@ type collabStore struct{}
 
 var _ store.CollaboratorStore = (*collabStore)(nil)
 
-// AddCollabByUsernameAndRepo implements store.CollaboratorStore
+// AddCollabByUsernameAndRepo implements store.CollaboratorStore.
 func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx *db.Tx, username string, repo string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
@@ -37,7 +37,7 @@ func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx *db.Tx, u
 	return err
 }
 
-// GetCollabByUsernameAndRepo implements store.CollaboratorStore
+// GetCollabByUsernameAndRepo implements store.CollaboratorStore.
 func (*collabStore) GetCollabByUsernameAndRepo(ctx context.Context, tx *db.Tx, username string, repo string) (models.Collab, error) {
 	var m models.Collab
 
@@ -62,7 +62,7 @@ func (*collabStore) GetCollabByUsernameAndRepo(ctx context.Context, tx *db.Tx, u
 	return m, err
 }
 
-// ListCollabsByRepo implements store.CollaboratorStore
+// ListCollabsByRepo implements store.CollaboratorStore.
 func (*collabStore) ListCollabsByRepo(ctx context.Context, tx *db.Tx, repo string) ([]models.Collab, error) {
 	var m []models.Collab
 
@@ -101,7 +101,7 @@ func (*collabStore) ListCollabsByRepoAsUsers(ctx context.Context, tx *db.Tx, rep
 	return m, err
 }
 
-// RemoveCollabByUsernameAndRepo implements store.CollaboratorStore
+// RemoveCollabByUsernameAndRepo implements store.CollaboratorStore.
 func (*collabStore) RemoveCollabByUsernameAndRepo(ctx context.Context, tx *db.Tx, username string, repo string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {

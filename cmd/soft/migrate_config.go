@@ -46,6 +46,7 @@ var (
 				return fmt.Errorf("open database: %w", err)
 			}
 
+			defer db.Close() // nolint: errcheck
 			sb := backend.New(ctx, cfg, db)
 
 			// FIXME: Admin user gets created when the database is created.
