@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 	ctx := context.TODO()
 	cfg := config.DefaultConfig()
 	ctx = config.WithContext(ctx, cfg)
-	db, err := db.Open(cfg.DB.Driver, cfg.DB.DataSource)
+	db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	if err != nil {
 		log.Fatal(err)
 	}

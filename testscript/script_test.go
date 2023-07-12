@@ -103,7 +103,7 @@ func TestScript(t *testing.T) {
 
 			ctx := config.WithContext(context.Background(), &cfg)
 
-			db, err := db.Open(cfg.DB.Driver, cfg.DB.DataSource)
+			db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 			if err != nil {
 				return fmt.Errorf("open database: %w", err)
 			}

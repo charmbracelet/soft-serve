@@ -6,26 +6,35 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite" // sqlite driver
 )
 
 // DB is the interface for a Soft Serve database.
-// TODO: migrations
 type DB struct {
 	*sqlx.DB
+	logger *log.Logger
 }
 
 // Open opens a database connection.
-func Open(driverName string, dsn string) (*DB, error) {
-	db, err := sqlx.Connect(driverName, dsn)
+func Open(ctx context.Context, driverName string, dsn string) (*DB, error) {
+	db, err := sqlx.ConnectContext(ctx, driverName, dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DB{
+	d := &DB{
 		DB: db,
-	}, db.Ping()
+	}
+
+	if config.IsVerbose() {
+		logger := log.FromContext(ctx).WithPrefix("db")
+		d.logger = logger
+	}
+
+	return d, nil
 }
 
 // Close implements db.DB.
@@ -36,6 +45,7 @@ func (d *DB) Close() error {
 // Tx is a database transaction.
 type Tx struct {
 	*sqlx.Tx
+	logger *log.Logger
 }
 
 // Transaction implements db.DB.
@@ -50,7 +60,7 @@ func (d *DB) TransactionContext(ctx context.Context, fn func(tx *Tx) error) erro
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	tx := &Tx{txx}
+	tx := &Tx{txx, d.logger}
 	if err := fn(tx); err != nil {
 		return rollback(tx, err)
 	}

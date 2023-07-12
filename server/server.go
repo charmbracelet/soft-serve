@@ -42,7 +42,7 @@ type Server struct {
 // publicly writable until configured otherwise by cloning the `config` repo.
 func NewServer(ctx context.Context) (*Server, error) {
 	cfg := config.FromContext(ctx)
-	db, err := db.Open(cfg.DB.Driver, cfg.DB.DataSource)
+	db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}

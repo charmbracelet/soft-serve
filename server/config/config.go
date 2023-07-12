@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -157,6 +158,19 @@ func (c *Config) Environ() []string {
 	}...)
 
 	return envs
+}
+
+// IsDebug returns true if the server is running in debug mode.
+func IsDebug() bool {
+	debug, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_DEBUG"))
+	return debug
+}
+
+// IsVerbose returns true if the server is running in verbose mode.
+// Verbose mode is only enabled if debug mode is enabled.
+func IsVerbose() bool {
+	verbose, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_VERBOSE"))
+	return IsDebug() && verbose
 }
 
 func parseConfig(path string) (*Config, error) {
@@ -320,7 +334,8 @@ func (c *Config) validate() error {
 
 // parseAuthKeys parses authorized keys from either file paths or string authorized_keys.
 func parseAuthKeys(aks []string) []ssh.PublicKey {
-	pks := make(map[string]ssh.PublicKey, 0)
+	exist := make(map[string]struct{}, 0)
+	pks := make([]ssh.PublicKey, 0)
 	for _, key := range aks {
 		if bts, err := os.ReadFile(key); err == nil {
 			// key is a file
@@ -328,16 +343,13 @@ func parseAuthKeys(aks []string) []ssh.PublicKey {
 		}
 
 		if pk, _, err := sshutils.ParseAuthorizedKey(key); err == nil {
-			pks[key] = pk
+			if _, ok := exist[key]; !ok {
+				pks = append(pks, pk)
+				exist[key] = struct{}{}
+			}
 		}
 	}
-
-	keys := make([]ssh.PublicKey, 0, len(pks))
-	for _, p := range pks {
-		keys = append(keys, p)
-	}
-
-	return keys
+	return pks
 }
 
 // AdminKeys returns the server admin keys.
