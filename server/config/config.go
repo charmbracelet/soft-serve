@@ -205,8 +205,8 @@ func parseConfig(path string) (*Config, error) {
 		},
 		DB: DBConfig{
 			Driver: "sqlite",
-			DataSource: filepath.Join(dataPath, "soft-serve.db"+
-				"?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"),
+			DataSource: "soft-serve.db" +
+				"?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)",
 		},
 	}
 
@@ -333,6 +333,10 @@ func (c *Config) validate() error {
 
 	if c.HTTP.TLSCertPath != "" && !filepath.IsAbs(c.HTTP.TLSCertPath) {
 		c.HTTP.TLSCertPath = filepath.Join(c.DataPath, c.HTTP.TLSCertPath)
+	}
+
+	if strings.HasPrefix(c.DB.Driver, "sqlite") && !filepath.IsAbs(c.DB.DataSource) {
+		c.DB.DataSource = filepath.Join(c.DataPath, c.DB.DataSource)
 	}
 
 	return nil

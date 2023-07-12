@@ -82,7 +82,7 @@ stats:
 # The database configuration.
 db:
   # The database driver to use.
-  # Valid values are "sqlite3", "sqlite", "postgres", and "mysql".
+  # Valid values are "sqlite" and "postgres".
   driver: "{{ .DB.Driver }}"
   # The database data source name.
   # This is driver specific and can be a file path or connection string.
