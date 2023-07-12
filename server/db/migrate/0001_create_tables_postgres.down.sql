@@ -1,4 +1,3 @@
-
 DROP TABLE IF EXISTS collabs;
 DROP TABLE IF EXISTS repos;
 DROP TABLE IF EXISTS public_keys;

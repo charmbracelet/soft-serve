@@ -13,13 +13,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/caarlos0/env/v8"
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/soft-serve/server"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/db/migrate"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/rogpeppe/go-internal/testscript"
 	"golang.org/x/crypto/ssh"
+	_ "modernc.org/sqlite"
 )
+
+const dbOpts = "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
 
 var update = flag.Bool("update", false, "update script files")
 
@@ -85,8 +91,26 @@ func TestScript(t *testing.T) {
 					Format:     "text",
 					TimeFormat: time.DateTime,
 				},
+				DB: config.DBConfig{
+					Driver:     "sqlite",
+					DataSource: filepath.Join(data, "soft-serve.db") + dbOpts,
+				},
 			}
+
+			if err := env.Parse(&cfg); err != nil {
+				return err
+			}
+
 			ctx := config.WithContext(context.Background(), &cfg)
+
+			db, err := db.Open(cfg.DB.Driver, cfg.DB.DataSource)
+			if err != nil {
+				return fmt.Errorf("open database: %w", err)
+			}
+
+			if err := migrate.Migrate(ctx, db); err != nil {
+				return fmt.Errorf("migrate database: %w", err)
+			}
 
 			// prevent race condition in lipgloss...
 			// this will probably be autofixed when we start using the colors
