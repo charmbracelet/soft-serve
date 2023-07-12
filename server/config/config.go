@@ -83,6 +83,10 @@ type LogConfig struct {
 	// Time format for the log `ts` field.
 	// Format must be described in Golang's time format.
 	TimeFormat string `env:"TIME_FORMAT" yaml:"time_format"`
+
+	// Path to a file to write logs to.
+	// If not set, logs will be written to stderr.
+	Path string `env:"PATH" yaml:"path"`
 }
 
 // DBConfig is the database connection configuration.

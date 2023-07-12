@@ -224,6 +224,7 @@ func withAccess(fn http.HandlerFunc) http.HandlerFunc {
 
 func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx)
 	service, dir, repo := git.Service(pat.Param(r, "service")), pat.Param(r, "dir"), pat.Param(r, "repo")
 
@@ -252,7 +253,11 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(version) != 0 {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_PROTOCOL=%s", version))
+		cmd.Env = append(cmd.Env, []string{
+			// TODO: add the rest of env vars when we support pushing using http
+			"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
+			fmt.Sprintf("GIT_PROTOCOL=%s", version),
+		}...)
 	}
 
 	// Handle gzip encoding

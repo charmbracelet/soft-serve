@@ -244,6 +244,7 @@ func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
 						"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
 						"SOFT_SERVE_PUBLIC_KEY=" + ak,
 						"SOFT_SERVE_USERNAME=" + s.User(),
+						"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
 					}
 
 					// Add ssh session & config environ

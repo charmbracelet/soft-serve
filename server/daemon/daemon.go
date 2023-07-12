@@ -264,6 +264,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			"SOFT_SERVE_REPO_NAME=" + name,
 			"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
 			"SOFT_SERVE_HOST=" + host,
+			"SOFT_SERVE_LOG_PATH=" + filepath.Join(d.cfg.DataPath, "log", "hooks.log"),
 		}
 
 		// Add git protocol environment variable.

@@ -10,15 +10,18 @@ import (
 	"time"
 
 	"github.com/charmbracelet/soft-serve/server"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/migrate"
+	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/spf13/cobra"
 )
 
 var (
 	autoMigrate bool
 	rollback    bool
+	initHooks   bool
 
 	serveCmd = &cobra.Command{
 		Use:   "serve",
@@ -69,6 +72,13 @@ var (
 				return fmt.Errorf("start server: %w", err)
 			}
 
+			if initHooks {
+				be := backend.New(ctx, cfg, db)
+				if err := initializeHooks(ctx, cfg, be); err != nil {
+					return fmt.Errorf("initialize hooks: %w", err)
+				}
+			}
+
 			done := make(chan os.Signal, 1)
 			lch := make(chan error, 1)
 			go func() {
@@ -95,5 +105,21 @@ var (
 func init() {
 	serveCmd.Flags().BoolVarP(&autoMigrate, "auto-migrate", "", false, "automatically run database migrations")
 	serveCmd.Flags().BoolVarP(&rollback, "rollback", "", false, "rollback the last database migration")
+	serveCmd.Flags().BoolVarP(&initHooks, "init-hooks", "", false, "initialize the hooks directory and update hooks for all repositories")
 	rootCmd.AddCommand(serveCmd)
+}
+
+func initializeHooks(ctx context.Context, cfg *config.Config, be *backend.Backend) error {
+	repos, err := be.Repositories(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, repo := range repos {
+		if err := hooks.GenerateHooks(ctx, cfg, repo.Name()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

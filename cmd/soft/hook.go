@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
@@ -37,17 +36,6 @@ var (
 			}
 
 			ctx = config.WithContext(ctx, cfg)
-
-			logPath := filepath.Join(cfg.DataPath, "log", "hooks.log")
-			f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				return fmt.Errorf("opening file: %w", err)
-			}
-
-			ctx = context.WithValue(ctx, logFileCtxKey, f)
-			logger := log.FromContext(ctx)
-			logger.SetOutput(f)
-			ctx = log.WithContext(ctx, logger)
 			cmd.SetContext(ctx)
 			db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 			if err != nil {
@@ -55,16 +43,11 @@ var (
 			}
 
 			// Set up the backend
-			// TODO: support other backends
 			sb := backend.New(ctx, cfg, db)
 			ctx = backend.WithContext(ctx, sb)
 			cmd.SetContext(ctx)
 
 			return nil
-		},
-		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
-			f := cmd.Context().Value(logFileCtxKey).(*os.File)
-			return f.Close()
 		},
 	}
 

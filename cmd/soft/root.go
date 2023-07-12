@@ -57,20 +57,27 @@ func init() {
 }
 
 func main() {
-	logger := newDefaultLogger()
+	logger, f, err := newDefaultLogger()
+	if err != nil {
+		log.Errorf("failed to create logger: %v", err)
+	}
+
+	if f != nil {
+		defer f.Close() // nolint: errcheck
+	}
 
 	// Set global logger
 	log.SetDefault(logger)
 
 	var opts []maxprocs.Option
 	if config.IsVerbose() {
-		opts = append(opts, maxprocs.Logger(logger.Debugf))
+		opts = append(opts, maxprocs.Logger(log.Debugf))
 	}
 
 	// Set the max number of processes to the number of CPUs
 	// This is useful when running soft serve in a container
 	if _, err := maxprocs.Set(opts...); err != nil {
-		logger.Warn("couldn't set automaxprocs", "error", err)
+		log.Warn("couldn't set automaxprocs", "error", err)
 	}
 
 	ctx := log.WithContext(context.Background(), logger)
@@ -80,7 +87,7 @@ func main() {
 }
 
 // newDefaultLogger returns a new logger with default settings.
-func newDefaultLogger() *log.Logger {
+func newDefaultLogger() (*log.Logger, *os.File, error) {
 	dp := config.DataPath()
 	cfg, err := config.ParseConfig(filepath.Join(dp, "config.yaml"))
 	if err != nil {
@@ -111,5 +118,14 @@ func newDefaultLogger() *log.Logger {
 		logger.SetFormatter(log.TextFormatter)
 	}
 
-	return logger
+	var f *os.File
+	if cfg.Log.Path != "" {
+		f, err = os.OpenFile(cfg.Log.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, nil, err
+		}
+		logger.SetOutput(f)
+	}
+
+	return logger, f, nil
 }

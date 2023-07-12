@@ -18,6 +18,8 @@ log:
   # Time format for the log "timestamp" field.
   # Should be described in Golang's time format.
   time_format: "{{ .Log.TimeFormat }}"
+  # Path to the log file. Leave empty to write to stderr.
+  #path: "{{ .Log.Path }}"
 
 # The SSH server configuration.
 ssh:
