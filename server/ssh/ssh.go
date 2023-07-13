@@ -205,20 +205,8 @@ func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.Keyboard
 	return ac
 }
 
-// Middleware adds Git server functionality to the ssh.Server. Repos are stored
-// in the specified repo directory. The provided Hooks implementation will be
-// checked for access on a per repo basis for a ssh.Session public key.
-// Hooks.Push and Hooks.Fetch will be called on successful completion of
-// their commands.
-func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
-	return func(sh ssh.Handler) ssh.Handler {
-		return func(s ssh.Session) {
-		}
-	}
-}
-
 // sshFatal prints to the session's STDOUT as a git response and exit 1.
 func sshFatal(s ssh.Session, err error) {
-	git.WritePktlineErr(s, err)
-	s.Exit(1) // nolint: errcheck
+	git.WritePktlineErr(s, err) // nolint: errcheck
+	s.Exit(1)                   // nolint: errcheck
 }

@@ -26,7 +26,6 @@ const (
 var (
 	errNoFileSelected = errors.New("no file selected")
 	errBinaryFile     = errors.New("binary file")
-	errFileTooLarge   = errors.New("file is too large")
 	errInvalidFile    = errors.New("invalid file")
 )
 

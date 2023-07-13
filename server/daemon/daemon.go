@@ -126,7 +126,7 @@ func (d *GitDaemon) Start() error {
 }
 
 func (d *GitDaemon) fatal(c net.Conn, err error) {
-	git.WritePktline(c, err)
+	git.WritePktlineErr(c, err) // nolint: errcheck
 	if err := c.Close(); err != nil {
 		d.logger.Debugf("git: error closing connection: %v", err)
 	}

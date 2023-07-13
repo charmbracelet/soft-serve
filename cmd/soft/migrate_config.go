@@ -207,7 +207,7 @@ var (
 						return fmt.Errorf("failed to create main branch: %w", err)
 					}
 
-					if err := os.WriteFile(filepath.Join(tmpDir, readmePath), []byte(readme), 0o644); err != nil {
+					if err := os.WriteFile(filepath.Join(tmpDir, readmePath), []byte(readme), 0o644); err != nil { // nolint: gosec
 						return fmt.Errorf("failed to write readme: %w", err)
 					}
 

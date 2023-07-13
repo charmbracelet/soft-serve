@@ -21,8 +21,6 @@ import (
 var (
 	configPath string
 
-	dbCtxKey = struct{ string }{"db"}
-
 	hookCmd = &cobra.Command{
 		Use:    "hook",
 		Short:  "Run git server hooks",

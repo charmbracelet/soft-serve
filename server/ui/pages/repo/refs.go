@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -14,10 +13,6 @@ import (
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/server/ui/components/tabs"
-)
-
-var (
-	errNoRef = errors.New("no reference specified")
 )
 
 // RefMsg is a message that contains a git.Reference.

@@ -48,8 +48,6 @@ type Tx struct {
 	logger *log.Logger
 }
 
-var txContextKey = struct{ string }{"tx"}
-
 // Transaction implements db.DB.
 func (d *DB) Transaction(fn func(tx *Tx) error) error {
 	return d.TransactionContext(context.Background(), fn)

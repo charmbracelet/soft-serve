@@ -119,6 +119,5 @@ func handleGit(s ssh.Session) {
 			logger.Error("git middleware", "err", err)
 			sshFatal(s, git.ErrSystemMalfunction)
 		}
-
 	}
 }

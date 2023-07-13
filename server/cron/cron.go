@@ -11,7 +11,6 @@ import (
 // CronScheduler is a cron-like job scheduler.
 type CronScheduler struct {
 	*cron.Cron
-	logger cron.Logger
 }
 
 // Entry is a cron job.

@@ -17,9 +17,6 @@ import (
 var (
 	lineDigitStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("239"))
 	lineBarStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("236"))
-	dirnameStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00AAFF"))
-	filenameStyle  = lipgloss.NewStyle()
-	filemodeStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#777777"))
 )
 
 // blobCommand returns a command that prints the contents of a file.

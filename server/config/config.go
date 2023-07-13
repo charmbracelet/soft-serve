@@ -273,7 +273,7 @@ func WriteConfig(path string, cfg *Config) error {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644) // nolint: errcheck
+	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644) // nolint: errcheck, gosec
 }
 
 // DataPath returns the path to the data directory.

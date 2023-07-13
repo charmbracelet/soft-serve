@@ -24,7 +24,7 @@ var _ http.Flusher = (*logWriter)(nil)
 
 var _ http.Hijacker = (*logWriter)(nil)
 
-var _ http.CloseNotifier = (*logWriter)(nil)
+var _ http.CloseNotifier = (*logWriter)(nil) // nolint: staticcheck
 
 // Write implements http.ResponseWriter.
 func (r *logWriter) Write(p []byte) (int, error) {
@@ -49,7 +49,7 @@ func (r *logWriter) Flush() {
 
 // CloseNotify implements http.CloseNotifier.
 func (r *logWriter) CloseNotify() <-chan bool {
-	if cn, ok := r.ResponseWriter.(http.CloseNotifier); ok {
+	if cn, ok := r.ResponseWriter.(http.CloseNotifier); ok { // nolint: staticcheck
 		return cn.CloseNotify()
 	}
 	return nil

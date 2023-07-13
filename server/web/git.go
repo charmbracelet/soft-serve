@@ -38,10 +38,6 @@ var _ Route = GitRoute{}
 
 // Match implements goji.Pattern.
 func (g GitRoute) Match(r *http.Request) *http.Request {
-	if g.method != r.Method {
-		return nil
-	}
-
 	re := g.pattern
 	ctx := r.Context()
 	cfg := config.FromContext(ctx)
@@ -70,6 +66,11 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 
 // ServeHTTP implements http.Handler.
 func (g GitRoute) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != g.method {
+		renderMethodNotAllowed(w, r)
+		return
+	}
+
 	g.handler(w, r)
 }
 
@@ -144,12 +145,12 @@ func gitRoutes() []Route {
 			handler: getLooseObject,
 		},
 		{
-			pattern: regexp.MustCompile("(.*?)/objects/pack/pack-[0-9a-f]{40}\\.pack$"),
+			pattern: regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.pack$`),
 			method:  http.MethodGet,
 			handler: getPackFile,
 		},
 		{
-			pattern: regexp.MustCompile("(.*?)/objects/pack/pack-[0-9a-f]{40}\\.idx$"),
+			pattern: regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.idx$`),
 			method:  http.MethodGet,
 			handler: getIdxFile,
 		},
@@ -325,7 +326,7 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", service))
 		w.WriteHeader(http.StatusOK)
 		if len(version) == 0 {
-			git.WritePktline(w, "# service="+service.String())
+			git.WritePktline(w, "# service="+service.String()) // nolint: errcheck
 		}
 
 		w.Write(refs.Bytes()) // nolint: errcheck
@@ -388,10 +389,7 @@ func getServiceType(r *http.Request) git.Service {
 }
 
 func isSmart(r *http.Request, service git.Service) bool {
-	if r.Header.Get("Content-Type") == fmt.Sprintf("application/x-%s-request", service) {
-		return true
-	}
-	return false
+	return r.Header.Get("Content-Type") == fmt.Sprintf("application/x-%s-request", service)
 }
 
 func updateServerInfo(ctx context.Context, dir string) error {

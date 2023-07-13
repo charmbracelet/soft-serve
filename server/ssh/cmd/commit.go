@@ -118,8 +118,7 @@ func renderCtx() gansi.RenderContext {
 }
 
 func renderDiff(patch string, color bool) string {
-
-	c := string(patch)
+	c := patch
 
 	if color {
 		var s strings.Builder

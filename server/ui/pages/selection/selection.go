@@ -37,12 +37,11 @@ func (p pane) String() string {
 
 // Selection is the model for the selection screen/page.
 type Selection struct {
-	common       common.Common
-	readme       *code.Code
-	readmeHeight int
-	selector     *selector.Selector
-	activePane   pane
-	tabs         *tabs.Tabs
+	common     common.Common
+	readme     *code.Code
+	selector   *selector.Selector
+	activePane pane
+	tabs       *tabs.Tabs
 }
 
 // New creates a new selection model.
