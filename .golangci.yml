@@ -20,10 +20,19 @@ linters:
     - gosec
     - nilerr
     - predeclared
-    - revive
+    # Uncomment when this is fixed
+    # https://github.com/golangci/golangci-lint/issues/1981
+    # - revive
     - rowserrcheck
     - sqlclosecheck
     - tparallel
     - unconvert
     - unparam
     - whitespace
+
+severity:
+  default-severity: error
+  rules:
+    - linters:
+        - revive
+      severity: info
