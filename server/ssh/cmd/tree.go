@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/errors"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -18,7 +19,7 @@ func treeCommand() *cobra.Command {
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			rn := args[0]
 			path := ""
 			ref := ""

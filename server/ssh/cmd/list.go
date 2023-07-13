@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/spf13/cobra"
 )
@@ -16,13 +18,14 @@ func listCommand() *cobra.Command {
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, s := fromContext(cmd)
+			be := backend.FromContext(ctx)
+			pk := sshutils.PublicKeyFromContext(ctx)
 			repos, err := be.Repositories(ctx)
 			if err != nil {
 				return err
 			}
 			for _, r := range repos {
-				if be.AccessLevelByPublicKey(ctx, r.Name(), s.PublicKey()) >= store.ReadOnlyAccess {
+				if be.AccessLevelByPublicKey(ctx, r.Name(), pk) >= store.ReadOnlyAccess {
 					if !r.IsHidden() || all {
 						cmd.Println(r.Name())
 					}

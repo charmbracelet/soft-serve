@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/spf13/cobra"
 )
@@ -22,7 +23,7 @@ func settingsCommand() *cobra.Command {
 			PersistentPreRunE: checkIfAdmin,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
-				_, be, _ := fromContext(cmd)
+				be := backend.FromContext(ctx)
 				switch len(args) {
 				case 0:
 					cmd.Println(be.AllowKeyless(ctx))
@@ -48,7 +49,7 @@ func settingsCommand() *cobra.Command {
 			PersistentPreRunE: checkIfAdmin,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
-				_, be, _ := fromContext(cmd)
+				be := backend.FromContext(ctx)
 				switch len(args) {
 				case 0:
 					cmd.Println(be.AnonAccess(ctx))

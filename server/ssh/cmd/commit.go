@@ -7,6 +7,7 @@ import (
 
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/styles"
 	"github.com/muesli/termenv"
@@ -25,7 +26,7 @@ func commitCommand() *cobra.Command {
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			repoName := args[0]
 			commitSHA := args[1]
 

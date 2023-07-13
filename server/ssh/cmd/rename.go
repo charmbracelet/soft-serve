@@ -1,6 +1,9 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/spf13/cobra"
+)
 
 func renameCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -11,7 +14,7 @@ func renameCommand() *cobra.Command {
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			oldName := args[0]
 			newName := args[1]
 			if err := be.RenameRepository(ctx, oldName, newName); err != nil {

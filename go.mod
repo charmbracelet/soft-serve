@@ -20,7 +20,7 @@ require (
 require (
 	github.com/caarlos0/env/v8 v8.0.0
 	github.com/charmbracelet/keygen v0.4.3
-	github.com/charmbracelet/log v0.2.2
+	github.com/charmbracelet/log v0.2.3-0.20230713155356-557335e40e35
 	github.com/charmbracelet/ssh v0.0.0-20230712221603-7e03c5063afc
 	github.com/gobwas/glob v0.2.3
 	github.com/gogs/git-module v1.8.2

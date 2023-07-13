@@ -1,12 +1,10 @@
 package ssh
 
 import (
-	"context"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/errors"
@@ -15,7 +13,6 @@ import (
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
-	bm "github.com/charmbracelet/wish/bubbletea"
 	"github.com/muesli/termenv"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -36,52 +33,50 @@ var tuiSessionDuration = promauto.NewCounterVec(prometheus.CounterOpts{
 }, []string{"repo", "term"})
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
-func SessionHandler(be *backend.Backend, cfg *config.Config, logger *log.Logger) bm.ProgramHandler {
-	return func(s ssh.Session) *tea.Program {
-		pty, _, active := s.Pty()
-		if !active {
+// This middleware must be run after the ContextMiddleware.
+func SessionHandler(s ssh.Session) *tea.Program {
+	pty, _, active := s.Pty()
+	if !active {
+		return nil
+	}
+
+	ctx := s.Context()
+	be := backend.FromContext(ctx)
+	cfg := config.FromContext(ctx)
+	cmd := s.Command()
+	initialRepo := ""
+	if len(cmd) == 1 {
+		initialRepo = cmd[0]
+		auth := be.AccessLevelByPublicKey(ctx, initialRepo, s.PublicKey())
+		if auth < store.ReadOnlyAccess {
+			wish.Fatalln(s, errors.ErrUnauthorized)
 			return nil
 		}
-
-		var ctx context.Context = s.Context()
-		ctx = backend.WithContext(ctx, be)
-		ctx = config.WithContext(ctx, cfg)
-		cmd := s.Command()
-		initialRepo := ""
-		if len(cmd) == 1 {
-			initialRepo = cmd[0]
-			auth := be.AccessLevelByPublicKey(ctx, initialRepo, s.PublicKey())
-			if auth < store.ReadOnlyAccess {
-				wish.Fatalln(s, errors.ErrUnauthorized)
-				return nil
-			}
-		}
-
-		envs := &sessionEnv{s}
-		output := termenv.NewOutput(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
-		ctx = log.WithContext(ctx, logger.WithPrefix("tui"))
-		c := common.NewCommon(ctx, output, pty.Window.Width, pty.Window.Height)
-		c.SetValue(common.ConfigKey, cfg)
-		m := ui.New(c, initialRepo)
-		p := tea.NewProgram(m,
-			tea.WithInput(s),
-			tea.WithOutput(s),
-			tea.WithAltScreen(),
-			tea.WithoutCatchPanics(),
-			tea.WithMouseCellMotion(),
-			tea.WithContext(ctx),
-		)
-
-		tuiSessionCounter.WithLabelValues(initialRepo, pty.Term).Inc()
-
-		start := time.Now()
-		go func() {
-			<-ctx.Done()
-			tuiSessionDuration.WithLabelValues(initialRepo, pty.Term).Add(time.Since(start).Seconds())
-		}()
-
-		return p
 	}
+
+	envs := &sessionEnv{s}
+	output := termenv.NewOutput(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
+	c := common.NewCommon(ctx, output, pty.Window.Width, pty.Window.Height)
+	c.SetValue(common.ConfigKey, cfg)
+	m := ui.New(c, initialRepo)
+	p := tea.NewProgram(m,
+		tea.WithInput(s),
+		tea.WithOutput(s),
+		tea.WithAltScreen(),
+		tea.WithoutCatchPanics(),
+		tea.WithMouseCellMotion(),
+		tea.WithContext(ctx),
+	)
+
+	tuiSessionCounter.WithLabelValues(initialRepo, pty.Term).Inc()
+
+	start := time.Now()
+	go func() {
+		<-ctx.Done()
+		tuiSessionDuration.WithLabelValues(initialRepo, pty.Term).Add(time.Since(start).Seconds())
+	}()
+
+	return p
 }
 
 var _ termenv.Environ = &sessionEnv{}

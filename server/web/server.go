@@ -5,9 +5,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/charmbracelet/log"
-	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/config"
 	"goji.io"
 	"goji.io/pat"
 )
@@ -21,20 +18,18 @@ type Route interface {
 // NewRouter returns a new HTTP router.
 func NewRouter(ctx context.Context) *goji.Mux {
 	mux := goji.NewMux()
-	cfg := config.FromContext(ctx)
-	be := backend.FromContext(ctx)
-	logger := log.FromContext(ctx).WithPrefix("http")
 
 	// Middlewares
-	mux.Use(NewLoggingMiddleware(logger))
+	mux.Use(NewContextMiddleware(ctx))
+	mux.Use(NewLoggingMiddleware)
 
 	// Git routes
-	for _, service := range gitRoutes(ctx, logger) {
+	for _, service := range gitRoutes() {
 		mux.Handle(service, service)
 	}
 
 	// go-get handler
-	mux.Handle(pat.Get("/*"), GoGetHandler{cfg, be})
+	mux.Handle(pat.Get("/*"), GoGetHandler{})
 
 	return mux
 }

@@ -34,10 +34,7 @@ Redirecting to docs at <a href="https://godoc.org/{{ .ImportRoot }}/{{ .Repo }}"
 </html>`))
 
 // GoGetHandler handles go get requests.
-type GoGetHandler struct {
-	cfg *config.Config
-	be  *backend.Backend
-}
+type GoGetHandler struct{}
 
 var _ http.Handler = (*GoGetHandler)(nil)
 
@@ -45,7 +42,8 @@ func (g GoGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	repo := pattern.Path(r.Context())
 	repo = utils.SanitizeRepo(repo)
 	ctx := r.Context()
-	be := g.be
+	cfg := config.FromContext(ctx)
+	be := backend.FromContext(ctx)
 
 	// Handle go get requests.
 	//
@@ -55,7 +53,7 @@ func (g GoGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// https://go.dev/ref/mod#vcs-branch
 	if r.URL.Query().Get("go-get") == "1" {
 		repo := repo
-		importRoot, err := url.Parse(g.cfg.HTTP.PublicURL)
+		importRoot, err := url.Parse(cfg.HTTP.PublicURL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -80,7 +78,7 @@ func (g GoGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ImportRoot string
 		}{
 			Repo:       url.PathEscape(repo),
-			Config:     g.cfg,
+			Config:     cfg,
 			ImportRoot: importRoot.Host,
 		}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

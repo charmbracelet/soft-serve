@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +29,7 @@ func collabAddCommand() *cobra.Command {
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			repo := args[0]
 			username := args[1]
 
@@ -47,7 +48,7 @@ func collabRemoveCommand() *cobra.Command {
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			repo := args[0]
 			username := args[1]
 
@@ -66,7 +67,7 @@ func collabListCommand() *cobra.Command {
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			repo := args[0]
 			collabs, err := be.Collaborators(ctx, repo)
 			if err != nil {

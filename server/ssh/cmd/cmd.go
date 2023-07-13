@@ -1,14 +1,12 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"strings"
 	"text/template"
 	"unicode"
 
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/errors"
@@ -16,14 +14,10 @@ import (
 	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/cobra"
 )
-
-// sessionCtxKey is the key for the session in the context.
-var sessionCtxKey = &struct{ string }{"session"}
 
 var cliCommandCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 	Namespace: "soft_serve",
@@ -91,9 +85,14 @@ func cmdName(args []string) string {
 	return args[0]
 }
 
-// rootCommand is the root command for the server.
-func rootCommand(be *backend.Backend, cfg *config.Config, s ssh.Session) *cobra.Command {
-	cliCommandCounter.WithLabelValues(cmdName(s.Command())).Inc()
+// RootCommand returns a new cli root command.
+func RootCommand(s ssh.Session) *cobra.Command {
+	ctx := s.Context()
+	cfg := config.FromContext(ctx)
+	be := backend.FromContext(ctx)
+
+	args := s.Command()
+	cliCommandCounter.WithLabelValues(cmdName(args)).Inc()
 	rootCmd := &cobra.Command{
 		Short:        "Soft Serve is a self-hostable Git server for the command line.",
 		SilenceUsage: true,
@@ -131,6 +130,16 @@ func rootCommand(be *backend.Backend, cfg *config.Config, s ssh.Session) *cobra.
 		repoCommand(),
 	)
 
+	rootCmd.SetArgs(args)
+	if len(args) == 0 {
+		// otherwise it'll default to os.Args, which is not what we want.
+		rootCmd.SetArgs([]string{"--help"})
+	}
+	rootCmd.SetIn(s)
+	rootCmd.SetOut(s)
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	rootCmd.SetErr(s.Stderr())
+
 	user, _ := be.UserByPublicKey(s.Context(), s.PublicKey())
 	isAdmin := isPublicKeyAdmin(cfg, s.PublicKey()) || (user != nil && user.IsAdmin())
 	if user != nil || isAdmin {
@@ -151,22 +160,17 @@ func rootCommand(be *backend.Backend, cfg *config.Config, s ssh.Session) *cobra.
 	return rootCmd
 }
 
-func fromContext(cmd *cobra.Command) (*config.Config, *backend.Backend, ssh.Session) {
-	ctx := cmd.Context()
-	cfg := config.FromContext(ctx)
-	be := backend.FromContext(ctx)
-	s := ctx.Value(sessionCtxKey).(ssh.Session)
-	return cfg, be, s
-}
-
 func checkIfReadable(cmd *cobra.Command, args []string) error {
 	var repo string
 	if len(args) > 0 {
 		repo = args[0]
 	}
-	_, be, s := fromContext(cmd)
+
+	ctx := cmd.Context()
+	be := backend.FromContext(ctx)
 	rn := utils.SanitizeRepo(repo)
-	auth := be.AccessLevelByPublicKey(cmd.Context(), rn, s.PublicKey())
+	pk := sshutils.PublicKeyFromContext(ctx)
+	auth := be.AccessLevelByPublicKey(cmd.Context(), rn, pk)
 	if auth < store.ReadOnlyAccess {
 		return errors.ErrUnauthorized
 	}
@@ -184,12 +188,14 @@ func isPublicKeyAdmin(cfg *config.Config, pk ssh.PublicKey) bool {
 
 func checkIfAdmin(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
-	cfg, be, s := fromContext(cmd)
-	if isPublicKeyAdmin(cfg, s.PublicKey()) {
+	be := backend.FromContext(ctx)
+	cfg := config.FromContext(ctx)
+	pk := sshutils.PublicKeyFromContext(ctx)
+	if isPublicKeyAdmin(cfg, pk) {
 		return nil
 	}
 
-	user, _ := be.UserByPublicKey(ctx, s.PublicKey())
+	user, _ := be.UserByPublicKey(ctx, pk)
 	if user == nil {
 		return errors.ErrUnauthorized
 	}
@@ -208,59 +214,12 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := cmd.Context()
-	_, be, s := fromContext(cmd)
+	be := backend.FromContext(ctx)
+	pk := sshutils.PublicKeyFromContext(ctx)
 	rn := utils.SanitizeRepo(repo)
-	auth := be.AccessLevelByPublicKey(ctx, rn, s.PublicKey())
+	auth := be.AccessLevelByPublicKey(ctx, rn, pk)
 	if auth < store.ReadWriteAccess {
 		return errors.ErrUnauthorized
 	}
 	return nil
-}
-
-// Middleware is the Soft Serve middleware that handles SSH commands.
-func Middleware(be *backend.Backend, cfg *config.Config, logger *log.Logger) wish.Middleware {
-	return func(sh ssh.Handler) ssh.Handler {
-		return func(s ssh.Session) {
-			func() {
-				_, _, active := s.Pty()
-				if active {
-					return
-				}
-
-				// Ignore git server commands.
-				args := s.Command()
-				if len(args) > 0 {
-					if args[0] == "git-receive-pack" ||
-						args[0] == "git-upload-pack" ||
-						args[0] == "git-upload-archive" {
-						return
-					}
-				}
-
-				// Here we copy the server's config and replace the backend
-				// with a new one that uses the session's context.
-				var ctx context.Context = s.Context()
-				scfg := *cfg
-				cfg = &scfg
-				ctx = config.WithContext(ctx, cfg)
-				ctx = backend.WithContext(ctx, be)
-				ctx = context.WithValue(ctx, sessionCtxKey, s)
-
-				rootCmd := rootCommand(be, cfg, s)
-				rootCmd.SetArgs(args)
-				if len(args) == 0 {
-					// otherwise it'll default to os.Args, which is not what we want.
-					rootCmd.SetArgs([]string{"--help"})
-				}
-				rootCmd.SetIn(s)
-				rootCmd.SetOut(s)
-				rootCmd.CompletionOptions.DisableDefaultCmd = true
-				rootCmd.SetErr(s.Stderr())
-				if err := rootCmd.ExecuteContext(ctx); err != nil {
-					_ = s.Exit(1)
-				}
-			}()
-			sh(s)
-		}
-	}
 }

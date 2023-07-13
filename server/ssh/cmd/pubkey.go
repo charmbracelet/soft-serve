@@ -3,6 +3,7 @@ package cmd
 import (
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/spf13/cobra"
 )
@@ -20,18 +21,19 @@ func pubkeyCommand() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, s := fromContext(cmd)
-			user, err := be.UserByPublicKey(ctx, s.PublicKey())
+			be := backend.FromContext(ctx)
+			pk := sshutils.PublicKeyFromContext(ctx)
+			user, err := be.UserByPublicKey(ctx, pk)
 			if err != nil {
 				return err
 			}
 
-			pk, _, err := sshutils.ParseAuthorizedKey(strings.Join(args, " "))
+			apk, _, err := sshutils.ParseAuthorizedKey(strings.Join(args, " "))
 			if err != nil {
 				return err
 			}
 
-			return be.AddPublicKey(ctx, user.Username(), pk)
+			return be.AddPublicKey(ctx, user.Username(), apk)
 		},
 	}
 
@@ -41,18 +43,19 @@ func pubkeyCommand() *cobra.Command {
 		Short: "Remove a public key",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, s := fromContext(cmd)
-			user, err := be.UserByPublicKey(ctx, s.PublicKey())
+			be := backend.FromContext(ctx)
+			pk := sshutils.PublicKeyFromContext(ctx)
+			user, err := be.UserByPublicKey(ctx, pk)
 			if err != nil {
 				return err
 			}
 
-			pk, _, err := sshutils.ParseAuthorizedKey(strings.Join(args, " "))
+			apk, _, err := sshutils.ParseAuthorizedKey(strings.Join(args, " "))
 			if err != nil {
 				return err
 			}
 
-			return be.RemovePublicKey(ctx, user.Username(), pk)
+			return be.RemovePublicKey(ctx, user.Username(), apk)
 		},
 	}
 
@@ -63,8 +66,9 @@ func pubkeyCommand() *cobra.Command {
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, s := fromContext(cmd)
-			user, err := be.UserByPublicKey(ctx, s.PublicKey())
+			be := backend.FromContext(ctx)
+			pk := sshutils.PublicKeyFromContext(ctx)
+			user, err := be.UserByPublicKey(ctx, pk)
 			if err != nil {
 				return err
 			}

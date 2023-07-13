@@ -3,18 +3,19 @@ package cmd
 import (
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/spf13/cobra"
 )
 
-func projectName() *cobra.Command {
+func descriptionCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "project-name REPOSITORY [NAME]",
-		Aliases: []string{"project"},
-		Short:   "Set or get the project name for a repository",
+		Use:     "description REPOSITORY [DESCRIPTION]",
+		Aliases: []string{"desc"},
+		Short:   "Set or get the description for a repository",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			rn := strings.TrimSuffix(args[0], ".git")
 			switch len(args) {
 			case 1:
@@ -22,17 +23,17 @@ func projectName() *cobra.Command {
 					return err
 				}
 
-				pn, err := be.ProjectName(ctx, rn)
+				desc, err := be.Description(ctx, rn)
 				if err != nil {
 					return err
 				}
 
-				cmd.Println(pn)
+				cmd.Println(desc)
 			default:
 				if err := checkIfCollab(cmd, args); err != nil {
 					return err
 				}
-				if err := be.SetProjectName(ctx, rn, strings.Join(args[1:], " ")); err != nil {
+				if err := be.SetDescription(ctx, rn, strings.Join(args[1:], " ")); err != nil {
 					return err
 				}
 			}

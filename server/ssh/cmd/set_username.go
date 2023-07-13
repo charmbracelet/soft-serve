@@ -1,6 +1,10 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
+	"github.com/spf13/cobra"
+)
 
 func setUsernameCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -9,8 +13,9 @@ func setUsernameCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, s := fromContext(cmd)
-			user, err := be.UserByPublicKey(ctx, s.PublicKey())
+			be := backend.FromContext(ctx)
+			pk := sshutils.PublicKeyFromContext(ctx)
+			user, err := be.UserByPublicKey(ctx, pk)
 			if err != nil {
 				return err
 			}

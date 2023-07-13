@@ -8,6 +8,7 @@ import (
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
@@ -35,7 +36,7 @@ func blobCommand() *cobra.Command {
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			rn := args[0]
 			ref := ""
 			fp := ""

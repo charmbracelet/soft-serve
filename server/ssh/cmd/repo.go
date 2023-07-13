@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +42,7 @@ func repoCommand() *cobra.Command {
 			PersistentPreRunE: checkIfReadable,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
-				_, be, _ := fromContext(cmd)
+				be := backend.FromContext(ctx)
 				rn := args[0]
 				rr, err := be.Repository(ctx, rn)
 				if err != nil {

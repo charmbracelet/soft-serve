@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	gitm "github.com/gogs/git-module"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,7 @@ func branchListCommand() *cobra.Command {
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			rn := strings.TrimSuffix(args[0], ".git")
 			rr, err := be.Repository(ctx, rn)
 			if err != nil {
@@ -63,7 +64,7 @@ func branchDefaultCommand() *cobra.Command {
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			rn := strings.TrimSuffix(args[0], ".git")
 			switch len(args) {
 			case 1:
@@ -135,7 +136,7 @@ func branchDeleteCommand() *cobra.Command {
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			rn := strings.TrimSuffix(args[0], ".git")
 			rr, err := be.Repository(ctx, rn)
 			if err != nil {

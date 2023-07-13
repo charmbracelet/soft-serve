@@ -1,38 +1,39 @@
 package cmd
 
 import (
-	"strings"
-
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/spf13/cobra"
 )
 
-func descriptionCommand() *cobra.Command {
+func hiddenCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "description REPOSITORY [DESCRIPTION]",
-		Aliases: []string{"desc"},
-		Short:   "Set or get the description for a repository",
+		Use:     "hidden REPOSITORY [TRUE|FALSE]",
+		Short:   "Hide or unhide a repository",
+		Aliases: []string{"hide"},
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
-			rn := strings.TrimSuffix(args[0], ".git")
+			be := backend.FromContext(ctx)
+			repo := args[0]
 			switch len(args) {
 			case 1:
 				if err := checkIfReadable(cmd, args); err != nil {
 					return err
 				}
 
-				desc, err := be.Description(ctx, rn)
+				hidden, err := be.IsHidden(ctx, repo)
 				if err != nil {
 					return err
 				}
 
-				cmd.Println(desc)
-			default:
+				cmd.Println(hidden)
+			case 2:
 				if err := checkIfCollab(cmd, args); err != nil {
 					return err
 				}
-				if err := be.SetDescription(ctx, rn, strings.Join(args[1:], " ")); err != nil {
+
+				hidden := args[1] == "true"
+				if err := be.SetHidden(ctx, repo, hidden); err != nil {
 					return err
 				}
 			}

@@ -64,21 +64,20 @@ func (r *logWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 }
 
 // NewLoggingMiddleware returns a new logging middleware.
-func NewLoggingMiddleware(logger *log.Logger) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			writer := &logWriter{code: http.StatusOK, ResponseWriter: w}
-			logger.Debug("request",
-				"method", r.Method,
-				"uri", r.RequestURI,
-				"addr", r.RemoteAddr)
-			next.ServeHTTP(writer, r)
-			elapsed := time.Since(start)
-			logger.Debug("response",
-				"status", fmt.Sprintf("%d %s", writer.code, http.StatusText(writer.code)),
-				"bytes", humanize.Bytes(uint64(writer.bytes)),
-				"time", elapsed)
-		})
-	}
+func NewLoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger := log.FromContext(r.Context())
+		start := time.Now()
+		writer := &logWriter{code: http.StatusOK, ResponseWriter: w}
+		logger.Debug("request",
+			"method", r.Method,
+			"uri", r.RequestURI,
+			"addr", r.RemoteAddr)
+		next.ServeHTTP(writer, r)
+		elapsed := time.Since(start)
+		logger.Debug("response",
+			"status", fmt.Sprintf("%d %s", writer.code, http.StatusText(writer.code)),
+			"bytes", humanize.Bytes(uint64(writer.bytes)),
+			"time", elapsed)
+	})
 }

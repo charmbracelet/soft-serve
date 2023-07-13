@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,10 +32,6 @@ type GitRoute struct {
 	method  string
 	pattern *regexp.Regexp
 	handler http.HandlerFunc
-
-	cfg    *config.Config
-	be     *backend.Backend
-	logger *log.Logger
 }
 
 var _ Route = GitRoute{}
@@ -47,6 +44,7 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 
 	re := g.pattern
 	ctx := r.Context()
+	cfg := config.FromContext(ctx)
 	if m := re.FindStringSubmatch(r.URL.Path); m != nil {
 		file := strings.Replace(r.URL.Path, m[1]+"/", "", 1)
 		repo := utils.SanitizeRepo(m[1]) + ".git"
@@ -60,21 +58,9 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 		}
 
 		ctx = context.WithValue(ctx, pattern.Variable("service"), service.String())
-		ctx = context.WithValue(ctx, pattern.Variable("dir"), filepath.Join(g.cfg.DataPath, "repos", repo))
+		ctx = context.WithValue(ctx, pattern.Variable("dir"), filepath.Join(cfg.DataPath, "repos", repo))
 		ctx = context.WithValue(ctx, pattern.Variable("repo"), repo)
 		ctx = context.WithValue(ctx, pattern.Variable("file"), file)
-
-		if g.cfg != nil {
-			ctx = config.WithContext(ctx, g.cfg)
-		}
-
-		if g.be != nil {
-			ctx = backend.WithContext(ctx, g.be)
-		}
-
-		if g.logger != nil {
-			ctx = log.WithContext(ctx, g.logger)
-		}
 
 		return r.WithContext(ctx)
 	}
@@ -103,10 +89,8 @@ var (
 	}, []string{"repo", "file"})
 )
 
-func gitRoutes(ctx context.Context, logger *log.Logger) []Route {
+func gitRoutes() []Route {
 	routes := make([]Route, 0)
-	cfg := config.FromContext(ctx)
-	be := backend.FromContext(ctx)
 
 	// Git services
 	// These routes don't handle authentication/authorization.
@@ -170,9 +154,6 @@ func gitRoutes(ctx context.Context, logger *log.Logger) []Route {
 			handler: getIdxFile,
 		},
 	} {
-		route.cfg = cfg
-		route.be = be
-		route.logger = logger
 		route.handler = withAccess(route.handler)
 		routes = append(routes, route)
 	}
@@ -245,9 +226,9 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 
 	version := r.Header.Get("Git-Protocol")
 
+	var stdout bytes.Buffer
 	cmd := git.ServiceCommand{
-		Stdin:  r.Body,
-		Stdout: w,
+		Stdout: &stdout,
 		Dir:    dir,
 		Args:   []string{"--stateless-rpc"},
 	}
@@ -261,59 +242,61 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle gzip encoding
-	cmd.StdinHandler = func(in io.Reader, stdin io.WriteCloser) (err error) {
-		// We know that `in` is an `io.ReadCloser` because it's `r.Body`.
-		reader := in.(io.ReadCloser)
-		defer reader.Close() // nolint: errcheck
-		switch r.Header.Get("Content-Encoding") {
-		case "gzip":
-			reader, err = gzip.NewReader(reader)
-			if err != nil {
-				return err
-			}
-			defer reader.Close() // nolint: errcheck
+	reader := r.Body
+	defer reader.Close() // nolint: errcheck
+	switch r.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err := gzip.NewReader(reader)
+		if err != nil {
+			logger.Errorf("failed to create gzip reader: %v", err)
+			renderInternalServerError(w)
+			return
 		}
+		defer reader.Close() // nolint: errcheck
+	}
 
-		_, err = io.Copy(stdin, reader)
-		return err
+	cmd.Stdin = reader
+
+	if err := service.Handler(ctx, cmd); err != nil {
+		if errors.Is(err, git.ErrInvalidRepo) {
+			renderNotFound(w)
+			return
+		}
+		renderInternalServerError(w)
+		return
 	}
 
 	// Handle buffered output
 	// Useful when using proxies
-	cmd.StdoutHandler = func(out io.Writer, stdout io.ReadCloser) error {
-		// We know that `out` is an `http.ResponseWriter`.
-		flusher, ok := out.(http.Flusher)
-		if !ok {
-			return fmt.Errorf("expected http.ResponseWriter to be an http.Flusher, got %T", out)
-		}
 
-		p := make([]byte, 1024)
-		for {
-			nRead, err := stdout.Read(p)
-			if err == io.EOF {
-				break
-			}
-			nWrite, err := out.Write(p[:nRead])
-			if err != nil {
-				return err
-			}
-			if nRead != nWrite {
-				return fmt.Errorf("failed to write data: %d read, %d written", nRead, nWrite)
-			}
-			flusher.Flush()
-		}
-
-		return nil
+	// We know that `w` is an `http.ResponseWriter`.
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		logger.Errorf("expected http.ResponseWriter to be an http.Flusher, got %T", w)
+		return
 	}
 
-	if err := service.Handler(ctx, cmd); err != nil {
-		logger.Errorf("error executing service: %s", err)
+	p := make([]byte, 1024)
+	for {
+		nRead, err := stdout.Read(p)
+		if err == io.EOF {
+			break
+		}
+		nWrite, err := w.Write(p[:nRead])
+		if err != nil {
+			logger.Errorf("failed to write data: %v", err)
+			return
+		}
+		if nRead != nWrite {
+			logger.Errorf("failed to write data: %d read, %d written", nRead, nWrite)
+			return
+		}
+		flusher.Flush()
 	}
 }
 
 func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := log.FromContext(ctx)
 	dir, repo, file := pat.Param(r, "dir"), pat.Param(r, "repo"), pat.Param(r, "file")
 	service := getServiceType(r)
 	version := r.Header.Get("Git-Protocol")
@@ -334,7 +317,6 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := service.Handler(ctx, cmd); err != nil {
-			logger.Errorf("error executing service: %s", err)
 			renderNotFound(w)
 			return
 		}

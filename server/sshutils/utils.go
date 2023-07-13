@@ -2,6 +2,7 @@ package sshutils
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/charmbracelet/ssh"
 	gossh "golang.org/x/crypto/ssh"
@@ -28,4 +29,12 @@ func MarshalAuthorizedKey(pk gossh.PublicKey) string {
 // KeysEqual returns whether the two public keys are equal.
 func KeysEqual(a, b gossh.PublicKey) bool {
 	return ssh.KeysEqual(a, b)
+}
+
+// PublicKeyFromContext returns the public key from the context.
+func PublicKeyFromContext(ctx context.Context) gossh.PublicKey {
+	if pk, ok := ctx.Value(ssh.ContextKeyPublicKey).(gossh.PublicKey); ok {
+		return pk
+	}
+	return nil
 }

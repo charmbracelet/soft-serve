@@ -3,6 +3,7 @@ package cmd
 import (
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +30,7 @@ func tagListCommand() *cobra.Command {
 		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			rn := strings.TrimSuffix(args[0], ".git")
 			rr, err := be.Repository(ctx, rn)
 			if err != nil {
@@ -62,7 +63,7 @@ func tagDeleteCommand() *cobra.Command {
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			rn := strings.TrimSuffix(args[0], ".git")
 			rr, err := be.Repository(ctx, rn)
 			if err != nil {

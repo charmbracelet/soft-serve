@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/spf13/cobra"
@@ -28,7 +28,7 @@ func userCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var pubkeys []ssh.PublicKey
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			username := args[0]
 			if key != "" {
 				pk, _, err := sshutils.ParseAuthorizedKey(key)
@@ -59,7 +59,7 @@ func userCommand() *cobra.Command {
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			username := args[0]
 
 			return be.DeleteUser(ctx, username)
@@ -74,7 +74,7 @@ func userCommand() *cobra.Command {
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			users, err := be.Users(ctx)
 			if err != nil {
 				return err
@@ -96,7 +96,7 @@ func userCommand() *cobra.Command {
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			username := args[0]
 			pubkey := strings.Join(args[1:], " ")
 			pk, _, err := sshutils.ParseAuthorizedKey(pubkey)
@@ -115,10 +115,9 @@ func userCommand() *cobra.Command {
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			username := args[0]
 			pubkey := strings.Join(args[1:], " ")
-			log.Debugf("key is %q", pubkey)
 			pk, _, err := sshutils.ParseAuthorizedKey(pubkey)
 			if err != nil {
 				return err
@@ -135,7 +134,7 @@ func userCommand() *cobra.Command {
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			username := args[0]
 
 			return be.SetAdmin(ctx, username, args[1] == "true")
@@ -149,7 +148,7 @@ func userCommand() *cobra.Command {
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			username := args[0]
 
 			user, err := be.User(ctx, username)
@@ -177,7 +176,7 @@ func userCommand() *cobra.Command {
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			_, be, _ := fromContext(cmd)
+			be := backend.FromContext(ctx)
 			username := args[0]
 			newUsername := args[1]
 
