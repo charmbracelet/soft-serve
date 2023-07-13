@@ -63,7 +63,7 @@ func commitCommand() *cobra.Command {
 			s := strings.Builder{}
 			commitLine := "commit " + commitSHA
 			authorLine := "Author: " + commit.Author.Name
-			dateLine := "Date:   " + commit.Committer.When.Format(time.UnixDate)
+			dateLine := "Date:   " + commit.Committer.When.UTC().Format(time.UnixDate)
 			msgLine := strings.ReplaceAll(commit.Message, "\r\n", "\n")
 			statsLine := renderStats(diff, commonStyle, color)
 			diffLine := renderDiff(patch, color)

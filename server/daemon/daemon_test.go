@@ -78,7 +78,7 @@ func TestIdleTimeout(t *testing.T) {
 	if err != nil && !errors.Is(err, io.EOF) {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	if out != git.ErrTimeout.Error() && out != "" {
+	if out != "ERR "+git.ErrTimeout.Error() && out != "" {
 		t.Fatalf("expected %q error, got %q", git.ErrTimeout, out)
 	}
 }
@@ -95,7 +95,7 @@ func TestInvalidRepo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	if out != git.ErrInvalidRepo.Error() {
+	if out != "ERR "+git.ErrInvalidRepo.Error() {
 		t.Fatalf("expected %q error, got %q", git.ErrInvalidRepo, out)
 	}
 }

@@ -50,7 +50,7 @@ func WritePktline(w io.Writer, v ...interface{}) error {
 
 // WritePktlineErr writes an error pktline to the given writer.
 func WritePktlineErr(w io.Writer, err error) error {
-	return WritePktline(w, "ERR ", err.Error())
+	return WritePktline(w, "ERR", err.Error())
 }
 
 // EnsureWithin ensures the given repo is within the repos directory.

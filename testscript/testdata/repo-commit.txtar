@@ -13,7 +13,7 @@ cmp stdout commit1.txt
 -- commit1.txt --
 commit b8e471f58bcbca63b07bda20e428190409c2db47
 Author: Daniel Ripolles
-Date:   Tue Mar 31 07:44:52 EDT 2015
+Date:   Tue Mar 31 11:44:52 UTC 2015
 Creating changelog
 
 
