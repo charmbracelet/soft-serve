@@ -11,7 +11,7 @@ import (
 )
 
 // MigrateFunc is a function that executes a migration.
-type MigrateFunc func(ctx context.Context, tx *db.Tx) error
+type MigrateFunc func(ctx context.Context, tx *db.Tx) error // nolint:revive
 
 // Migration is a struct that contains the name of the migration and the
 // function to execute it.

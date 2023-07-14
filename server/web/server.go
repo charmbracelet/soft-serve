@@ -1,4 +1,3 @@
-// Package server is the reusable server
 package web
 
 import (

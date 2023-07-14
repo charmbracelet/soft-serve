@@ -16,10 +16,8 @@ func deleteCommand() *cobra.Command {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
 			name := args[0]
-			if err := be.DeleteRepository(ctx, name); err != nil {
-				return err
-			}
-			return nil
+
+			return be.DeleteRepository(ctx, name)
 		},
 	}
 	return cmd

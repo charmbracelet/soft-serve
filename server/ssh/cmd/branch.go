@@ -171,11 +171,7 @@ func branchDeleteCommand() *cobra.Command {
 				return fmt.Errorf("cannot delete the default branch")
 			}
 
-			if err := r.DeleteBranch(branch, gitm.DeleteBranchOptions{Force: true}); err != nil {
-				return err
-			}
-
-			return nil
+			return r.DeleteBranch(branch, gitm.DeleteBranchOptions{Force: true})
 		},
 	}
 

@@ -25,7 +25,6 @@ linters:
     - goprintffuncname
     - ifshort
     # - lll
-    - revive
     - misspell
     - nakedret
     - nestif

@@ -20,9 +20,7 @@ linters:
     - gosec
     - nilerr
     - predeclared
-    # Uncomment when this is fixed
-    # https://github.com/golangci/golangci-lint/issues/1981
-    # - revive
+    - revive
     - rowserrcheck
     - sqlclosecheck
     - tparallel

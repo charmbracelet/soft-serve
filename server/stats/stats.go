@@ -10,7 +10,7 @@ import (
 )
 
 // StatsServer is a server for collecting and reporting statistics.
-type StatsServer struct {
+type StatsServer struct { //nolint:revive
 	ctx    context.Context
 	cfg    *config.Config
 	server *http.Server

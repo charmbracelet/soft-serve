@@ -26,9 +26,8 @@ func RepoURL(publicURL, name string) string {
 			port := url.Port()
 			if port == "" || port == "22" {
 				return fmt.Sprintf("git@%s:%s", url.Hostname(), name)
-			} else {
-				return fmt.Sprintf("ssh://%s:%s/%s", url.Hostname(), url.Port(), name)
 			}
+			return fmt.Sprintf("ssh://%s:%s/%s", url.Hostname(), url.Port(), name)
 		}
 	}
 

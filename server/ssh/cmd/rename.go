@@ -17,10 +17,8 @@ func renameCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			oldName := args[0]
 			newName := args[1]
-			if err := be.RenameRepository(ctx, oldName, newName); err != nil {
-				return err
-			}
-			return nil
+
+			return be.RenameRepository(ctx, oldName, newName)
 		},
 	}
 

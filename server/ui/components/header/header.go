@@ -32,7 +32,7 @@ func (h *Header) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (h *Header) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (h *Header) Update(_ tea.Msg) (tea.Model, tea.Cmd) {
 	return h, nil
 }
 

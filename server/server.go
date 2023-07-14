@@ -26,7 +26,7 @@ type Server struct {
 	GitDaemon   *daemon.GitDaemon
 	HTTPServer  *web.HTTPServer
 	StatsServer *stats.StatsServer
-	Cron        *cron.CronScheduler
+	Cron        *cron.Scheduler
 	Config      *config.Config
 	Backend     *backend.Backend
 	DB          *db.DB
@@ -46,7 +46,7 @@ func NewServer(ctx context.Context, db *db.DB) (*Server, error) {
 	be := backend.New(ctx, cfg, db)
 	ctx = backend.WithContext(ctx, be)
 	srv := &Server{
-		Cron:    cron.NewCronScheduler(ctx),
+		Cron:    cron.NewScheduler(ctx),
 		Config:  cfg,
 		Backend: be,
 		DB:      db,

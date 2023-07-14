@@ -8,16 +8,9 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-// CronScheduler is a cron-like job scheduler.
-type CronScheduler struct {
+// Scheduler is a cron-like job scheduler.
+type Scheduler struct {
 	*cron.Cron
-}
-
-// Entry is a cron job.
-type Entry struct {
-	ID   cron.EntryID
-	Desc string
-	Spec string
 }
 
 // cronLogger is a wrapper around the logger to make it compatible with the
@@ -36,22 +29,22 @@ func (l cronLogger) Error(err error, msg string, keysAndValues ...interface{}) {
 	l.logger.Error(msg, append(keysAndValues, "err", err)...)
 }
 
-// NewCronScheduler returns a new Cron.
-func NewCronScheduler(ctx context.Context) *CronScheduler {
+// NewScheduler returns a new Cron.
+func NewScheduler(ctx context.Context) *Scheduler {
 	logger := cronLogger{log.FromContext(ctx).WithPrefix("cron")}
-	return &CronScheduler{
+	return &Scheduler{
 		Cron: cron.New(cron.WithLogger(logger)),
 	}
 }
 
-// Shutdonw gracefully shuts down the CronServer.
-func (s *CronScheduler) Shutdown() {
+// Shutdonw gracefully shuts down the Scheduler.
+func (s *Scheduler) Shutdown() {
 	ctx, cancel := context.WithTimeout(s.Cron.Stop(), 30*time.Second)
 	defer func() { cancel() }()
 	<-ctx.Done()
 }
 
-// Start starts the CronServer.
-func (s *CronScheduler) Start() {
+// Start starts the Scheduler.
+func (s *Scheduler) Start() {
 	s.Cron.Start()
 }

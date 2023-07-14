@@ -75,6 +75,7 @@ func (g GitRoute) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 var (
+	//nolint:revive
 	gitHttpReceiveCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
 		Subsystem: "http",
@@ -82,6 +83,7 @@ var (
 		Help:      "The total number of git push requests",
 	}, []string{"repo"})
 
+	//nolint:revive
 	gitHttpUploadCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
 		Subsystem: "http",
@@ -204,6 +206,7 @@ func withAccess(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+//nolint:revive
 func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	cfg := config.FromContext(ctx)

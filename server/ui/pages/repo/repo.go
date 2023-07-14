@@ -54,7 +54,7 @@ type CopyURLMsg struct{}
 type UpdateStatusBarMsg struct{}
 
 // RepoMsg is a message that contains a git.Repository.
-type RepoMsg store.Repository
+type RepoMsg store.Repository // nolint:revive
 
 // BackMsg is a message to go back to the previous view.
 type BackMsg struct{}
