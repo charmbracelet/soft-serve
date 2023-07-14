@@ -19,14 +19,11 @@ import (
 )
 
 var (
-	autoMigrate bool
-	rollback    bool
-	initHooks   bool
+	syncHooks bool
 
 	serveCmd = &cobra.Command{
 		Use:                "serve",
 		Short:              "Start the server",
-		Long:               "Start the server",
 		Args:               cobra.NoArgs,
 		PersistentPreRunE:  initBackendContext,
 		PersistentPostRunE: closeDBContext,
@@ -66,15 +63,8 @@ var (
 			}
 
 			db := db.FromContext(ctx)
-			// TODO: auto migrate by default no flag needed
-			if rollback {
-				if err := migrate.Rollback(ctx, db); err != nil {
-					return fmt.Errorf("rollback error: %w", err)
-				}
-			} else if autoMigrate {
-				if err := migrate.Migrate(ctx, db); err != nil {
-					return fmt.Errorf("migration error: %w", err)
-				}
+			if err := migrate.Migrate(ctx, db); err != nil {
+				return fmt.Errorf("migration error: %w", err)
 			}
 
 			s, err := server.NewServer(ctx)
@@ -82,7 +72,7 @@ var (
 				return fmt.Errorf("start server: %w", err)
 			}
 
-			if initHooks {
+			if syncHooks {
 				be := backend.FromContext(ctx)
 				if err := initializeHooks(ctx, cfg, be); err != nil {
 					return fmt.Errorf("initialize hooks: %w", err)
@@ -113,10 +103,7 @@ var (
 )
 
 func init() {
-	serveCmd.Flags().BoolVarP(&autoMigrate, "auto-migrate", "", false, "automatically run database migrations")
-	serveCmd.Flags().BoolVarP(&rollback, "rollback", "", false, "rollback the last database migration")
-	serveCmd.Flags().BoolVarP(&initHooks, "init-hooks", "", false, "initialize the hooks directory and update hooks for all repositories")
-	rootCmd.AddCommand(serveCmd)
+	serveCmd.Flags().BoolVarP(&syncHooks, "sync-hooks", "", false, "synchronize hooks for all repositories before running the server")
 }
 
 func initializeHooks(ctx context.Context, cfg *config.Config, be *backend.Backend) error {

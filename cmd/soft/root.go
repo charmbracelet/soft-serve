@@ -42,6 +42,7 @@ func init() {
 		manCmd,
 		hookCmd,
 		migrateConfig,
+		adminCmd,
 	)
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
@@ -148,9 +149,9 @@ func initBackendContext(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("open database: %w", err)
 	}
 
+	ctx = db.WithContext(ctx, dbx)
 	be := backend.New(ctx, cfg, dbx)
 	ctx = backend.WithContext(ctx, be)
-	ctx = db.WithContext(ctx, dbx)
 
 	cmd.SetContext(ctx)
 

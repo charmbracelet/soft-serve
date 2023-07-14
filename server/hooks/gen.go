@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -47,15 +46,6 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 		return err
 	}
 
-	dp, err := filepath.Abs(cfg.DataPath)
-	if err != nil {
-		return fmt.Errorf("failed to get absolute path for data path: %w", err)
-	}
-
-	cp := filepath.Join(dp, "config.yaml")
-	// Add extra environment variables to the hooks here.
-	envs := []string{}
-
 	for _, hook := range []string{
 		PreReceiveHook,
 		UpdateHook,
@@ -88,14 +78,10 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 
 		if err := hooksTmpl.Execute(&data, struct {
 			Executable string
-			Config     string
-			Envs       []string
 			Hook       string
 			Args       string
 		}{
 			Executable: ex,
-			Config:     cp,
-			Envs:       envs,
 			Hook:       hook,
 			Args:       args,
 		}); err != nil {
@@ -150,7 +136,5 @@ if [ -z "$SOFT_SERVE_REPO_NAME" ]; then
 	echo "Warning: SOFT_SERVE_REPO_NAME not defined. Skipping hooks."
 	exit 0
 fi
-{{ range $_, $env := .Envs }}
-{{ $env }} \{{ end }}
-{{ .Executable }} hook --config "{{ .Config }}" {{ .Hook }} {{ .Args }}
+{{ .Executable }} hook {{ .Hook }} {{ .Args }}
 `))

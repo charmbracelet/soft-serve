@@ -18,6 +18,9 @@ import (
 )
 
 var (
+	// Deprecated: this flag is ignored.
+	configPath string
+
 	hookCmd = &cobra.Command{
 		Use:                "hook",
 		Short:              "Run git server hooks",
@@ -123,6 +126,7 @@ var (
 )
 
 func init() {
+	hookCmd.PersistentFlags().StringVar(&configPath, "config", "", "path to config file (deprecated)")
 	hookCmd.AddCommand(
 		preReceiveCmd,
 		updateCmd,
@@ -174,6 +178,7 @@ fi
 
 echo "Hi from Soft Serve update hook!"
 echo
+echo "Repository: $SOFT_SERVE_REPO_NAME"
 echo "RefName: $refname"
 echo "Change Type: $newrev_type"
 echo "Old SHA1: $oldrev"
