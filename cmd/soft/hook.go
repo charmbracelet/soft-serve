@@ -13,51 +13,28 @@ import (
 
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
-	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/spf13/cobra"
 )
 
 var (
-	configPath string
-
 	hookCmd = &cobra.Command{
-		Use:    "hook",
-		Short:  "Run git server hooks",
-		Long:   "Handles Soft Serve git server hooks.",
-		Hidden: true,
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			ctx := cmd.Context()
-			cfg, err := config.ParseConfig(configPath)
-			if err != nil {
-				return fmt.Errorf("could not parse config: %w", err)
-			}
-
-			ctx = config.WithContext(ctx, cfg)
-			cmd.SetContext(ctx)
-			dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
-			if err != nil {
-				return fmt.Errorf("open database: %w", err)
-			}
-
-			ctx = db.WithContext(ctx, dbx)
-
-			// Set up the backend
-			sb := backend.New(ctx, cfg, dbx)
-			ctx = backend.WithContext(ctx, sb)
-			cmd.SetContext(ctx)
-
-			return nil
-		},
-		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
-			db := db.FromContext(cmd.Context())
-			return db.Close()
-		},
+		Use:                "hook",
+		Short:              "Run git server hooks",
+		Long:               "Handles Soft Serve git server hooks.",
+		Hidden:             true,
+		PersistentPreRunE:  initBackendContext,
+		PersistentPostRunE: closeDBContext,
 	}
 
+	// Git hooks read the config from the environment, based on
+	// $SOFT_SERVE_DATA_PATH. We already parse the config when the binary
+	// starts, so we don't need to do it again.
+	// The --config flag is now deprecated.
 	hooksRunE = func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		hks := backend.FromContext(ctx)
+		cfg := config.FromContext(ctx)
 
 		// This is set in the server before invoking git-receive-pack/git-upload-pack
 		repoName := os.Getenv("SOFT_SERVE_REPO_NAME")
@@ -67,7 +44,7 @@ var (
 		stderr := cmd.ErrOrStderr()
 
 		cmdName := cmd.Name()
-		customHookPath := filepath.Join(filepath.Dir(configPath), "hooks", cmdName)
+		customHookPath := filepath.Join(cfg.DataPath, "hooks", cmdName)
 
 		var buf bytes.Buffer
 		opts := make([]hooks.HookArg, 0)
@@ -146,7 +123,6 @@ var (
 )
 
 func init() {
-	hookCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "path to config file")
 	hookCmd.AddCommand(
 		preReceiveCmd,
 		updateCmd,

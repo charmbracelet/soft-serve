@@ -35,16 +35,15 @@ type Server struct {
 	ctx    context.Context
 }
 
-// NewServer returns a new *ssh.Server configured to serve Soft Serve. The SSH
-// server key-pair will be created if none exists. An initial admin SSH public
-// key can be provided with authKey. If authKey is provided, access will be
-// restricted to that key. If authKey is not provided, the server will be
-// publicly writable until configured otherwise by cloning the `config` repo.
-func NewServer(ctx context.Context, db *db.DB) (*Server, error) {
+// NewServer returns a new *Server configured to serve Soft Serve. The SSH
+// server key-pair will be created if none exists.
+// It expects a context with *backend.Backend, *db.DB, *log.Logger, and
+// *config.Config attached.
+func NewServer(ctx context.Context) (*Server, error) {
 	var err error
 	cfg := config.FromContext(ctx)
-	be := backend.New(ctx, cfg, db)
-	ctx = backend.WithContext(ctx, be)
+	be := backend.FromContext(ctx)
+	db := db.FromContext(ctx)
 	srv := &Server{
 		Cron:    cron.NewScheduler(ctx),
 		Config:  cfg,

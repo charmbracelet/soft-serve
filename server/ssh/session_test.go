@@ -61,6 +61,9 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 	})
 	ctx := context.TODO()
 	cfg := config.DefaultConfig()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	ctx = config.WithContext(ctx, cfg)
 	db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	if err != nil {

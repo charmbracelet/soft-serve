@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
-	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
 	_ "github.com/lib/pq" // postgres driver
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
@@ -58,11 +60,25 @@ func init() {
 }
 
 func main() {
-	logger, f, err := newDefaultLogger()
+	ctx := context.Background()
+	cfg := config.DefaultConfig()
+	if cfg.Exist() {
+		if err := cfg.Parse(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if err := cfg.ParseEnv(); err != nil {
+		log.Fatal(err)
+	}
+
+	ctx = config.WithContext(ctx, cfg)
+	logger, f, err := newDefaultLogger(cfg)
 	if err != nil {
 		log.Errorf("failed to create logger: %v", err)
 	}
 
+	ctx = log.WithContext(ctx, logger)
 	if f != nil {
 		defer f.Close() // nolint: errcheck
 	}
@@ -81,20 +97,13 @@ func main() {
 		log.Warn("couldn't set automaxprocs", "error", err)
 	}
 
-	ctx := log.WithContext(context.Background(), logger)
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }
 
 // newDefaultLogger returns a new logger with default settings.
-func newDefaultLogger() (*log.Logger, *os.File, error) {
-	dp := config.DataPath()
-	cfg, err := config.ParseConfig(filepath.Join(dp, "config.yaml"))
-	if err != nil {
-		log.Errorf("failed to parse config: %v", err)
-	}
-
+func newDefaultLogger(cfg *config.Config) (*log.Logger, *os.File, error) {
 	logger := log.NewWithOptions(os.Stderr, log.Options{
 		ReportTimestamp: true,
 		TimeFormat:      time.DateOnly,
@@ -121,7 +130,7 @@ func newDefaultLogger() (*log.Logger, *os.File, error) {
 
 	var f *os.File
 	if cfg.Log.Path != "" {
-		f, err = os.OpenFile(cfg.Log.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(cfg.Log.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -129,4 +138,33 @@ func newDefaultLogger() (*log.Logger, *os.File, error) {
 	}
 
 	return logger, f, nil
+}
+
+func initBackendContext(cmd *cobra.Command, _ []string) error {
+	ctx := cmd.Context()
+	cfg := config.FromContext(ctx)
+	dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
+	if err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+
+	be := backend.New(ctx, cfg, dbx)
+	ctx = backend.WithContext(ctx, be)
+	ctx = db.WithContext(ctx, dbx)
+
+	cmd.SetContext(ctx)
+
+	return nil
+}
+
+func closeDBContext(cmd *cobra.Command, _ []string) error {
+	ctx := cmd.Context()
+	dbx := db.FromContext(ctx)
+	if dbx != nil {
+		if err := dbx.Close(); err != nil {
+			return fmt.Errorf("close database: %w", err)
+		}
+	}
+
+	return nil
 }

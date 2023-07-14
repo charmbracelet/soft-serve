@@ -37,6 +37,9 @@ func TestMain(m *testing.M) {
 	os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort()))
 	ctx := context.TODO()
 	cfg := config.DefaultConfig()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	ctx = config.WithContext(ctx, cfg)
 	db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	if err != nil {

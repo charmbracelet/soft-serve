@@ -24,15 +24,28 @@ var (
 	initHooks   bool
 
 	serveCmd = &cobra.Command{
-		Use:   "serve",
-		Short: "Start the server",
-		Long:  "Start the server",
-		Args:  cobra.NoArgs,
+		Use:                "serve",
+		Short:              "Start the server",
+		Long:               "Start the server",
+		Args:               cobra.NoArgs,
+		PersistentPreRunE:  initBackendContext,
+		PersistentPostRunE: closeDBContext,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			cfg := config.DefaultConfig()
-			ctx = config.WithContext(ctx, cfg)
-			cmd.SetContext(ctx)
+			if cfg.Exist() {
+				if err := cfg.ParseFile(); err != nil {
+					return fmt.Errorf("parse config file: %w", err)
+				}
+			} else {
+				if err := cfg.WriteConfig(); err != nil {
+					return fmt.Errorf("write config file: %w", err)
+				}
+			}
+
+			if err := cfg.ParseEnv(); err != nil {
+				return fmt.Errorf("parse environment variables: %w", err)
+			}
 
 			// Create custom hooks directory if it doesn't exist
 			customHooksPath := filepath.Join(cfg.DataPath, "hooks")
@@ -41,7 +54,7 @@ var (
 				// Generate update hook example without executable permissions
 				hookPath := filepath.Join(customHooksPath, "update.sample")
 				// nolint: gosec
-				if err := os.WriteFile(hookPath, []byte(updateHookExample), 0744); err != nil {
+				if err := os.WriteFile(hookPath, []byte(updateHookExample), 0o744); err != nil {
 					return fmt.Errorf("failed to generate update hook example: %w", err)
 				}
 			}
@@ -52,13 +65,8 @@ var (
 				os.MkdirAll(logPath, os.ModePerm) // nolint: errcheck
 			}
 
-			db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
-			if err != nil {
-				return fmt.Errorf("open database: %w", err)
-			}
-
-			defer db.Close() // nolint: errcheck
-
+			db := db.FromContext(ctx)
+			// TODO: auto migrate by default no flag needed
 			if rollback {
 				if err := migrate.Rollback(ctx, db); err != nil {
 					return fmt.Errorf("rollback error: %w", err)
@@ -69,13 +77,13 @@ var (
 				}
 			}
 
-			s, err := server.NewServer(ctx, db)
+			s, err := server.NewServer(ctx)
 			if err != nil {
 				return fmt.Errorf("start server: %w", err)
 			}
 
 			if initHooks {
-				be := backend.New(ctx, cfg, db)
+				be := backend.FromContext(ctx)
 				if err := initializeHooks(ctx, cfg, be); err != nil {
 					return fmt.Errorf("initialize hooks: %w", err)
 				}
