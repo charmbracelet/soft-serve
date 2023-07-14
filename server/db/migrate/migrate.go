@@ -24,8 +24,9 @@ type Migration struct {
 
 // Migrations is a database model to store migrations.
 type Migrations struct {
-	ID   int64  `db:"id"`
-	Name string `db:"name"`
+	ID      int64  `db:"id"`
+	Name    string `db:"name"`
+	Version int64  `db:"version"`
 }
 
 func (Migrations) schema(driverName string) string {
@@ -33,19 +34,23 @@ func (Migrations) schema(driverName string) string {
 	case "sqlite3", "sqlite":
 		return `CREATE TABLE IF NOT EXISTS migrations (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				name TEXT NOT NULL
+				name TEXT NOT NULL,
+				version INTEGER NOT NULL UNIQUE
 			);
 		`
 	case "postgres":
 		return `CREATE TABLE IF NOT EXISTS migrations (
 			id SERIAL PRIMARY KEY,
-			name TEXT NOT NULL
+			name TEXT NOT NULL,
+			version INTEGER NOT NULL UNIQUE
 		);
 	`
 	case "mysql":
 		return `CREATE TABLE IF NOT EXISTS migrations (
 			id INT NOT NULL AUTO_INCREMENT,
 			name TEXT NOT NULL,
+			version INT NOT NULL,
+			UNIQUE (version),
 			PRIMARY KEY (id)
 		);
 	`
@@ -65,14 +70,14 @@ func Migrate(ctx context.Context, dbx *db.DB) error {
 		}
 
 		var migrs Migrations
-		if err := tx.Get(&migrs, tx.Rebind("SELECT * FROM migrations ORDER BY id DESC LIMIT 1")); err != nil {
+		if err := tx.Get(&migrs, tx.Rebind("SELECT * FROM migrations ORDER BY version DESC LIMIT 1")); err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
 				return err
 			}
 		}
 
 		for _, m := range migrations {
-			if m.Version <= migrs.ID {
+			if m.Version <= migrs.Version {
 				continue
 			}
 
@@ -81,7 +86,7 @@ func Migrate(ctx context.Context, dbx *db.DB) error {
 				return err
 			}
 
-			if _, err := tx.Exec(tx.Rebind("INSERT INTO migrations (name) VALUES (?)"), m.Name); err != nil {
+			if _, err := tx.Exec(tx.Rebind("INSERT INTO migrations (name, version) VALUES (?, ?)"), m.Name, m.Version); err != nil {
 				return err
 			}
 		}
@@ -95,23 +100,23 @@ func Rollback(ctx context.Context, dbx *db.DB) error {
 	logger := log.FromContext(ctx).WithPrefix("migrate")
 	return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 		var migrs Migrations
-		if err := tx.Get(&migrs, tx.Rebind("SELECT * FROM migrations ORDER BY id DESC LIMIT 1")); err != nil {
+		if err := tx.Get(&migrs, tx.Rebind("SELECT * FROM migrations ORDER BY version DESC LIMIT 1")); err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("there are no migrations to rollback: %w", err)
 			}
 		}
 
-		if len(migrations) < int(migrs.ID) {
+		if len(migrations) < int(migrs.Version) {
 			return fmt.Errorf("there are no migrations to rollback")
 		}
 
-		m := migrations[migrs.ID-1]
+		m := migrations[migrs.Version-1]
 		logger.Infof("rolling back migration %d. %s", m.Version, m.Name)
 		if err := m.Rollback(ctx, tx); err != nil {
 			return err
 		}
 
-		if _, err := tx.Exec(tx.Rebind("DELETE FROM migrations WHERE id = ?"), migrs.ID); err != nil {
+		if _, err := tx.Exec(tx.Rebind("DELETE FROM migrations WHERE version = ?"), migrs.Version); err != nil {
 			return err
 		}
 
