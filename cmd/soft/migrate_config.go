@@ -24,6 +24,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Deprecated: will be removed in a future release.
 var migrateConfig = &cobra.Command{
 	Use:    "migrate-config",
 	Short:  "Migrate config to new format",
