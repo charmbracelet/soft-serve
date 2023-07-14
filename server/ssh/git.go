@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
-	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 )
@@ -27,7 +28,7 @@ func handleGit(s ssh.Session) {
 	name := utils.SanitizeRepo(cmdLine[1])
 	pk := s.PublicKey()
 	ak := sshutils.MarshalAuthorizedKey(pk)
-	access := be.AccessLevelByPublicKey(ctx, name, pk)
+	accessLevel := be.AccessLevelByPublicKey(ctx, name, pk)
 	// git bare repositories should end in ".git"
 	// https://git-scm.com/docs/gitrepository-layout
 	repo := name + ".git"
@@ -60,7 +61,7 @@ func handleGit(s ssh.Session) {
 		Dir:    repoDir,
 	}
 
-	logger.Debug("git middleware", "cmd", service, "access", access.String())
+	logger.Debug("git middleware", "cmd", service, "access", accessLevel.String())
 
 	switch service {
 	case git.ReceivePackService:
@@ -68,12 +69,12 @@ func handleGit(s ssh.Session) {
 		defer func() {
 			receivePackSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
 		}()
-		if access < store.ReadWriteAccess {
+		if accessLevel < access.ReadWriteAccess {
 			sshFatal(s, git.ErrNotAuthed)
 			return
 		}
 		if _, err := be.Repository(ctx, name); err != nil {
-			if _, err := be.CreateRepository(ctx, name, store.RepositoryOptions{Private: false}); err != nil {
+			if _, err := be.CreateRepository(ctx, name, proto.RepositoryOptions{Private: false}); err != nil {
 				log.Errorf("failed to create repo: %s", err)
 				sshFatal(s, err)
 				return
@@ -92,7 +93,7 @@ func handleGit(s ssh.Session) {
 		receivePackCounter.WithLabelValues(name).Inc()
 		return
 	case git.UploadPackService, git.UploadArchiveService:
-		if access < store.ReadOnlyAccess {
+		if accessLevel < access.ReadOnlyAccess {
 			sshFatal(s, git.ErrNotAuthed)
 			return
 		}

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +22,7 @@ func createCommand() *cobra.Command {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
 			name := args[0]
-			if _, err := be.CreateRepository(ctx, name, store.RepositoryOptions{
+			if _, err := be.CreateRepository(ctx, name, proto.RepositoryOptions{
 				Private:     private,
 				Description: description,
 				ProjectName: projectName,

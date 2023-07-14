@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/store"
 )
@@ -22,13 +23,13 @@ func (*settingsStore) GetAllowKeylessAccess(ctx context.Context, tx *db.Tx) (boo
 }
 
 // GetAnonAccess implements store.SettingStore.
-func (*settingsStore) GetAnonAccess(ctx context.Context, tx *db.Tx) (store.AccessLevel, error) {
+func (*settingsStore) GetAnonAccess(ctx context.Context, tx *db.Tx) (access.AccessLevel, error) {
 	var level string
 	query := tx.Rebind(`SELECT value FROM settings WHERE key = "anon_access"`)
 	if err := tx.GetContext(ctx, &level, query); err != nil {
-		return store.NoAccess, db.WrapError(err)
+		return access.NoAccess, db.WrapError(err)
 	}
-	return store.ParseAccessLevel(level), nil
+	return access.ParseAccessLevel(level), nil
 }
 
 // SetAllowKeylessAccess implements store.SettingStore.
@@ -39,7 +40,7 @@ func (*settingsStore) SetAllowKeylessAccess(ctx context.Context, tx *db.Tx, allo
 }
 
 // SetAnonAccess implements store.SettingStore.
-func (*settingsStore) SetAnonAccess(ctx context.Context, tx *db.Tx, level store.AccessLevel) error {
+func (*settingsStore) SetAnonAccess(ctx context.Context, tx *db.Tx, level access.AccessLevel) error {
 	query := tx.Rebind(`UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = "anon_access"`)
 	_, err := tx.ExecContext(ctx, query, level.String())
 	return db.WrapError(err)

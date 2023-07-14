@@ -7,11 +7,11 @@ import (
 	"text/template"
 	"unicode"
 
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
-	"github.com/charmbracelet/soft-serve/server/errors"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
-	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/prometheus/client_golang/prometheus"
@@ -171,8 +171,8 @@ func checkIfReadable(cmd *cobra.Command, args []string) error {
 	rn := utils.SanitizeRepo(repo)
 	pk := sshutils.PublicKeyFromContext(ctx)
 	auth := be.AccessLevelByPublicKey(cmd.Context(), rn, pk)
-	if auth < store.ReadOnlyAccess {
-		return errors.ErrUnauthorized
+	if auth < access.ReadOnlyAccess {
+		return proto.ErrUnauthorized
 	}
 	return nil
 }
@@ -197,11 +197,11 @@ func checkIfAdmin(cmd *cobra.Command, _ []string) error {
 
 	user, _ := be.UserByPublicKey(ctx, pk)
 	if user == nil {
-		return errors.ErrUnauthorized
+		return proto.ErrUnauthorized
 	}
 
 	if !user.IsAdmin() {
-		return errors.ErrUnauthorized
+		return proto.ErrUnauthorized
 	}
 
 	return nil
@@ -218,8 +218,8 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 	pk := sshutils.PublicKeyFromContext(ctx)
 	rn := utils.SanitizeRepo(repo)
 	auth := be.AccessLevelByPublicKey(ctx, rn, pk)
-	if auth < store.ReadWriteAccess {
-		return errors.ErrUnauthorized
+	if auth < access.ReadWriteAccess {
+		return proto.ErrUnauthorized
 	}
 	return nil
 }

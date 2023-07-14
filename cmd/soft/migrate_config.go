@@ -12,11 +12,12 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
-	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	gitm "github.com/gogs/git-module"
 	"github.com/spf13/cobra"
@@ -137,7 +138,7 @@ var migrateConfig = &cobra.Command{
 		if sb.SetAllowKeyless(ctx, ocfg.AllowKeyless) != nil {
 			fmt.Fprintf(os.Stderr, "failed to set allow keyless\n")
 		}
-		anon := store.ParseAccessLevel(ocfg.AnonAccess)
+		anon := access.ParseAccessLevel(ocfg.AnonAccess)
 		if anon >= 0 {
 			if err := sb.SetAnonAccess(ctx, anon); err != nil {
 				fmt.Fprintf(os.Stderr, "failed to set anon access: %s\n", err)
@@ -176,7 +177,7 @@ var migrateConfig = &cobra.Command{
 					return fmt.Errorf("failed to copy repo: %w", err)
 				}
 
-				if _, err := sb.CreateRepository(ctx, dir.Name(), store.RepositoryOptions{}); err != nil {
+				if _, err := sb.CreateRepository(ctx, dir.Name(), proto.RepositoryOptions{}); err != nil {
 					fmt.Fprintf(os.Stderr, "failed to create repository: %s\n", err)
 				}
 			}
@@ -238,7 +239,7 @@ var migrateConfig = &cobra.Command{
 				}
 
 				// Create `.soft-serve` repository and add readme
-				if _, err := sb.CreateRepository(ctx, ".soft-serve", store.RepositoryOptions{
+				if _, err := sb.CreateRepository(ctx, ".soft-serve", proto.RepositoryOptions{
 					ProjectName: "Home",
 					Description: "Soft Serve home repository",
 					Hidden:      true,
@@ -299,7 +300,7 @@ var migrateConfig = &cobra.Command{
 			username := strings.ToLower(user.Name)
 			username = strings.ReplaceAll(username, " ", "-")
 			logger.Infof("Creating user %q", username)
-			if _, err := sb.CreateUser(ctx, username, store.UserOptions{
+			if _, err := sb.CreateUser(ctx, username, proto.UserOptions{
 				Admin:      user.Admin,
 				PublicKeys: pubkeys,
 			}); err != nil {

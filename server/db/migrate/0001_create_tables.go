@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
-	"github.com/charmbracelet/soft-serve/server/store"
 )
 
 const (
@@ -116,7 +116,7 @@ var createTables = Migration{
 			Value string
 		}{
 			{"allow_keyless", "true"},
-			{"anon_access", store.ReadOnlyAccess.String()},
+			{"anon_access", access.ReadOnlyAccess.String()},
 			{"init", "true"},
 		}
 

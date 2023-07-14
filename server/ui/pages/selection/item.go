@@ -12,7 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/server/config"
-	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/dustin/go-humanize"
 )
@@ -48,13 +48,13 @@ func (it Items) Swap(i int, j int) {
 
 // Item represents a single item in the selector.
 type Item struct {
-	repo       store.Repository
+	repo       proto.Repository
 	lastUpdate *time.Time
 	cmd        string
 }
 
 // New creates a new Item.
-func NewItem(repo store.Repository, cfg *config.Config) (Item, error) {
+func NewItem(repo proto.Repository, cfg *config.Config) (Item, error) {
 	var lastUpdate *time.Time
 	lu := repo.UpdatedAt()
 	if !lu.IsZero() {

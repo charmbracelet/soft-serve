@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
-	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/prometheus/client_golang/prometheus"
@@ -254,7 +254,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		}
 
 		auth := be.AccessLevel(ctx, name, "")
-		if auth < store.ReadOnlyAccess {
+		if auth < access.ReadOnlyAccess {
 			d.fatal(c, git.ErrNotAuthed)
 			return
 		}

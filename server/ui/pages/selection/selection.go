@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/code"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
@@ -213,7 +213,7 @@ func (s *Selection) Init() tea.Cmd {
 			continue
 		}
 		al := be.AccessLevelByPublicKey(ctx, r.Name(), pk)
-		if al >= store.ReadOnlyAccess {
+		if al >= access.ReadOnlyAccess {
 			item, err := NewItem(r, cfg)
 			if err != nil {
 				s.common.Logger.Debugf("ui: failed to create item for %s: %v", r.Name(), err)

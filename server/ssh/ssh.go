@@ -10,11 +10,11 @@ import (
 
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
-	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -193,7 +193,7 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 
 	ac := s.be.AccessLevelByPublicKey(ctx, "", pk)
 	s.logger.Debugf("access level for %q: %s", ak, ac)
-	allowed = ac >= store.ReadWriteAccess
+	allowed = ac >= access.ReadWriteAccess
 	return
 }
 

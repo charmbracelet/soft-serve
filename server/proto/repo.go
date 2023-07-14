@@ -1,4 +1,4 @@
-package store
+package proto
 
 import (
 	"time"

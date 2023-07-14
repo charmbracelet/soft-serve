@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
-	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 )
@@ -39,7 +39,7 @@ func userCommand() *cobra.Command {
 				pubkeys = []ssh.PublicKey{pk}
 			}
 
-			opts := store.UserOptions{
+			opts := proto.UserOptions{
 				Admin:      admin,
 				PublicKeys: pubkeys,
 			}

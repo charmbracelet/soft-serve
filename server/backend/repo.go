@@ -13,7 +13,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/models"
 	"github.com/charmbracelet/soft-serve/server/hooks"
-	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/utils"
 )
 
@@ -24,7 +24,7 @@ func (d *Backend) reposPath() string {
 // CreateRepository creates a new repository.
 //
 // It implements backend.Backend.
-func (d *Backend) CreateRepository(ctx context.Context, name string, opts store.RepositoryOptions) (store.Repository, error) {
+func (d *Backend) CreateRepository(ctx context.Context, name string, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, opts store.
 }
 
 // ImportRepository imports a repository from remote.
-func (d *Backend) ImportRepository(ctx context.Context, name string, remote string, opts store.RepositoryOptions) (store.Repository, error) {
+func (d *Backend) ImportRepository(ctx context.Context, name string, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, remote stri
 	rp := filepath.Join(d.reposPath(), repo)
 
 	if _, err := os.Stat(rp); err == nil || os.IsExist(err) {
-		return nil, store.ErrRepoExist
+		return nil, proto.ErrRepoExist
 	}
 
 	copts := git.CloneOptions{
@@ -143,11 +143,11 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 	op := filepath.Join(d.reposPath(), oldRepo)
 	np := filepath.Join(d.reposPath(), newRepo)
 	if _, err := os.Stat(op); err != nil {
-		return store.ErrRepoNotExist
+		return proto.ErrRepoNotExist
 	}
 
 	if _, err := os.Stat(np); err == nil {
-		return store.ErrRepoExist
+		return proto.ErrRepoExist
 	}
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
@@ -174,8 +174,8 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 // Repositories returns a list of repositories per page.
 //
 // It implements backend.Backend.
-func (d *Backend) Repositories(ctx context.Context) ([]store.Repository, error) {
-	repos := make([]store.Repository, 0)
+func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) {
+	repos := make([]proto.Repository, 0)
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		ms, err := d.store.GetAllRepos(ctx, tx)
@@ -207,7 +207,7 @@ func (d *Backend) Repositories(ctx context.Context) ([]store.Repository, error) 
 // Repository returns a repository by name.
 //
 // It implements backend.Backend.
-func (d *Backend) Repository(ctx context.Context, name string) (store.Repository, error) {
+func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository, error) {
 	var m models.Repo
 	name = utils.SanitizeRepo(name)
 
@@ -384,7 +384,7 @@ func (d *Backend) SetProjectName(ctx context.Context, repo string, name string) 
 	)
 }
 
-var _ store.Repository = (*repo)(nil)
+var _ proto.Repository = (*repo)(nil)
 
 // repo is a Git repository with metadata stored in a SQLite database.
 type repo struct {

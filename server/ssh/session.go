@@ -5,10 +5,10 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
-	"github.com/charmbracelet/soft-serve/server/errors"
-	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/ui"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/ssh"
@@ -48,8 +48,8 @@ func SessionHandler(s ssh.Session) *tea.Program {
 	if len(cmd) == 1 {
 		initialRepo = cmd[0]
 		auth := be.AccessLevelByPublicKey(ctx, initialRepo, s.PublicKey())
-		if auth < store.ReadOnlyAccess {
-			wish.Fatalln(s, errors.ErrUnauthorized)
+		if auth < access.ReadOnlyAccess {
+			wish.Fatalln(s, proto.ErrUnauthorized)
 			return nil
 		}
 	}

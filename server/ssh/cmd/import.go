@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +24,7 @@ func importCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			name := args[0]
 			remote := args[1]
-			if _, err := be.ImportRepository(ctx, name, remote, store.RepositoryOptions{
+			if _, err := be.ImportRepository(ctx, name, remote, proto.RepositoryOptions{
 				Private:     private,
 				Description: description,
 				ProjectName: projectName,

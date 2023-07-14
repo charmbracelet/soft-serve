@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/models"
 	"golang.org/x/crypto/ssh"
@@ -10,8 +11,8 @@ import (
 
 // SettingStore is an interface for managing settings.
 type SettingStore interface {
-	GetAnonAccess(ctx context.Context, tx *db.Tx) (AccessLevel, error)
-	SetAnonAccess(ctx context.Context, tx *db.Tx, level AccessLevel) error
+	GetAnonAccess(ctx context.Context, tx *db.Tx) (access.AccessLevel, error)
+	SetAnonAccess(ctx context.Context, tx *db.Tx, level access.AccessLevel) error
 	GetAllowKeylessAccess(ctx context.Context, tx *db.Tx) (bool, error)
 	SetAllowKeylessAccess(ctx context.Context, tx *db.Tx, allow bool) error
 }

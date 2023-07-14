@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/server/ui/components/statusbar"
@@ -54,7 +54,7 @@ type CopyURLMsg struct{}
 type UpdateStatusBarMsg struct{}
 
 // RepoMsg is a message that contains a git.Repository.
-type RepoMsg store.Repository // nolint:revive
+type RepoMsg proto.Repository // nolint:revive
 
 // BackMsg is a message to go back to the previous view.
 type BackMsg struct{}
@@ -68,7 +68,7 @@ type CopyMsg struct {
 // Repo is a view for a git repository.
 type Repo struct {
 	common       common.Common
-	selectedRepo store.Repository
+	selectedRepo proto.Repository
 	activeTab    tab
 	tabs         *tabs.Tabs
 	statusbar    *statusbar.StatusBar

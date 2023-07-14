@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/errors"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
@@ -61,7 +61,7 @@ func treeCommand() *cobra.Command {
 			if path != "" && path != "/" {
 				te, err := tree.TreeEntry(path)
 				if err == git.ErrRevisionNotExist {
-					return errors.ErrFileNotFound
+					return proto.ErrFileNotFound
 				}
 				if err != nil {
 					return err

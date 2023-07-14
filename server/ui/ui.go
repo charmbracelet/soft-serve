@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/server/ui/components/header"
@@ -283,7 +283,7 @@ func (ui *UI) View() string {
 	)
 }
 
-func (ui *UI) openRepo(rn string) (store.Repository, error) {
+func (ui *UI) openRepo(rn string) (proto.Repository, error) {
 	cfg := ui.common.Config()
 	if cfg == nil {
 		return nil, errors.New("config is nil")

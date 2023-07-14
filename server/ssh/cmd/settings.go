@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,7 @@ func settingsCommand() *cobra.Command {
 		},
 	)
 
-	als := []string{store.NoAccess.String(), store.ReadOnlyAccess.String(), store.ReadWriteAccess.String(), store.AdminAccess.String()}
+	als := []string{access.NoAccess.String(), access.ReadOnlyAccess.String(), access.ReadWriteAccess.String(), access.AdminAccess.String()}
 	cmd.AddCommand(
 		&cobra.Command{
 			Use:               "anon-access [ACCESS_LEVEL]",
@@ -54,7 +54,7 @@ func settingsCommand() *cobra.Command {
 				case 0:
 					cmd.Println(be.AnonAccess(ctx))
 				case 1:
-					al := store.ParseAccessLevel(args[0])
+					al := access.ParseAccessLevel(args[0])
 					if al < 0 {
 						return fmt.Errorf("invalid access level: %s. Please choose one of the following: %s", args[0], als)
 					}

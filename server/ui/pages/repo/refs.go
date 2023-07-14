@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/git"
 	ggit "github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/server/ui/components/tabs"
@@ -28,7 +28,7 @@ type RefItemsMsg struct {
 type Refs struct {
 	common    common.Common
 	selector  *selector.Selector
-	repo      store.Repository
+	repo      proto.Repository
 	ref       *git.Reference
 	activeRef *git.Reference
 	refPrefix string
@@ -211,7 +211,7 @@ func switchRefCmd(ref *ggit.Reference) tea.Cmd {
 }
 
 // UpdateRefCmd gets the repository's HEAD reference and sends a RefMsg.
-func UpdateRefCmd(repo store.Repository) tea.Cmd {
+func UpdateRefCmd(repo proto.Repository) tea.Cmd {
 	return func() tea.Msg {
 		r, err := repo.Open()
 		if err != nil {

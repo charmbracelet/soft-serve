@@ -3,8 +3,8 @@ package backend
 import (
 	"context"
 
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/db"
-	"github.com/charmbracelet/soft-serve/server/store"
 )
 
 // AllowKeyless returns whether or not keyless access is allowed.
@@ -35,14 +35,14 @@ func (b *Backend) SetAllowKeyless(ctx context.Context, allow bool) error {
 // AnonAccess returns the level of anonymous access.
 //
 // It implements backend.Backend.
-func (b *Backend) AnonAccess(ctx context.Context) store.AccessLevel {
-	var level store.AccessLevel
+func (b *Backend) AnonAccess(ctx context.Context) access.AccessLevel {
+	var level access.AccessLevel
 	if err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		level, err = b.store.GetAnonAccess(ctx, tx)
 		return err
 	}); err != nil {
-		return store.NoAccess
+		return access.NoAccess
 	}
 
 	return level
@@ -51,7 +51,7 @@ func (b *Backend) AnonAccess(ctx context.Context) store.AccessLevel {
 // SetAnonAccess sets the level of anonymous access.
 //
 // It implements backend.Backend.
-func (b *Backend) SetAnonAccess(ctx context.Context, level store.AccessLevel) error {
+func (b *Backend) SetAnonAccess(ctx context.Context, level access.AccessLevel) error {
 	return b.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		return b.store.SetAnonAccess(ctx, tx, level)
 	})

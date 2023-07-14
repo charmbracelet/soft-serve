@@ -16,10 +16,11 @@ import (
 
 	"github.com/charmbracelet/log"
 	gitb "github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
-	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -178,25 +179,25 @@ func withAccess(fn http.HandlerFunc) http.HandlerFunc {
 
 		repo := pat.Param(r, "repo")
 		service := git.Service(pat.Param(r, "service"))
-		access := be.AccessLevel(ctx, repo, "")
+		accessLevel := be.AccessLevel(ctx, repo, "")
 
 		switch service {
 		case git.ReceivePackService:
-			if access < store.ReadWriteAccess {
+			if accessLevel < access.ReadWriteAccess {
 				renderUnauthorized(w)
 				return
 			}
 
 			// Create the repo if it doesn't exist.
 			if _, err := be.Repository(ctx, repo); err != nil {
-				if _, err := be.CreateRepository(ctx, repo, store.RepositoryOptions{}); err != nil {
+				if _, err := be.CreateRepository(ctx, repo, proto.RepositoryOptions{}); err != nil {
 					logger.Error("failed to create repository", "repo", repo, "err", err)
 					renderInternalServerError(w)
 					return
 				}
 			}
 		default:
-			if access < store.ReadOnlyAccess {
+			if accessLevel < access.ReadOnlyAccess {
 				renderUnauthorized(w)
 				return
 			}

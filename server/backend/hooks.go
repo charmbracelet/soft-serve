@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/charmbracelet/soft-serve/server/hooks"
-	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/proto"
 )
 
 var _ hooks.Hooks = (*Backend)(nil)
@@ -63,7 +63,7 @@ func populateLastModified(ctx context.Context, d *Backend, name string) error {
 	if r, ok := _rr.(*repo); ok {
 		rr = r
 	} else {
-		return store.ErrRepoNotExist
+		return proto.ErrRepoNotExist
 	}
 
 	r, err := rr.Open()

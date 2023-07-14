@@ -4,10 +4,11 @@ import (
 	"context"
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/models"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
-	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"golang.org/x/crypto/ssh"
 )
@@ -15,12 +16,12 @@ import (
 // AccessLevel returns the access level of a user for a repository.
 //
 // It implements backend.Backend.
-func (d *Backend) AccessLevel(ctx context.Context, repo string, username string) store.AccessLevel {
+func (d *Backend) AccessLevel(ctx context.Context, repo string, username string) access.AccessLevel {
 	anon := d.AnonAccess(ctx)
 	user, _ := d.User(ctx, username)
 	// If the user is an admin, they have admin access.
 	if user != nil && user.IsAdmin() {
-		return store.AdminAccess
+		return access.AdminAccess
 	}
 
 	// If the repository exists, check if the user is a collaborator.
@@ -29,28 +30,28 @@ func (d *Backend) AccessLevel(ctx context.Context, repo string, username string)
 		// If the user is a collaborator, they have read/write access.
 		isCollab, _ := d.IsCollaborator(ctx, repo, username)
 		if isCollab {
-			if anon > store.ReadWriteAccess {
+			if anon > access.ReadWriteAccess {
 				return anon
 			}
-			return store.ReadWriteAccess
+			return access.ReadWriteAccess
 		}
 
 		// If the repository is private, the user has no access.
 		if r.IsPrivate() {
-			return store.NoAccess
+			return access.NoAccess
 		}
 
 		// Otherwise, the user has read-only access.
-		return store.ReadOnlyAccess
+		return access.ReadOnlyAccess
 	}
 
 	if user != nil {
 		// If the repository doesn't exist, the user has read/write access.
-		if anon > store.ReadWriteAccess {
+		if anon > access.ReadWriteAccess {
 			return anon
 		}
 
-		return store.ReadWriteAccess
+		return access.ReadWriteAccess
 	}
 
 	// If the user doesn't exist, give them the anonymous access level.
@@ -60,10 +61,10 @@ func (d *Backend) AccessLevel(ctx context.Context, repo string, username string)
 // AccessLevelByPublicKey returns the access level of a user's public key for a repository.
 //
 // It implements backend.Backend.
-func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ssh.PublicKey) store.AccessLevel {
+func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ssh.PublicKey) access.AccessLevel {
 	for _, k := range d.cfg.AdminKeys() {
 		if sshutils.KeysEqual(pk, k) {
-			return store.AdminAccess
+			return access.AdminAccess
 		}
 	}
 
@@ -78,7 +79,7 @@ func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ss
 // User finds a user by username.
 //
 // It implements backend.Backend.
-func (d *Backend) User(ctx context.Context, username string) (store.User, error) {
+func (d *Backend) User(ctx context.Context, username string) (proto.User, error) {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
 		return nil, err
@@ -108,7 +109,7 @@ func (d *Backend) User(ctx context.Context, username string) (store.User, error)
 // UserByPublicKey finds a user by public key.
 //
 // It implements backend.Backend.
-func (d *Backend) UserByPublicKey(ctx context.Context, pk ssh.PublicKey) (store.User, error) {
+func (d *Backend) UserByPublicKey(ctx context.Context, pk ssh.PublicKey) (proto.User, error) {
 	var m models.User
 	var pks []ssh.PublicKey
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
@@ -172,7 +173,7 @@ func (d *Backend) AddPublicKey(ctx context.Context, username string, pk ssh.Publ
 // CreateUser creates a new user.
 //
 // It implements backend.Backend.
-func (d *Backend) CreateUser(ctx context.Context, username string, opts store.UserOptions) (store.User, error) {
+func (d *Backend) CreateUser(ctx context.Context, username string, opts proto.UserOptions) (proto.User, error) {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
 		return nil, err
@@ -270,7 +271,7 @@ type user struct {
 	publicKeys []ssh.PublicKey
 }
 
-var _ store.User = (*user)(nil)
+var _ proto.User = (*user)(nil)
 
 // IsAdmin implements store.User
 func (u *user) IsAdmin() bool {

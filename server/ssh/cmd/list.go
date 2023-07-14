@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
-	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +25,7 @@ func listCommand() *cobra.Command {
 				return err
 			}
 			for _, r := range repos {
-				if be.AccessLevelByPublicKey(ctx, r.Name(), pk) >= store.ReadOnlyAccess {
+				if be.AccessLevelByPublicKey(ctx, r.Name(), pk) >= access.ReadOnlyAccess {
 					if !r.IsHidden() || all {
 						cmd.Println(r.Name())
 					}
