@@ -9,8 +9,10 @@ soft repo hidden repo1
 stdout true
 soft repo private repo1
 stdout true
+! exists $DATA_PATH/repos/repo1.git/git-daemon-export-ok
 soft repo description repo1
 stdout 'description'
+readfile $DATA_PATH/repos/repo1.git/description 'description'
 soft repo project-name repo1
 stdout 'repo1'
 

@@ -52,6 +52,7 @@ func TestScript(t *testing.T) {
 			"usoft":    cmdSoft(user1.Signer()),
 			"git":      cmdGit(key),
 			"mkfile":   cmdMkfile,
+			"readfile": cmdReadfile,
 			"dos2unix": cmdDos2Unix,
 		},
 		Setup: func(e *testscript.Env) error {
@@ -67,6 +68,7 @@ func TestScript(t *testing.T) {
 			statsListen := fmt.Sprintf("localhost:%d", statsPort)
 			serverName := "Test Soft Serve"
 
+			e.Setenv("DATA_PATH", data)
 			e.Setenv("SSH_PORT", fmt.Sprintf("%d", sshPort))
 			e.Setenv("ADMIN1_AUTHORIZED_KEY", admin1.AuthorizedKey())
 			e.Setenv("ADMIN2_AUTHORIZED_KEY", admin2.AuthorizedKey())
@@ -249,4 +251,8 @@ func check(ts *testscript.TestScript, err error, neg bool) {
 	if !neg {
 		ts.Check(err)
 	}
+}
+
+func cmdReadfile(ts *testscript.TestScript, neg bool, args []string) {
+	ts.Stdout().Write([]byte(ts.ReadFile(args[0])))
 }
