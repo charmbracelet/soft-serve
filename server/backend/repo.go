@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -51,6 +52,18 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, opts proto.
 		if err != nil {
 			d.logger.Debug("failed to create repository", "err", err)
 			return err
+		}
+
+		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(opts.Description), fs.ModePerm); err != nil {
+			d.logger.Error("failed to write description", "repo", name, "err", err)
+			return err
+		}
+
+		if !opts.Private {
+			if err := os.WriteFile(filepath.Join(rp, "git-daemon-export-ok"), []byte{}, fs.ModePerm); err != nil {
+				d.logger.Error("failed to write git-daemon-export-ok", "repo", name, "err", err)
+				return err
+			}
 		}
 
 		return hooks.GenerateHooks(ctx, d.cfg, repo)
@@ -341,29 +354,51 @@ func (d *Backend) SetHidden(ctx context.Context, name string, hidden bool) error
 // SetDescription sets the description of a repository.
 //
 // It implements backend.Backend.
-func (d *Backend) SetDescription(ctx context.Context, repo string, desc string) error {
-	repo = utils.SanitizeRepo(repo)
+func (d *Backend) SetDescription(ctx context.Context, name string, desc string) error {
+	name = utils.SanitizeRepo(name)
+	rp := filepath.Join(d.reposPath(), name+".git")
 
 	// Delete cache
-	d.cache.Delete(repo)
+	d.cache.Delete(name)
 
 	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		return d.store.SetRepoDescriptionByName(ctx, tx, repo, desc)
+		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(desc), fs.ModePerm); err != nil {
+			d.logger.Error("failed to write description", "repo", name, "err", err)
+			return err
+		}
+
+		return d.store.SetRepoDescriptionByName(ctx, tx, name, desc)
 	})
 }
 
 // SetPrivate sets the private flag of a repository.
 //
 // It implements backend.Backend.
-func (d *Backend) SetPrivate(ctx context.Context, repo string, private bool) error {
-	repo = utils.SanitizeRepo(repo)
+func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) error {
+	name = utils.SanitizeRepo(name)
+	rp := filepath.Join(d.reposPath(), name+".git")
 
 	// Delete cache
-	d.cache.Delete(repo)
+	d.cache.Delete(name)
 
 	return db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-			return d.store.SetRepoIsPrivateByName(ctx, tx, repo, private)
+			fp := filepath.Join(rp, "git-daemon-export-ok")
+			if !private {
+				if err := os.WriteFile(fp, []byte{}, fs.ModePerm); err != nil {
+					d.logger.Error("failed to write git-daemon-export-ok", "repo", name, "err", err)
+					return err
+				}
+			} else {
+				if _, err := os.Stat(fp); err == nil {
+					if err := os.Remove(fp); err != nil {
+						d.logger.Error("failed to remove git-daemon-export-ok", "repo", name, "err", err)
+						return err
+					}
+				}
+			}
+
+			return d.store.SetRepoIsPrivateByName(ctx, tx, name, private)
 		}),
 	)
 }
