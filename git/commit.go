@@ -4,9 +4,8 @@ import (
 	"github.com/gogs/git-module"
 )
 
-var (
-	ZeroHash Hash = git.EmptyID
-)
+// ZeroHash is the zero hash.
+var ZeroHash Hash = git.EmptyID
 
 // Hash represents a git hash.
 type Hash string

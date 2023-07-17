@@ -20,12 +20,13 @@ require (
 require (
 	github.com/caarlos0/env/v8 v8.0.0
 	github.com/charmbracelet/keygen v0.4.3
-	github.com/charmbracelet/log v0.2.2
-	github.com/charmbracelet/ssh v0.0.0-20221117183211-483d43d97103
+	github.com/charmbracelet/log v0.2.3-0.20230713155356-557335e40e35
+	github.com/charmbracelet/ssh v0.0.0-20230712221603-7e03c5063afc
 	github.com/gobwas/glob v0.2.3
 	github.com/gogs/git-module v1.8.2
 	github.com/hashicorp/golang-lru/v2 v2.0.4
 	github.com/jmoiron/sqlx v1.3.5
+	github.com/lib/pq v1.2.0
 	github.com/lrstanley/bubblezone v0.0.0-20220716194435-3cb8c52f6a8f
 	github.com/muesli/mango-cobra v1.2.0
 	github.com/muesli/roff v0.1.0

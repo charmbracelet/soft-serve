@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/code"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
@@ -26,7 +26,6 @@ const (
 var (
 	errNoFileSelected = errors.New("no file selected")
 	errBinaryFile     = errors.New("binary file")
-	errFileTooLarge   = errors.New("file is too large")
 	errInvalidFile    = errors.New("invalid file")
 )
 
@@ -52,7 +51,7 @@ type Files struct {
 	selector       *selector.Selector
 	ref            *git.Reference
 	activeView     filesView
-	repo           backend.Repository
+	repo           proto.Repository
 	code           *code.Code
 	path           string
 	currentItem    *FileItem

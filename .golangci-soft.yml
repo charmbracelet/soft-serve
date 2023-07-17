@@ -1,5 +1,6 @@
 run:
   tests: false
+  timeout: 5m
 
 issues:
   include:

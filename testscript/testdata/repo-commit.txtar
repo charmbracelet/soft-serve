@@ -1,0 +1,30 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix commit1.txt
+
+# create a repo
+soft repo import basic1 https://github.com/git-fixtures/basic
+
+# print commit
+soft repo commit basic1 b8e471f58bcbca63b07bda20e428190409c2db47
+cmp stdout commit1.txt
+
+-- commit1.txt --
+commit b8e471f58bcbca63b07bda20e428190409c2db47
+Author: Daniel Ripolles
+Date:   Tue Mar 31 11:44:52 UTC 2015
+Creating changelog
+
+
+CHANGELOG | 1 +
+1 file changed, 1 insertion(+)
+
+diff --git a/CHANGELOG b/CHANGELOG
+new file mode 100644
+index 0000000000000000000000000000000000000000..d3ff53e0564a9f87d8e84b6e28e5060e517008aa
+--- /dev/null
++++ b/CHANGELOG
+@@ -0,0 +1 @@
++Initial changelog
+

@@ -47,7 +47,7 @@ func (f *Footer) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (f *Footer) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (f *Footer) Update(_ tea.Msg) (tea.Model, tea.Cmd) {
 	return f, nil
 }
 

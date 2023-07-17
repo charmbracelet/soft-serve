@@ -1,47 +1,41 @@
 package backend
 
 import (
-	"bytes"
 	"context"
 
-	"github.com/charmbracelet/ssh"
-	gossh "golang.org/x/crypto/ssh"
+	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/store/database"
 )
 
-// Backend is an interface that handles repositories management and any
-// non-Git related operations.
-type Backend interface {
-	SettingsBackend
-	RepositoryStore
-	RepositoryMetadata
-	RepositoryAccess
-	UserStore
-	UserAccess
-	Hooks
-
-	// WithContext returns a copy Backend with the given context.
-	WithContext(ctx context.Context) Backend
+// Backend is the Soft Serve backend that handles users, repositories, and
+// server settings management and operations.
+type Backend struct {
+	ctx    context.Context
+	cfg    *config.Config
+	db     *db.DB
+	store  store.Store
+	logger *log.Logger
+	cache  *cache
 }
 
-// ParseAuthorizedKey parses an authorized key string into a public key.
-func ParseAuthorizedKey(ak string) (gossh.PublicKey, string, error) {
-	pk, c, _, _, err := gossh.ParseAuthorizedKey([]byte(ak))
-	return pk, c, err
-}
-
-// MarshalAuthorizedKey marshals a public key into an authorized key string.
-//
-// This is the inverse of ParseAuthorizedKey.
-// This function is a copy of ssh.MarshalAuthorizedKey, but without the trailing newline.
-// It returns an empty string if pk is nil.
-func MarshalAuthorizedKey(pk gossh.PublicKey) string {
-	if pk == nil {
-		return ""
+// New returns a new Soft Serve backend.
+func New(ctx context.Context, cfg *config.Config, db *db.DB) *Backend {
+	dbstore := database.New(ctx, db)
+	logger := log.FromContext(ctx).WithPrefix("backend")
+	b := &Backend{
+		ctx:    ctx,
+		cfg:    cfg,
+		db:     db,
+		store:  dbstore,
+		logger: logger,
 	}
-	return string(bytes.TrimSuffix(gossh.MarshalAuthorizedKey(pk), []byte("\n")))
-}
 
-// KeysEqual returns whether the two public keys are equal.
-func KeysEqual(a, b gossh.PublicKey) bool {
-	return ssh.KeysEqual(a, b)
+	// TODO: implement a proper caching interface
+	cache := newCache(b, 1000)
+	b.cache = cache
+
+	return b
 }

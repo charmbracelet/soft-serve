@@ -18,6 +18,8 @@ log:
   # Time format for the log "timestamp" field.
   # Should be described in Golang's time format.
   time_format: "{{ .Log.TimeFormat }}"
+  # Path to the log file. Leave empty to write to stderr.
+  #path: "{{ .Log.Path }}"
 
 # The SSH server configuration.
 ssh:
@@ -78,6 +80,15 @@ http:
 stats:
   # The address on which the stats server will listen.
   listen_addr: "{{ .Stats.ListenAddr }}"
+
+# The database configuration.
+db:
+  # The database driver to use.
+  # Valid values are "sqlite" and "postgres".
+  driver: "{{ .DB.Driver }}"
+  # The database data source name.
+  # This is driver specific and can be a file path or connection string.
+  data_source: "{{ .DB.DataSource }}"
 
 # Additional admin keys.
 #initial_admin_keys:

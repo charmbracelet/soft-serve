@@ -11,66 +11,33 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/hooks"
 	"github.com/spf13/cobra"
 )
 
 var (
+	// Deprecated: this flag is ignored.
 	configPath string
 
-	logFileCtxKey = struct{}{}
-
 	hookCmd = &cobra.Command{
-		Use:    "hook",
-		Short:  "Run git server hooks",
-		Long:   "Handles Soft Serve git server hooks.",
-		Hidden: true,
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			ctx := cmd.Context()
-			cfg, err := config.ParseConfig(configPath)
-			if err != nil {
-				return fmt.Errorf("could not parse config: %w", err)
-			}
-
-			ctx = config.WithContext(ctx, cfg)
-
-			logPath := filepath.Join(cfg.DataPath, "log", "hooks.log")
-			f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				return fmt.Errorf("opening file: %w", err)
-			}
-
-			ctx = context.WithValue(ctx, logFileCtxKey, f)
-			logger := log.FromContext(ctx)
-			logger.SetOutput(f)
-			ctx = log.WithContext(ctx, logger)
-			cmd.SetContext(ctx)
-
-			// Set up the backend
-			// TODO: support other backends
-			sb, err := sqlite.NewSqliteBackend(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to create sqlite backend: %w", err)
-			}
-
-			cfg = cfg.WithBackend(sb)
-
-			return nil
-		},
-		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
-			f := cmd.Context().Value(logFileCtxKey).(*os.File)
-			return f.Close()
-		},
+		Use:                "hook",
+		Short:              "Run git server hooks",
+		Long:               "Handles Soft Serve git server hooks.",
+		Hidden:             true,
+		PersistentPreRunE:  initBackendContext,
+		PersistentPostRunE: closeDBContext,
 	}
 
+	// Git hooks read the config from the environment, based on
+	// $SOFT_SERVE_DATA_PATH. We already parse the config when the binary
+	// starts, so we don't need to do it again.
+	// The --config flag is now deprecated.
 	hooksRunE = func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
+		hks := backend.FromContext(ctx)
 		cfg := config.FromContext(ctx)
-		hks := cfg.Backend.(backend.Hooks)
 
 		// This is set in the server before invoking git-receive-pack/git-upload-pack
 		repoName := os.Getenv("SOFT_SERVE_REPO_NAME")
@@ -80,10 +47,10 @@ var (
 		stderr := cmd.ErrOrStderr()
 
 		cmdName := cmd.Name()
-		customHookPath := filepath.Join(filepath.Dir(configPath), "hooks", cmdName)
+		customHookPath := filepath.Join(cfg.DataPath, "hooks", cmdName)
 
 		var buf bytes.Buffer
-		opts := make([]backend.HookArg, 0)
+		opts := make([]hooks.HookArg, 0)
 
 		switch cmdName {
 		case hooks.PreReceiveHook, hooks.PostReceiveHook:
@@ -94,7 +61,7 @@ var (
 				if len(fields) != 3 {
 					return fmt.Errorf("invalid hook input: %s", scanner.Text())
 				}
-				opts = append(opts, backend.HookArg{
+				opts = append(opts, hooks.HookArg{
 					OldSha:  fields[0],
 					NewSha:  fields[1],
 					RefName: fields[2],
@@ -103,22 +70,22 @@ var (
 
 			switch cmdName {
 			case hooks.PreReceiveHook:
-				hks.PreReceive(stdout, stderr, repoName, opts)
+				hks.PreReceive(ctx, stdout, stderr, repoName, opts)
 			case hooks.PostReceiveHook:
-				hks.PostReceive(stdout, stderr, repoName, opts)
+				hks.PostReceive(ctx, stdout, stderr, repoName, opts)
 			}
 		case hooks.UpdateHook:
 			if len(args) != 3 {
 				return fmt.Errorf("invalid update hook input: %s", args)
 			}
 
-			hks.Update(stdout, stderr, repoName, backend.HookArg{
+			hks.Update(ctx, stdout, stderr, repoName, hooks.HookArg{
 				OldSha:  args[0],
 				NewSha:  args[1],
 				RefName: args[2],
 			})
 		case hooks.PostUpdateHook:
-			hks.PostUpdate(stdout, stderr, repoName, args...)
+			hks.PostUpdate(ctx, stdout, stderr, repoName, args...)
 		}
 
 		// Custom hooks
@@ -159,7 +126,7 @@ var (
 )
 
 func init() {
-	hookCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "path to config file")
+	hookCmd.PersistentFlags().StringVar(&configPath, "config", "", "path to config file (deprecated)")
 	hookCmd.AddCommand(
 		preReceiveCmd,
 		updateCmd,
@@ -211,6 +178,7 @@ fi
 
 echo "Hi from Soft Serve update hook!"
 echo
+echo "Repository: $SOFT_SERVE_REPO_NAME"
 echo "RefName: $refname"
 echo "Change Type: $newrev_type"
 echo "Old SHA1: $oldrev"

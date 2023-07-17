@@ -25,6 +25,7 @@ func (i LogItem) ID() string {
 	return i.Hash()
 }
 
+// Hash returns the commit hash.
 func (i LogItem) Hash() string {
 	return i.Commit.ID.String()
 }

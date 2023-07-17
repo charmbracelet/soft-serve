@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
@@ -50,7 +51,7 @@ type GitDaemon struct {
 	finished chan struct{}
 	conns    connections
 	cfg      *config.Config
-	be       backend.Backend
+	be       *backend.Backend
 	wg       sync.WaitGroup
 	once     sync.Once
 	logger   *log.Logger
@@ -94,7 +95,7 @@ func (d *GitDaemon) Start() error {
 			default:
 				d.logger.Debugf("git: error accepting connection: %v", err)
 			}
-			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+			if ne, ok := err.(net.Error); ok && ne.Temporary() { // nolint: staticcheck
 				if tempDelay == 0 {
 					tempDelay = 5 * time.Millisecond
 				} else {
@@ -125,7 +126,7 @@ func (d *GitDaemon) Start() error {
 }
 
 func (d *GitDaemon) fatal(c net.Conn, err error) {
-	git.WritePktline(c, err)
+	git.WritePktlineErr(c, err) // nolint: errcheck
 	if err := c.Close(); err != nil {
 		d.logger.Debugf("git: error closing connection: %v", err)
 	}
@@ -146,7 +147,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 	}
 	d.conns.Add(c)
 	defer func() {
-		d.conns.Close(c)
+		d.conns.Close(c) // nolint: errcheck
 	}()
 
 	readc := make(chan struct{}, 1)
@@ -227,8 +228,8 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			}
 		}
 
-		be := d.be.WithContext(ctx)
-		if !be.AllowKeyless() {
+		be := d.be
+		if !be.AllowKeyless(ctx) {
 			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
@@ -247,13 +248,13 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		if _, err := d.be.Repository(repo); err != nil {
+		if _, err := d.be.Repository(ctx, repo); err != nil {
 			d.fatal(c, git.ErrInvalidRepo)
 			return
 		}
 
-		auth := be.AccessLevel(name, "")
-		if auth < backend.ReadOnlyAccess {
+		auth := be.AccessLevel(ctx, name, "")
+		if auth < access.ReadOnlyAccess {
 			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
@@ -263,6 +264,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			"SOFT_SERVE_REPO_NAME=" + name,
 			"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
 			"SOFT_SERVE_HOST=" + host,
+			"SOFT_SERVE_LOG_PATH=" + filepath.Join(d.cfg.DataPath, "log", "hooks.log"),
 		}
 
 		// Add git protocol environment variable.
@@ -301,7 +303,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 func (d *GitDaemon) Close() error {
 	d.once.Do(func() { close(d.finished) })
 	err := d.listener.Close()
-	d.conns.CloseAll()
+	d.conns.CloseAll() // nolint: errcheck
 	return err
 }
 

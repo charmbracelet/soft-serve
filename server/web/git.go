@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,9 +16,11 @@ import (
 
 	"github.com/charmbracelet/log"
 	gitb "github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -30,22 +33,15 @@ type GitRoute struct {
 	method  string
 	pattern *regexp.Regexp
 	handler http.HandlerFunc
-
-	cfg    *config.Config
-	be     backend.Backend
-	logger *log.Logger
 }
 
 var _ Route = GitRoute{}
 
 // Match implements goji.Pattern.
 func (g GitRoute) Match(r *http.Request) *http.Request {
-	if g.method != r.Method {
-		return nil
-	}
-
 	re := g.pattern
 	ctx := r.Context()
+	cfg := config.FromContext(ctx)
 	if m := re.FindStringSubmatch(r.URL.Path); m != nil {
 		file := strings.Replace(r.URL.Path, m[1]+"/", "", 1)
 		repo := utils.SanitizeRepo(m[1]) + ".git"
@@ -59,21 +55,9 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 		}
 
 		ctx = context.WithValue(ctx, pattern.Variable("service"), service.String())
-		ctx = context.WithValue(ctx, pattern.Variable("dir"), filepath.Join(g.cfg.DataPath, "repos", repo))
+		ctx = context.WithValue(ctx, pattern.Variable("dir"), filepath.Join(cfg.DataPath, "repos", repo))
 		ctx = context.WithValue(ctx, pattern.Variable("repo"), repo)
 		ctx = context.WithValue(ctx, pattern.Variable("file"), file)
-
-		if g.cfg != nil {
-			ctx = config.WithContext(ctx, g.cfg)
-		}
-
-		if g.be != nil {
-			ctx = backend.WithContext(ctx, g.be.WithContext(ctx))
-		}
-
-		if g.logger != nil {
-			ctx = log.WithContext(ctx, g.logger)
-		}
 
 		return r.WithContext(ctx)
 	}
@@ -83,10 +67,16 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 
 // ServeHTTP implements http.Handler.
 func (g GitRoute) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != g.method {
+		renderMethodNotAllowed(w, r)
+		return
+	}
+
 	g.handler(w, r)
 }
 
 var (
+	//nolint:revive
 	gitHttpReceiveCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
 		Subsystem: "http",
@@ -94,6 +84,7 @@ var (
 		Help:      "The total number of git push requests",
 	}, []string{"repo"})
 
+	//nolint:revive
 	gitHttpUploadCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
 		Subsystem: "http",
@@ -102,10 +93,8 @@ var (
 	}, []string{"repo", "file"})
 )
 
-func gitRoutes(ctx context.Context, logger *log.Logger) []Route {
+func gitRoutes() []Route {
 	routes := make([]Route, 0)
-	cfg := config.FromContext(ctx)
-	be := backend.FromContext(ctx)
 
 	// Git services
 	// These routes don't handle authentication/authorization.
@@ -159,19 +148,16 @@ func gitRoutes(ctx context.Context, logger *log.Logger) []Route {
 			handler: getLooseObject,
 		},
 		{
-			pattern: regexp.MustCompile("(.*?)/objects/pack/pack-[0-9a-f]{40}\\.pack$"),
+			pattern: regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.pack$`),
 			method:  http.MethodGet,
 			handler: getPackFile,
 		},
 		{
-			pattern: regexp.MustCompile("(.*?)/objects/pack/pack-[0-9a-f]{40}\\.idx$"),
+			pattern: regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.idx$`),
 			method:  http.MethodGet,
 			handler: getIdxFile,
 		},
 	} {
-		route.cfg = cfg
-		route.be = be
-		route.logger = logger
 		route.handler = withAccess(route.handler)
 		routes = append(routes, route)
 	}
@@ -186,32 +172,32 @@ func withAccess(fn http.HandlerFunc) http.HandlerFunc {
 		be := backend.FromContext(ctx)
 		logger := log.FromContext(ctx)
 
-		if !be.AllowKeyless() {
+		if !be.AllowKeyless(ctx) {
 			renderForbidden(w)
 			return
 		}
 
 		repo := pat.Param(r, "repo")
 		service := git.Service(pat.Param(r, "service"))
-		access := be.AccessLevel(repo, "")
+		accessLevel := be.AccessLevel(ctx, repo, "")
 
 		switch service {
 		case git.ReceivePackService:
-			if access < backend.ReadWriteAccess {
+			if accessLevel < access.ReadWriteAccess {
 				renderUnauthorized(w)
 				return
 			}
 
 			// Create the repo if it doesn't exist.
-			if _, err := be.Repository(repo); err != nil {
-				if _, err := be.CreateRepository(repo, backend.RepositoryOptions{}); err != nil {
+			if _, err := be.Repository(ctx, repo); err != nil {
+				if _, err := be.CreateRepository(ctx, repo, proto.RepositoryOptions{}); err != nil {
 					logger.Error("failed to create repository", "repo", repo, "err", err)
 					renderInternalServerError(w)
 					return
 				}
 			}
 		default:
-			if access < backend.ReadOnlyAccess {
+			if accessLevel < access.ReadOnlyAccess {
 				renderUnauthorized(w)
 				return
 			}
@@ -221,8 +207,10 @@ func withAccess(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+//nolint:revive
 func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx)
 	service, dir, repo := git.Service(pat.Param(r, "service")), pat.Param(r, "dir"), pat.Param(r, "repo")
 
@@ -243,71 +231,77 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 
 	version := r.Header.Get("Git-Protocol")
 
+	var stdout bytes.Buffer
 	cmd := git.ServiceCommand{
-		Stdin:  r.Body,
-		Stdout: w,
+		Stdout: &stdout,
 		Dir:    dir,
 		Args:   []string{"--stateless-rpc"},
 	}
 
 	if len(version) != 0 {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_PROTOCOL=%s", version))
+		cmd.Env = append(cmd.Env, []string{
+			// TODO: add the rest of env vars when we support pushing using http
+			"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
+			fmt.Sprintf("GIT_PROTOCOL=%s", version),
+		}...)
 	}
 
 	// Handle gzip encoding
-	cmd.StdinHandler = func(in io.Reader, stdin io.WriteCloser) (err error) {
-		// We know that `in` is an `io.ReadCloser` because it's `r.Body`.
-		reader := in.(io.ReadCloser)
-		defer reader.Close() // nolint: errcheck
-		switch r.Header.Get("Content-Encoding") {
-		case "gzip":
-			reader, err = gzip.NewReader(reader)
-			if err != nil {
-				return err
-			}
-			defer reader.Close() // nolint: errcheck
+	reader := r.Body
+	defer reader.Close() // nolint: errcheck
+	switch r.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err := gzip.NewReader(reader)
+		if err != nil {
+			logger.Errorf("failed to create gzip reader: %v", err)
+			renderInternalServerError(w)
+			return
 		}
+		defer reader.Close() // nolint: errcheck
+	}
 
-		_, err = io.Copy(stdin, reader)
-		return err
+	cmd.Stdin = reader
+
+	if err := service.Handler(ctx, cmd); err != nil {
+		if errors.Is(err, git.ErrInvalidRepo) {
+			renderNotFound(w)
+			return
+		}
+		renderInternalServerError(w)
+		return
 	}
 
 	// Handle buffered output
 	// Useful when using proxies
-	cmd.StdoutHandler = func(out io.Writer, stdout io.ReadCloser) error {
-		// We know that `out` is an `http.ResponseWriter`.
-		flusher, ok := out.(http.Flusher)
-		if !ok {
-			return fmt.Errorf("expected http.ResponseWriter to be an http.Flusher, got %T", out)
-		}
 
-		p := make([]byte, 1024)
-		for {
-			nRead, err := stdout.Read(p)
-			if err == io.EOF {
-				break
-			}
-			nWrite, err := out.Write(p[:nRead])
-			if err != nil {
-				return err
-			}
-			if nRead != nWrite {
-				return fmt.Errorf("failed to write data: %d read, %d written", nRead, nWrite)
-			}
-			flusher.Flush()
-		}
-
-		return nil
+	// We know that `w` is an `http.ResponseWriter`.
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		logger.Errorf("expected http.ResponseWriter to be an http.Flusher, got %T", w)
+		return
 	}
 
-	if err := service.Handler(ctx, cmd); err != nil {
-		logger.Errorf("error executing service: %s", err)
+	p := make([]byte, 1024)
+	for {
+		nRead, err := stdout.Read(p)
+		if err == io.EOF {
+			break
+		}
+		nWrite, err := w.Write(p[:nRead])
+		if err != nil {
+			logger.Errorf("failed to write data: %v", err)
+			return
+		}
+		if nRead != nWrite {
+			logger.Errorf("failed to write data: %d read, %d written", nRead, nWrite)
+			return
+		}
+		flusher.Flush()
 	}
 }
 
 func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := log.FromContext(ctx)
 	dir, repo, file := pat.Param(r, "dir"), pat.Param(r, "repo"), pat.Param(r, "file")
 	service := getServiceType(r)
 	version := r.Header.Get("Git-Protocol")
@@ -328,7 +322,6 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := service.Handler(ctx, cmd); err != nil {
-			logger.Errorf("error executing service: %s", err)
 			renderNotFound(w)
 			return
 		}
@@ -337,7 +330,7 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", service))
 		w.WriteHeader(http.StatusOK)
 		if len(version) == 0 {
-			git.WritePktline(w, "# service="+service.String())
+			git.WritePktline(w, "# service="+service.String()) // nolint: errcheck
 		}
 
 		w.Write(refs.Bytes()) // nolint: errcheck
@@ -400,10 +393,7 @@ func getServiceType(r *http.Request) git.Service {
 }
 
 func isSmart(r *http.Request, service git.Service) bool {
-	if r.Header.Get("Content-Type") == fmt.Sprintf("application/x-%s-request", service) {
-		return true
-	}
-	return false
+	return r.Header.Get("Content-Type") == fmt.Sprintf("application/x-%s-request", service)
 }
 
 func updateServerInfo(ctx context.Context, dir string) error {

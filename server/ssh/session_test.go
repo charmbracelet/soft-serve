@@ -4,13 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
+	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/db/migrate"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/charmbracelet/ssh"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -18,6 +20,7 @@ import (
 	"github.com/matryer/is"
 	"github.com/muesli/termenv"
 	gossh "golang.org/x/crypto/ssh"
+	_ "modernc.org/sqlite" // sqlite driver
 )
 
 func TestSession(t *testing.T) {
@@ -31,16 +34,15 @@ func TestSession(t *testing.T) {
 		is.NoErr(err)
 		go func() {
 			time.Sleep(1 * time.Second)
-			s.Signal(gossh.SIGTERM)
-			// FIXME: exit with code 0 instead of forcibly closing the session
-			s.Close()
+			// s.Signal(gossh.SIGTERM)
+			s.Close() // nolint: errcheck
 		}()
 		t.Log("waiting for session to exit")
 		_, err = s.Output("test")
 		var ee *gossh.ExitMissingError
 		is.True(errors.As(err, &ee))
 		t.Log("session exited")
-		_ = close()
+		is.NoErr(close())
 	})
 }
 
@@ -59,19 +61,26 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 	})
 	ctx := context.TODO()
 	cfg := config.DefaultConfig()
-	ctx = config.WithContext(ctx, cfg)
-	fb, err := sqlite.NewSqliteBackend(ctx)
-	if err != nil {
+	if err := cfg.Validate(); err != nil {
 		log.Fatal(err)
 	}
-	cfg = cfg.WithBackend(fb)
+	ctx = config.WithContext(ctx, cfg)
+	db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	if err := migrate.Migrate(ctx, db); err != nil {
+		tb.Fatal(err)
+	}
+	be := backend.New(ctx, cfg, db)
+	ctx = backend.WithContext(ctx, be)
 	return testsession.New(tb, &ssh.Server{
-		Handler: bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256)(func(s ssh.Session) {
+		Handler: ContextMiddleware(cfg, be, log.Default())(bm.MiddlewareWithProgramHandler(SessionHandler, termenv.ANSI256)(func(s ssh.Session) {
 			_, _, active := s.Pty()
 			if !active {
 				os.Exit(1)
 			}
 			s.Exit(0)
-		}),
-	}, nil), fb.Close
+		})),
+	}, nil), db.Close
 }

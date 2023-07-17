@@ -2,22 +2,19 @@ package ssh
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	cm "github.com/charmbracelet/soft-serve/server/cmd"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
-	"github.com/charmbracelet/soft-serve/server/utils"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -95,10 +92,10 @@ var (
 )
 
 // SSHServer is a SSH server that implements the git protocol.
-type SSHServer struct {
+type SSHServer struct { // nolint: revive
 	srv    *ssh.Server
 	cfg    *config.Config
-	be     backend.Backend
+	be     *backend.Backend
 	ctx    context.Context
 	logger *log.Logger
 }
@@ -107,12 +104,13 @@ type SSHServer struct {
 func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("ssh")
+	be := backend.FromContext(ctx)
 
 	var err error
 	s := &SSHServer{
 		cfg:    cfg,
 		ctx:    ctx,
-		be:     backend.FromContext(ctx),
+		be:     be,
 		logger: logger,
 	}
 
@@ -120,14 +118,15 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		rm.MiddlewareWithLogger(
 			logger,
 			// BubbleTea middleware.
-			bm.MiddlewareWithProgramHandler(SessionHandler(cfg), termenv.ANSI256),
+			bm.MiddlewareWithProgramHandler(SessionHandler, termenv.ANSI256),
 			// CLI middleware.
-			cm.Middleware(cfg, logger),
-			// Git middleware.
-			s.Middleware(cfg),
+			CommandMiddleware,
+			// Context middleware.
+			ContextMiddleware(cfg, be, logger),
 			// Logging middleware.
-			lm.MiddlewareWithLogger(logger.
-				StandardLog(log.StandardLogOptions{ForceLevel: log.DebugLevel})),
+			lm.MiddlewareWithLogger(
+				&loggerAdapter{logger, log.DebugLevel},
+			),
 		),
 	}
 
@@ -187,145 +186,27 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 		return false
 	}
 
-	ak := backend.MarshalAuthorizedKey(pk)
+	ak := sshutils.MarshalAuthorizedKey(pk)
 	defer func(allowed *bool) {
 		publicKeyCounter.WithLabelValues(strconv.FormatBool(*allowed)).Inc()
 	}(&allowed)
 
-	ac := s.cfg.Backend.AccessLevelByPublicKey("", pk)
+	ac := s.be.AccessLevelByPublicKey(ctx, "", pk)
 	s.logger.Debugf("access level for %q: %s", ak, ac)
-	allowed = ac >= backend.ReadWriteAccess
+	allowed = ac >= access.ReadWriteAccess
 	return
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
 // This is used after all public key authentication has failed.
 func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
-	ac := s.cfg.Backend.AllowKeyless()
+	ac := s.be.AllowKeyless(ctx)
 	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
 	return ac
 }
 
-// Middleware adds Git server functionality to the ssh.Server. Repos are stored
-// in the specified repo directory. The provided Hooks implementation will be
-// checked for access on a per repo basis for a ssh.Session public key.
-// Hooks.Push and Hooks.Fetch will be called on successful completion of
-// their commands.
-func (ss *SSHServer) Middleware(cfg *config.Config) wish.Middleware {
-	return func(sh ssh.Handler) ssh.Handler {
-		return func(s ssh.Session) {
-			func() {
-				start := time.Now()
-				cmdLine := s.Command()
-				ctx := s.Context()
-				be := ss.be.WithContext(ctx)
-
-				if len(cmdLine) >= 2 && strings.HasPrefix(cmdLine[0], "git") {
-					// repo should be in the form of "repo.git"
-					name := utils.SanitizeRepo(cmdLine[1])
-					pk := s.PublicKey()
-					ak := backend.MarshalAuthorizedKey(pk)
-					access := cfg.Backend.AccessLevelByPublicKey(name, pk)
-					// git bare repositories should end in ".git"
-					// https://git-scm.com/docs/gitrepository-layout
-					repo := name + ".git"
-					reposDir := filepath.Join(cfg.DataPath, "repos")
-					if err := git.EnsureWithin(reposDir, repo); err != nil {
-						sshFatal(s, err)
-						return
-					}
-
-					// Environment variables to pass down to git hooks.
-					envs := []string{
-						"SOFT_SERVE_REPO_NAME=" + name,
-						"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
-						"SOFT_SERVE_PUBLIC_KEY=" + ak,
-						"SOFT_SERVE_USERNAME=" + ctx.User(),
-					}
-
-					// Add ssh session & config environ
-					envs = append(envs, s.Environ()...)
-					envs = append(envs, cfg.Environ()...)
-
-					repoDir := filepath.Join(reposDir, repo)
-					service := git.Service(cmdLine[0])
-					cmd := git.ServiceCommand{
-						Stdin:  s,
-						Stdout: s,
-						Stderr: s.Stderr(),
-						Env:    envs,
-						Dir:    repoDir,
-					}
-
-					ss.logger.Debug("git middleware", "cmd", service, "access", access.String())
-
-					switch service {
-					case git.ReceivePackService:
-						receivePackCounter.WithLabelValues(name).Inc()
-						defer func() {
-							receivePackSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
-						}()
-						if access < backend.ReadWriteAccess {
-							sshFatal(s, git.ErrNotAuthed)
-							return
-						}
-						if _, err := be.Repository(name); err != nil {
-							if _, err := be.CreateRepository(name, backend.RepositoryOptions{Private: false}); err != nil {
-								log.Errorf("failed to create repo: %s", err)
-								sshFatal(s, err)
-								return
-							}
-							createRepoCounter.WithLabelValues(name).Inc()
-						}
-
-						if err := git.ReceivePack(ctx, cmd); err != nil {
-							sshFatal(s, git.ErrSystemMalfunction)
-						}
-
-						if err := git.EnsureDefaultBranch(ctx, cmd); err != nil {
-							sshFatal(s, git.ErrSystemMalfunction)
-						}
-
-						receivePackCounter.WithLabelValues(name).Inc()
-						return
-					case git.UploadPackService, git.UploadArchiveService:
-						if access < backend.ReadOnlyAccess {
-							sshFatal(s, git.ErrNotAuthed)
-							return
-						}
-
-						handler := git.UploadPack
-						switch service {
-						case git.UploadArchiveService:
-							handler = git.UploadArchive
-							uploadArchiveCounter.WithLabelValues(name).Inc()
-							defer func() {
-								uploadArchiveSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
-							}()
-						default:
-							uploadPackCounter.WithLabelValues(name).Inc()
-							defer func() {
-								uploadPackSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
-							}()
-						}
-
-						err := handler(ctx, cmd)
-						if errors.Is(err, git.ErrInvalidRepo) {
-							sshFatal(s, git.ErrInvalidRepo)
-						} else if err != nil {
-							sshFatal(s, git.ErrSystemMalfunction)
-						}
-
-					}
-				}
-			}()
-			sh(s)
-		}
-	}
-}
-
 // sshFatal prints to the session's STDOUT as a git response and exit 1.
-func sshFatal(s ssh.Session, v ...interface{}) {
-	git.WritePktline(s, v...)
-	s.Exit(1) // nolint: errcheck
+func sshFatal(s ssh.Session, err error) {
+	git.WritePktlineErr(s, err) // nolint: errcheck
+	s.Exit(1)                   // nolint: errcheck
 }

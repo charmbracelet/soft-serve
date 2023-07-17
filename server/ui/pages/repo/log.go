@@ -11,7 +11,7 @@ import (
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
@@ -47,7 +47,7 @@ type Log struct {
 	selector       *selector.Selector
 	vp             *viewport.Viewport
 	activeView     logView
-	repo           backend.Repository
+	repo           proto.Repository
 	ref            *git.Reference
 	count          int64
 	nextPage       int

@@ -6,7 +6,8 @@ import (
 	"runtime"
 
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/internal/sync"
+	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/sync"
 )
 
 var jobSpecs = map[string]string{
@@ -14,12 +15,11 @@ var jobSpecs = map[string]string{
 }
 
 // mirrorJob runs the (pull) mirror job task.
-func (s *Server) mirrorJob() func() {
+func (s *Server) mirrorJob(b *backend.Backend) func() {
 	cfg := s.Config
-	b := cfg.Backend
 	logger := s.logger
 	return func() {
-		repos, err := b.Repositories()
+		repos, err := b.Repositories(s.ctx)
 		if err != nil {
 			logger.Error("error getting repositories", "err", err)
 			return
@@ -48,6 +48,7 @@ func (s *Server) mirrorJob() func() {
 							cfg.SSH.ClientKeyPath,
 						),
 					)
+
 					if _, err := cmd.RunInDir(r.Path); err != nil {
 						logger.Error("error running git remote update", "repo", name, "err", err)
 					}

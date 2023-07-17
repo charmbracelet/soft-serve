@@ -8,7 +8,7 @@ import (
 )
 
 // StatusBarMsg is a message sent to the status bar.
-type StatusBarMsg struct {
+type StatusBarMsg struct { //nolint:revive
 	Key   string
 	Value string
 	Info  string

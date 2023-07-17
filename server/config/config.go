@@ -1,17 +1,15 @@
 package config
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/caarlos0/env/v8"
-	"github.com/charmbracelet/log"
-	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )
@@ -82,6 +80,19 @@ type LogConfig struct {
 	// Time format for the log `ts` field.
 	// Format must be described in Golang's time format.
 	TimeFormat string `env:"TIME_FORMAT" yaml:"time_format"`
+
+	// Path to a file to write logs to.
+	// If not set, logs will be written to stderr.
+	Path string `env:"PATH" yaml:"path"`
+}
+
+// DBConfig is the database connection configuration.
+type DBConfig struct {
+	// Driver is the driver for the database.
+	Driver string `env:"DRIVER" yaml:"driver"`
+
+	// DataSource is the database data source name.
+	DataSource string `env:"DATA_SOURCE" yaml:"data_source"`
 }
 
 // Config is the configuration for Soft Serve.
@@ -104,14 +115,14 @@ type Config struct {
 	// Log is the logger configuration.
 	Log LogConfig `envPrefix:"LOG_" yaml:"log"`
 
+	// DB is the database configuration.
+	DB DBConfig `envPrefix:"DB_" yaml:"db"`
+
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" yaml:"-"`
-
-	// Backend is the Git backend to use.
-	Backend backend.Backend `yaml:"-"`
 }
 
 // Environ returns the config as a list of environment variables.
@@ -123,8 +134,8 @@ func (c *Config) Environ() []string {
 
 	// TODO: do this dynamically
 	envs = append(envs, []string{
-		fmt.Sprintf("SOFT_SERVE_NAME=%s", c.Name),
 		fmt.Sprintf("SOFT_SERVE_DATA_PATH=%s", c.DataPath),
+		fmt.Sprintf("SOFT_SERVE_NAME=%s", c.Name),
 		fmt.Sprintf("SOFT_SERVE_INITIAL_ADMIN_KEYS=%s", strings.Join(c.InitialAdminKeys, "\n")),
 		fmt.Sprintf("SOFT_SERVE_SSH_LISTEN_ADDR=%s", c.SSH.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_SSH_PUBLIC_URL=%s", c.SSH.PublicURL),
@@ -143,16 +154,131 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_STATS_LISTEN_ADDR=%s", c.Stats.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_LOG_FORMAT=%s", c.Log.Format),
 		fmt.Sprintf("SOFT_SERVE_LOG_TIME_FORMAT=%s", c.Log.TimeFormat),
+		fmt.Sprintf("SOFT_SERVE_DB_DRIVER=%s", c.DB.Driver),
+		fmt.Sprintf("SOFT_SERVE_DB_DATA_SOURCE=%s", c.DB.DataSource),
 	}...)
 
 	return envs
 }
 
-func parseConfig(path string) (*Config, error) {
-	dataPath := filepath.Dir(path)
-	cfg := &Config{
+// IsDebug returns true if the server is running in debug mode.
+func IsDebug() bool {
+	debug, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_DEBUG"))
+	return debug
+}
+
+// IsVerbose returns true if the server is running in verbose mode.
+// Verbose mode is only enabled if debug mode is enabled.
+func IsVerbose() bool {
+	verbose, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_VERBOSE"))
+	return IsDebug() && verbose
+}
+
+// parseFile parses the given file as a configuration file.
+// The file must be in YAML format.
+func parseFile(cfg *Config, path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close() // nolint: errcheck
+	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
+		return fmt.Errorf("decode config: %w", err)
+	}
+
+	return cfg.Validate()
+}
+
+// ParseFile parses the config from the default file path.
+// This also calls Validate() on the config.
+func (c *Config) ParseFile() error {
+	return parseFile(c, c.ConfigPath())
+}
+
+// parseEnv parses the environment variables as a configuration file.
+func parseEnv(cfg *Config) error {
+	// Merge initial admin keys from both config file and environment variables.
+	initialAdminKeys := append([]string{}, cfg.InitialAdminKeys...)
+
+	// Override with environment variables
+	if err := env.ParseWithOptions(cfg, env.Options{
+		Prefix: "SOFT_SERVE_",
+	}); err != nil {
+		return fmt.Errorf("parse environment variables: %w", err)
+	}
+
+	// Merge initial admin keys from environment variables.
+	if initialAdminKeysEnv := os.Getenv("SOFT_SERVE_INITIAL_ADMIN_KEYS"); initialAdminKeysEnv != "" {
+		cfg.InitialAdminKeys = append(cfg.InitialAdminKeys, initialAdminKeys...)
+	}
+
+	return cfg.Validate()
+}
+
+// ParseEnv parses the config from the environment variables.
+// This also calls Validate() on the config.
+func (c *Config) ParseEnv() error {
+	return parseEnv(c)
+}
+
+// Parse parses the config from the default file path and environment variables.
+// This also calls Validate() on the config.
+func (c *Config) Parse() error {
+	if err := c.ParseFile(); err != nil {
+		return err
+	}
+
+	return c.ParseEnv()
+}
+
+// writeConfig writes the configuration to the given file.
+func writeConfig(cfg *Config, path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644) // nolint: errcheck, gosec
+}
+
+// WriteConfig writes the configuration to the default file.
+func (c *Config) WriteConfig() error {
+	return writeConfig(c, c.ConfigPath())
+}
+
+// DefaultDataPath returns the path to the data directory.
+// It uses the SOFT_SERVE_DATA_PATH environment variable if set, otherwise it
+// uses "data".
+func DefaultDataPath() string {
+	dp := os.Getenv("SOFT_SERVE_DATA_PATH")
+	if dp == "" {
+		dp = "data"
+	}
+
+	return dp
+}
+
+// ConfigPath returns the path to the config file.
+func (c *Config) ConfigPath() string { // nolint:revive
+	return filepath.Join(c.DataPath, "config.yaml")
+}
+
+func exist(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// Exist returns true if the config file exists.
+func (c *Config) Exist() bool {
+	return exist(filepath.Join(c.DataPath, "config.yaml"))
+}
+
+// DefaultConfig returns the default Config. All the path values are relative
+// to the data directory.
+// Use Validate() to validate the config and ensure absolute paths.
+func DefaultConfig() *Config {
+	return &Config{
 		Name:     "Soft Serve",
-		DataPath: dataPath,
+		DataPath: DefaultDataPath(),
 		SSH: SSHConfig{
 			ListenAddr:    ":23231",
 			PublicURL:     "ssh://localhost:23231",
@@ -178,105 +304,17 @@ func parseConfig(path string) (*Config, error) {
 			Format:     "text",
 			TimeFormat: time.DateTime,
 		},
+		DB: DBConfig{
+			Driver: "sqlite",
+			DataSource: "soft-serve.db" +
+				"?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)",
+		},
 	}
-
-	f, err := os.Open(path)
-	if err == nil {
-		defer f.Close() // nolint: errcheck
-		if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
-			return cfg, fmt.Errorf("decode config: %w", err)
-		}
-	}
-
-	// Merge initial admin keys from both config file and environment variables.
-	initialAdminKeys := append([]string{}, cfg.InitialAdminKeys...)
-
-	// Override with environment variables
-	if err := env.ParseWithOptions(cfg, env.Options{
-		Prefix: "SOFT_SERVE_",
-	}); err != nil {
-		return cfg, fmt.Errorf("parse environment variables: %w", err)
-	}
-
-	// Merge initial admin keys from environment variables.
-	if initialAdminKeysEnv := os.Getenv("SOFT_SERVE_INITIAL_ADMIN_KEYS"); initialAdminKeysEnv != "" {
-		cfg.InitialAdminKeys = append(cfg.InitialAdminKeys, initialAdminKeys...)
-	}
-
-	// Validate keys
-	pks := make([]string, 0)
-	for _, key := range parseAuthKeys(cfg.InitialAdminKeys) {
-		ak := backend.MarshalAuthorizedKey(key)
-		pks = append(pks, ak)
-	}
-
-	cfg.InitialAdminKeys = pks
-
-	// Reset datapath to config dir.
-	// This is necessary because the environment variable may be set to
-	// a different directory.
-	cfg.DataPath = dataPath
-
-	return cfg, nil
 }
 
-// ParseConfig parses the configuration from the given file.
-func ParseConfig(path string) (*Config, error) {
-	cfg, err := parseConfig(path)
-	if err != nil {
-		return cfg, err
-	}
-
-	if err := cfg.validate(); err != nil {
-		return cfg, err
-	}
-
-	return cfg, nil
-}
-
-// WriteConfig writes the configuration to the given file.
-func WriteConfig(path string, cfg *Config) error {
-	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
-		return err
-	}
-	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644) // nolint: errcheck
-}
-
-// DefaultConfig returns a Config with the values populated with the defaults
-// or specified environment variables.
-func DefaultConfig() *Config {
-	dataPath := os.Getenv("SOFT_SERVE_DATA_PATH")
-	if dataPath == "" {
-		dataPath = "data"
-	}
-
-	cp := filepath.Join(dataPath, "config.yaml")
-	cfg, err := parseConfig(cp)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		log.Errorf("failed to parse config: %v", err)
-	}
-
-	// Write config if it doesn't exist
-	if _, err := os.Stat(cp); os.IsNotExist(err) {
-		if err := WriteConfig(cp, cfg); err != nil {
-			log.Fatal("failed to write config", "err", err)
-		}
-	}
-
-	if err := cfg.validate(); err != nil {
-		log.Fatal(err)
-	}
-
-	return cfg
-}
-
-// WithBackend sets the backend for the configuration.
-func (c *Config) WithBackend(backend backend.Backend) *Config {
-	c.Backend = backend
-	return c
-}
-
-func (c *Config) validate() error {
+// Validate validates the configuration.
+// It updates the configuration with absolute paths.
+func (c *Config) Validate() error {
 	// Use absolute paths
 	if !filepath.IsAbs(c.DataPath) {
 		dp, err := filepath.Abs(c.DataPath)
@@ -305,19 +343,37 @@ func (c *Config) validate() error {
 		c.HTTP.TLSCertPath = filepath.Join(c.DataPath, c.HTTP.TLSCertPath)
 	}
 
+	if strings.HasPrefix(c.DB.Driver, "sqlite") && !filepath.IsAbs(c.DB.DataSource) {
+		c.DB.DataSource = filepath.Join(c.DataPath, c.DB.DataSource)
+	}
+
+	// Validate keys
+	pks := make([]string, 0)
+	for _, key := range parseAuthKeys(c.InitialAdminKeys) {
+		ak := sshutils.MarshalAuthorizedKey(key)
+		pks = append(pks, ak)
+	}
+
+	c.InitialAdminKeys = pks
+
 	return nil
 }
 
 // parseAuthKeys parses authorized keys from either file paths or string authorized_keys.
 func parseAuthKeys(aks []string) []ssh.PublicKey {
+	exist := make(map[string]struct{}, 0)
 	pks := make([]ssh.PublicKey, 0)
 	for _, key := range aks {
 		if bts, err := os.ReadFile(key); err == nil {
 			// key is a file
 			key = strings.TrimSpace(string(bts))
 		}
-		if pk, _, err := backend.ParseAuthorizedKey(key); err == nil {
-			pks = append(pks, pk)
+
+		if pk, _, err := sshutils.ParseAuthorizedKey(key); err == nil {
+			if _, ok := exist[key]; !ok {
+				pks = append(pks, pk)
+				exist[key] = struct{}{}
+			}
 		}
 	}
 	return pks
@@ -326,20 +382,4 @@ func parseAuthKeys(aks []string) []ssh.PublicKey {
 // AdminKeys returns the server admin keys.
 func (c *Config) AdminKeys() []ssh.PublicKey {
 	return parseAuthKeys(c.InitialAdminKeys)
-}
-
-var configCtxKey = struct{ string }{"config"}
-
-// WithContext returns a new context with the configuration attached.
-func WithContext(ctx context.Context, cfg *Config) context.Context {
-	return context.WithValue(ctx, configCtxKey, cfg)
-}
-
-// FromContext returns the configuration from the context.
-func FromContext(ctx context.Context) *Config {
-	if c, ok := ctx.Value(configCtxKey).(*Config); ok {
-		return c
-	}
-
-	return DefaultConfig()
 }

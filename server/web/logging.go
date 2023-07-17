@@ -24,7 +24,7 @@ var _ http.Flusher = (*logWriter)(nil)
 
 var _ http.Hijacker = (*logWriter)(nil)
 
-var _ http.CloseNotifier = (*logWriter)(nil)
+var _ http.CloseNotifier = (*logWriter)(nil) // nolint: staticcheck
 
 // Write implements http.ResponseWriter.
 func (r *logWriter) Write(p []byte) (int, error) {
@@ -49,7 +49,7 @@ func (r *logWriter) Flush() {
 
 // CloseNotify implements http.CloseNotifier.
 func (r *logWriter) CloseNotify() <-chan bool {
-	if cn, ok := r.ResponseWriter.(http.CloseNotifier); ok {
+	if cn, ok := r.ResponseWriter.(http.CloseNotifier); ok { // nolint: staticcheck
 		return cn.CloseNotify()
 	}
 	return nil
@@ -64,21 +64,20 @@ func (r *logWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 }
 
 // NewLoggingMiddleware returns a new logging middleware.
-func NewLoggingMiddleware(logger *log.Logger) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			writer := &logWriter{code: http.StatusOK, ResponseWriter: w}
-			logger.Debug("request",
-				"method", r.Method,
-				"uri", r.RequestURI,
-				"addr", r.RemoteAddr)
-			next.ServeHTTP(writer, r)
-			elapsed := time.Since(start)
-			logger.Debug("response",
-				"status", fmt.Sprintf("%d %s", writer.code, http.StatusText(writer.code)),
-				"bytes", humanize.Bytes(uint64(writer.bytes)),
-				"time", elapsed)
-		})
-	}
+func NewLoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger := log.FromContext(r.Context())
+		start := time.Now()
+		writer := &logWriter{code: http.StatusOK, ResponseWriter: w}
+		logger.Debug("request",
+			"method", r.Method,
+			"uri", r.RequestURI,
+			"addr", r.RemoteAddr)
+		next.ServeHTTP(writer, r)
+		elapsed := time.Since(start)
+		logger.Debug("response",
+			"status", fmt.Sprintf("%d %s", writer.code, http.StatusText(writer.code)),
+			"bytes", humanize.Bytes(uint64(writer.bytes)),
+			"time", elapsed)
+	})
 }

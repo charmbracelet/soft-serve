@@ -97,45 +97,47 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 
 	log.Debugf("git service command in %q: %s", cmd.Dir, cmd.String())
 	if err := cmd.Start(); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ErrInvalidRepo
+		}
 		return err
 	}
 
-	errg, ctx := errgroup.WithContext(ctx)
+	errg, _ := errgroup.WithContext(ctx)
 
 	// stdin
 	if scmd.Stdin != nil {
 		errg.Go(func() error {
-			if scmd.StdinHandler != nil {
-				return scmd.StdinHandler(scmd.Stdin, stdin)
-			} else {
-				return defaultStdinHandler(scmd.Stdin, stdin)
-			}
+			defer stdin.Close() // nolint: errcheck
+			_, err := io.Copy(stdin, scmd.Stdin)
+			return err
 		})
 	}
 
 	// stdout
 	if scmd.Stdout != nil {
 		errg.Go(func() error {
-			if scmd.StdoutHandler != nil {
-				return scmd.StdoutHandler(scmd.Stdout, stdout)
-			} else {
-				return defaultStdoutHandler(scmd.Stdout, stdout)
-			}
+			_, err := io.Copy(scmd.Stdout, stdout)
+			return err
 		})
 	}
 
 	// stderr
 	if scmd.Stderr != nil {
 		errg.Go(func() error {
-			if scmd.StderrHandler != nil {
-				return scmd.StderrHandler(scmd.Stderr, stderr)
-			} else {
-				return defaultStderrHandler(scmd.Stderr, stderr)
-			}
+			_, erro := io.Copy(scmd.Stderr, stderr)
+			return erro
 		})
 	}
 
-	return errors.Join(errg.Wait(), cmd.Wait())
+	err = errors.Join(errg.Wait(), cmd.Wait())
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		return ErrInvalidRepo
+	} else if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ServiceCommand is used to run a git service command.
@@ -148,26 +150,7 @@ type ServiceCommand struct {
 	Args   []string
 
 	// Modifier functions
-	CmdFunc       func(*exec.Cmd)
-	StdinHandler  func(io.Reader, io.WriteCloser) error
-	StdoutHandler func(io.Writer, io.ReadCloser) error
-	StderrHandler func(io.Writer, io.ReadCloser) error
-}
-
-func defaultStdinHandler(in io.Reader, stdin io.WriteCloser) error {
-	defer stdin.Close() // nolint: errcheck
-	_, err := io.Copy(stdin, in)
-	return err
-}
-
-func defaultStdoutHandler(out io.Writer, stdout io.ReadCloser) error {
-	_, err := io.Copy(out, stdout)
-	return err
-}
-
-func defaultStderrHandler(err io.Writer, stderr io.ReadCloser) error {
-	_, erro := io.Copy(err, stderr)
-	return erro
+	CmdFunc func(*exec.Cmd)
 }
 
 // UploadPack runs the git upload-pack protocol against the provided repo.

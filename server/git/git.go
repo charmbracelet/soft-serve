@@ -35,15 +35,22 @@ var (
 )
 
 // WritePktline encodes and writes a pktline to the given writer.
-func WritePktline(w io.Writer, v ...interface{}) {
+func WritePktline(w io.Writer, v ...interface{}) error {
 	msg := fmt.Sprintln(v...)
 	pkt := pktline.NewEncoder(w)
 	if err := pkt.EncodeString(msg); err != nil {
-		log.Debugf("git: error writing pkt-line message: %s", err)
+		return fmt.Errorf("git: error writing pkt-line message: %w", err)
 	}
 	if err := pkt.Flush(); err != nil {
-		log.Debugf("git: error flushing pkt-line message: %s", err)
+		return fmt.Errorf("git: error flushing pkt-line message: %w", err)
 	}
+
+	return nil
+}
+
+// WritePktlineErr writes an error pktline to the given writer.
+func WritePktlineErr(w io.Writer, err error) error {
+	return WritePktline(w, "ERR", err.Error())
 }
 
 // EnsureWithin ensures the given repo is within the repos directory.

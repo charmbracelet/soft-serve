@@ -12,9 +12,12 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/proto"
+	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	gitm "github.com/gogs/git-module"
 	"github.com/spf13/cobra"
@@ -22,296 +25,300 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	migrateConfig = &cobra.Command{
-		Use:    "migrate-config",
-		Short:  "Migrate config to new format",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			ctx := cmd.Context()
+// Deprecated: will be removed in a future release.
+var migrateConfig = &cobra.Command{
+	Use:    "migrate-config",
+	Short:  "Migrate config to new format",
+	Hidden: true,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		ctx := cmd.Context()
 
-			logger := log.FromContext(ctx)
-			// Disable logging timestamp
-			logger.SetReportTimestamp(false)
+		logger := log.FromContext(ctx)
+		// Disable logging timestamp
+		logger.SetReportTimestamp(false)
 
-			keyPath := os.Getenv("SOFT_SERVE_KEY_PATH")
-			reposPath := os.Getenv("SOFT_SERVE_REPO_PATH")
-			bindAddr := os.Getenv("SOFT_SERVE_BIND_ADDRESS")
-			cfg := config.DefaultConfig()
-			ctx = config.WithContext(ctx, cfg)
-			sb, err := sqlite.NewSqliteBackend(ctx)
+		keyPath := os.Getenv("SOFT_SERVE_KEY_PATH")
+		reposPath := os.Getenv("SOFT_SERVE_REPO_PATH")
+		bindAddr := os.Getenv("SOFT_SERVE_BIND_ADDRESS")
+		cfg := config.DefaultConfig()
+		if err := cfg.ParseEnv(); err != nil {
+			return fmt.Errorf("parse env: %w", err)
+		}
+
+		ctx = config.WithContext(ctx, cfg)
+		db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
+		if err != nil {
+			return fmt.Errorf("open database: %w", err)
+		}
+
+		defer db.Close() // nolint: errcheck
+		sb := backend.New(ctx, cfg, db)
+
+		// FIXME: Admin user gets created when the database is created.
+		sb.DeleteUser(ctx, "admin") // nolint: errcheck
+
+		// Set SSH listen address
+		logger.Info("Setting SSH listen address...")
+		if bindAddr != "" {
+			cfg.SSH.ListenAddr = bindAddr
+		}
+
+		// Copy SSH host key
+		logger.Info("Copying SSH host key...")
+		if keyPath != "" {
+			if err := os.MkdirAll(filepath.Join(cfg.DataPath, "ssh"), os.ModePerm); err != nil {
+				return fmt.Errorf("failed to create ssh directory: %w", err)
+			}
+
+			if err := copyFile(keyPath, filepath.Join(cfg.DataPath, "ssh", filepath.Base(keyPath))); err != nil {
+				return fmt.Errorf("failed to copy ssh key: %w", err)
+			}
+
+			if err := copyFile(keyPath+".pub", filepath.Join(cfg.DataPath, "ssh", filepath.Base(keyPath))+".pub"); err != nil {
+				logger.Errorf("failed to copy ssh key: %s", err)
+			}
+
+			cfg.SSH.KeyPath = filepath.Join(cfg.DataPath, "ssh", filepath.Base(keyPath))
+		}
+
+		// Read config
+		logger.Info("Reading config repository...")
+		r, err := git.Open(filepath.Join(reposPath, "config"))
+		if err != nil {
+			return fmt.Errorf("failed to open config repo: %w", err)
+		}
+
+		head, err := r.HEAD()
+		if err != nil {
+			return fmt.Errorf("failed to get head: %w", err)
+		}
+
+		tree, err := r.TreePath(head, "")
+		if err != nil {
+			return fmt.Errorf("failed to get tree: %w", err)
+		}
+
+		isJson := false // nolint: revive
+		te, err := tree.TreeEntry("config.yaml")
+		if err != nil {
+			te, err = tree.TreeEntry("config.json")
 			if err != nil {
-				return fmt.Errorf("failed to create sqlite backend: %w", err)
+				return fmt.Errorf("failed to get config file: %w", err)
+			}
+			isJson = true
+		}
+
+		cc, err := te.Contents()
+		if err != nil {
+			return fmt.Errorf("failed to get config contents: %w", err)
+		}
+
+		var ocfg Config
+		if isJson {
+			if err := json.Unmarshal(cc, &ocfg); err != nil {
+				return fmt.Errorf("failed to unmarshal config: %w", err)
+			}
+		} else {
+			if err := yaml.Unmarshal(cc, &ocfg); err != nil {
+				return fmt.Errorf("failed to unmarshal config: %w", err)
+			}
+		}
+
+		readme, readmePath, err := git.LatestFile(r, "README*")
+		hasReadme := err == nil
+
+		// Set server name
+		cfg.Name = ocfg.Name
+
+		// Set server public url
+		cfg.SSH.PublicURL = fmt.Sprintf("ssh://%s:%d", ocfg.Host, ocfg.Port)
+
+		// Set server settings
+		logger.Info("Setting server settings...")
+		if sb.SetAllowKeyless(ctx, ocfg.AllowKeyless) != nil {
+			fmt.Fprintf(os.Stderr, "failed to set allow keyless\n")
+		}
+		anon := access.ParseAccessLevel(ocfg.AnonAccess)
+		if anon >= 0 {
+			if err := sb.SetAnonAccess(ctx, anon); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to set anon access: %s\n", err)
+			}
+		}
+
+		// Copy repos
+		if reposPath != "" {
+			logger.Info("Copying repos...")
+			if err := os.MkdirAll(filepath.Join(cfg.DataPath, "repos"), os.ModePerm); err != nil {
+				return fmt.Errorf("failed to create repos directory: %w", err)
 			}
 
-			// FIXME: Admin user gets created when the database is created.
-			sb.DeleteUser("admin") // nolint: errcheck
-
-			cfg = cfg.WithBackend(sb)
-
-			// Set SSH listen address
-			logger.Info("Setting SSH listen address...")
-			if bindAddr != "" {
-				cfg.SSH.ListenAddr = bindAddr
+			dirs, err := os.ReadDir(reposPath)
+			if err != nil {
+				return fmt.Errorf("failed to read repos directory: %w", err)
 			}
 
-			// Copy SSH host key
-			logger.Info("Copying SSH host key...")
-			if keyPath != "" {
-				if err := os.MkdirAll(filepath.Join(cfg.DataPath, "ssh"), os.ModePerm); err != nil {
-					return fmt.Errorf("failed to create ssh directory: %w", err)
+			for _, dir := range dirs {
+				if !dir.IsDir() || dir.Name() == "config" {
+					continue
 				}
 
-				if err := copyFile(keyPath, filepath.Join(cfg.DataPath, "ssh", filepath.Base(keyPath))); err != nil {
-					return fmt.Errorf("failed to copy ssh key: %w", err)
+				if !isGitDir(filepath.Join(reposPath, dir.Name())) {
+					continue
 				}
 
-				if err := copyFile(keyPath+".pub", filepath.Join(cfg.DataPath, "ssh", filepath.Base(keyPath))+".pub"); err != nil {
-					logger.Errorf("failed to copy ssh key: %s", err)
+				logger.Infof("  Copying repo %s", dir.Name())
+				src := filepath.Join(reposPath, utils.SanitizeRepo(dir.Name()))
+				dst := filepath.Join(cfg.DataPath, "repos", utils.SanitizeRepo(dir.Name())) + ".git"
+				if err := os.MkdirAll(dst, os.ModePerm); err != nil {
+					return fmt.Errorf("failed to create repo directory: %w", err)
 				}
 
-				cfg.SSH.KeyPath = filepath.Join(cfg.DataPath, "ssh", filepath.Base(keyPath))
+				if err := copyDir(src, dst); err != nil {
+					return fmt.Errorf("failed to copy repo: %w", err)
+				}
+
+				if _, err := sb.CreateRepository(ctx, dir.Name(), proto.RepositoryOptions{}); err != nil {
+					fmt.Fprintf(os.Stderr, "failed to create repository: %s\n", err)
+				}
 			}
 
-			// Read config
-			logger.Info("Reading config repository...")
-			r, err := git.Open(filepath.Join(reposPath, "config"))
-			if err != nil {
-				return fmt.Errorf("failed to open config repo: %w", err)
-			}
+			if hasReadme {
+				logger.Infof("  Copying readme from \"config\" to \".soft-serve\"")
 
-			head, err := r.HEAD()
-			if err != nil {
-				return fmt.Errorf("failed to get head: %w", err)
-			}
+				// Switch to main branch
+				bcmd := git.NewCommand("branch", "-M", "main")
 
-			tree, err := r.TreePath(head, "")
-			if err != nil {
-				return fmt.Errorf("failed to get tree: %w", err)
-			}
-
-			isJson := false // nolint: revive
-			te, err := tree.TreeEntry("config.yaml")
-			if err != nil {
-				te, err = tree.TreeEntry("config.json")
+				rp := filepath.Join(cfg.DataPath, "repos", ".soft-serve.git")
+				nr, err := git.Init(rp, true)
 				if err != nil {
-					return fmt.Errorf("failed to get config file: %w", err)
-				}
-				isJson = true
-			}
-
-			cc, err := te.Contents()
-			if err != nil {
-				return fmt.Errorf("failed to get config contents: %w", err)
-			}
-
-			var ocfg Config
-			if isJson {
-				if err := json.Unmarshal(cc, &ocfg); err != nil {
-					return fmt.Errorf("failed to unmarshal config: %w", err)
-				}
-			} else {
-				if err := yaml.Unmarshal(cc, &ocfg); err != nil {
-					return fmt.Errorf("failed to unmarshal config: %w", err)
-				}
-			}
-
-			readme, readmePath, err := git.LatestFile(r, "README*")
-			hasReadme := err == nil
-
-			// Set server name
-			cfg.Name = ocfg.Name
-
-			// Set server public url
-			cfg.SSH.PublicURL = fmt.Sprintf("ssh://%s:%d", ocfg.Host, ocfg.Port)
-
-			// Set server settings
-			logger.Info("Setting server settings...")
-			if cfg.Backend.SetAllowKeyless(ocfg.AllowKeyless) != nil {
-				fmt.Fprintf(os.Stderr, "failed to set allow keyless\n")
-			}
-			anon := backend.ParseAccessLevel(ocfg.AnonAccess)
-			if anon >= 0 {
-				if err := sb.SetAnonAccess(anon); err != nil {
-					fmt.Fprintf(os.Stderr, "failed to set anon access: %s\n", err)
-				}
-			}
-
-			// Copy repos
-			if reposPath != "" {
-				logger.Info("Copying repos...")
-				if err := os.MkdirAll(filepath.Join(cfg.DataPath, "repos"), os.ModePerm); err != nil {
-					return fmt.Errorf("failed to create repos directory: %w", err)
+					return fmt.Errorf("failed to init repo: %w", err)
 				}
 
-				dirs, err := os.ReadDir(reposPath)
+				if _, err := nr.SymbolicRef("HEAD", gitm.RefsHeads+"main"); err != nil {
+					return fmt.Errorf("failed to set HEAD: %w", err)
+				}
+
+				tmpDir, err := os.MkdirTemp("", "soft-serve")
 				if err != nil {
-					return fmt.Errorf("failed to read repos directory: %w", err)
+					return fmt.Errorf("failed to create temp dir: %w", err)
 				}
 
-				for _, dir := range dirs {
-					if !dir.IsDir() || dir.Name() == "config" {
-						continue
-					}
-
-					if !isGitDir(filepath.Join(reposPath, dir.Name())) {
-						continue
-					}
-
-					logger.Infof("  Copying repo %s", dir.Name())
-					src := filepath.Join(reposPath, utils.SanitizeRepo(dir.Name()))
-					dst := filepath.Join(cfg.DataPath, "repos", utils.SanitizeRepo(dir.Name())) + ".git"
-					if err := os.MkdirAll(dst, os.ModePerm); err != nil {
-						return fmt.Errorf("failed to create repo directory: %w", err)
-					}
-
-					if err := copyDir(src, dst); err != nil {
-						return fmt.Errorf("failed to copy repo: %w", err)
-					}
-
-					if _, err := sb.CreateRepository(dir.Name(), backend.RepositoryOptions{}); err != nil {
-						fmt.Fprintf(os.Stderr, "failed to create repository: %s\n", err)
-					}
+				r, err := git.Init(tmpDir, false)
+				if err != nil {
+					return fmt.Errorf("failed to clone repo: %w", err)
 				}
 
-				if hasReadme {
-					logger.Infof("  Copying readme from \"config\" to \".soft-serve\"")
-
-					// Switch to main branch
-					bcmd := git.NewCommand("branch", "-M", "main")
-
-					rp := filepath.Join(cfg.DataPath, "repos", ".soft-serve.git")
-					nr, err := git.Init(rp, true)
-					if err != nil {
-						return fmt.Errorf("failed to init repo: %w", err)
-					}
-
-					if _, err := nr.SymbolicRef("HEAD", gitm.RefsHeads+"main"); err != nil {
-						return fmt.Errorf("failed to set HEAD: %w", err)
-					}
-
-					tmpDir, err := os.MkdirTemp("", "soft-serve")
-					if err != nil {
-						return fmt.Errorf("failed to create temp dir: %w", err)
-					}
-
-					r, err := git.Init(tmpDir, false)
-					if err != nil {
-						return fmt.Errorf("failed to clone repo: %w", err)
-					}
-
-					if _, err := bcmd.RunInDir(tmpDir); err != nil {
-						return fmt.Errorf("failed to create main branch: %w", err)
-					}
-
-					if err := os.WriteFile(filepath.Join(tmpDir, readmePath), []byte(readme), 0o644); err != nil {
-						return fmt.Errorf("failed to write readme: %w", err)
-					}
-
-					if err := r.Add(gitm.AddOptions{
-						All: true,
-					}); err != nil {
-						return fmt.Errorf("failed to add readme: %w", err)
-					}
-
-					if err := r.Commit(&gitm.Signature{
-						Name:  "Soft Serve",
-						Email: "vt100@charm.sh",
-						When:  time.Now(),
-					}, "Add readme"); err != nil {
-						return fmt.Errorf("failed to commit readme: %w", err)
-					}
-
-					if err := r.RemoteAdd("origin", "file://"+rp); err != nil {
-						return fmt.Errorf("failed to add remote: %w", err)
-					}
-
-					if err := r.Push("origin", "main"); err != nil {
-						return fmt.Errorf("failed to push readme: %w", err)
-					}
-
-					// Create `.soft-serve` repository and add readme
-					if _, err := sb.CreateRepository(".soft-serve", backend.RepositoryOptions{
-						ProjectName: "Home",
-						Description: "Soft Serve home repository",
-						Hidden:      true,
-						Private:     false,
-					}); err != nil {
-						fmt.Fprintf(os.Stderr, "failed to create repository: %s\n", err)
-					}
-				}
-			}
-
-			// Set repos metadata & collabs
-			logger.Info("Setting repos metadata & collabs...")
-			for _, r := range ocfg.Repos {
-				repo, name := r.Repo, r.Name
-				// Special case for config repo
-				if repo == "config" {
-					repo = ".soft-serve"
-					r.Private = false
+				if _, err := bcmd.RunInDir(tmpDir); err != nil {
+					return fmt.Errorf("failed to create main branch: %w", err)
 				}
 
-				if err := sb.SetProjectName(repo, name); err != nil {
-					logger.Errorf("failed to set repo name to %s: %s", repo, err)
+				if err := os.WriteFile(filepath.Join(tmpDir, readmePath), []byte(readme), 0o644); err != nil { // nolint: gosec
+					return fmt.Errorf("failed to write readme: %w", err)
 				}
 
-				if err := sb.SetDescription(repo, r.Note); err != nil {
-					logger.Errorf("failed to set repo description to %s: %s", repo, err)
-				}
-
-				if err := sb.SetPrivate(repo, r.Private); err != nil {
-					logger.Errorf("failed to set repo private to %s: %s", repo, err)
-				}
-
-				for _, collab := range r.Collabs {
-					if err := sb.AddCollaborator(repo, collab); err != nil {
-						logger.Errorf("failed to add repo collab to %s: %s", repo, err)
-					}
-				}
-			}
-
-			// Create users & collabs
-			logger.Info("Creating users & collabs...")
-			for _, user := range ocfg.Users {
-				keys := make(map[string]ssh.PublicKey)
-				for _, key := range user.PublicKeys {
-					pk, _, err := backend.ParseAuthorizedKey(key)
-					if err != nil {
-						continue
-					}
-					ak := backend.MarshalAuthorizedKey(pk)
-					keys[ak] = pk
-				}
-
-				pubkeys := make([]ssh.PublicKey, 0)
-				for _, pk := range keys {
-					pubkeys = append(pubkeys, pk)
-				}
-
-				username := strings.ToLower(user.Name)
-				username = strings.ReplaceAll(username, " ", "-")
-				logger.Infof("Creating user %q", username)
-				if _, err := sb.CreateUser(username, backend.UserOptions{
-					Admin:      user.Admin,
-					PublicKeys: pubkeys,
+				if err := r.Add(gitm.AddOptions{
+					All: true,
 				}); err != nil {
-					logger.Errorf("failed to create user: %s", err)
+					return fmt.Errorf("failed to add readme: %w", err)
 				}
 
-				for _, repo := range user.CollabRepos {
-					if err := sb.AddCollaborator(repo, username); err != nil {
-						logger.Errorf("failed to add user collab to %s: %s\n", repo, err)
-					}
+				if err := r.Commit(&gitm.Signature{
+					Name:  "Soft Serve",
+					Email: "vt100@charm.sh",
+					When:  time.Now(),
+				}, "Add readme"); err != nil {
+					return fmt.Errorf("failed to commit readme: %w", err)
+				}
+
+				if err := r.RemoteAdd("origin", "file://"+rp); err != nil {
+					return fmt.Errorf("failed to add remote: %w", err)
+				}
+
+				if err := r.Push("origin", "main"); err != nil {
+					return fmt.Errorf("failed to push readme: %w", err)
+				}
+
+				// Create `.soft-serve` repository and add readme
+				if _, err := sb.CreateRepository(ctx, ".soft-serve", proto.RepositoryOptions{
+					ProjectName: "Home",
+					Description: "Soft Serve home repository",
+					Hidden:      true,
+					Private:     false,
+				}); err != nil {
+					fmt.Fprintf(os.Stderr, "failed to create repository: %s\n", err)
 				}
 			}
+		}
 
-			logger.Info("Writing config...")
-			defer logger.Info("Done!")
-			return config.WriteConfig(filepath.Join(cfg.DataPath, "config.yaml"), cfg)
-		},
-	}
-)
+		// Set repos metadata & collabs
+		logger.Info("Setting repos metadata & collabs...")
+		for _, r := range ocfg.Repos {
+			repo, name := r.Repo, r.Name
+			// Special case for config repo
+			if repo == "config" {
+				repo = ".soft-serve"
+				r.Private = false
+			}
+
+			if err := sb.SetProjectName(ctx, repo, name); err != nil {
+				logger.Errorf("failed to set repo name to %s: %s", repo, err)
+			}
+
+			if err := sb.SetDescription(ctx, repo, r.Note); err != nil {
+				logger.Errorf("failed to set repo description to %s: %s", repo, err)
+			}
+
+			if err := sb.SetPrivate(ctx, repo, r.Private); err != nil {
+				logger.Errorf("failed to set repo private to %s: %s", repo, err)
+			}
+
+			for _, collab := range r.Collabs {
+				if err := sb.AddCollaborator(ctx, repo, collab); err != nil {
+					logger.Errorf("failed to add repo collab to %s: %s", repo, err)
+				}
+			}
+		}
+
+		// Create users & collabs
+		logger.Info("Creating users & collabs...")
+		for _, user := range ocfg.Users {
+			keys := make(map[string]ssh.PublicKey)
+			for _, key := range user.PublicKeys {
+				pk, _, err := sshutils.ParseAuthorizedKey(key)
+				if err != nil {
+					continue
+				}
+				ak := sshutils.MarshalAuthorizedKey(pk)
+				keys[ak] = pk
+			}
+
+			pubkeys := make([]ssh.PublicKey, 0)
+			for _, pk := range keys {
+				pubkeys = append(pubkeys, pk)
+			}
+
+			username := strings.ToLower(user.Name)
+			username = strings.ReplaceAll(username, " ", "-")
+			logger.Infof("Creating user %q", username)
+			if _, err := sb.CreateUser(ctx, username, proto.UserOptions{
+				Admin:      user.Admin,
+				PublicKeys: pubkeys,
+			}); err != nil {
+				logger.Errorf("failed to create user: %s", err)
+			}
+
+			for _, repo := range user.CollabRepos {
+				if err := sb.AddCollaborator(ctx, repo, username); err != nil {
+					logger.Errorf("failed to add user collab to %s: %s\n", repo, err)
+				}
+			}
+		}
+
+		logger.Info("Writing config...")
+		defer logger.Info("Done!")
+		return cfg.WriteConfig()
+	},
+}
 
 // Returns true if path is a directory containing an `objects` directory and a
 // `HEAD` file.

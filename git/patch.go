@@ -82,7 +82,7 @@ func diffsToString(diffs []diffmatchpatch.Diff, lineType git.DiffLineType) strin
 		}
 	}
 
-	return string(buf.Bytes())
+	return buf.String()
 }
 
 // DiffFile is a wrapper to git.DiffFile with helper methods.

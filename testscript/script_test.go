@@ -15,10 +15,14 @@ import (
 
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/soft-serve/server"
+	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/db/migrate"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/rogpeppe/go-internal/testscript"
 	"golang.org/x/crypto/ssh"
+	_ "modernc.org/sqlite" // sqlite Driver
 )
 
 var update = flag.Bool("update", false, "update script files")
@@ -51,42 +55,56 @@ func TestScript(t *testing.T) {
 			"dos2unix": cmdDos2Unix,
 		},
 		Setup: func(e *testscript.Env) error {
+			data := t.TempDir()
+
 			sshPort := test.RandomPort()
+			sshListen := fmt.Sprintf("localhost:%d", sshPort)
+			gitPort := test.RandomPort()
+			gitListen := fmt.Sprintf("localhost:%d", gitPort)
+			httpPort := test.RandomPort()
+			httpListen := fmt.Sprintf("localhost:%d", httpPort)
+			statsPort := test.RandomPort()
+			statsListen := fmt.Sprintf("localhost:%d", statsPort)
+			serverName := "Test Soft Serve"
+
 			e.Setenv("SSH_PORT", fmt.Sprintf("%d", sshPort))
 			e.Setenv("ADMIN1_AUTHORIZED_KEY", admin1.AuthorizedKey())
 			e.Setenv("ADMIN2_AUTHORIZED_KEY", admin2.AuthorizedKey())
 			e.Setenv("USER1_AUTHORIZED_KEY", user1.AuthorizedKey())
 			e.Setenv("SSH_KNOWN_HOSTS_FILE", filepath.Join(t.TempDir(), "known_hosts"))
 			e.Setenv("SSH_KNOWN_CONFIG_FILE", filepath.Join(t.TempDir(), "config"))
-			data := t.TempDir()
-			cfg := config.Config{
-				Name:             "Test Soft Serve",
-				DataPath:         data,
-				InitialAdminKeys: []string{admin1.AuthorizedKey()},
-				SSH: config.SSHConfig{
-					ListenAddr:    fmt.Sprintf("localhost:%d", sshPort),
-					PublicURL:     fmt.Sprintf("ssh://localhost:%d", sshPort),
-					KeyPath:       filepath.Join(data, "ssh", "soft_serve_host_ed25519"),
-					ClientKeyPath: filepath.Join(data, "ssh", "soft_serve_client_ed25519"),
-				},
-				Git: config.GitConfig{
-					ListenAddr:     fmt.Sprintf("localhost:%d", test.RandomPort()),
-					IdleTimeout:    3,
-					MaxConnections: 32,
-				},
-				HTTP: config.HTTPConfig{
-					ListenAddr: fmt.Sprintf("localhost:%d", test.RandomPort()),
-					PublicURL:  fmt.Sprintf("http://localhost:%d", test.RandomPort()),
-				},
-				Stats: config.StatsConfig{
-					ListenAddr: fmt.Sprintf("localhost:%d", test.RandomPort()),
-				},
-				Log: config.LogConfig{
-					Format:     "text",
-					TimeFormat: time.DateTime,
-				},
+
+			cfg := config.DefaultConfig()
+			cfg.DataPath = data
+			cfg.Name = serverName
+			cfg.InitialAdminKeys = []string{admin1.AuthorizedKey()}
+			cfg.SSH.ListenAddr = sshListen
+			cfg.SSH.PublicURL = "ssh://" + sshListen
+			cfg.Git.ListenAddr = gitListen
+			cfg.HTTP.ListenAddr = httpListen
+			cfg.HTTP.PublicURL = "http://" + httpListen
+			cfg.Stats.ListenAddr = statsListen
+			cfg.DB.Driver = "sqlite"
+
+			if err := cfg.Validate(); err != nil {
+				return err
 			}
-			ctx := config.WithContext(context.Background(), &cfg)
+
+			ctx := config.WithContext(context.Background(), cfg)
+
+			// TODO: test postgres
+			dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
+			if err != nil {
+				return fmt.Errorf("open database: %w", err)
+			}
+
+			if err := migrate.Migrate(ctx, dbx); err != nil {
+				return fmt.Errorf("migrate database: %w", err)
+			}
+
+			ctx = db.WithContext(ctx, dbx)
+			be := backend.New(ctx, cfg, dbx)
+			ctx = backend.WithContext(ctx, be)
 
 			// prevent race condition in lipgloss...
 			// this will probably be autofixed when we start using the colors
@@ -106,6 +124,7 @@ func TestScript(t *testing.T) {
 			}()
 
 			e.Defer(func() {
+				defer dbx.Close() // nolint: errcheck
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				if err := srv.Shutdown(ctx); err != nil {

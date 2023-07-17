@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 )
 
@@ -13,7 +12,6 @@ import (
 type HTTPServer struct {
 	ctx    context.Context
 	cfg    *config.Config
-	be     backend.Backend
 	server *http.Server
 }
 
@@ -23,7 +21,6 @@ func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 	s := &HTTPServer{
 		ctx: ctx,
 		cfg: cfg,
-		be:  backend.FromContext(ctx),
 		server: &http.Server{
 			Addr:              cfg.HTTP.ListenAddr,
 			Handler:           NewRouter(ctx),

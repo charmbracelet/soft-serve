@@ -13,11 +13,13 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/backend/sqlite"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/db/migrate"
 	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
+	_ "modernc.org/sqlite" // sqlite driver
 )
 
 var testDaemon *GitDaemon
@@ -35,13 +37,20 @@ func TestMain(m *testing.M) {
 	os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort()))
 	ctx := context.TODO()
 	cfg := config.DefaultConfig()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	ctx = config.WithContext(ctx, cfg)
-	fb, err := sqlite.NewSqliteBackend(ctx)
+	db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	if err != nil {
 		log.Fatal(err)
 	}
-	cfg = cfg.WithBackend(fb)
-	ctx = backend.WithContext(ctx, fb)
+	defer db.Close() // nolint: errcheck
+	if err := migrate.Migrate(ctx, db); err != nil {
+		log.Fatal(err)
+	}
+	be := backend.New(ctx, cfg, db)
+	ctx = backend.WithContext(ctx, be)
 	d, err := NewGitDaemon(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -59,7 +68,7 @@ func TestMain(m *testing.M) {
 	os.Unsetenv("SOFT_SERVE_GIT_IDLE_TIMEOUT")
 	os.Unsetenv("SOFT_SERVE_GIT_LISTEN_ADDR")
 	_ = d.Close()
-	_ = fb.Close()
+	_ = db.Close()
 	os.Exit(code)
 }
 
@@ -72,7 +81,7 @@ func TestIdleTimeout(t *testing.T) {
 	if err != nil && !errors.Is(err, io.EOF) {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	if out != git.ErrTimeout.Error() && out != "" {
+	if out != "ERR "+git.ErrTimeout.Error() && out != "" {
 		t.Fatalf("expected %q error, got %q", git.ErrTimeout, out)
 	}
 }
@@ -89,7 +98,7 @@ func TestInvalidRepo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	if out != git.ErrInvalidRepo.Error() {
+	if out != "ERR "+git.ErrInvalidRepo.Error() {
 		t.Fatalf("expected %q error, got %q", git.ErrInvalidRepo, out)
 	}
 }
