@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
+	gitm "github.com/gogs/git-module"
 )
 
 var (
@@ -102,11 +103,10 @@ func EnsureDefaultBranch(ctx context.Context, scmd ServiceCommand) error {
 			}
 		}
 
-		cmd := git.NewCommand("branch", "-M", branch).WithContext(ctx)
-		if err := cmd.RunInDirWithOptions(scmd.Dir, git.RunInDirOptions{
-			Stdin:  scmd.Stdin,
-			Stdout: scmd.Stdout,
-			Stderr: scmd.Stderr,
+		if _, err := r.SymbolicRef(git.HEAD, git.RefsHeads+branch, gitm.SymbolicRefOptions{
+			CommandOptions: gitm.CommandOptions{
+				Context: ctx,
+			},
 		}); err != nil {
 			return err
 		}
