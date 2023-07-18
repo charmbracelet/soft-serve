@@ -10,19 +10,3 @@ jobs:
     uses: charmbracelet/meta/.github/workflows/snapshot.yml@main
     secrets:
       goreleaser_key: ${{ secrets.GORELEASER_KEY }}
-
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ^1
-
-      - name: Test
-        run: go test -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt ./... -timeout 5m
-      - uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.txt
