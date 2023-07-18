@@ -116,7 +116,11 @@ func branchDefaultCommand() *cobra.Command {
 					return git.ErrReferenceNotExist
 				}
 
-				if _, err := r.SymbolicRef("HEAD", gitm.RefsHeads+branch); err != nil {
+				if _, err := r.SymbolicRef(git.HEAD, gitm.RefsHeads+branch, gitm.SymbolicRefOptions{
+					CommandOptions: gitm.CommandOptions{
+						Context: ctx,
+					},
+				}); err != nil {
 					return err
 				}
 			}

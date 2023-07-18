@@ -230,10 +230,13 @@ func (r *Repository) SetConfig(key, value string, opts ...ConfigOptions) error {
 
 // SymbolicRef returns or updates the symbolic reference for the given name.
 // Both name and ref can be empty.
-func (r *Repository) SymbolicRef(name string, ref string) (string, error) {
-	opt := git.SymbolicRefOptions{
-		Name: name,
-		Ref:  ref,
+func (r *Repository) SymbolicRef(name string, ref string, opts ...git.SymbolicRefOptions) (string, error) {
+	var opt git.SymbolicRefOptions
+	if len(opts) > 0 {
+		opt = opts[0]
 	}
+
+	opt.Name = name
+	opt.Ref = ref
 	return r.Repository.SymbolicRef(opt)
 }
