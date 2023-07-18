@@ -205,8 +205,7 @@ func EnsureDefaultBranch(ctx context.Context, in io.Reader, out io.Writer, er io
 	// Rename the default branch to the first branch available
 	_, err = r.HEAD()
 	if err == git.ErrReferenceNotExist {
-		err = RunGit(ctx, in, out, er, repoPath, []string{}, "branch", "-M", brs[0])
-		if err != nil {
+		if _, err := r.SymbolicRef(git.HEAD, git.RefsHeads+brs[0]); err != nil {
 			return err
 		}
 	}
