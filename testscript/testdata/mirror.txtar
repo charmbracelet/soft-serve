@@ -6,6 +6,9 @@
 # import a repo
 soft repo import --mirror charmbracelet/catwalk https://github.com/charmbracelet/catwalk.git
 
+# check empty description file
+readfile $DATA_PATH/repos/charmbracelet/catwalk.git/description ''
+
 # check repo info
 soft repo info charmbracelet/catwalk
 cmp stdout info1.txt
@@ -32,6 +35,7 @@ soft repo description charmbracelet/catwalk
 soft repo description charmbracelet/catwalk "testing repo"
 soft repo description charmbracelet/catwalk
 stdout 'testing repo'
+readfile $DATA_PATH/repos/charmbracelet/catwalk.git/description 'testing repo'
 
 # rename
 soft repo rename charmbracelet/catwalk charmbracelet/test
@@ -41,11 +45,13 @@ stdout charmbracelet/test # TODO: shouldn't this still show the project-name?
 # check its not private
 soft repo private charmbracelet/test
 stdout false
+exists $DATA_PATH/repos/charmbracelet/test.git/git-daemon-export-ok
 
 # make it private
 soft repo private charmbracelet/test  true
 soft repo private charmbracelet/test
 stdout true
+! exists $DATA_PATH/repos/charmbracelet/test.git/git-daemon-export-ok
 
 # check its not hidden
 soft repo hidden charmbracelet/test
