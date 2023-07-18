@@ -26,7 +26,7 @@ require (
 	github.com/gogs/git-module v1.8.2
 	github.com/hashicorp/golang-lru/v2 v2.0.4
 	github.com/jmoiron/sqlx v1.3.5
-	github.com/lib/pq v1.2.0
+	github.com/lib/pq v1.10.9
 	github.com/lrstanley/bubblezone v0.0.0-20220716194435-3cb8c52f6a8f
 	github.com/muesli/mango-cobra v1.2.0
 	github.com/muesli/roff v0.1.0
