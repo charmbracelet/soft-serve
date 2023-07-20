@@ -24,10 +24,10 @@ func handleGit(s ssh.Session) {
 	cmdLine := s.Command()
 	start := time.Now()
 
-	user, ok := ctx.Value(proto.ContextKeyUser).(proto.User)
-	if !ok {
-		sshFatal(s, errors.New("no user in context"))
-		return
+	var username string
+	user := ctx.Value(proto.ContextKeyUser).(proto.User)
+	if user != nil {
+		username = user.Username()
 	}
 
 	// repo should be in the form of "repo.git"
@@ -49,7 +49,7 @@ func handleGit(s ssh.Session) {
 		"SOFT_SERVE_REPO_NAME=" + name,
 		"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
 		"SOFT_SERVE_PUBLIC_KEY=" + ak,
-		"SOFT_SERVE_USERNAME=" + user.Username(),
+		"SOFT_SERVE_USERNAME=" + username,
 		"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
 	}
 
