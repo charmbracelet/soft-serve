@@ -40,7 +40,7 @@ func (r *Repository) CheckAttributes(ref *Reference, path string) ([]Attribute, 
 }
 
 func parseAttributes(path string, buf []byte) []Attribute {
-	var attrs []Attribute
+	attrs := make([]Attribute, 0)
 	for _, line := range strings.Split(string(buf), "\n") {
 		if line == "" {
 			continue
