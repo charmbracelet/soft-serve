@@ -200,34 +200,6 @@ func (r *Repository) CommitsByPage(ref *Reference, page, size int) (Commits, err
 	return commits, nil
 }
 
-// Config returns the config value for the given key.
-func (r *Repository) Config(key string, opts ...ConfigOptions) (string, error) {
-	dir, err := gitDir(r.Repository)
-	if err != nil {
-		return "", err
-	}
-	var opt ConfigOptions
-	if len(opts) > 0 {
-		opt = opts[0]
-	}
-	opt.File = filepath.Join(dir, "config")
-	return Config(key, opt)
-}
-
-// SetConfig sets the config value for the given key.
-func (r *Repository) SetConfig(key, value string, opts ...ConfigOptions) error {
-	dir, err := gitDir(r.Repository)
-	if err != nil {
-		return err
-	}
-	var opt ConfigOptions
-	if len(opts) > 0 {
-		opt = opts[0]
-	}
-	opt.File = filepath.Join(dir, "config")
-	return SetConfig(key, value, opt)
-}
-
 // SymbolicRef returns or updates the symbolic reference for the given name.
 // Both name and ref can be empty.
 func (r *Repository) SymbolicRef(name string, ref string, opts ...git.SymbolicRefOptions) (string, error) {

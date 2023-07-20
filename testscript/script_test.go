@@ -19,6 +19,8 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/migrate"
+	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/store/database"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/rogpeppe/go-internal/testscript"
 	"golang.org/x/crypto/ssh"
@@ -105,6 +107,8 @@ func TestScript(t *testing.T) {
 			}
 
 			ctx = db.WithContext(ctx, dbx)
+			datastore := database.New(ctx, dbx)
+			ctx = store.WithContext(ctx, datastore)
 			be := backend.New(ctx, cfg, dbx)
 			ctx = backend.WithContext(ctx, be)
 

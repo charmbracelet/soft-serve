@@ -1,51 +1,39 @@
 package git
 
-// ConfigOptions are options for Config.
-type ConfigOptions struct {
-	File string
-	All  bool
-	Add  bool
-	CommandOptions
-}
+import (
+	"os"
+	"path/filepath"
 
-// Config gets a git configuration.
-func Config(key string, opts ...ConfigOptions) (string, error) {
-	var opt ConfigOptions
-	if len(opts) > 0 {
-		opt = opts[0]
-	}
-	cmd := NewCommand("config")
-	if opt.File != "" {
-		cmd.AddArgs("--file", opt.File)
-	}
-	if opt.All {
-		cmd.AddArgs("--get-all")
-	}
-	for _, a := range opt.Args {
-		cmd.AddArgs(a)
-	}
-	cmd.AddArgs(key)
-	bts, err := cmd.Run()
+	gcfg "github.com/go-git/go-git/v5/plumbing/format/config"
+)
+
+// Config returns the repository Git configuration.
+func (r *Repository) Config() (*gcfg.Config, error) {
+	cp := filepath.Join(r.Path, "config")
+	f, err := os.Open(cp)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(bts), nil
+
+	defer f.Close() // nolint: errcheck
+	d := gcfg.NewDecoder(f)
+	cfg := gcfg.New()
+	if err := d.Decode(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
 
-// SetConfig sets a git configuration.
-func SetConfig(key string, value string, opts ...ConfigOptions) error {
-	var opt ConfigOptions
-	if len(opts) > 0 {
-		opt = opts[0]
+// SetConfig sets the repository Git configuration.
+func (r *Repository) SetConfig(cfg *gcfg.Config) error {
+	cp := filepath.Join(r.Path, "config")
+	f, err := os.Create(cp)
+	if err != nil {
+		return err
 	}
-	cmd := NewCommand("config")
-	if opt.File != "" {
-		cmd.AddArgs("--file", opt.File)
-	}
-	for _, a := range opt.Args {
-		cmd.AddArgs(a)
-	}
-	cmd.AddArgs(key, value)
-	_, err := cmd.Run()
-	return err
+
+	defer f.Close() // nolint: errcheck
+	e := gcfg.NewEncoder(f)
+	return e.Encode(cfg)
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/store"
-	"github.com/charmbracelet/soft-serve/server/store/database"
 )
 
 // Backend is the Soft Serve backend that handles users, repositories, and
@@ -23,7 +22,7 @@ type Backend struct {
 
 // New returns a new Soft Serve backend.
 func New(ctx context.Context, cfg *config.Config, db *db.DB) *Backend {
-	dbstore := database.New(ctx, db)
+	dbstore := store.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("backend")
 	b := &Backend{
 		ctx:    ctx,

@@ -13,8 +13,11 @@ import (
 	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
+	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
+	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -104,6 +107,8 @@ type SSHServer struct { // nolint: revive
 func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("ssh")
+	dbx := db.FromContext(ctx)
+	datastore := store.FromContext(ctx)
 	be := backend.FromContext(ctx)
 
 	var err error
@@ -122,7 +127,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 			// CLI middleware.
 			CommandMiddleware,
 			// Context middleware.
-			ContextMiddleware(cfg, be, logger),
+			ContextMiddleware(cfg, dbx, datastore, be, logger),
 			// Logging middleware.
 			lm.MiddlewareWithLogger(
 				&loggerAdapter{logger, log.DebugLevel},
@@ -191,7 +196,10 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 		publicKeyCounter.WithLabelValues(strconv.FormatBool(*allowed)).Inc()
 	}(&allowed)
 
-	ac := s.be.AccessLevelByPublicKey(ctx, "", pk)
+	user, _ := s.be.UserByPublicKey(ctx, pk)
+	ctx.SetValue(proto.ContextKeyUser, user)
+
+	ac := s.be.AccessLevelForUser(ctx, "", user)
 	s.logger.Debugf("access level for %q: %s", ak, ac)
 	allowed = ac >= access.ReadWriteAccess
 	return

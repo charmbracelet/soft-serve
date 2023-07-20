@@ -12,6 +12,8 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/store/database"
 	_ "github.com/lib/pq" // postgres driver
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
@@ -150,6 +152,8 @@ func initBackendContext(cmd *cobra.Command, _ []string) error {
 	}
 
 	ctx = db.WithContext(ctx, dbx)
+	dbstore := database.New(ctx, dbx)
+	ctx = store.WithContext(ctx, dbstore)
 	be := backend.New(ctx, cfg, dbx)
 	ctx = backend.WithContext(ctx, be)
 

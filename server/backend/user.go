@@ -17,8 +17,36 @@ import (
 //
 // It implements backend.Backend.
 func (d *Backend) AccessLevel(ctx context.Context, repo string, username string) access.AccessLevel {
-	anon := d.AnonAccess(ctx)
 	user, _ := d.User(ctx, username)
+	return d.AccessLevelForUser(ctx, repo, user)
+}
+
+// AccessLevelByPublicKey returns the access level of a user's public key for a repository.
+//
+// It implements backend.Backend.
+func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ssh.PublicKey) access.AccessLevel {
+	for _, k := range d.cfg.AdminKeys() {
+		if sshutils.KeysEqual(pk, k) {
+			return access.AdminAccess
+		}
+	}
+
+	user, _ := d.UserByPublicKey(ctx, pk)
+	if user != nil {
+		return d.AccessLevel(ctx, repo, user.Username())
+	}
+
+	return d.AccessLevel(ctx, repo, "")
+}
+
+// AccessLevelForUser returns the access level of a user for a repository.
+func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user proto.User) access.AccessLevel {
+	var username string
+	anon := d.AnonAccess(ctx)
+	if user != nil {
+		username = user.Username()
+	}
+
 	// If the user is an admin, they have admin access.
 	if user != nil && user.IsAdmin() {
 		return access.AdminAccess
@@ -56,24 +84,6 @@ func (d *Backend) AccessLevel(ctx context.Context, repo string, username string)
 
 	// If the user doesn't exist, give them the anonymous access level.
 	return anon
-}
-
-// AccessLevelByPublicKey returns the access level of a user's public key for a repository.
-//
-// It implements backend.Backend.
-func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ssh.PublicKey) access.AccessLevel {
-	for _, k := range d.cfg.AdminKeys() {
-		if sshutils.KeysEqual(pk, k) {
-			return access.AdminAccess
-		}
-	}
-
-	user, _ := d.UserByPublicKey(ctx, pk)
-	if user != nil {
-		return d.AccessLevel(ctx, repo, user.Username())
-	}
-
-	return d.AccessLevel(ctx, repo, "")
 }
 
 // User finds a user by username.
@@ -273,17 +283,22 @@ type user struct {
 
 var _ proto.User = (*user)(nil)
 
-// IsAdmin implements store.User
+// IsAdmin implements proto.User
 func (u *user) IsAdmin() bool {
 	return u.user.Admin
 }
 
-// PublicKeys implements store.User
+// PublicKeys implements proto.User
 func (u *user) PublicKeys() []ssh.PublicKey {
 	return u.publicKeys
 }
 
-// Username implements store.User
+// Username implements proto.User
 func (u *user) Username() string {
 	return u.user.Username
+}
+
+// ID implements proto.User.
+func (u *user) ID() int64 {
+	return u.user.ID
 }

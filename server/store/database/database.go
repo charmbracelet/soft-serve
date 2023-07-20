@@ -19,6 +19,7 @@ type datastore struct {
 	*repoStore
 	*userStore
 	*collabStore
+	*lfsStore
 }
 
 // New returns a new store.Store database.
@@ -36,6 +37,7 @@ func New(ctx context.Context, db *db.DB) store.Store {
 		repoStore:     &repoStore{},
 		userStore:     &userStore{},
 		collabStore:   &collabStore{},
+		lfsStore:      &lfsStore{},
 	}
 
 	return s
