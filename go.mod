@@ -34,7 +34,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rogpeppe/go-internal v1.11.0
 	github.com/spf13/cobra v1.7.0
-	go.uber.org/automaxprocs v1.5.2
+	go.uber.org/automaxprocs v1.5.3
 	goji.io v2.0.2+incompatible
 	golang.org/x/crypto v0.11.0
 	golang.org/x/sync v0.3.0
