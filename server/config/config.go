@@ -285,7 +285,7 @@ func DefaultConfig() *Config {
 			KeyPath:       filepath.Join("ssh", "soft_serve_host_ed25519"),
 			ClientKeyPath: filepath.Join("ssh", "soft_serve_client_ed25519"),
 			MaxTimeout:    0,
-			IdleTimeout:   0,
+			IdleTimeout:   10 * 60, // 10 minutes
 		},
 		Git: GitConfig{
 			ListenAddr:     ":9418",
