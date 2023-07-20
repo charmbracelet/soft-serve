@@ -376,26 +376,54 @@ func (f *Files) selectFileCmd() tea.Msg {
 			log.Printf("ui: files: current item is not a file")
 			return common.ErrorMsg(errInvalidFile)
 		}
-		bin, err := fi.IsBinary()
-		if err != nil {
-			f.path = filepath.Dir(f.path)
-			log.Printf("ui: files: error checking if file is binary %v", err)
-			return common.ErrorMsg(err)
+
+		var err error
+		var bin bool
+
+		r, err := f.repo.Open()
+		if err == nil {
+			attrs, err := r.CheckAttributes(f.ref, fi.Path())
+			if err == nil {
+				for _, attr := range attrs {
+					if (attr.Name == "binary" && attr.Value == "set") ||
+						(attr.Name == "text" && attr.Value == "unset") {
+						bin = true
+						break
+					}
+				}
+			} else {
+				log.Printf("ui: files: error checking attributes %v", err)
+			}
+		} else {
+			log.Printf("ui: files: error opening repo %v", err)
 		}
+
+		if !bin {
+			bin, err = fi.IsBinary()
+			if err != nil {
+				f.path = filepath.Dir(f.path)
+				log.Printf("ui: files: error checking if file is binary %v", err)
+				return common.ErrorMsg(err)
+			}
+		}
+
 		if bin {
 			f.path = filepath.Dir(f.path)
 			log.Printf("ui: files: file is binary")
 			return common.ErrorMsg(errBinaryFile)
 		}
+
 		c, err := fi.Bytes()
 		if err != nil {
 			f.path = filepath.Dir(f.path)
 			log.Printf("ui: files: error reading file %v", err)
 			return common.ErrorMsg(err)
 		}
+
 		f.lastSelected = append(f.lastSelected, f.selector.Index())
 		return FileContentMsg{string(c), i.entry.Name()}
 	}
+
 	log.Printf("ui: files: current item is not a file")
 	return common.ErrorMsg(errNoFileSelected)
 }
