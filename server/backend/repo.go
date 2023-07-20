@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -14,7 +15,9 @@ import (
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/models"
 	"github.com/charmbracelet/soft-serve/server/hooks"
+	"github.com/charmbracelet/soft-serve/server/lfs"
 	"github.com/charmbracelet/soft-serve/server/proto"
+	"github.com/charmbracelet/soft-serve/server/storage"
 	"github.com/charmbracelet/soft-serve/server/utils"
 )
 
@@ -103,7 +106,6 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, remote stri
 				),
 			},
 		},
-		// Timeout: time.Hour,
 	}
 
 	if err := git.Clone(remote, rp, copts); err != nil {
@@ -115,13 +117,51 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, remote stri
 		return nil, err
 	}
 
-	return d.CreateRepository(ctx, name, opts)
+	r, err := d.CreateRepository(ctx, name, opts)
+	if err != nil {
+		d.logger.Error("failed to create repository", "err", err, "name", name)
+		return nil, err
+	}
+
+	rr, err := r.Open()
+	if err != nil {
+		d.logger.Error("failed to open repository", "err", err, "path", rp)
+		return nil, err
+	}
+
+	rcfg, err := rr.Config()
+	if err != nil {
+		d.logger.Error("failed to get repository config", "err", err, "path", rp)
+		return nil, err
+	}
+
+	rcfg.Section("lfs").SetOption("url", remote)
+
+	if err := rr.SetConfig(rcfg); err != nil {
+		d.logger.Error("failed to set repository config", "err", err, "path", rp)
+		return nil, err
+	}
+
+	endpoint, err := lfs.NewEndpoint(remote)
+	if err != nil {
+		d.logger.Error("failed to create lfs endpoint", "err", err, "path", rp)
+		return nil, err
+	}
+
+	client := lfs.NewClient(endpoint)
+
+	if err := StoreRepoMissingLFSObjects(ctx, r, d.db, d.store, client); err != nil {
+		d.logger.Error("failed to store missing lfs objects", "err", err, "path", rp)
+		return nil, err
+	}
+
+	return r, nil
 }
 
 // DeleteRepository deletes a repository.
 //
 // It implements backend.Backend.
-func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
+func (d *Backend) DeleteRepository(ctx context.Context, name string, deleteLFS bool) error {
 	name = utils.SanitizeRepo(name)
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
@@ -129,6 +169,26 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		// Delete repo from cache
 		defer d.cache.Delete(name)
+
+		if deleteLFS {
+			strg := storage.NewLocalStorage(filepath.Join(d.cfg.DataPath, "lfs"))
+			objs, err := d.store.GetLFSObjectsByName(ctx, tx, name)
+			if err != nil {
+				return err
+			}
+
+			for _, obj := range objs {
+				p := lfs.Pointer{
+					Oid:  obj.Oid,
+					Size: obj.Size,
+				}
+
+				d.logger.Debug("deleting lfs object", "repo", name, "oid", obj.Oid)
+				if err := strg.Delete(path.Join("objects", p.RelativePath())); err != nil {
+					d.logger.Error("failed to delete lfs object", "repo", name, "err", err, "oid", obj.Oid)
+				}
+			}
+		}
 
 		if err := d.store.DeleteRepoByName(ctx, tx, name); err != nil {
 			return err
@@ -426,6 +486,13 @@ type repo struct {
 	name string
 	path string
 	repo models.Repo
+}
+
+// ID returns the repository's ID.
+//
+// It implements proto.Repository.
+func (r *repo) ID() int64 {
+	return r.repo.ID
 }
 
 // Description returns the repository's description.

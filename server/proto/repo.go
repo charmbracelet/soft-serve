@@ -6,8 +6,13 @@ import (
 	"github.com/charmbracelet/soft-serve/git"
 )
 
+// ContextKeyRepository is the context key for the repository.
+var ContextKeyRepository = &struct{ string }{"repository"}
+
 // Repository is a Git repository interface.
 type Repository interface {
+	// ID returns the repository's ID.
+	ID() int64
 	// Name returns the repository's name.
 	Name() string
 	// ProjectName returns the repository's project name.

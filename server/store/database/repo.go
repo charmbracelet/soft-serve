@@ -14,7 +14,7 @@ type repoStore struct{}
 var _ store.RepositoryStore = (*repoStore)(nil)
 
 // CreateRepo implements store.RepositoryStore.
-func (*repoStore) CreateRepo(ctx context.Context, tx *db.Tx, name string, projectName string, description string, isPrivate bool, isHidden bool, isMirror bool) error {
+func (*repoStore) CreateRepo(ctx context.Context, tx db.Handler, name string, projectName string, description string, isPrivate bool, isHidden bool, isMirror bool) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind(`INSERT INTO repos (name, project_name, description, private, mirror, hidden, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`)
@@ -24,7 +24,7 @@ func (*repoStore) CreateRepo(ctx context.Context, tx *db.Tx, name string, projec
 }
 
 // DeleteRepoByName implements store.RepositoryStore.
-func (*repoStore) DeleteRepoByName(ctx context.Context, tx *db.Tx, name string) error {
+func (*repoStore) DeleteRepoByName(ctx context.Context, tx db.Handler, name string) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("DELETE FROM repos WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, name)
@@ -32,7 +32,7 @@ func (*repoStore) DeleteRepoByName(ctx context.Context, tx *db.Tx, name string) 
 }
 
 // GetAllRepos implements store.RepositoryStore.
-func (*repoStore) GetAllRepos(ctx context.Context, tx *db.Tx) ([]models.Repo, error) {
+func (*repoStore) GetAllRepos(ctx context.Context, tx db.Handler) ([]models.Repo, error) {
 	var repos []models.Repo
 	query := tx.Rebind("SELECT * FROM repos;")
 	err := tx.SelectContext(ctx, &repos, query)
@@ -40,7 +40,7 @@ func (*repoStore) GetAllRepos(ctx context.Context, tx *db.Tx) ([]models.Repo, er
 }
 
 // GetRepoByName implements store.RepositoryStore.
-func (*repoStore) GetRepoByName(ctx context.Context, tx *db.Tx, name string) (models.Repo, error) {
+func (*repoStore) GetRepoByName(ctx context.Context, tx db.Handler, name string) (models.Repo, error) {
 	var repo models.Repo
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT * FROM repos WHERE name = ?;")
@@ -49,7 +49,7 @@ func (*repoStore) GetRepoByName(ctx context.Context, tx *db.Tx, name string) (mo
 }
 
 // GetRepoDescriptionByName implements store.RepositoryStore.
-func (*repoStore) GetRepoDescriptionByName(ctx context.Context, tx *db.Tx, name string) (string, error) {
+func (*repoStore) GetRepoDescriptionByName(ctx context.Context, tx db.Handler, name string) (string, error) {
 	var description string
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT description FROM repos WHERE name = ?;")
@@ -58,7 +58,7 @@ func (*repoStore) GetRepoDescriptionByName(ctx context.Context, tx *db.Tx, name 
 }
 
 // GetRepoIsHiddenByName implements store.RepositoryStore.
-func (*repoStore) GetRepoIsHiddenByName(ctx context.Context, tx *db.Tx, name string) (bool, error) {
+func (*repoStore) GetRepoIsHiddenByName(ctx context.Context, tx db.Handler, name string) (bool, error) {
 	var isHidden bool
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT hidden FROM repos WHERE name = ?;")
@@ -67,7 +67,7 @@ func (*repoStore) GetRepoIsHiddenByName(ctx context.Context, tx *db.Tx, name str
 }
 
 // GetRepoIsMirrorByName implements store.RepositoryStore.
-func (*repoStore) GetRepoIsMirrorByName(ctx context.Context, tx *db.Tx, name string) (bool, error) {
+func (*repoStore) GetRepoIsMirrorByName(ctx context.Context, tx db.Handler, name string) (bool, error) {
 	var isMirror bool
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT mirror FROM repos WHERE name = ?;")
@@ -76,7 +76,7 @@ func (*repoStore) GetRepoIsMirrorByName(ctx context.Context, tx *db.Tx, name str
 }
 
 // GetRepoIsPrivateByName implements store.RepositoryStore.
-func (*repoStore) GetRepoIsPrivateByName(ctx context.Context, tx *db.Tx, name string) (bool, error) {
+func (*repoStore) GetRepoIsPrivateByName(ctx context.Context, tx db.Handler, name string) (bool, error) {
 	var isPrivate bool
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT private FROM repos WHERE name = ?;")
@@ -85,7 +85,7 @@ func (*repoStore) GetRepoIsPrivateByName(ctx context.Context, tx *db.Tx, name st
 }
 
 // GetRepoProjectNameByName implements store.RepositoryStore.
-func (*repoStore) GetRepoProjectNameByName(ctx context.Context, tx *db.Tx, name string) (string, error) {
+func (*repoStore) GetRepoProjectNameByName(ctx context.Context, tx db.Handler, name string) (string, error) {
 	var pname string
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT project_name FROM repos WHERE name = ?;")
@@ -94,7 +94,7 @@ func (*repoStore) GetRepoProjectNameByName(ctx context.Context, tx *db.Tx, name 
 }
 
 // SetRepoDescriptionByName implements store.RepositoryStore.
-func (*repoStore) SetRepoDescriptionByName(ctx context.Context, tx *db.Tx, name string, description string) error {
+func (*repoStore) SetRepoDescriptionByName(ctx context.Context, tx db.Handler, name string, description string) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET description = ? WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, description, name)
@@ -102,7 +102,7 @@ func (*repoStore) SetRepoDescriptionByName(ctx context.Context, tx *db.Tx, name 
 }
 
 // SetRepoIsHiddenByName implements store.RepositoryStore.
-func (*repoStore) SetRepoIsHiddenByName(ctx context.Context, tx *db.Tx, name string, isHidden bool) error {
+func (*repoStore) SetRepoIsHiddenByName(ctx context.Context, tx db.Handler, name string, isHidden bool) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET hidden = ? WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, isHidden, name)
@@ -110,7 +110,7 @@ func (*repoStore) SetRepoIsHiddenByName(ctx context.Context, tx *db.Tx, name str
 }
 
 // SetRepoIsPrivateByName implements store.RepositoryStore.
-func (*repoStore) SetRepoIsPrivateByName(ctx context.Context, tx *db.Tx, name string, isPrivate bool) error {
+func (*repoStore) SetRepoIsPrivateByName(ctx context.Context, tx db.Handler, name string, isPrivate bool) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET private = ? WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, isPrivate, name)
@@ -118,7 +118,7 @@ func (*repoStore) SetRepoIsPrivateByName(ctx context.Context, tx *db.Tx, name st
 }
 
 // SetRepoNameByName implements store.RepositoryStore.
-func (*repoStore) SetRepoNameByName(ctx context.Context, tx *db.Tx, name string, newName string) error {
+func (*repoStore) SetRepoNameByName(ctx context.Context, tx db.Handler, name string, newName string) error {
 	name = utils.SanitizeRepo(name)
 	newName = utils.SanitizeRepo(newName)
 	query := tx.Rebind("UPDATE repos SET name = ? WHERE name = ?;")
@@ -127,7 +127,7 @@ func (*repoStore) SetRepoNameByName(ctx context.Context, tx *db.Tx, name string,
 }
 
 // SetRepoProjectNameByName implements store.RepositoryStore.
-func (*repoStore) SetRepoProjectNameByName(ctx context.Context, tx *db.Tx, name string, projectName string) error {
+func (*repoStore) SetRepoProjectNameByName(ctx context.Context, tx db.Handler, name string, projectName string) error {
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET project_name = ? WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, projectName, name)

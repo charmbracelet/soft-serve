@@ -19,9 +19,10 @@ require (
 
 require (
 	github.com/caarlos0/env/v8 v8.0.0
+	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20230721203144-64d90e7a36a1
 	github.com/charmbracelet/keygen v0.4.3
 	github.com/charmbracelet/log v0.2.3-0.20230713155356-557335e40e35
-	github.com/charmbracelet/ssh v0.0.0-20230712221603-7e03c5063afc
+	github.com/charmbracelet/ssh v0.0.0-20230720143903-5bdd92839155
 	github.com/gobwas/glob v0.2.3
 	github.com/gogs/git-module v1.8.2
 	github.com/hashicorp/golang-lru/v2 v2.0.4
@@ -33,6 +34,7 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rogpeppe/go-internal v1.11.0
+	github.com/rubyist/tracerx v0.0.0-20170927163412-787959303086
 	github.com/spf13/cobra v1.7.0
 	go.uber.org/automaxprocs v1.5.3
 	goji.io v2.0.2+incompatible
@@ -52,6 +54,8 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
+	github.com/git-lfs/pktline v0.0.0-20230103162542-ca444d533ef1 // indirect
+	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -80,12 +84,13 @@ require (
 	github.com/yuin/goldmark v1.5.2 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/mod v0.9.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
 	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
+	gopkg.in/warnings.v0 v0.1.2 // indirect
 	lukechampine.com/uint128 v1.2.0 // indirect
 	modernc.org/cc/v3 v3.40.0 // indirect
 	modernc.org/ccgo/v3 v3.16.13 // indirect
