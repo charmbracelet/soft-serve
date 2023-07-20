@@ -13,6 +13,8 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/migrate"
+	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/store/database"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/charmbracelet/ssh"
 	bm "github.com/charmbracelet/wish/bubbletea"
@@ -65,22 +67,24 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 		log.Fatal(err)
 	}
 	ctx = config.WithContext(ctx, cfg)
-	db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
+	dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	if err != nil {
 		tb.Fatal(err)
 	}
-	if err := migrate.Migrate(ctx, db); err != nil {
+	if err := migrate.Migrate(ctx, dbx); err != nil {
 		tb.Fatal(err)
 	}
-	be := backend.New(ctx, cfg, db)
+	dbstore := database.New(ctx, dbx)
+	ctx = store.WithContext(ctx, dbstore)
+	be := backend.New(ctx, cfg, dbx)
 	ctx = backend.WithContext(ctx, be)
 	return testsession.New(tb, &ssh.Server{
-		Handler: ContextMiddleware(cfg, be, log.Default())(bm.MiddlewareWithProgramHandler(SessionHandler, termenv.ANSI256)(func(s ssh.Session) {
+		Handler: ContextMiddleware(cfg, dbx, dbstore, be, log.Default())(bm.MiddlewareWithProgramHandler(SessionHandler, termenv.ANSI256)(func(s ssh.Session) {
 			_, _, active := s.Pty()
 			if !active {
 				os.Exit(1)
 			}
 			s.Exit(0)
 		})),
-	}, nil), db.Close
+	}, nil), dbx.Close
 }

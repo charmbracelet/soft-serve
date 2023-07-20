@@ -1,7 +1,7 @@
 package access
 
 // AccessLevel is the level of access allowed to a repo.
-type AccessLevel int // nolint: revive
+type AccessLevel int // nolint: golint
 
 const (
 	// NoAccess does not allow access to the repo.

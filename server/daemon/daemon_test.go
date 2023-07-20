@@ -17,6 +17,8 @@ import (
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/migrate"
 	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/store"
+	"github.com/charmbracelet/soft-serve/server/store/database"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	_ "modernc.org/sqlite" // sqlite driver
@@ -41,15 +43,17 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 	ctx = config.WithContext(ctx, cfg)
-	db, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
+	dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close() // nolint: errcheck
-	if err := migrate.Migrate(ctx, db); err != nil {
+	defer dbx.Close() // nolint: errcheck
+	if err := migrate.Migrate(ctx, dbx); err != nil {
 		log.Fatal(err)
 	}
-	be := backend.New(ctx, cfg, db)
+	datastore := database.New(ctx, dbx)
+	ctx = store.WithContext(ctx, datastore)
+	be := backend.New(ctx, cfg, dbx)
 	ctx = backend.WithContext(ctx, be)
 	d, err := NewGitDaemon(ctx)
 	if err != nil {
@@ -68,7 +72,7 @@ func TestMain(m *testing.M) {
 	os.Unsetenv("SOFT_SERVE_GIT_IDLE_TIMEOUT")
 	os.Unsetenv("SOFT_SERVE_GIT_LISTEN_ADDR")
 	_ = d.Close()
-	_ = db.Close()
+	_ = dbx.Close()
 	os.Exit(code)
 }
 

@@ -24,11 +24,17 @@ func handleGit(s ssh.Session) {
 	cmdLine := s.Command()
 	start := time.Now()
 
+	user, ok := ctx.Value(proto.ContextKeyUser).(proto.User)
+	if !ok {
+		sshFatal(s, errors.New("no user in context"))
+		return
+	}
+
 	// repo should be in the form of "repo.git"
 	name := utils.SanitizeRepo(cmdLine[1])
 	pk := s.PublicKey()
 	ak := sshutils.MarshalAuthorizedKey(pk)
-	accessLevel := be.AccessLevelByPublicKey(ctx, name, pk)
+	accessLevel := be.AccessLevelForUser(ctx, name, user)
 	// git bare repositories should end in ".git"
 	// https://git-scm.com/docs/gitrepository-layout
 	repo := name + ".git"
@@ -43,7 +49,7 @@ func handleGit(s ssh.Session) {
 		"SOFT_SERVE_REPO_NAME=" + name,
 		"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
 		"SOFT_SERVE_PUBLIC_KEY=" + ak,
-		"SOFT_SERVE_USERNAME=" + s.User(),
+		"SOFT_SERVE_USERNAME=" + user.Username(),
 		"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
 	}
 
@@ -119,6 +125,28 @@ func handleGit(s ssh.Session) {
 		} else if err != nil {
 			logger.Error("git middleware", "err", err)
 			sshFatal(s, git.ErrSystemMalfunction)
+		}
+	case git.LFSTransferService:
+		if accessLevel < access.ReadWriteAccess {
+			sshFatal(s, git.ErrNotAuthed)
+			return
+		}
+
+		if len(cmdLine) != 3 ||
+			(cmdLine[2] != "download" && cmdLine[2] != "upload") {
+			sshFatal(s, git.ErrInvalidRequest)
+			return
+		}
+
+		cmd.Args = []string{
+			name,
+			cmdLine[2],
+		}
+
+		if err := git.LFSTransfer(ctx, cmd); err != nil {
+			logger.Error("git middleware", "err", err)
+			sshFatal(s, git.ErrSystemMalfunction)
+			return
 		}
 	}
 }

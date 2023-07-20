@@ -15,7 +15,7 @@ type collabStore struct{}
 var _ store.CollaboratorStore = (*collabStore)(nil)
 
 // AddCollabByUsernameAndRepo implements store.CollaboratorStore.
-func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx *db.Tx, username string, repo string) error {
+func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx db.Handler, username string, repo string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
 		return err
@@ -38,7 +38,7 @@ func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx *db.Tx, u
 }
 
 // GetCollabByUsernameAndRepo implements store.CollaboratorStore.
-func (*collabStore) GetCollabByUsernameAndRepo(ctx context.Context, tx *db.Tx, username string, repo string) (models.Collab, error) {
+func (*collabStore) GetCollabByUsernameAndRepo(ctx context.Context, tx db.Handler, username string, repo string) (models.Collab, error) {
 	var m models.Collab
 
 	username = strings.ToLower(username)
@@ -63,7 +63,7 @@ func (*collabStore) GetCollabByUsernameAndRepo(ctx context.Context, tx *db.Tx, u
 }
 
 // ListCollabsByRepo implements store.CollaboratorStore.
-func (*collabStore) ListCollabsByRepo(ctx context.Context, tx *db.Tx, repo string) ([]models.Collab, error) {
+func (*collabStore) ListCollabsByRepo(ctx context.Context, tx db.Handler, repo string) ([]models.Collab, error) {
 	var m []models.Collab
 
 	repo = utils.SanitizeRepo(repo)
@@ -82,7 +82,7 @@ func (*collabStore) ListCollabsByRepo(ctx context.Context, tx *db.Tx, repo strin
 }
 
 // ListCollabsByRepoAsUsers implements store.CollaboratorStore.
-func (*collabStore) ListCollabsByRepoAsUsers(ctx context.Context, tx *db.Tx, repo string) ([]models.User, error) {
+func (*collabStore) ListCollabsByRepoAsUsers(ctx context.Context, tx db.Handler, repo string) ([]models.User, error) {
 	var m []models.User
 
 	repo = utils.SanitizeRepo(repo)
@@ -102,7 +102,7 @@ func (*collabStore) ListCollabsByRepoAsUsers(ctx context.Context, tx *db.Tx, rep
 }
 
 // RemoveCollabByUsernameAndRepo implements store.CollaboratorStore.
-func (*collabStore) RemoveCollabByUsernameAndRepo(ctx context.Context, tx *db.Tx, username string, repo string) error {
+func (*collabStore) RemoveCollabByUsernameAndRepo(ctx context.Context, tx db.Handler, username string, repo string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
 		return err

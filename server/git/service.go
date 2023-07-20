@@ -23,6 +23,8 @@ const (
 	UploadArchiveService Service = "git-upload-archive"
 	// ReceivePackService is the receive-pack service.
 	ReceivePackService Service = "git-receive-pack"
+	// LFSTransferService is the LFS transfer service.
+	LFSTransferService Service = "git-lfs-transfer"
 )
 
 // String returns the string representation of the service.
@@ -40,6 +42,8 @@ func (s Service) Handler(ctx context.Context, cmd ServiceCommand) error {
 	switch s {
 	case UploadPackService, UploadArchiveService, ReceivePackService:
 		return gitServiceHandler(ctx, s, cmd)
+	case LFSTransferService:
+		return LFSTransfer(ctx, cmd)
 	default:
 		return fmt.Errorf("unsupported service: %s", s)
 	}
@@ -57,6 +61,8 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		"-c", "uploadpack.allowFilter=true",
 		// Enable push options
 		"-c", "receive.advertisePushOptions=true",
+		// Disable LFS filters
+		"-c", "filter.lfs.required=", "-c", "filter.lfs.smudge=", "-c", "filter.lfs.clean=",
 		svc.Name(),
 	}...)
 	if len(scmd.Args) > 0 {
