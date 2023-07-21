@@ -16,11 +16,13 @@ type LFSStore interface {
 	DeleteLFSObjectByOid(ctx context.Context, h db.Handler, repoID int64, oid string) error
 
 	CreateLFSLockForUser(ctx context.Context, h db.Handler, repoID int64, userID int64, path string, refname string) error
-	GetLFSLocks(ctx context.Context, h db.Handler, repoID int64) ([]models.LFSLock, error)
+	GetLFSLocks(ctx context.Context, h db.Handler, repoID int64, page int, limit int) ([]models.LFSLock, error)
+	GetLFSLocksWithCount(ctx context.Context, h db.Handler, repoID int64, page int, limit int) ([]models.LFSLock, int64, error)
 	GetLFSLocksForUser(ctx context.Context, h db.Handler, repoID int64, userID int64) ([]models.LFSLock, error)
-	GetLFSLocksForPath(ctx context.Context, h db.Handler, repoID int64, path string) ([]models.LFSLock, error)
+	GetLFSLockForPath(ctx context.Context, h db.Handler, repoID int64, path string) (models.LFSLock, error)
 	GetLFSLockForUserPath(ctx context.Context, h db.Handler, repoID int64, userID int64, path string) (models.LFSLock, error)
-	GetLFSLockByID(ctx context.Context, h db.Handler, id string) (models.LFSLock, error)
-	GetLFSLockForUserByID(ctx context.Context, h db.Handler, userID int64, id string) (models.LFSLock, error)
-	DeleteLFSLockForUserByID(ctx context.Context, h db.Handler, userID int64, id string) error
+	GetLFSLockByID(ctx context.Context, h db.Handler, id int64) (models.LFSLock, error)
+	GetLFSLockForUserByID(ctx context.Context, h db.Handler, repoID int64, userID int64, id int64) (models.LFSLock, error)
+	DeleteLFSLock(ctx context.Context, h db.Handler, repoID int64, id int64) error
+	DeleteLFSLockForUserByID(ctx context.Context, h db.Handler, repoID int64, userID int64, id int64) error
 }

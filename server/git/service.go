@@ -25,7 +25,8 @@ const (
 	ReceivePackService Service = "git-receive-pack"
 	// LFSTransferService is the LFS transfer service.
 	LFSTransferService Service = "git-lfs-transfer"
-	// TODO: add support for git-lfs-authenticate
+	// LFSAuthenticateService is the LFS authenticate service.
+	LFSAuthenticateService = "git-lfs-authenticate"
 )
 
 // String returns the string representation of the service.
@@ -45,6 +46,8 @@ func (s Service) Handler(ctx context.Context, cmd ServiceCommand) error {
 		return gitServiceHandler(ctx, s, cmd)
 	case LFSTransferService:
 		return LFSTransfer(ctx, cmd)
+	case LFSAuthenticateService:
+		return LFSAuthenticate(ctx, cmd)
 	default:
 		return fmt.Errorf("unsupported service: %s", s)
 	}

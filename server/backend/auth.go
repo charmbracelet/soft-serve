@@ -1,0 +1,38 @@
+package backend
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+
+	"github.com/charmbracelet/log"
+	"golang.org/x/crypto/bcrypt"
+)
+
+const saltySalt = "salty-soft-serve"
+
+// HashPassword hashes the password using bcrypt.
+func HashPassword(password string) (string, error) {
+	crypt, err := bcrypt.GenerateFromPassword([]byte(password+saltySalt), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+
+	return string(crypt), nil
+}
+
+// VerifyPassword verifies the password against the hash.
+func VerifyPassword(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password+saltySalt))
+	return err == nil
+}
+
+// GenerateAccessToken returns a random unique token.
+func GenerateAccessToken() string {
+	buf := make([]byte, 20)
+	if _, err := rand.Read(buf); err != nil {
+		log.Error("unable to generate access token")
+		return ""
+	}
+
+	return "ss_" + hex.EncodeToString(buf)
+}

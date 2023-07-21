@@ -10,18 +10,18 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/git-lfs-transfer/transfer"
 	"github.com/charmbracelet/log"
-	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/models"
+	"github.com/charmbracelet/soft-serve/server/lfs"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/storage"
 	"github.com/charmbracelet/soft-serve/server/store"
-	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/rubyist/tracerx"
 )
 
@@ -56,20 +56,18 @@ func LFSTransfer(ctx context.Context, cmd ServiceCommand) error {
 		return errors.New("missing args")
 	}
 
-	logger := log.FromContext(ctx).WithPrefix("lfs-transfer")
-	handler := transfer.NewPktline(cmd.Stdin, cmd.Stdout)
-	be := backend.FromContext(ctx)
-	repoName := cmd.Args[0]
-	repoName = utils.SanitizeRepo(repoName)
 	op := cmd.Args[1]
-
-	repo, err := be.Repository(ctx, repoName)
-	if err != nil {
-		logger.Errorf("error getting repo: %v", err)
-		return err
+	if op != lfs.OperationDownload && op != lfs.OperationUpload {
+		return errors.New("invalid operation")
 	}
 
-	ctx = context.WithValue(ctx, proto.ContextKeyRepository, repo)
+	logger := log.FromContext(ctx).WithPrefix("lfs-transfer")
+	handler := transfer.NewPktline(cmd.Stdin, cmd.Stdout)
+	repo := proto.RepositoryFromContext(ctx)
+	if repo == nil {
+		logger.Error("no repository in context")
+		return proto.ErrRepoNotFound
+	}
 
 	// Advertise capabilities.
 	for _, cap := range []string{
@@ -102,15 +100,10 @@ func LFSTransfer(ctx context.Context, cmd ServiceCommand) error {
 }
 
 // Batch implements transfer.Backend.
-func (t *lfsTransfer) Batch(_ string, pointers []transfer.Pointer) ([]transfer.BatchItem, error) {
-	repo, ok := t.ctx.Value(proto.ContextKeyRepository).(proto.Repository)
-	if !ok {
-		return nil, errors.New("no repository in context")
-	}
-
+func (t *lfsTransfer) Batch(_ string, pointers []transfer.Pointer, _ map[string]string) ([]transfer.BatchItem, error) {
 	items := make([]transfer.BatchItem, 0)
 	for _, p := range pointers {
-		obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, repo.ID(), p.Oid)
+		obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), p.Oid)
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 			return items, db.WrapError(err)
 		}
@@ -121,7 +114,7 @@ func (t *lfsTransfer) Batch(_ string, pointers []transfer.Pointer) ([]transfer.B
 		}
 
 		if exist && obj.ID == 0 {
-			if err := t.store.CreateLFSObject(t.ctx, t.dbx, repo.ID(), p.Oid, p.Size); err != nil {
+			if err := t.store.CreateLFSObject(t.ctx, t.dbx, t.repo.ID(), p.Oid, p.Size); err != nil {
 				return items, db.WrapError(err)
 			}
 		}
@@ -137,7 +130,7 @@ func (t *lfsTransfer) Batch(_ string, pointers []transfer.Pointer) ([]transfer.B
 }
 
 // Download implements transfer.Backend.
-func (t *lfsTransfer) Download(oid string, _ ...string) (fs.File, error) {
+func (t *lfsTransfer) Download(oid string, _ map[string]string) (fs.File, error) {
 	cfg := config.FromContext(t.ctx)
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs"))
 	pointer := transfer.Pointer{Oid: oid}
@@ -146,11 +139,12 @@ func (t *lfsTransfer) Download(oid string, _ ...string) (fs.File, error) {
 
 type uploadObject struct {
 	oid    string
+	size   int64
 	object storage.Object
 }
 
 // StartUpload implements transfer.Backend.
-func (t *lfsTransfer) StartUpload(oid string, r io.Reader, _ ...string) (interface{}, error) {
+func (t *lfsTransfer) StartUpload(oid string, r io.Reader, _ map[string]string) (interface{}, error) {
 	if r == nil {
 		return nil, fmt.Errorf("no reader: %w", transfer.ErrMissingData)
 	}
@@ -164,7 +158,8 @@ func (t *lfsTransfer) StartUpload(oid string, r io.Reader, _ ...string) (interfa
 	tempName := fmt.Sprintf("%s%x", oid, randBytes)
 	tempName = path.Join(tempDir, tempName)
 
-	if err := t.storage.Put(tempName, r); err != nil {
+	written, err := t.storage.Put(tempName, r)
+	if err != nil {
 		t.logger.Errorf("error putting object: %v", err)
 		return nil, err
 	}
@@ -179,24 +174,43 @@ func (t *lfsTransfer) StartUpload(oid string, r io.Reader, _ ...string) (interfa
 
 	return uploadObject{
 		oid:    oid,
+		size:   written,
 		object: obj,
 	}, nil
 }
 
 // FinishUpload implements transfer.Backend.
-func (t *lfsTransfer) FinishUpload(state interface{}, _ ...string) error {
+func (t *lfsTransfer) FinishUpload(state interface{}, args map[string]string) error {
 	upl, ok := state.(uploadObject)
 	if !ok {
 		return errors.New("invalid state")
 	}
 
+	var size int64
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "size=") {
+			size, _ = strconv.ParseInt(strings.TrimPrefix(arg, "size="), 10, 64)
+			break
+		}
+	}
+
 	pointer := transfer.Pointer{
 		Oid: upl.oid,
+	}
+	if size > 0 {
+		pointer.Size = size
+	} else {
+		pointer.Size = upl.size
+	}
+
+	if err := t.store.CreateLFSObject(t.ctx, t.dbx, t.repo.ID(), pointer.Oid, pointer.Size); err != nil {
+		return db.WrapError(err)
 	}
 
 	expectedPath := path.Join("objects", pointer.RelativePath())
 	if err := t.storage.Rename(upl.object.Name(), expectedPath); err != nil {
 		t.logger.Errorf("error renaming object: %v", err)
+		_ = t.store.DeleteLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), pointer.Oid)
 		return err
 	}
 
@@ -218,19 +232,17 @@ func (t *lfsTransfer) Verify(oid string, args map[string]string) (transfer.Statu
 		return transfer.NewFailureStatus(transfer.StatusBadRequest, "invalid size argument"), nil
 	}
 
-	pointer := transfer.Pointer{
-		Oid:  oid,
-		Size: expectedSize,
-	}
-	expectedPath := path.Join("objects", pointer.RelativePath())
-	stat, err := t.storage.Stat(expectedPath)
+	obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), oid)
 	if err != nil {
-		t.logger.Errorf("error stating object: %v", err)
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return transfer.NewFailureStatus(transfer.StatusNotFound, "object not found"), nil
+		}
+		t.logger.Errorf("error getting object: %v", err)
 		return nil, err
 	}
 
-	if stat.Size() != expectedSize {
-		t.logger.Errorf("size mismatch: %d != %d", stat.Size(), expectedSize)
+	if obj.Size != expectedSize {
+		t.logger.Errorf("size mismatch: %d != %d", obj.Size, expectedSize)
 		return transfer.NewFailureStatus(transfer.StatusConflict, "size mismatch"), nil
 	}
 
@@ -239,20 +251,21 @@ func (t *lfsTransfer) Verify(oid string, args map[string]string) (transfer.Statu
 
 type lfsLockBackend struct {
 	*lfsTransfer
+	args map[string]string
 	user proto.User
 }
 
 var _ transfer.LockBackend = (*lfsLockBackend)(nil)
 
 // LockBackend implements transfer.Backend.
-func (t *lfsTransfer) LockBackend() transfer.LockBackend {
-	user, ok := t.ctx.Value(proto.ContextKeyUser).(proto.User)
-	if !ok {
+func (t *lfsTransfer) LockBackend(args map[string]string) transfer.LockBackend {
+	user := proto.UserFromContext(t.ctx)
+	if user == nil {
 		t.logger.Errorf("no user in context while creating lock backend, repo %s", t.repo.Name())
 		return nil
 	}
 
-	return &lfsLockBackend{t, user}
+	return &lfsLockBackend{t, args, user}
 }
 
 // Create implements transfer.LockBackend.
@@ -288,14 +301,14 @@ func (l *lfsLockBackend) Create(path string, refname string) (transfer.Lock, err
 // FromID implements transfer.LockBackend.
 func (l *lfsLockBackend) FromID(id string) (transfer.Lock, error) {
 	var lock LFSLock
-	user, ok := l.ctx.Value(proto.ContextKeyUser).(proto.User)
-	if !ok || user == nil {
-		return nil, errors.New("no user in context")
+	iid, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := l.dbx.TransactionContext(l.ctx, func(tx *db.Tx) error {
 		var err error
-		lock.lock, err = l.store.GetLFSLockForUserByID(l.ctx, tx, user.ID(), id)
+		lock.lock, err = l.store.GetLFSLockForUserByID(l.ctx, tx, l.repo.ID(), l.user.ID(), iid)
 		if err != nil {
 			return db.WrapError(err)
 		}
@@ -303,6 +316,9 @@ func (l *lfsLockBackend) FromID(id string) (transfer.Lock, error) {
 		lock.owner, err = l.store.GetUserByID(l.ctx, tx, lock.lock.UserID)
 		return db.WrapError(err)
 	}); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, transfer.ErrNotFound
+		}
 		l.logger.Errorf("error getting lock: %v", err)
 		return nil, err
 	}
@@ -326,6 +342,9 @@ func (l *lfsLockBackend) FromPath(path string) (transfer.Lock, error) {
 		lock.owner, err = l.store.GetUserByID(l.ctx, tx, lock.lock.UserID)
 		return db.WrapError(err)
 	}); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, transfer.ErrNotFound
+		}
 		l.logger.Errorf("error getting lock: %v", err)
 		return nil, err
 	}
@@ -336,13 +355,30 @@ func (l *lfsLockBackend) FromPath(path string) (transfer.Lock, error) {
 }
 
 // Range implements transfer.LockBackend.
-func (l *lfsLockBackend) Range(fn func(transfer.Lock) error) error {
+func (l *lfsLockBackend) Range(cursor string, limit int, fn func(transfer.Lock) error) (string, error) {
+	var nextCursor string
 	var locks []*LFSLock
 
+	page, _ := strconv.Atoi(cursor)
+	if page <= 0 {
+		page = 1
+	}
+
+	if limit <= 0 {
+		limit = lfs.DefaultLocksLimit
+	} else if limit > 100 {
+		limit = 100
+	}
+
 	if err := l.dbx.TransactionContext(l.ctx, func(tx *db.Tx) error {
-		mlocks, err := l.store.GetLFSLocks(l.ctx, tx, l.repo.ID())
+		l.logger.Debug("getting locks", "limit", limit, "page", page)
+		mlocks, err := l.store.GetLFSLocks(l.ctx, tx, l.repo.ID(), page, limit)
 		if err != nil {
 			return db.WrapError(err)
+		}
+
+		if len(mlocks) == limit {
+			nextCursor = strconv.Itoa(page + 1)
 		}
 
 		users := make(map[int64]models.User, 0)
@@ -362,25 +398,39 @@ func (l *lfsLockBackend) Range(fn func(transfer.Lock) error) error {
 
 		return nil
 	}); err != nil {
-		return err
+		return "", err
 	}
 
 	for _, lock := range locks {
 		if err := fn(lock); err != nil {
-			return err
+			return "", err
 		}
 	}
 
-	return nil
+	return nextCursor, nil
 }
 
 // Unlock implements transfer.LockBackend.
 func (l *lfsLockBackend) Unlock(lock transfer.Lock) error {
-	return l.dbx.TransactionContext(l.ctx, func(tx *db.Tx) error {
+	id, err := strconv.ParseInt(lock.ID(), 10, 64)
+	if err != nil {
+		return err
+	}
+
+	err = l.dbx.TransactionContext(l.ctx, func(tx *db.Tx) error {
 		return db.WrapError(
-			l.store.DeleteLFSLockForUserByID(l.ctx, tx, l.user.ID(), lock.ID()),
+			l.store.DeleteLFSLockForUserByID(l.ctx, tx, l.repo.ID(), l.user.ID(), id),
 		)
 	})
+	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return transfer.ErrNotFound
+		}
+		l.logger.Error("error unlocking lock", "err", err)
+		return err
+	}
+
+	return nil
 }
 
 // LFSLock is a Git LFS lock object.

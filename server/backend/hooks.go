@@ -63,7 +63,7 @@ func populateLastModified(ctx context.Context, d *Backend, name string) error {
 	if r, ok := _rr.(*repo); ok {
 		rr = r
 	} else {
-		return proto.ErrRepoNotExist
+		return proto.ErrRepoNotFound
 	}
 
 	r, err := rr.Open()

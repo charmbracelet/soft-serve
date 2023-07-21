@@ -17,6 +17,7 @@ var sqls embed.FS
 var migrations = []Migration{
 	createTables,
 	createLFSTables,
+	passwordTokens,
 }
 
 func execMigration(ctx context.Context, tx *db.Tx, version int, name string, down bool) error {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/config"
 )
 
@@ -18,6 +19,7 @@ type HTTPServer struct {
 // NewHTTPServer creates a new HTTP server.
 func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 	cfg := config.FromContext(ctx)
+	logger := log.FromContext(ctx).WithPrefix("http")
 	s := &HTTPServer{
 		ctx: ctx,
 		cfg: cfg,
@@ -28,6 +30,7 @@ func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 			ReadTimeout:       time.Second * 10,
 			WriteTimeout:      time.Second * 10,
 			MaxHeaderBytes:    http.DefaultMaxHeaderBytes,
+			ErrorLog:          logger.StandardLog(log.StandardLogOptions{ForceLevel: log.ErrorLevel}),
 		},
 	}
 
