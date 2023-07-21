@@ -19,7 +19,7 @@ require (
 
 require (
 	github.com/caarlos0/env/v8 v8.0.0
-	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20230720173103-0db2d71ab8d2
+	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20230721203144-64d90e7a36a1
 	github.com/charmbracelet/keygen v0.4.3
 	github.com/charmbracelet/log v0.2.3-0.20230713155356-557335e40e35
 	github.com/charmbracelet/ssh v0.0.0-20230720143903-5bdd92839155

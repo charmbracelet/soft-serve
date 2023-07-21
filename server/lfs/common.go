@@ -3,8 +3,23 @@ package lfs
 import "time"
 
 const (
-	// MediaType contains the media type for LFS server requests
+	// MediaType contains the media type for LFS server requests.
 	MediaType = "application/vnd.git-lfs+json"
+
+	// OperationDownload is the operation name for a download request.
+	OperationDownload = "download"
+
+	// OperationUpload is the operation name for an upload request.
+	OperationUpload = "upload"
+
+	// ActionDownload is the action name for a download request.
+	ActionDownload = OperationDownload
+
+	// ActionUpload is the action name for an upload request.
+	ActionUpload = OperationUpload
+
+	// ActionVerify is the action name for a verify request.
+	ActionVerify = "verify"
 )
 
 // Pointer contains LFS pointer data
@@ -21,7 +36,7 @@ type PointerBlob struct {
 
 // ErrorResponse describes the error to the client.
 type ErrorResponse struct {
-	Message          string
+	Message          string `json:"message,omitempty"`
 	DocumentationURL string `json:"documentation_url,omitempty"`
 	RequestID        string `json:"request_id,omitempty"`
 }
@@ -32,6 +47,7 @@ type ErrorResponse struct {
 type BatchResponse struct {
 	Transfer string            `json:"transfer,omitempty"`
 	Objects  []*ObjectResponse `json:"objects"`
+	HashAlgo string            `json:"hash_algo,omitempty"`
 }
 
 // ObjectResponse is object metadata as seen by clients of the LFS server.

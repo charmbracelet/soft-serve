@@ -14,14 +14,16 @@ import (
 
 const (
 	blobSizeCutoff = 1024
-	hashAlgo       = "sha256"
+
+	// HashAlgorithmSHA256 is the hash algorithm used for Git LFS.
+	HashAlgorithmSHA256 = "sha256"
 
 	// MetaFileIdentifier is the string appearing at the first line of LFS pointer files.
 	// https://github.com/git-lfs/git-lfs/blob/master/docs/spec.md
 	MetaFileIdentifier = "version https://git-lfs.github.com/spec/v1"
 
 	// MetaFileOidPrefix appears in LFS pointer files on a line before the sha256 hash.
-	MetaFileOidPrefix = "oid " + hashAlgo + ":"
+	MetaFileOidPrefix = "oid " + HashAlgorithmSHA256 + ":"
 )
 
 var (

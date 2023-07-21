@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/lfs"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/soft-serve/server/utils"
@@ -133,7 +134,7 @@ func handleGit(s ssh.Session) {
 		}
 
 		if len(cmdLine) != 3 ||
-			(cmdLine[2] != "download" && cmdLine[2] != "upload") {
+			(cmdLine[2] != lfs.OperationDownload && cmdLine[2] != lfs.OperationUpload) {
 			sshFatal(s, git.ErrInvalidRequest)
 			return
 		}

@@ -112,7 +112,7 @@ func (t *lfsTransfer) Batch(_ string, pointers []transfer.Pointer) ([]transfer.B
 	for _, p := range pointers {
 		obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, repo.ID(), p.Oid)
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-			return items, err
+			return items, db.WrapError(err)
 		}
 
 		exist, err := t.storage.Exists(path.Join("objects", p.RelativePath()))
@@ -122,7 +122,7 @@ func (t *lfsTransfer) Batch(_ string, pointers []transfer.Pointer) ([]transfer.B
 
 		if exist && obj.ID == 0 {
 			if err := t.store.CreateLFSObject(t.ctx, t.dbx, repo.ID(), p.Oid, p.Size); err != nil {
-				return items, err
+				return items, db.WrapError(err)
 			}
 		}
 
@@ -256,22 +256,27 @@ func (t *lfsTransfer) LockBackend() transfer.LockBackend {
 }
 
 // Create implements transfer.LockBackend.
-func (l *lfsLockBackend) Create(path string) (transfer.Lock, error) {
+func (l *lfsLockBackend) Create(path string, refname string) (transfer.Lock, error) {
 	var lock LFSLock
 	if err := l.dbx.TransactionContext(l.ctx, func(tx *db.Tx) error {
-		if err := l.store.CreateLFSLockForUser(l.ctx, tx, l.repo.ID(), l.user.ID(), path); err != nil {
-			return err
+		if err := l.store.CreateLFSLockForUser(l.ctx, tx, l.repo.ID(), l.user.ID(), path, refname); err != nil {
+			return db.WrapError(err)
 		}
 
 		var err error
 		lock.lock, err = l.store.GetLFSLockForUserPath(l.ctx, tx, l.repo.ID(), l.user.ID(), path)
 		if err != nil {
-			return err
+			return db.WrapError(err)
 		}
 
 		lock.owner, err = l.store.GetUserByID(l.ctx, tx, lock.lock.UserID)
-		return err
+		return db.WrapError(err)
 	}); err != nil {
+		// Return conflict (409) if the lock already exists.
+		if errors.Is(err, db.ErrDuplicateKey) {
+			return nil, transfer.ErrConflict
+		}
+		l.logger.Errorf("error creating lock: %v", err)
 		return nil, err
 	}
 
@@ -292,12 +297,13 @@ func (l *lfsLockBackend) FromID(id string) (transfer.Lock, error) {
 		var err error
 		lock.lock, err = l.store.GetLFSLockForUserByID(l.ctx, tx, user.ID(), id)
 		if err != nil {
-			return err
+			return db.WrapError(err)
 		}
 
 		lock.owner, err = l.store.GetUserByID(l.ctx, tx, lock.lock.UserID)
-		return err
+		return db.WrapError(err)
 	}); err != nil {
+		l.logger.Errorf("error getting lock: %v", err)
 		return nil, err
 	}
 
@@ -314,12 +320,13 @@ func (l *lfsLockBackend) FromPath(path string) (transfer.Lock, error) {
 		var err error
 		lock.lock, err = l.store.GetLFSLockForUserPath(l.ctx, tx, l.repo.ID(), l.user.ID(), path)
 		if err != nil {
-			return err
+			return db.WrapError(err)
 		}
 
 		lock.owner, err = l.store.GetUserByID(l.ctx, tx, lock.lock.UserID)
-		return err
+		return db.WrapError(err)
 	}); err != nil {
+		l.logger.Errorf("error getting lock: %v", err)
 		return nil, err
 	}
 
@@ -335,7 +342,7 @@ func (l *lfsLockBackend) Range(fn func(transfer.Lock) error) error {
 	if err := l.dbx.TransactionContext(l.ctx, func(tx *db.Tx) error {
 		mlocks, err := l.store.GetLFSLocks(l.ctx, tx, l.repo.ID())
 		if err != nil {
-			return err
+			return db.WrapError(err)
 		}
 
 		users := make(map[int64]models.User, 0)
@@ -344,7 +351,7 @@ func (l *lfsLockBackend) Range(fn func(transfer.Lock) error) error {
 			if !ok {
 				owner, err = l.store.GetUserByID(l.ctx, tx, mlock.UserID)
 				if err != nil {
-					return err
+					return db.WrapError(err)
 				}
 
 				users[mlock.UserID] = owner
@@ -370,7 +377,9 @@ func (l *lfsLockBackend) Range(fn func(transfer.Lock) error) error {
 // Unlock implements transfer.LockBackend.
 func (l *lfsLockBackend) Unlock(lock transfer.Lock) error {
 	return l.dbx.TransactionContext(l.ctx, func(tx *db.Tx) error {
-		return l.store.DeleteLFSLockForUserByID(l.ctx, tx, l.user.ID(), lock.ID())
+		return db.WrapError(
+			l.store.DeleteLFSLockForUserByID(l.ctx, tx, l.user.ID(), lock.ID()),
+		)
 	})
 }
 

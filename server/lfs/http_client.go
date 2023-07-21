@@ -26,7 +26,7 @@ func newHTTPClient(endpoint Endpoint) *httpClient {
 		client:   http.DefaultClient,
 		endpoint: endpoint,
 		transfers: map[string]TransferAdapter{
-			"basic": &BasicTransferAdapter{http.DefaultClient},
+			TransferBasic: &BasicTransferAdapter{http.DefaultClient},
 		},
 	}
 }
@@ -57,7 +57,7 @@ func (c *httpClient) batch(ctx context.Context, operation string, objects []Poin
 	url := fmt.Sprintf("%s/objects/batch", c.endpoint.String())
 
 	// TODO: support ref
-	request := &BatchRequest{operation, c.transferNames(), nil, objects, hashAlgo}
+	request := &BatchRequest{operation, c.transferNames(), nil, objects, HashAlgorithmSHA256}
 
 	payload := new(bytes.Buffer)
 	err := json.NewEncoder(payload).Encode(request)
@@ -100,7 +100,7 @@ func (c *httpClient) batch(ctx context.Context, operation string, objects []Poin
 	}
 
 	if len(response.Transfer) == 0 {
-		response.Transfer = "basic"
+		response.Transfer = TransferBasic
 	}
 
 	return &response, nil
@@ -112,9 +112,9 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 		return nil
 	}
 
-	operation := "download"
+	operation := OperationDownload
 	if uc != nil {
-		operation = "upload"
+		operation = OperationUpload
 	}
 
 	result, err := c.batch(ctx, operation, objects)
@@ -149,7 +149,7 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 				continue
 			}
 
-			link, ok := object.Actions["upload"]
+			link, ok := object.Actions[ActionUpload]
 			if !ok {
 				logger.Debugf("%+v", object)
 				return errors.New("Missing action 'upload'")
@@ -168,14 +168,14 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 				return err
 			}
 
-			link, ok = object.Actions["verify"]
+			link, ok = object.Actions[ActionVerify]
 			if ok {
 				if err := transferAdapter.Verify(ctx, object.Pointer, link); err != nil {
 					return err
 				}
 			}
 		} else {
-			link, ok := object.Actions["download"]
+			link, ok := object.Actions[ActionDownload]
 			if !ok {
 				logger.Debugf("%+v", object)
 				return errors.New("Missing action 'download'")

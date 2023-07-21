@@ -5,6 +5,9 @@ import (
 	"io"
 )
 
+// TransferBasic is the name of the Git LFS basic transfer protocol.
+const TransferBasic = "basic"
+
 // TransferAdapter represents an adapter for downloading/uploading LFS objects
 type TransferAdapter interface {
 	Name() string

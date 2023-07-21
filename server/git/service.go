@@ -25,6 +25,7 @@ const (
 	ReceivePackService Service = "git-receive-pack"
 	// LFSTransferService is the LFS transfer service.
 	LFSTransferService Service = "git-lfs-transfer"
+	// TODO: add support for git-lfs-authenticate
 )
 
 // String returns the string representation of the service.

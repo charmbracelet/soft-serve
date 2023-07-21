@@ -21,17 +21,18 @@ func sanitizePath(path string) string {
 }
 
 // CreateLFSLockForUser implements store.LFSStore.
-func (*lfsStore) CreateLFSLockForUser(ctx context.Context, tx db.Handler, repoID int64, userID int64, path string) error {
+func (*lfsStore) CreateLFSLockForUser(ctx context.Context, tx db.Handler, repoID int64, userID int64, path string, refname string) error {
 	path = sanitizePath(path)
-	query := tx.Rebind(`INSERT INTO lfs_locks (repo_id, user_id, path, updated_at)
+	query := tx.Rebind(`INSERT INTO lfs_locks (repo_id, user_id, path, refname, updated_at)
 		VALUES (
+			?,
 			?,
 			?,
 			?,
 			CURRENT_TIMESTAMP
 		);
 	`)
-	_, err := tx.ExecContext(ctx, query, repoID, userID, path)
+	_, err := tx.ExecContext(ctx, query, repoID, userID, path, refname)
 	return db.WrapError(err)
 }
 

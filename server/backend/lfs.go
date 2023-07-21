@@ -40,7 +40,7 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 			defer content.Close() // nolint: errcheck
 			return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 				if err := store.CreateLFSObject(ctx, tx, repo.ID(), p.Oid, p.Size); err != nil {
-					return err
+					return db.WrapError(err)
 				}
 
 				return strg.Put(path.Join("objects", p.RelativePath()), content)
@@ -52,7 +52,7 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 	for pointer := range pointerChan {
 		obj, err := store.GetLFSObjectByOid(ctx, dbx, repo.ID(), pointer.Oid)
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-			return err
+			return db.WrapError(err)
 		}
 
 		exist, err := strg.Exists(path.Join("objects", pointer.RelativePath()))
@@ -62,7 +62,7 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 
 		if exist && obj.ID == 0 {
 			if err := store.CreateLFSObject(ctx, dbx, repo.ID(), pointer.Oid, pointer.Size); err != nil {
-				return err
+				return db.WrapError(err)
 			}
 		} else {
 			batch = append(batch, pointer.Pointer)
