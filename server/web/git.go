@@ -30,7 +30,7 @@ import (
 
 // GitRoute is a route for git services.
 type GitRoute struct {
-	method  string
+	method  []string
 	pattern *regexp.Regexp
 	handler http.HandlerFunc
 }
@@ -43,19 +43,25 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 	ctx := r.Context()
 	cfg := config.FromContext(ctx)
 	if m := re.FindStringSubmatch(r.URL.Path); m != nil {
+		// This finds the Git objects & packs filenames in the URL.
 		file := strings.Replace(r.URL.Path, m[1]+"/", "", 1)
-		repo := utils.SanitizeRepo(m[1]) + ".git"
+		repo := utils.SanitizeRepo(m[1])
 
-		var service git.Service
 		switch {
 		case strings.HasSuffix(r.URL.Path, git.UploadPackService.String()):
-			service = git.UploadPackService
+			ctx = context.WithValue(ctx, pattern.Variable("service"), git.UploadPackService.String())
 		case strings.HasSuffix(r.URL.Path, git.ReceivePackService.String()):
-			service = git.ReceivePackService
+			ctx = context.WithValue(ctx, pattern.Variable("service"), git.ReceivePackService.String())
+		case len(m) > 1:
+			// XXX: right now, the only pattern that captures more than one group
+			// is the Git LFS basic upload/download handler. This captures the LFS
+			// object Oid.
+			// See the Git LFS basic handler down below.
+			// TODO: make this more generic.
+			ctx = context.WithValue(ctx, pattern.Variable("oid"), m[2])
 		}
 
-		ctx = context.WithValue(ctx, pattern.Variable("service"), service.String())
-		ctx = context.WithValue(ctx, pattern.Variable("dir"), filepath.Join(cfg.DataPath, "repos", repo))
+		ctx = context.WithValue(ctx, pattern.Variable("dir"), filepath.Join(cfg.DataPath, "repos", repo+".git"))
 		ctx = context.WithValue(ctx, pattern.Variable("repo"), repo)
 		ctx = context.WithValue(ctx, pattern.Variable("file"), file)
 
@@ -67,7 +73,15 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 
 // ServeHTTP implements http.Handler.
 func (g GitRoute) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != g.method {
+	var hasMethod bool
+	for _, m := range g.method {
+		if m == r.Method {
+			hasMethod = true
+			break
+		}
+	}
+
+	if !hasMethod {
 		renderMethodNotAllowed(w, r)
 		return
 	}
@@ -93,76 +107,90 @@ var (
 	}, []string{"repo", "file"})
 )
 
-func gitRoutes() []Route {
-	routes := make([]Route, 0)
-
+var gitRoutes = []GitRoute{
 	// Git services
 	// These routes don't handle authentication/authorization.
 	// This is handled through wrapping the handlers for each route.
 	// See below (withAccess).
-	// TODO: add lfs support
-	for _, route := range []GitRoute{
-		{
-			pattern: regexp.MustCompile("(.*?)/git-upload-pack$"),
-			method:  http.MethodPost,
-			handler: serviceRpc,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/git-receive-pack$"),
-			method:  http.MethodPost,
-			handler: serviceRpc,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/info/refs$"),
-			method:  http.MethodGet,
-			handler: getInfoRefs,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/HEAD$"),
-			method:  http.MethodGet,
-			handler: getTextFile,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/objects/info/alternates$"),
-			method:  http.MethodGet,
-			handler: getTextFile,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/objects/info/http-alternates$"),
-			method:  http.MethodGet,
-			handler: getTextFile,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/objects/info/packs$"),
-			method:  http.MethodGet,
-			handler: getInfoPacks,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/objects/info/[^/]*$"),
-			method:  http.MethodGet,
-			handler: getTextFile,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/objects/[0-9a-f]{2}/[0-9a-f]{38}$"),
-			method:  http.MethodGet,
-			handler: getLooseObject,
-		},
-		{
-			pattern: regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.pack$`),
-			method:  http.MethodGet,
-			handler: getPackFile,
-		},
-		{
-			pattern: regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.idx$`),
-			method:  http.MethodGet,
-			handler: getIdxFile,
-		},
-	} {
-		route.handler = withAccess(route.handler)
-		routes = append(routes, route)
-	}
-
-	return routes
+	{
+		pattern: regexp.MustCompile("(.*?)/git-upload-pack$"),
+		method:  []string{http.MethodPost},
+		handler: serviceRpc,
+	},
+	{
+		pattern: regexp.MustCompile("(.*?)/git-receive-pack$"),
+		method:  []string{http.MethodPost},
+		handler: serviceRpc,
+	},
+	{
+		pattern: regexp.MustCompile("(.*?)/info/refs$"),
+		method:  []string{http.MethodGet},
+		handler: getInfoRefs,
+	},
+	{
+		pattern: regexp.MustCompile("(.*?)/HEAD$"),
+		method:  []string{http.MethodGet},
+		handler: getTextFile,
+	},
+	{
+		pattern: regexp.MustCompile("(.*?)/objects/info/alternates$"),
+		method:  []string{http.MethodGet},
+		handler: getTextFile,
+	},
+	{
+		pattern: regexp.MustCompile("(.*?)/objects/info/http-alternates$"),
+		method:  []string{http.MethodGet},
+		handler: getTextFile,
+	},
+	{
+		pattern: regexp.MustCompile("(.*?)/objects/info/packs$"),
+		method:  []string{http.MethodGet},
+		handler: getInfoPacks,
+	},
+	{
+		pattern: regexp.MustCompile("(.*?)/objects/info/[^/]*$"),
+		method:  []string{http.MethodGet},
+		handler: getTextFile,
+	},
+	{
+		pattern: regexp.MustCompile("(.*?)/objects/[0-9a-f]{2}/[0-9a-f]{38}$"),
+		method:  []string{http.MethodGet},
+		handler: getLooseObject,
+	},
+	{
+		pattern: regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.pack$`),
+		method:  []string{http.MethodGet},
+		handler: getPackFile,
+	},
+	{
+		pattern: regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.idx$`),
+		method:  []string{http.MethodGet},
+		handler: getIdxFile,
+	},
+	// Git LFS
+	{
+		pattern: regexp.MustCompile(`(.*?)/info/lfs/objects/batch$`),
+		method:  []string{http.MethodPost},
+		handler: serviceLfsBatch,
+	},
+	{
+		// Git LFS basic object handler
+		pattern: regexp.MustCompile(`(.*?)/info/lfs/objects/basic/([0-9a-f]{64})$`),
+		method:  []string{http.MethodGet, http.MethodPut},
+		handler: serviceLfsBasic,
+	},
+	{
+		pattern: regexp.MustCompile(`(.*?)/info/lfs/objects/basic/verify$`),
+		method:  []string{http.MethodPost},
+		handler: serviceLfsBasicVerify,
+	},
+	// Git LFS locks
+	// TODO: implement locks
+	// {
+	// 	pattern: regexp.MustCompile(`(.*?)/info/lfs/locks$`),
+	// 	method:  []string{http.MethodPost},
+	// 	handler: serviceLfsLocksCreate,
+	// },
 }
 
 // withAccess handles auth.
@@ -402,34 +430,32 @@ func updateServerInfo(ctx context.Context, dir string) error {
 
 // HTTP error response handling functions
 
+func renderBadRequest(w http.ResponseWriter) {
+	renderStatus(http.StatusBadRequest)(w, nil)
+}
+
 func renderMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
 	if r.Proto == "HTTP/1.1" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte("Method Not Allowed")) // nolint: errcheck
+		renderStatus(http.StatusMethodNotAllowed)(w, r)
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Bad Request")) // nolint: errcheck
+		renderBadRequest(w)
 	}
 }
 
 func renderNotFound(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("Not Found")) // nolint: errcheck
+	renderStatus(http.StatusNotFound)(w, nil)
 }
 
 func renderUnauthorized(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusUnauthorized)
-	w.Write([]byte("Unauthorized")) // nolint: errcheck
+	renderStatus(http.StatusUnauthorized)(w, nil)
 }
 
 func renderForbidden(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusForbidden)
-	w.Write([]byte("Forbidden")) // nolint: errcheck
+	renderStatus(http.StatusForbidden)(w, nil)
 }
 
 func renderInternalServerError(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte("Internal Server Error")) // nolint: errcheck
+	renderStatus(http.StatusInternalServerError)(w, nil)
 }
 
 // Header writing functions

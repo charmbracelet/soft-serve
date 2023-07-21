@@ -86,3 +86,55 @@ type BatchRequest struct {
 type Reference struct {
 	Name string `json:"name"`
 }
+
+// LockCreateRequest contains the request data for creating a lock.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+// https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-create-request-schema.json
+type LockCreateRequest struct {
+	Path string    `json:"path"`
+	Ref  Reference `json:"ref"`
+}
+
+// Lock contains the response data for creating a lock.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+// https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-create-response-schema.json
+type Lock struct {
+	ID       string `json:"id"`
+	Path     string `json:"path"`
+	LockedAt string `json:"locked_at"`
+	Owner    struct {
+		Name string `json:"name"`
+	} `json:"owner,omitempty"`
+}
+
+// LockDeleteRequest contains the request data for deleting a lock.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+// https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-delete-request-schema.json
+type LockDeleteRequest struct {
+	Force bool      `json:"force,omitempty"`
+	Ref   Reference `json:"ref,omitempty"`
+}
+
+// LockListResponse contains the response data for listing locks.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+// https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-list-response-schema.json
+type LockListResponse struct {
+	Locks      []Lock `json:"locks"`
+	NextCursor string `json:"next_cursor,omitempty"`
+}
+
+// LockVerifyRequest contains the request data for verifying a lock.
+type LockVerifyRequest struct {
+	Ref    Reference `json:"ref"`
+	Cursor string    `json:"cursor,omitempty"`
+	Limit  int       `json:"limit,omitempty"`
+}
+
+// LockVerifyResponse contains the response data for verifying a lock.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+// https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-verify-response-schema.json
+type LockVerifyResponse struct {
+	Ours       []Lock `json:"ours"`
+	Theirs     []Lock `json:"theirs"`
+	NextCursor string `json:"next_cursor,omitempty"`
+}

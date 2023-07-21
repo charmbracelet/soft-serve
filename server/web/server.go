@@ -23,8 +23,8 @@ func NewRouter(ctx context.Context) *goji.Mux {
 	mux.Use(NewLoggingMiddleware)
 
 	// Git routes
-	for _, service := range gitRoutes() {
-		mux.Handle(service, service)
+	for _, service := range gitRoutes {
+		mux.Handle(service, withAccess(service.handler))
 	}
 
 	// go-get handler
