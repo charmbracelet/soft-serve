@@ -41,19 +41,18 @@ func (l *LocalStorage) Stat(name string) (fs.FileInfo, error) {
 }
 
 // Put implements Storage.
-func (l *LocalStorage) Put(name string, r io.Reader) error {
+func (l *LocalStorage) Put(name string, r io.Reader) (int64, error) {
 	name = l.fixPath(name)
 	if err := os.MkdirAll(filepath.Dir(name), os.ModePerm); err != nil {
-		return err
+		return 0, err
 	}
 
 	f, err := os.Create(name)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer f.Close() // nolint: errcheck
-	_, err = io.Copy(f, r)
-	return err
+	return io.Copy(f, r)
 }
 
 // Exists implements Storage.

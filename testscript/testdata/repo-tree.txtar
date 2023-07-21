@@ -35,7 +35,7 @@ cmp stdout tree3.txt
 # print tree of folder that does not exist
 ! soft repo tree repo1 folder2
 ! stdout .
-stderr 'File not found'
+stderr 'file not found'
 
 # print tree of bad revision
 ! soft repo tree repo1 badrev folder

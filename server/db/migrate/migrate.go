@@ -106,7 +106,7 @@ func Rollback(ctx context.Context, dbx *db.DB) error {
 			}
 		}
 
-		if len(migrations) < int(migrs.Version) {
+		if migrs.Version == 0 || len(migrations) < int(migrs.Version) {
 			return fmt.Errorf("there are no migrations to rollback")
 		}
 

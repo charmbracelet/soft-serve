@@ -1,6 +1,8 @@
 package lfs
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	// MediaType contains the media type for LFS server requests.
@@ -20,6 +22,10 @@ const (
 
 	// ActionVerify is the action name for a verify request.
 	ActionVerify = "verify"
+
+	// DefaultLocksLimit is the default number of locks to return in a single
+	// request.
+	DefaultLocksLimit = 20
 )
 
 // Pointer contains LFS pointer data
@@ -85,4 +91,73 @@ type BatchRequest struct {
 // https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md#ref-property
 type Reference struct {
 	Name string `json:"name"`
+}
+
+// AuthenticateResponse is the git-lfs-authenticate JSON response object.
+type AuthenticateResponse struct {
+	Header    map[string]string `json:"header"`
+	Href      string            `json:"href"`
+	ExpiresIn time.Duration     `json:"expires_in"`
+	ExpiresAt time.Time         `json:"expires_at"`
+}
+
+// LockCreateRequest contains the request data for creating a lock.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+// https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-create-request-schema.json
+type LockCreateRequest struct {
+	Path string    `json:"path"`
+	Ref  Reference `json:"ref,omitempty"`
+}
+
+// Owner contains the owner data for a lock.
+type Owner struct {
+	Name string `json:"name"`
+}
+
+// Lock contains the response data for creating a lock.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+// https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-create-response-schema.json
+type Lock struct {
+	ID       string    `json:"id"`
+	Path     string    `json:"path"`
+	LockedAt time.Time `json:"locked_at"`
+	Owner    Owner     `json:"owner,omitempty"`
+}
+
+// LockDeleteRequest contains the request data for deleting a lock.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+// https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-delete-request-schema.json
+type LockDeleteRequest struct {
+	Force bool      `json:"force,omitempty"`
+	Ref   Reference `json:"ref,omitempty"`
+}
+
+// LockListResponse contains the response data for listing locks.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+// https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-list-response-schema.json
+type LockListResponse struct {
+	Locks      []Lock `json:"locks"`
+	NextCursor string `json:"next_cursor,omitempty"`
+}
+
+// LockVerifyRequest contains the request data for verifying a lock.
+type LockVerifyRequest struct {
+	Ref    Reference `json:"ref,omitempty"`
+	Cursor string    `json:"cursor,omitempty"`
+	Limit  int       `json:"limit,omitempty"`
+}
+
+// LockVerifyResponse contains the response data for verifying a lock.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+// https://github.com/git-lfs/git-lfs/blob/main/locking/schemas/http-lock-verify-response-schema.json
+type LockVerifyResponse struct {
+	Ours       []Lock `json:"ours"`
+	Theirs     []Lock `json:"theirs"`
+	NextCursor string `json:"next_cursor,omitempty"`
+}
+
+// LockResponse contains the response data for a lock.
+type LockResponse struct {
+	Lock Lock `json:"lock"`
+	ErrorResponse
 }

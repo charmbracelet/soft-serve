@@ -2,9 +2,6 @@ package proto
 
 import "golang.org/x/crypto/ssh"
 
-// ContextKeyUser is the context key for the user.
-var ContextKeyUser = &struct{ string }{"user"}
-
 // User is an interface representing a user.
 type User interface {
 	// ID returns the user's ID.

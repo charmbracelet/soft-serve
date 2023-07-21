@@ -89,7 +89,6 @@ func cmdName(args []string) string {
 func RootCommand(s ssh.Session) *cobra.Command {
 	ctx := s.Context()
 	cfg := config.FromContext(ctx)
-	be := backend.FromContext(ctx)
 
 	args := s.Command()
 	cliCommandCounter.WithLabelValues(cmdName(args)).Inc()
@@ -140,7 +139,7 @@ func RootCommand(s ssh.Session) *cobra.Command {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.SetErr(s.Stderr())
 
-	user, _ := be.UserByPublicKey(s.Context(), s.PublicKey())
+	user := proto.UserFromContext(ctx)
 	isAdmin := isPublicKeyAdmin(cfg, s.PublicKey()) || (user != nil && user.IsAdmin())
 	if user != nil || isAdmin {
 		if isAdmin {
@@ -154,6 +153,7 @@ func RootCommand(s ssh.Session) *cobra.Command {
 			infoCommand(),
 			pubkeyCommand(),
 			setUsernameCommand(),
+			jwtCommand(),
 		)
 	}
 
@@ -169,8 +169,8 @@ func checkIfReadable(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	be := backend.FromContext(ctx)
 	rn := utils.SanitizeRepo(repo)
-	pk := sshutils.PublicKeyFromContext(ctx)
-	auth := be.AccessLevelByPublicKey(cmd.Context(), rn, pk)
+	user := proto.UserFromContext(ctx)
+	auth := be.AccessLevelForUser(cmd.Context(), rn, user)
 	if auth < access.ReadOnlyAccess {
 		return proto.ErrUnauthorized
 	}
@@ -188,14 +188,13 @@ func isPublicKeyAdmin(cfg *config.Config, pk ssh.PublicKey) bool {
 
 func checkIfAdmin(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
-	be := backend.FromContext(ctx)
 	cfg := config.FromContext(ctx)
 	pk := sshutils.PublicKeyFromContext(ctx)
 	if isPublicKeyAdmin(cfg, pk) {
 		return nil
 	}
 
-	user, _ := be.UserByPublicKey(ctx, pk)
+	user := proto.UserFromContext(ctx)
 	if user == nil {
 		return proto.ErrUnauthorized
 	}
@@ -215,9 +214,9 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 
 	ctx := cmd.Context()
 	be := backend.FromContext(ctx)
-	pk := sshutils.PublicKeyFromContext(ctx)
 	rn := utils.SanitizeRepo(repo)
-	auth := be.AccessLevelByPublicKey(ctx, rn, pk)
+	user := proto.UserFromContext(ctx)
+	auth := be.AccessLevelForUser(cmd.Context(), rn, user)
 	if auth < access.ReadWriteAccess {
 		return proto.ErrUnauthorized
 	}

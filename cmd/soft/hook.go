@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/hooks"
@@ -18,16 +20,35 @@ import (
 )
 
 var (
+	// ErrInternalServerError indicates that an internal server error occurred.
+	ErrInternalServerError = errors.New("internal server error")
+
 	// Deprecated: this flag is ignored.
 	configPath string
 
 	hookCmd = &cobra.Command{
-		Use:                "hook",
-		Short:              "Run git server hooks",
-		Long:               "Handles Soft Serve git server hooks.",
-		Hidden:             true,
-		PersistentPreRunE:  initBackendContext,
-		PersistentPostRunE: closeDBContext,
+		Use:    "hook",
+		Short:  "Run git server hooks",
+		Long:   "Handles Soft Serve git server hooks.",
+		Hidden: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			logger := log.FromContext(cmd.Context())
+			if err := initBackendContext(cmd, args); err != nil {
+				logger.Error("failed to initialize backend context", "err", err)
+				return ErrInternalServerError
+			}
+
+			return nil
+		},
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			logger := log.FromContext(cmd.Context())
+			if err := closeDBContext(cmd, args); err != nil {
+				logger.Error("failed to close backend", "err", err)
+				return ErrInternalServerError
+			}
+
+			return nil
+		},
 	}
 
 	// Git hooks read the config from the environment, based on

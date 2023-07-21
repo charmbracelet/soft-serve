@@ -13,6 +13,7 @@ Usage:
 Available Commands:
   help         Help about any command
   info         Show your info
+  jwt          Generate a JSON Web Token
   pubkey       Manage your public keys
   repo         Manage repositories
   set-username Set your username

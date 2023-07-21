@@ -52,6 +52,10 @@ func (d *Backend) Collaborators(ctx context.Context, repo string) ([]string, err
 //
 // It implements backend.Backend.
 func (d *Backend) IsCollaborator(ctx context.Context, repo string, username string) (bool, error) {
+	if username == "" {
+		return false, nil
+	}
+
 	repo = utils.SanitizeRepo(repo)
 	var m models.Collab
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {

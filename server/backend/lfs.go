@@ -43,7 +43,8 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 					return db.WrapError(err)
 				}
 
-				return strg.Put(path.Join("objects", p.RelativePath()), content)
+				_, err := strg.Put(path.Join("objects", p.RelativePath()), content)
+				return err
 			})
 		})
 	}

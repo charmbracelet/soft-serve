@@ -214,3 +214,22 @@ func (*userStore) SetUsernameByUsername(ctx context.Context, tx db.Handler, user
 	_, err := tx.ExecContext(ctx, query, newUsername, username)
 	return err
 }
+
+// SetUserPassword implements store.UserStore.
+func (*userStore) SetUserPassword(ctx context.Context, tx db.Handler, userID int64, password string) error {
+	query := tx.Rebind(`UPDATE users SET password = ? WHERE id = ?;`)
+	_, err := tx.ExecContext(ctx, query, password, userID)
+	return err
+}
+
+// SetUserPasswordByUsername implements store.UserStore.
+func (*userStore) SetUserPasswordByUsername(ctx context.Context, tx db.Handler, username string, password string) error {
+	username = strings.ToLower(username)
+	if err := utils.ValidateUsername(username); err != nil {
+		return err
+	}
+
+	query := tx.Rebind(`UPDATE users SET password = ? WHERE username = ?;`)
+	_, err := tx.ExecContext(ctx, query, password, username)
+	return err
+}
