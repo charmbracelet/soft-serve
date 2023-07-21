@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS lfs_locks;
-DROP TABLE IF EXISTS lfs_objects;

@@ -216,7 +216,7 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 	op := filepath.Join(d.reposPath(), oldRepo)
 	np := filepath.Join(d.reposPath(), newRepo)
 	if _, err := os.Stat(op); err != nil {
-		return proto.ErrRepoNotExist
+		return proto.ErrRepoNotFound
 	}
 
 	if _, err := os.Stat(np); err == nil {
@@ -290,14 +290,20 @@ func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository
 
 	rp := filepath.Join(d.reposPath(), name+".git")
 	if _, err := os.Stat(rp); err != nil {
-		return nil, os.ErrNotExist
+		if !errors.Is(err, fs.ErrNotExist) {
+			d.logger.Errorf("failed to stat repository path: %v", err)
+		}
+		return nil, proto.ErrRepoNotFound
 	}
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		m, err = d.store.GetRepoByName(ctx, tx, name)
-		return err
+		return db.WrapError(err)
 	}); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, proto.ErrRepoNotFound
+		}
 		return nil, db.WrapError(err)
 	}
 

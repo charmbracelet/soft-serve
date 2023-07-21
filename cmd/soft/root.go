@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -146,6 +148,11 @@ func newDefaultLogger(cfg *config.Config) (*log.Logger, *os.File, error) {
 func initBackendContext(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 	cfg := config.FromContext(ctx)
+	if _, err := os.Stat(cfg.DataPath); errors.Is(err, fs.ErrNotExist) {
+		if err := os.MkdirAll(cfg.DataPath, os.ModePerm); err != nil {
+			return fmt.Errorf("create data directory: %w", err)
+		}
+	}
 	dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)

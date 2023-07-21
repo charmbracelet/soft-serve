@@ -14,7 +14,7 @@ var (
 	ErrDuplicateKey = errors.New("duplicate key value violates table constraint")
 
 	// ErrRecordNotFound is returned when a record is not found.
-	ErrRecordNotFound = errors.New("record not found")
+	ErrRecordNotFound = sql.ErrNoRows
 )
 
 // WrapError is a convenient function that unite various database driver

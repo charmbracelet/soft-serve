@@ -31,33 +31,33 @@ soft repo collab list repo1
 
 # regular user can't access it
 ! usoft repo info repo1
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo tree repo1
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo tag list repo1
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo tag delete repo1 v1.0.0
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo blob repo1 README.md
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo description repo1
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo description repo1 'new desc'
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo project-name repo1
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo private repo1 true
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo private repo1
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo rename repo1 repo11
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo branch default repo1
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo branch default repo1 main
-stderr 'Unauthorized'
+stderr 'unauthorized'
 ! usoft repo delete repo1
-stderr 'Unauthorized'
+stderr 'unauthorized'
 
 # add user1 as collab
 soft repo collab add repo1 user1

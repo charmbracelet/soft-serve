@@ -25,47 +25,51 @@ func handleGit(s ssh.Session) {
 	cmdLine := s.Command()
 	start := time.Now()
 
-	var username string
-	user := ctx.Value(proto.ContextKeyUser).(proto.User)
-	if user != nil {
-		username = user.Username()
-	}
-
 	// repo should be in the form of "repo.git"
 	name := utils.SanitizeRepo(cmdLine[1])
 	pk := s.PublicKey()
 	ak := sshutils.MarshalAuthorizedKey(pk)
+	user := proto.UserFromContext(ctx)
 	accessLevel := be.AccessLevelForUser(ctx, name, user)
 	// git bare repositories should end in ".git"
 	// https://git-scm.com/docs/gitrepository-layout
-	repo := name + ".git"
+	repoDir := name + ".git"
 	reposDir := filepath.Join(cfg.DataPath, "repos")
-	if err := git.EnsureWithin(reposDir, repo); err != nil {
+	if err := git.EnsureWithin(reposDir, repoDir); err != nil {
 		sshFatal(s, err)
 		return
 	}
 
+	// Set repo in context
+	repo, _ := be.Repository(ctx, name)
+	ctx.SetValue(proto.ContextKeyRepository, repo)
+
 	// Environment variables to pass down to git hooks.
 	envs := []string{
 		"SOFT_SERVE_REPO_NAME=" + name,
-		"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repo),
+		"SOFT_SERVE_REPO_PATH=" + filepath.Join(reposDir, repoDir),
 		"SOFT_SERVE_PUBLIC_KEY=" + ak,
-		"SOFT_SERVE_USERNAME=" + username,
 		"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
+	}
+
+	if user != nil {
+		envs = append(envs,
+			"SOFT_SERVE_USERNAME="+user.Username(),
+		)
 	}
 
 	// Add ssh session & config environ
 	envs = append(envs, s.Environ()...)
 	envs = append(envs, cfg.Environ()...)
 
-	repoDir := filepath.Join(reposDir, repo)
+	repoPath := filepath.Join(reposDir, repoDir)
 	service := git.Service(cmdLine[0])
 	cmd := git.ServiceCommand{
 		Stdin:  s,
 		Stdout: s,
 		Stderr: s.Stderr(),
 		Env:    envs,
-		Dir:    repoDir,
+		Dir:    repoPath,
 	}
 
 	logger.Debug("git middleware", "cmd", service, "access", accessLevel.String())
@@ -80,7 +84,7 @@ func handleGit(s ssh.Session) {
 			sshFatal(s, git.ErrNotAuthed)
 			return
 		}
-		if _, err := be.Repository(ctx, name); err != nil {
+		if repo == nil {
 			if _, err := be.CreateRepository(ctx, name, proto.RepositoryOptions{Private: false}); err != nil {
 				log.Errorf("failed to create repo: %s", err)
 				sshFatal(s, err)
@@ -105,10 +109,8 @@ func handleGit(s ssh.Session) {
 			return
 		}
 
-		handler := git.UploadPack
 		switch service {
 		case git.UploadArchiveService:
-			handler = git.UploadArchive
 			uploadArchiveCounter.WithLabelValues(name).Inc()
 			defer func() {
 				uploadArchiveSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
@@ -120,14 +122,16 @@ func handleGit(s ssh.Session) {
 			}()
 		}
 
-		err := handler(ctx, cmd)
+		err := service.Handler(ctx, cmd)
 		if errors.Is(err, git.ErrInvalidRepo) {
 			sshFatal(s, git.ErrInvalidRepo)
 		} else if err != nil {
 			logger.Error("git middleware", "err", err)
 			sshFatal(s, git.ErrSystemMalfunction)
 		}
-	case git.LFSTransferService:
+
+		return
+	case git.LFSTransferService, git.LFSAuthenticateService:
 		if accessLevel < access.ReadWriteAccess {
 			sshFatal(s, git.ErrNotAuthed)
 			return
@@ -144,7 +148,7 @@ func handleGit(s ssh.Session) {
 			cmdLine[2],
 		}
 
-		if err := git.LFSTransfer(ctx, cmd); err != nil {
+		if err := service.Handler(ctx, cmd); err != nil {
 			logger.Error("git middleware", "err", err)
 			sshFatal(s, git.ErrSystemMalfunction)
 			return

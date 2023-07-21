@@ -10,13 +10,11 @@ import (
 
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
-	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/server/proto"
-	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -191,17 +189,16 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 		return false
 	}
 
-	ak := sshutils.MarshalAuthorizedKey(pk)
 	defer func(allowed *bool) {
 		publicKeyCounter.WithLabelValues(strconv.FormatBool(*allowed)).Inc()
 	}(&allowed)
 
 	user, _ := s.be.UserByPublicKey(ctx, pk)
-	ctx.SetValue(proto.ContextKeyUser, user)
+	if user != nil {
+		ctx.SetValue(proto.ContextKeyUser, user)
+		allowed = true
+	}
 
-	ac := s.be.AccessLevelForUser(ctx, "", user)
-	s.logger.Debugf("access level for %q: %s", ak, ac)
-	allowed = ac >= access.ReadWriteAccess
 	return
 }
 

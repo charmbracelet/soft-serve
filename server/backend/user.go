@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/server/access"
@@ -40,6 +41,7 @@ func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ss
 }
 
 // AccessLevelForUser returns the access level of a user for a repository.
+// TODO: user repository ownership
 func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user proto.User) access.AccessLevel {
 	var username string
 	anon := d.AnonAccess(ctx)
@@ -53,7 +55,11 @@ func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user prot
 	}
 
 	// If the repository exists, check if the user is a collaborator.
-	r, _ := d.Repository(ctx, repo)
+	r := proto.RepositoryFromContext(ctx)
+	if r == nil {
+		r, _ = d.Repository(ctx, repo)
+	}
+
 	if r != nil {
 		// If the user is a collaborator, they have read/write access.
 		isCollab, _ := d.IsCollaborator(ctx, repo, username)
@@ -107,7 +113,11 @@ func (d *Backend) User(ctx context.Context, username string) (proto.User, error)
 		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
 		return err
 	}); err != nil {
-		return nil, db.WrapError(err)
+		err = db.WrapError(err)
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, proto.ErrUserNotFound
+		}
+		return nil, err
 	}
 
 	return &user{
@@ -126,13 +136,17 @@ func (d *Backend) UserByPublicKey(ctx context.Context, pk ssh.PublicKey) (proto.
 		var err error
 		m, err = d.store.FindUserByPublicKey(ctx, tx, pk)
 		if err != nil {
-			return err
+			return db.WrapError(err)
 		}
 
 		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
 		return err
 	}); err != nil {
-		return nil, db.WrapError(err)
+		err = db.WrapError(err)
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, proto.ErrUserNotFound
+		}
+		return nil, err
 	}
 
 	return &user{
@@ -272,6 +286,25 @@ func (d *Backend) SetAdmin(ctx context.Context, username string, admin bool) err
 	return db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.SetAdminByUsername(ctx, tx, username, admin)
+		}),
+	)
+}
+
+// SetPassword sets the password of a user.
+func (d *Backend) SetPassword(ctx context.Context, username string, rawPassword string) error {
+	username = strings.ToLower(username)
+	if err := utils.ValidateUsername(username); err != nil {
+		return err
+	}
+
+	password, err := HashPassword(rawPassword)
+	if err != nil {
+		return err
+	}
+
+	return db.WrapError(
+		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+			return d.store.SetUserPasswordByUsername(ctx, tx, username, password)
 		}),
 	)
 }

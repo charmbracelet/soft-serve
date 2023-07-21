@@ -20,6 +20,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/git"
+	"github.com/charmbracelet/soft-serve/server/lfs"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/utils"
 	"github.com/prometheus/client_golang/prometheus"
@@ -30,7 +31,7 @@ import (
 
 // GitRoute is a route for git services.
 type GitRoute struct {
-	method  string
+	method  []string
 	pattern *regexp.Regexp
 	handler http.HandlerFunc
 }
@@ -43,19 +44,33 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 	ctx := r.Context()
 	cfg := config.FromContext(ctx)
 	if m := re.FindStringSubmatch(r.URL.Path); m != nil {
+		// This finds the Git objects & packs filenames in the URL.
 		file := strings.Replace(r.URL.Path, m[1]+"/", "", 1)
-		repo := utils.SanitizeRepo(m[1]) + ".git"
+		repo := utils.SanitizeRepo(m[1])
 
 		var service git.Service
+		var oid string    // LFS object ID
+		var lockID string // LFS lock ID
 		switch {
 		case strings.HasSuffix(r.URL.Path, git.UploadPackService.String()):
 			service = git.UploadPackService
 		case strings.HasSuffix(r.URL.Path, git.ReceivePackService.String()):
 			service = git.ReceivePackService
+		case len(m) > 2:
+			if strings.HasPrefix(file, "info/lfs/objects/basic/") {
+				oid = m[2]
+			} else if strings.HasPrefix(file, "info/lfs/locks/") && strings.HasSuffix(file, "/unlock") {
+				lockID = m[2]
+			}
+			fallthrough
+		case strings.HasPrefix(file, "info/lfs"):
+			service = gitLfsService
 		}
 
+		ctx = context.WithValue(ctx, pattern.Variable("lock_id"), lockID)
+		ctx = context.WithValue(ctx, pattern.Variable("oid"), oid)
 		ctx = context.WithValue(ctx, pattern.Variable("service"), service.String())
-		ctx = context.WithValue(ctx, pattern.Variable("dir"), filepath.Join(cfg.DataPath, "repos", repo))
+		ctx = context.WithValue(ctx, pattern.Variable("dir"), filepath.Join(cfg.DataPath, "repos", repo+".git"))
 		ctx = context.WithValue(ctx, pattern.Variable("repo"), repo)
 		ctx = context.WithValue(ctx, pattern.Variable("file"), file)
 
@@ -67,7 +82,15 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 
 // ServeHTTP implements http.Handler.
 func (g GitRoute) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != g.method {
+	var hasMethod bool
+	for _, m := range g.method {
+		if m == r.Method {
+			hasMethod = true
+			break
+		}
+	}
+
+	if !hasMethod {
 		renderMethodNotAllowed(w, r)
 		return
 	}
@@ -93,108 +116,203 @@ var (
 	}, []string{"repo", "file"})
 )
 
-func gitRoutes() []Route {
-	routes := make([]Route, 0)
+var (
+	serviceRpcMatcher            = regexp.MustCompile("(.*?)/(?:git-upload-pack|git-receive-pack)$") // nolint: revive
+	getInfoRefsMatcher           = regexp.MustCompile("(.*?)/info/refs$")
+	getTextFileMatcher           = regexp.MustCompile("(.*?)/(?:HEAD|objects/info/alternates|objects/info/http-alternates|objects/info/[^/]*)$")
+	getInfoPacksMatcher          = regexp.MustCompile("(.*?)/objects/info/packs$")
+	getLooseObjectMatcher        = regexp.MustCompile("(.*?)/objects/[0-9a-f]{2}/[0-9a-f]{38}$")
+	getPackFileMatcher           = regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.pack$`)
+	getIdxFileMatcher            = regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.idx$`)
+	serviceLfsBatchMatcher       = regexp.MustCompile("(.*?)/info/lfs/objects/batch$")
+	serviceLfsBasicMatcher       = regexp.MustCompile("(.*?)/info/lfs/objects/basic/([0-9a-f]{64})$")
+	serviceLfsBasicVerifyMatcher = regexp.MustCompile("(.*?)/info/lfs/objects/basic/verify$")
+)
 
+var gitRoutes = []GitRoute{
 	// Git services
 	// These routes don't handle authentication/authorization.
 	// This is handled through wrapping the handlers for each route.
 	// See below (withAccess).
-	// TODO: add lfs support
-	for _, route := range []GitRoute{
-		{
-			pattern: regexp.MustCompile("(.*?)/git-upload-pack$"),
-			method:  http.MethodPost,
-			handler: serviceRpc,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/git-receive-pack$"),
-			method:  http.MethodPost,
-			handler: serviceRpc,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/info/refs$"),
-			method:  http.MethodGet,
-			handler: getInfoRefs,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/HEAD$"),
-			method:  http.MethodGet,
-			handler: getTextFile,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/objects/info/alternates$"),
-			method:  http.MethodGet,
-			handler: getTextFile,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/objects/info/http-alternates$"),
-			method:  http.MethodGet,
-			handler: getTextFile,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/objects/info/packs$"),
-			method:  http.MethodGet,
-			handler: getInfoPacks,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/objects/info/[^/]*$"),
-			method:  http.MethodGet,
-			handler: getTextFile,
-		},
-		{
-			pattern: regexp.MustCompile("(.*?)/objects/[0-9a-f]{2}/[0-9a-f]{38}$"),
-			method:  http.MethodGet,
-			handler: getLooseObject,
-		},
-		{
-			pattern: regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.pack$`),
-			method:  http.MethodGet,
-			handler: getPackFile,
-		},
-		{
-			pattern: regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.idx$`),
-			method:  http.MethodGet,
-			handler: getIdxFile,
-		},
-	} {
-		route.handler = withAccess(route.handler)
-		routes = append(routes, route)
-	}
-
-	return routes
+	{
+		pattern: serviceRpcMatcher,
+		method:  []string{http.MethodPost},
+		handler: serviceRpc,
+	},
+	{
+		pattern: getInfoRefsMatcher,
+		method:  []string{http.MethodGet},
+		handler: getInfoRefs,
+	},
+	{
+		pattern: getTextFileMatcher,
+		method:  []string{http.MethodGet},
+		handler: getTextFile,
+	},
+	{
+		pattern: getTextFileMatcher,
+		method:  []string{http.MethodGet},
+		handler: getTextFile,
+	},
+	{
+		pattern: getInfoPacksMatcher,
+		method:  []string{http.MethodGet},
+		handler: getInfoPacks,
+	},
+	{
+		pattern: getLooseObjectMatcher,
+		method:  []string{http.MethodGet},
+		handler: getLooseObject,
+	},
+	{
+		pattern: getPackFileMatcher,
+		method:  []string{http.MethodGet},
+		handler: getPackFile,
+	},
+	{
+		pattern: getIdxFileMatcher,
+		method:  []string{http.MethodGet},
+		handler: getIdxFile,
+	},
+	// Git LFS
+	{
+		pattern: serviceLfsBatchMatcher,
+		method:  []string{http.MethodPost},
+		handler: serviceLfsBatch,
+	},
+	{
+		// Git LFS basic object handler
+		pattern: serviceLfsBasicMatcher,
+		method:  []string{http.MethodGet, http.MethodPut},
+		handler: serviceLfsBasic,
+	},
+	{
+		pattern: serviceLfsBasicVerifyMatcher,
+		method:  []string{http.MethodPost},
+		handler: serviceLfsBasicVerify,
+	},
+	// Git LFS locks
+	{
+		pattern: regexp.MustCompile(`(.*?)/info/lfs/locks$`),
+		method:  []string{http.MethodPost, http.MethodGet},
+		handler: serviceLfsLocks,
+	},
+	{
+		pattern: regexp.MustCompile(`(.*?)/info/lfs/locks/verify$`),
+		method:  []string{http.MethodPost},
+		handler: serviceLfsLocksVerify,
+	},
+	{
+		pattern: regexp.MustCompile(`(.*?)/info/lfs/locks/([0-9]+)/unlock$`),
+		method:  []string{http.MethodPost},
+		handler: serviceLfsLocksDelete,
+	},
 }
 
 // withAccess handles auth.
-func withAccess(fn http.HandlerFunc) http.HandlerFunc {
+func withAccess(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		be := backend.FromContext(ctx)
 		logger := log.FromContext(ctx)
+		be := backend.FromContext(ctx)
 
-		if !be.AllowKeyless(ctx) {
-			renderForbidden(w)
+		// Store repository in context
+		repoName := pat.Param(r, "repo")
+		repo, err := be.Repository(ctx, repoName)
+		if err != nil {
+			if !errors.Is(err, proto.ErrRepoNotFound) {
+				logger.Error("failed to get repository", "err", err)
+			}
+			renderNotFound(w)
 			return
 		}
 
-		repo := pat.Param(r, "repo")
-		service := git.Service(pat.Param(r, "service"))
-		accessLevel := be.AccessLevel(ctx, repo, "")
+		ctx = proto.WithRepositoryContext(ctx, repo)
+		r = r.WithContext(ctx)
 
+		user, err := authenticate(r)
+		if err != nil {
+			switch {
+			case errors.Is(err, ErrInvalidToken):
+			case errors.Is(err, proto.ErrUserNotFound):
+			default:
+				logger.Error("failed to authenticate", "err", err)
+			}
+		}
+
+		if user == nil && !be.AllowKeyless(ctx) {
+			renderUnauthorized(w)
+			return
+		}
+
+		// Store user in context
+		ctx = proto.WithUserContext(ctx, user)
+		r = r.WithContext(ctx)
+
+		if user != nil {
+			logger.Info("found user", "username", user.Username())
+		}
+
+		service := git.Service(pat.Param(r, "service"))
+		if service == "" {
+			// Get service from request params
+			service = getServiceType(r)
+		}
+
+		accessLevel := be.AccessLevelForUser(ctx, repoName, user)
+		ctx = access.WithContext(ctx, accessLevel)
+		r = r.WithContext(ctx)
+
+		logger.Info("access level", "repo", repoName, "level", accessLevel)
+
+		file := pat.Param(r, "file")
 		switch service {
 		case git.ReceivePackService:
 			if accessLevel < access.ReadWriteAccess {
 				renderUnauthorized(w)
 				return
 			}
-
-			// Create the repo if it doesn't exist.
-			if _, err := be.Repository(ctx, repo); err != nil {
-				if _, err := be.CreateRepository(ctx, repo, proto.RepositoryOptions{}); err != nil {
-					logger.Error("failed to create repository", "repo", repo, "err", err)
-					renderInternalServerError(w)
-					return
+		case gitLfsService:
+			switch {
+			case strings.HasPrefix(file, "info/lfs/locks"):
+				switch {
+				case strings.HasSuffix(file, "lfs/locks"), strings.HasSuffix(file, "/unlock") && r.Method == http.MethodPost:
+					// Create lock, list locks, and delete lock require write access
+					fallthrough
+				case strings.HasSuffix(file, "lfs/locks/verify"):
+					// Locks verify requires write access
+					// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md#unauthorized-response-2
+					if accessLevel < access.ReadWriteAccess {
+						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+							Message: "write access required",
+						})
+						return
+					}
 				}
+			case strings.HasPrefix(file, "info/lfs/objects/basic"):
+				switch r.Method {
+				case http.MethodPut:
+					// Basic upload
+					if accessLevel < access.ReadWriteAccess {
+						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+							Message: "write access required",
+						})
+						return
+					}
+				case http.MethodGet:
+					// Basic download
+				case http.MethodPost:
+					// Basic verify
+				}
+			}
+			if accessLevel < access.ReadOnlyAccess {
+				hdr := `Basic realm="Git LFS" charset="UTF-8", Token, Bearer`
+				w.Header().Set("LFS-Authenticate", hdr)
+				w.Header().Set("WWW-Authenticate", hdr)
+				renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
+					Message: "credentials needed",
+				})
+				return
 			}
 		default:
 			if accessLevel < access.ReadOnlyAccess {
@@ -203,7 +321,7 @@ func withAccess(fn http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
-		fn(w, r)
+		next.ServeHTTP(w, r)
 	}
 }
 
@@ -212,7 +330,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx)
-	service, dir, repo := git.Service(pat.Param(r, "service")), pat.Param(r, "dir"), pat.Param(r, "repo")
+	service, dir, repoName := git.Service(pat.Param(r, "service")), pat.Param(r, "dir"), pat.Param(r, "repo")
 
 	if !isSmart(r, service) {
 		renderForbidden(w)
@@ -220,7 +338,18 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if service == git.ReceivePackService {
-		gitHttpReceiveCounter.WithLabelValues(repo)
+		gitHttpReceiveCounter.WithLabelValues(repoName)
+
+		// Create the repo if it doesn't exist.
+		be := backend.FromContext(ctx)
+		repo := proto.RepositoryFromContext(ctx)
+		if repo == nil {
+			if _, err := be.CreateRepository(ctx, repoName, proto.RepositoryOptions{}); err != nil {
+				logger.Error("failed to create repository", "repo", repoName, "err", err)
+				renderInternalServerError(w)
+				return
+			}
+		}
 	}
 
 	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-result", service))
@@ -238,10 +367,19 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		Args:   []string{"--stateless-rpc"},
 	}
 
+	user := proto.UserFromContext(ctx)
+	cmd.Env = append(cmd.Env, []string{
+		"SOFT_SERVE_REPO_NAME=" + repoName,
+		"SOFT_SERVE_REPO_PATH=" + dir,
+		"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
+	}...)
+	if user != nil {
+		cmd.Env = append(cmd.Env, []string{
+			"SOFT_SERVE_USERNAME=" + user.Username(),
+		}...)
+	}
 	if len(version) != 0 {
 		cmd.Env = append(cmd.Env, []string{
-			// TODO: add the rest of env vars when we support pushing using http
-			"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
 			fmt.Sprintf("GIT_PROTOCOL=%s", version),
 		}...)
 	}
@@ -302,11 +440,12 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 
 func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	dir, repo, file := pat.Param(r, "dir"), pat.Param(r, "repo"), pat.Param(r, "file")
+	cfg := config.FromContext(ctx)
+	dir, repoName, file := pat.Param(r, "dir"), pat.Param(r, "repo"), pat.Param(r, "file")
 	service := getServiceType(r)
 	version := r.Header.Get("Git-Protocol")
 
-	gitHttpUploadCounter.WithLabelValues(repo, file).Inc()
+	gitHttpUploadCounter.WithLabelValues(repoName, file).Inc()
 
 	if service != "" && (service == git.UploadPackService || service == git.ReceivePackService) {
 		// Smart HTTP
@@ -317,6 +456,17 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 			Args:   []string{"--stateless-rpc", "--advertise-refs"},
 		}
 
+		user := proto.UserFromContext(ctx)
+		cmd.Env = append(cmd.Env, []string{
+			"SOFT_SERVE_REPO_NAME=" + repoName,
+			"SOFT_SERVE_REPO_PATH=" + dir,
+			"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
+		}...)
+		if user != nil {
+			cmd.Env = append(cmd.Env, []string{
+				"SOFT_SERVE_USERNAME=" + user.Username(),
+			}...)
+		}
 		if len(version) != 0 {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_PROTOCOL=%s", version))
 		}
@@ -393,7 +543,8 @@ func getServiceType(r *http.Request) git.Service {
 }
 
 func isSmart(r *http.Request, service git.Service) bool {
-	return r.Header.Get("Content-Type") == fmt.Sprintf("application/x-%s-request", service)
+	contentType := r.Header.Get("Content-Type")
+	return strings.HasPrefix(contentType, fmt.Sprintf("application/x-%s-request", service))
 }
 
 func updateServerInfo(ctx context.Context, dir string) error {
@@ -402,34 +553,32 @@ func updateServerInfo(ctx context.Context, dir string) error {
 
 // HTTP error response handling functions
 
+func renderBadRequest(w http.ResponseWriter) {
+	renderStatus(http.StatusBadRequest)(w, nil)
+}
+
 func renderMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
 	if r.Proto == "HTTP/1.1" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte("Method Not Allowed")) // nolint: errcheck
+		renderStatus(http.StatusMethodNotAllowed)(w, r)
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Bad Request")) // nolint: errcheck
+		renderBadRequest(w)
 	}
 }
 
 func renderNotFound(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("Not Found")) // nolint: errcheck
+	renderStatus(http.StatusNotFound)(w, nil)
 }
 
 func renderUnauthorized(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusUnauthorized)
-	w.Write([]byte("Unauthorized")) // nolint: errcheck
+	renderStatus(http.StatusUnauthorized)(w, nil)
 }
 
 func renderForbidden(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusForbidden)
-	w.Write([]byte("Forbidden")) // nolint: errcheck
+	renderStatus(http.StatusForbidden)(w, nil)
 }
 
 func renderInternalServerError(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte("Internal Server Error")) // nolint: errcheck
+	renderStatus(http.StatusInternalServerError)(w, nil)
 }
 
 // Header writing functions

@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/server/db"
@@ -37,15 +36,41 @@ func (*lfsStore) CreateLFSLockForUser(ctx context.Context, tx db.Handler, repoID
 }
 
 // GetLFSLocks implements store.LFSStore.
-func (*lfsStore) GetLFSLocks(ctx context.Context, tx db.Handler, repoID int64) ([]models.LFSLock, error) {
+func (*lfsStore) GetLFSLocks(ctx context.Context, tx db.Handler, repoID int64, page int, limit int) ([]models.LFSLock, error) {
+	if page <= 0 {
+		page = 1
+	}
+
 	var locks []models.LFSLock
 	query := tx.Rebind(`
 		SELECT *
 		FROM lfs_locks
+		WHERE repo_id = ?
+		ORDER BY updated_at DESC
+		LIMIT ? OFFSET ?;
+	`)
+	err := tx.SelectContext(ctx, &locks, query, repoID, limit, (page-1)*limit)
+	return locks, db.WrapError(err)
+}
+
+func (s *lfsStore) GetLFSLocksWithCount(ctx context.Context, tx db.Handler, repoID int64, page int, limit int) ([]models.LFSLock, int64, error) {
+	locks, err := s.GetLFSLocks(ctx, tx, repoID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var count int64
+	query := tx.Rebind(`
+		SELECT COUNT(*)
+		FROM lfs_locks
 		WHERE repo_id = ?;
 	`)
-	err := tx.SelectContext(ctx, &locks, query, repoID)
-	return locks, db.WrapError(err)
+	err = tx.GetContext(ctx, &count, query, repoID)
+	if err != nil {
+		return nil, 0, db.WrapError(err)
+	}
+
+	return locks, count, nil
 }
 
 // GetLFSLocksForUser implements store.LFSStore.
@@ -61,16 +86,16 @@ func (*lfsStore) GetLFSLocksForUser(ctx context.Context, tx db.Handler, repoID i
 }
 
 // GetLFSLocksForPath implements store.LFSStore.
-func (*lfsStore) GetLFSLocksForPath(ctx context.Context, tx db.Handler, repoID int64, path string) ([]models.LFSLock, error) {
+func (*lfsStore) GetLFSLockForPath(ctx context.Context, tx db.Handler, repoID int64, path string) (models.LFSLock, error) {
 	path = sanitizePath(path)
-	var locks []models.LFSLock
+	var lock models.LFSLock
 	query := tx.Rebind(`
 		SELECT *
 		FROM lfs_locks
 		WHERE repo_id = ? AND path = ?;
 	`)
-	err := tx.SelectContext(ctx, &locks, query, repoID, path)
-	return locks, db.WrapError(err)
+	err := tx.GetContext(ctx, &lock, query, repoID, path)
+	return lock, db.WrapError(err)
 }
 
 // GetLFSLockForUserPath implements store.LFSStore.
@@ -87,51 +112,46 @@ func (*lfsStore) GetLFSLockForUserPath(ctx context.Context, tx db.Handler, repoI
 }
 
 // GetLFSLockByID implements store.LFSStore.
-func (*lfsStore) GetLFSLockByID(ctx context.Context, tx db.Handler, id string) (models.LFSLock, error) {
-	iid, err := strconv.Atoi(id)
-	if err != nil {
-		return models.LFSLock{}, err
-	}
-
+func (*lfsStore) GetLFSLockByID(ctx context.Context, tx db.Handler, id int64) (models.LFSLock, error) {
 	var lock models.LFSLock
 	query := tx.Rebind(`
 		SELECT *
 		FROM lfs_locks
 		WHERE lfs_locks.id = ?;
 	`)
-	err = tx.GetContext(ctx, &lock, query, iid)
+	err := tx.GetContext(ctx, &lock, query, id)
 	return lock, db.WrapError(err)
 }
 
 // GetLFSLockForUserByID implements store.LFSStore.
-func (*lfsStore) GetLFSLockForUserByID(ctx context.Context, tx db.Handler, userID int64, id string) (models.LFSLock, error) {
-	iid, err := strconv.Atoi(id)
-	if err != nil {
-		return models.LFSLock{}, err
-	}
-
+func (*lfsStore) GetLFSLockForUserByID(ctx context.Context, tx db.Handler, repoID int64, userID int64, id int64) (models.LFSLock, error) {
 	var lock models.LFSLock
 	query := tx.Rebind(`
 		SELECT *
 		FROM lfs_locks
-		WHERE id = ? AND user_id = ?;
+		WHERE id = ? AND user_id = ? AND repo_id = ?;
 	`)
-	err = tx.GetContext(ctx, &lock, query, iid, userID)
+	err := tx.GetContext(ctx, &lock, query, id, userID, repoID)
 	return lock, db.WrapError(err)
 }
 
 // DeleteLFSLockForUserByID implements store.LFSStore.
-func (*lfsStore) DeleteLFSLockForUserByID(ctx context.Context, tx db.Handler, userID int64, id string) error {
-	iid, err := strconv.Atoi(id)
-	if err != nil {
-		return err
-	}
-
+func (*lfsStore) DeleteLFSLockForUserByID(ctx context.Context, tx db.Handler, repoID int64, userID int64, id int64) error {
 	query := tx.Rebind(`
 		DELETE FROM lfs_locks
-		WHERE user_id = ? AND id = ?;
+		WHERE repo_id = ? AND user_id = ? AND id = ?;
 	`)
-	_, err = tx.ExecContext(ctx, query, userID, iid)
+	_, err := tx.ExecContext(ctx, query, repoID, userID, id)
+	return db.WrapError(err)
+}
+
+// DeleteLFSLock implements store.LFSStore.
+func (*lfsStore) DeleteLFSLock(ctx context.Context, tx db.Handler, repoID int64, id int64) error {
+	query := tx.Rebind(`
+		DELETE FROM lfs_locks
+		WHERE repo_id = ? AND id = ?;
+	`)
+	_, err := tx.ExecContext(ctx, query, repoID, id)
 	return db.WrapError(err)
 }
 
