@@ -15,6 +15,7 @@ type Route interface {
 }
 
 // NewRouter returns a new HTTP router.
+// TODO: use gorilla/mux and friends
 func NewRouter(ctx context.Context) *goji.Mux {
 	mux := goji.NewMux()
 

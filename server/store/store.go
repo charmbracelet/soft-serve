@@ -7,4 +7,5 @@ type Store interface {
 	CollaboratorStore
 	SettingStore
 	LFSStore
+	AccessTokenStore
 }
