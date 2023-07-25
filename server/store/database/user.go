@@ -112,6 +112,17 @@ func (*userStore) FindUserByUsername(ctx context.Context, tx db.Handler, usernam
 	return m, err
 }
 
+// FindUserByAccessToken implements store.UserStore.
+func (*userStore) FindUserByAccessToken(ctx context.Context, tx db.Handler, token string) (models.User, error) {
+	var m models.User
+	query := tx.Rebind(`SELECT users.*
+			FROM users
+			INNER JOIN access_tokens ON users.id = access_tokens.user_id
+			WHERE access_tokens.token = ?;`)
+	err := tx.GetContext(ctx, &m, query, token)
+	return m, err
+}
+
 // GetAllUsers implements store.UserStore.
 func (*userStore) GetAllUsers(ctx context.Context, tx db.Handler) ([]models.User, error) {
 	var ms []models.User
