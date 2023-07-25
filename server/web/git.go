@@ -209,6 +209,11 @@ var gitRoutes = []GitRoute{
 	},
 }
 
+func askCredentials(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("WWW-Authenticate", `Basic realm="Git" charset="UTF-8", Token, Bearer`)
+	w.Header().Set("LFS-Authenticate", `Basic realm="Git LFS" charset="UTF-8", Token, Bearer`)
+}
+
 // withAccess handles auth.
 func withAccess(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -217,16 +222,10 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		be := backend.FromContext(ctx)
 
 		// Store repository in context
+		// We're not checking for errors here because we want to allow
+		// repo creation on the fly.
 		repoName := pat.Param(r, "repo")
-		repo, err := be.Repository(ctx, repoName)
-		if err != nil {
-			if !errors.Is(err, proto.ErrRepoNotFound) {
-				logger.Error("failed to get repository", "err", err)
-			}
-			renderNotFound(w)
-			return
-		}
-
+		repo, _ := be.Repository(ctx, repoName)
 		ctx = proto.WithRepositoryContext(ctx, repo)
 		r = r.WithContext(ctx)
 
@@ -241,6 +240,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		}
 
 		if user == nil && !be.AllowKeyless(ctx) {
+			askCredentials(w, r)
 			renderUnauthorized(w)
 			return
 		}
@@ -266,11 +266,28 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		logger.Info("access level", "repo", repoName, "level", accessLevel)
 
 		file := pat.Param(r, "file")
+
+		// We only allow these services to proceed any other services should return 403
+		// - git-upload-pack
+		// - git-receive-pack
+		// - git-lfs
 		switch service {
+		case git.UploadPackService:
 		case git.ReceivePackService:
 			if accessLevel < access.ReadWriteAccess {
+				askCredentials(w, r)
 				renderUnauthorized(w)
 				return
+			}
+
+			// Create the repo if it doesn't exist.
+			if repo == nil {
+				repo, err = be.CreateRepository(ctx, repoName, proto.RepositoryOptions{})
+				if err != nil {
+					logger.Error("failed to create repository", "repo", repoName, "err", err)
+					renderInternalServerError(w)
+					return
+				}
 			}
 		case gitLfsService:
 			switch {
@@ -306,19 +323,27 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				}
 			}
 			if accessLevel < access.ReadOnlyAccess {
-				hdr := `Basic realm="Git LFS" charset="UTF-8", Token, Bearer`
-				w.Header().Set("LFS-Authenticate", hdr)
-				w.Header().Set("WWW-Authenticate", hdr)
+				askCredentials(w, r)
 				renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
 					Message: "credentials needed",
 				})
 				return
 			}
 		default:
-			if accessLevel < access.ReadOnlyAccess {
-				renderUnauthorized(w)
-				return
-			}
+			renderForbidden(w)
+			return
+		}
+
+		// If the repo doesn't exist, return 404
+		if repo == nil {
+			renderNotFound(w)
+			return
+		}
+
+		if accessLevel < access.ReadOnlyAccess {
+			askCredentials(w, r)
+			renderUnauthorized(w)
+			return
 		}
 
 		next.ServeHTTP(w, r)
@@ -339,17 +364,6 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 
 	if service == git.ReceivePackService {
 		gitHttpReceiveCounter.WithLabelValues(repoName)
-
-		// Create the repo if it doesn't exist.
-		be := backend.FromContext(ctx)
-		repo := proto.RepositoryFromContext(ctx)
-		if repo == nil {
-			if _, err := be.CreateRepository(ctx, repoName, proto.RepositoryOptions{}); err != nil {
-				logger.Error("failed to create repository", "repo", repoName, "err", err)
-				renderInternalServerError(w)
-				return
-			}
-		}
 	}
 
 	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-result", service))
@@ -368,6 +382,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := proto.UserFromContext(ctx)
+	cmd.Env = cfg.Environ()
 	cmd.Env = append(cmd.Env, []string{
 		"SOFT_SERVE_REPO_NAME=" + repoName,
 		"SOFT_SERVE_REPO_PATH=" + dir,
@@ -436,6 +451,12 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		}
 		flusher.Flush()
 	}
+
+	if service == git.ReceivePackService {
+		if err := git.EnsureDefaultBranch(ctx, cmd); err != nil {
+			logger.Errorf("failed to ensure default branch: %s", err)
+		}
+	}
 }
 
 func getInfoRefs(w http.ResponseWriter, r *http.Request) {
@@ -457,6 +478,7 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		user := proto.UserFromContext(ctx)
+		cmd.Env = cfg.Environ()
 		cmd.Env = append(cmd.Env, []string{
 			"SOFT_SERVE_REPO_NAME=" + repoName,
 			"SOFT_SERVE_REPO_PATH=" + dir,

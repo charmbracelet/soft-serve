@@ -18,6 +18,7 @@ Available Commands:
   repo         Manage repositories
   set-username Set your username
   settings     Manage server settings
+  token        Manage access tokens
   user         Manage users
 
 Flags:
