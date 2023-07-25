@@ -2,6 +2,7 @@ package backend
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 
 	"github.com/charmbracelet/log"
@@ -26,8 +27,8 @@ func VerifyPassword(password, hash string) bool {
 	return err == nil
 }
 
-// GenerateAccessToken returns a random unique token.
-func GenerateAccessToken() string {
+// GenerateToken returns a random unique token.
+func GenerateToken() string {
 	buf := make([]byte, 20)
 	if _, err := rand.Read(buf); err != nil {
 		log.Error("unable to generate access token")
@@ -35,4 +36,10 @@ func GenerateAccessToken() string {
 	}
 
 	return "ss_" + hex.EncodeToString(buf)
+}
+
+// HashToken hashes the token using sha256.
+func HashToken(token string) string {
+	sum := sha256.Sum256([]byte(token + saltySalt))
+	return hex.EncodeToString(sum[:])
 }

@@ -93,7 +93,7 @@ func handleGit(s ssh.Session) {
 			createRepoCounter.WithLabelValues(name).Inc()
 		}
 
-		if err := git.ReceivePack(ctx, cmd); err != nil {
+		if err := service.Handler(ctx, cmd); err != nil {
 			sshFatal(s, git.ErrSystemMalfunction)
 		}
 

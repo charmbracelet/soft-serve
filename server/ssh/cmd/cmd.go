@@ -154,6 +154,7 @@ func RootCommand(s ssh.Session) *cobra.Command {
 			pubkeyCommand(),
 			setUsernameCommand(),
 			jwtCommand(),
+			tokenCommand(),
 		)
 	}
 

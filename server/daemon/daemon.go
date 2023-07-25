@@ -181,15 +181,12 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		var handler git.ServiceHandler
 		var counter *prometheus.CounterVec
 		service := git.Service(split[0])
 		switch service {
 		case git.UploadPackService:
-			handler = git.UploadPack
 			counter = uploadPackGitCounter
 		case git.UploadArchiveService:
-			handler = git.UploadArchive
 			counter = uploadArchiveGitCounter
 		default:
 			d.fatal(c, git.ErrInvalidRequest)
@@ -289,7 +286,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			Dir:    filepath.Join(reposDir, repo),
 		}
 
-		if err := handler(ctx, cmd); err != nil {
+		if err := service.Handler(ctx, cmd); err != nil {
 			d.logger.Debugf("git: error handling request: %v", err)
 			d.fatal(c, err)
 			return

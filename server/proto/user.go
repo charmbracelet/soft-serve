@@ -12,6 +12,8 @@ type User interface {
 	IsAdmin() bool
 	// PublicKeys returns the user's public keys.
 	PublicKeys() []ssh.PublicKey
+	// Password returns the user's password hash.
+	Password() string
 }
 
 // UserOptions are options for creating a user.

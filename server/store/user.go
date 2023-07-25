@@ -13,6 +13,7 @@ type UserStore interface {
 	GetUserByID(ctx context.Context, h db.Handler, id int64) (models.User, error)
 	FindUserByUsername(ctx context.Context, h db.Handler, username string) (models.User, error)
 	FindUserByPublicKey(ctx context.Context, h db.Handler, pk ssh.PublicKey) (models.User, error)
+	FindUserByAccessToken(ctx context.Context, h db.Handler, token string) (models.User, error)
 	GetAllUsers(ctx context.Context, h db.Handler) ([]models.User, error)
 	CreateUser(ctx context.Context, h db.Handler, username string, isAdmin bool, pks []ssh.PublicKey) error
 	DeleteUserByUsername(ctx context.Context, h db.Handler, username string) error

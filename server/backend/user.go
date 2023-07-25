@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/db"
@@ -117,6 +118,7 @@ func (d *Backend) User(ctx context.Context, username string) (proto.User, error)
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, proto.ErrUserNotFound
 		}
+		d.logger.Error("error finding user", "username", username, "error", err)
 		return nil, err
 	}
 
@@ -146,6 +148,46 @@ func (d *Backend) UserByPublicKey(ctx context.Context, pk ssh.PublicKey) (proto.
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, proto.ErrUserNotFound
 		}
+		d.logger.Error("error finding user", "pk", sshutils.MarshalAuthorizedKey(pk), "error", err)
+		return nil, err
+	}
+
+	return &user{
+		user:       m,
+		publicKeys: pks,
+	}, nil
+}
+
+// UserByAccessToken finds a user by access token.
+// This also validates the token for expiration and returns proto.ErrTokenExpired.
+func (d *Backend) UserByAccessToken(ctx context.Context, token string) (proto.User, error) {
+	var m models.User
+	var pks []ssh.PublicKey
+	token = HashToken(token)
+
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		t, err := d.store.GetAccessTokenByToken(ctx, tx, token)
+		if err != nil {
+			return db.WrapError(err)
+		}
+
+		if t.ExpiresAt.Valid && t.ExpiresAt.Time.Before(time.Now()) {
+			return proto.ErrTokenExpired
+		}
+
+		m, err = d.store.FindUserByAccessToken(ctx, tx, token)
+		if err != nil {
+			return db.WrapError(err)
+		}
+
+		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
+		return err
+	}); err != nil {
+		err = db.WrapError(err)
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, proto.ErrUserNotFound
+		}
+		d.logger.Error("failed to find user by access token", "err", err, "token", token)
 		return nil, err
 	}
 
@@ -334,4 +376,13 @@ func (u *user) Username() string {
 // ID implements proto.User.
 func (u *user) ID() int64 {
 	return u.user.ID
+}
+
+// Password implements proto.User.
+func (u *user) Password() string {
+	if u.user.Password.Valid {
+		return u.user.Password.String
+	}
+
+	return ""
 }
