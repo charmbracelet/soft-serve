@@ -90,6 +90,13 @@ db:
   # This is driver specific and can be a file path or connection string.
   data_source: "{{ .DB.DataSource }}"
 
+# Git LFS configuration.
+lfs:
+  # Enable Git LFS.
+  enabled: {{ .LFS.Enabled }}
+  # Enable Git SSH transfer.
+  ssh_enabled: {{ .LFS.SSHEnabled }}
+
 # Additional admin keys.
 #initial_admin_keys:
 #  - "ssh-rsa AAAAB3NzaC1yc2..."

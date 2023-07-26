@@ -1,0 +1,119 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix http1.txt http2.txt http3.txt goget.txt gitclone.txt
+
+# create user
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# create access token
+soft token create --expires-in '1h' 'repo2'
+stdout 'ss_*'
+cp stdout tokenfile
+envfile TOKEN=tokenfile
+soft token create --expires-in '1ns' 'repo2'
+stdout 'ss_*'
+cp stdout etokenfile
+envfile ETOKEN=etokenfile
+usoft token create 'repo2'
+stdout 'ss_*'
+cp stdout utokenfile
+envfile UTOKEN=utokenfile
+
+# push & create repo with some files, commits, tags...
+mkdir ./repo2
+git -c init.defaultBranch=master -C repo2 init
+mkfile ./repo2/README.md '# Project\nfoo'
+mkfile ./repo2/foo.png 'foo'
+mkfile ./repo2/bar.png 'bar'
+git -C repo2 remote add origin http://$TOKEN@localhost:$HTTP_PORT/repo2
+git -C repo2 lfs install --local
+git -C repo2 lfs track '*.png'
+git -C repo2 add -A
+git -C repo2 commit -m 'first'
+git -C repo2 tag v0.1.0
+git -C repo2 push origin HEAD
+git -C repo2 push origin HEAD --tags
+
+# http errors
+exec curl -s -XGET http://localhost:$HTTP_PORT/repo2111foobar.git/foo/bar
+stdout '404.*'
+exec curl -s -XGET http://localhost:$HTTP_PORT/repo2111/foobar.git/foo/bar
+stdout '404.*'
+exec curl -s -XGET http://localhost:$HTTP_PORT/repo2.git/foo/bar
+stdout '404.*'
+exec curl -s -XPOST http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/foo
+stdout '404.*'
+exec curl -s -XGET http://localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+stdout '.*Method Not Allowed.*'
+exec curl -s -XPOST http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+stdout '.*Not Acceptable.*'
+exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' http://$TOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+stdout '.*validation error.*'
+exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' -d '{}' http://$TOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+stdout '.*no objects found.*'
+exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' -d '{"operation":"download","transfers":["foo"]}' http://$TOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+stdout '.*unsupported transfer.*'
+exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' -d '{"operation":"bar","objects":[{}]}' http://$TOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+stdout '.*unsupported operation.*'
+exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' -d '{"operation":"download","objects":[{}]}' http://$TOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+cmp stdout http1.txt
+exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' -d '{"operation":"upload","objects":[{}]}' http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+stdout '.*credentials needed.*'
+exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' -d '{"operation":"upload","objects":[{}]}' http://$TOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+cmp stdout http1.txt
+
+# set private
+soft repo private repo2 true
+
+# allow access private
+exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' http://$TOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+cmp stdout http2.txt
+exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' http://$ETOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+cmp stdout http3.txt
+
+# deny access private
+exec curl -s http://localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+stdout '.*credentials needed.*'
+exec curl -s http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+stdout '.*credentials needed.*'
+exec curl -s http://0$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+cmp stdout http3.txt
+
+# deny access ask for credentials
+# this means the server responded with a 401 and prompted for credentials
+# but we disable git terminal prompting to we get a fatal instead of a 401 "Unauthorized"
+! git clone http://localhost:$HTTP_PORT/repo2 repo2_clone
+cmpenv stderr gitclone.txt
+! git clone http://someuser:somepassword@localhost:$HTTP_PORT/repo2 repo2_clone
+stderr '.*Forbidden.*'
+
+# go-get endpoints not found
+exec curl -s http://localhost:$HTTP_PORT/repo2.git
+stdout '404.*'
+
+# go-get endpoints
+exec curl -s http://localhost:$HTTP_PORT/repo2.git?go-get=1
+cmpenv stdout goget.txt
+
+-- http1.txt --
+{"transfer":"basic","objects":[{"oid":"","size":0,"error":{"code":422,"message":"invalid object"}}],"hash_algo":"sha256"}
+-- http2.txt --
+{"message":"validation error in request: EOF"}
+-- http3.txt --
+{"message":"bad credentials"}
+-- goget.txt --
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta http-equiv="refresh" content="0; url=https://godoc.org/localhost:$HTTP_PORT/repo2">
+    <meta name="go-import" content="localhost:$HTTP_PORT/repo2 git http://localhost:$HTTP_PORT/repo2">
+</head>
+<body>
+Redirecting to docs at <a href="https://godoc.org/localhost:$HTTP_PORT/repo2">godoc.org/localhost:$HTTP_PORT/repo2</a>...
+</body>
+</html>
+-- gitclone.txt --
+Cloning into 'repo2_clone'...
+fatal: could not read Username for 'http://localhost:$HTTP_PORT': terminal prompts disabled
