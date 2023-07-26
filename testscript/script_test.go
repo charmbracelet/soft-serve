@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -92,6 +93,8 @@ func TestScript(t *testing.T) {
 			"new-webhook":   cmdNewWebhook,
 			"waitforserver": cmdWaitforserver,
 			"stopserver":    cmdStopserver,
+			"ui":            cmdUI(admin1.Signer()),
+			"uui":           cmdUI(user1.Signer()),
 		},
 		Setup: func(e *testscript.Env) error {
 			// Add binPath to PATH
@@ -119,6 +122,9 @@ func TestScript(t *testing.T) {
 
 			// This is used to set up test specific configuration and http endpoints
 			e.Setenv("SOFT_SERVE_TESTRUN", "1")
+
+			// This will disable the default lipgloss renderer colors
+			e.Setenv("SOFT_SERVE_NO_COLOR", "1")
 
 			// Soft Serve debug environment variables
 			for _, env := range []string{
@@ -196,6 +202,64 @@ func cmdSoft(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []st
 		sess.Stderr = ts.Stderr()
 
 		check(ts, sess.Run(strings.Join(args, " ")), neg)
+	}
+}
+
+func cmdUI(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []string) {
+	return func(ts *testscript.TestScript, neg bool, args []string) {
+		if len(args) < 1 {
+			ts.Fatalf("usage: ui <quoted string input>")
+			return
+		}
+
+		cli, err := ssh.Dial(
+			"tcp",
+			net.JoinHostPort("localhost", ts.Getenv("SSH_PORT")),
+			&ssh.ClientConfig{
+				User:            "git",
+				Auth:            []ssh.AuthMethod{ssh.PublicKeys(key)},
+				HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			},
+		)
+		check(ts, err, neg)
+		defer cli.Close()
+
+		sess, err := cli.NewSession()
+		check(ts, err, neg)
+		defer sess.Close()
+
+		// XXX: this is a hack to make the UI tests work
+		// cmp command always complains about an extra newline
+		// in the output
+		defer ts.Stdout().Write([]byte("\n"))
+
+		sess.Stdout = ts.Stdout()
+		sess.Stderr = ts.Stderr()
+
+		stdin, err := sess.StdinPipe()
+		check(ts, err, neg)
+
+		in, err := strconv.Unquote(args[0])
+		check(ts, err, neg)
+		reader := strings.NewReader(in)
+		go func() {
+			defer stdin.Close()
+			for {
+				r, _, err := reader.ReadRune()
+				if err == io.EOF {
+					break
+				}
+				check(ts, err, neg)
+				stdin.Write([]byte(string(r))) // nolint: errcheck
+
+				// Wait for the UI to process the input
+				time.Sleep(100 * time.Millisecond)
+			}
+		}()
+
+		err = sess.RequestPty("dumb", 40, 80, ssh.TerminalModes{})
+		check(ts, err, neg)
+		check(ts, sess.Run(""), neg)
 	}
 }
 

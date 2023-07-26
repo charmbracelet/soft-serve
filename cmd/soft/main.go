@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
+	"strconv"
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/cmd/soft/admin"
@@ -13,9 +14,11 @@ import (
 	"github.com/charmbracelet/soft-serve/cmd/soft/serve"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	logr "github.com/charmbracelet/soft-serve/pkg/log"
+	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/soft-serve/pkg/version"
 	mcobra "github.com/muesli/mango-cobra"
 	"github.com/muesli/roff"
+	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
 )
@@ -63,6 +66,10 @@ var (
 )
 
 func init() {
+	if noColor, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_NO_COLOR")); noColor {
+		common.DefaultColorProfile = termenv.Ascii
+	}
+
 	rootCmd.AddCommand(
 		manCmd,
 		serve.Command,

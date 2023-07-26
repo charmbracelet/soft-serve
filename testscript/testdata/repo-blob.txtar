@@ -54,6 +54,6 @@ stderr 'revision does not exist'
 -- blob1.txt --
 # Hello\n\nwelcome
 -- blob2.txt --
- [38;5;239m1[0m [38;5;236m│[0m [38;5;204m[0m[38;5;204mpackage[0m main[38;5;255m\[0mnconst foo [38;5;187m=[0m [38;5;85m2[0m[38;5;255m\[0mn
+ 1 │ package main\nconst foo = 2\n
 -- blob3.txt --
  1 │ //#include <stdio.h>

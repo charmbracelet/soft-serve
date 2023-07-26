@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -54,7 +55,7 @@ func SessionHandler(s ssh.Session) *tea.Program {
 	}
 
 	envs := &sessionEnv{s}
-	output := termenv.NewOutput(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
+	output := lipgloss.NewRenderer(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
 	c := common.NewCommon(ctx, output, pty.Window.Width, pty.Window.Height)
 	c.SetValue(common.ConfigKey, cfg)
 	m := NewUI(c, initialRepo)
