@@ -1,0 +1,28 @@
+# vi: set ft=conf
+
+# create user
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# generate jwt token
+usoft token create 'test1'
+stdout 'ss_.*'
+stderr 'Access token created'
+usoft token create --expires-in 1y 'test2'
+stdout 'ss_.*'
+stderr 'Access token created'
+usoft token create --expires-in 1ns 'test3'
+stdout 'ss_.*'
+stderr 'Access token created'
+
+# list tokens
+usoft token list
+cp stdout tokens.txt
+grep '1         test1.*       -' tokens.txt
+grep '2         test2.*       1 year from now' tokens.txt
+grep '3         test3.*       expired' tokens.txt
+
+# delete token
+usoft token delete 1
+stderr 'Access token deleted'
+! usoft token delete 1
+stderr 'token not found'

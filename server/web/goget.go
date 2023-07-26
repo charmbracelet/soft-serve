@@ -31,7 +31,8 @@ var repoIndexHTMLTpl = template.Must(template.New("index").Parse(`<!DOCTYPE html
 <body>
 Redirecting to docs at <a href="https://godoc.org/{{ .ImportRoot }}/{{ .Repo }}">godoc.org/{{ .ImportRoot }}/{{ .Repo }}</a>...
 </body>
-</html>`))
+</html>
+`))
 
 // GoGetHandler handles go get requests.
 type GoGetHandler struct{}

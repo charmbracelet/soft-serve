@@ -14,11 +14,13 @@ import (
 	"time"
 
 	"github.com/charmbracelet/keygen"
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/migrate"
+	logr "github.com/charmbracelet/soft-serve/server/log"
 	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/store/database"
 	"github.com/charmbracelet/soft-serve/server/test"
@@ -54,6 +56,7 @@ func TestScript(t *testing.T) {
 			"usoft":    cmdSoft(user1.Signer()),
 			"git":      cmdGit(key),
 			"mkfile":   cmdMkfile,
+			"envfile":  cmdEnvfile,
 			"readfile": cmdReadfile,
 			"dos2unix": cmdDos2Unix,
 		},
@@ -72,6 +75,7 @@ func TestScript(t *testing.T) {
 
 			e.Setenv("DATA_PATH", data)
 			e.Setenv("SSH_PORT", fmt.Sprintf("%d", sshPort))
+			e.Setenv("HTTP_PORT", fmt.Sprintf("%d", httpPort))
 			e.Setenv("ADMIN1_AUTHORIZED_KEY", admin1.AuthorizedKey())
 			e.Setenv("ADMIN2_AUTHORIZED_KEY", admin2.AuthorizedKey())
 			e.Setenv("USER1_AUTHORIZED_KEY", user1.AuthorizedKey())
@@ -89,12 +93,25 @@ func TestScript(t *testing.T) {
 			cfg.HTTP.PublicURL = "http://" + httpListen
 			cfg.Stats.ListenAddr = statsListen
 			cfg.DB.Driver = "sqlite"
+			cfg.LFS.Enabled = true
+			// TODO: run tests with both SSH enabled/disabled
+			cfg.LFS.SSHEnabled = false
 
 			if err := cfg.Validate(); err != nil {
 				return err
 			}
 
 			ctx := config.WithContext(context.Background(), cfg)
+
+			logger, f, err := logr.NewLogger(cfg)
+			if err != nil {
+				log.Errorf("failed to create logger: %v", err)
+			}
+
+			ctx = log.WithContext(ctx, logger)
+			if f != nil {
+				defer f.Close() // nolint: errcheck
+			}
 
 			// TODO: test postgres
 			dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
@@ -229,6 +246,8 @@ func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string)
 			"GIT_SSH_COMMAND",
 			strings.Join(append([]string{"ssh"}, sshArgs...), " "),
 		)
+		// Disable git prompting for credentials.
+		ts.Setenv("GIT_TERMINAL_PROMPT", "0")
 		args = append([]string{
 			"-c", "user.email=john@example.com",
 			"-c", "user.name=John Doe",
@@ -259,4 +278,20 @@ func check(ts *testscript.TestScript, err error, neg bool) {
 
 func cmdReadfile(ts *testscript.TestScript, neg bool, args []string) {
 	ts.Stdout().Write([]byte(ts.ReadFile(args[0])))
+}
+
+func cmdEnvfile(ts *testscript.TestScript, neg bool, args []string) {
+	if len(args) < 1 {
+		ts.Fatalf("usage: envfile key=file...")
+	}
+
+	for _, arg := range args {
+		parts := strings.SplitN(arg, "=", 2)
+		if len(parts) != 2 {
+			ts.Fatalf("usage: envfile key=file...")
+		}
+		key := parts[0]
+		file := parts[1]
+		ts.Setenv(key, strings.TrimSpace(ts.ReadFile(file)))
+	}
 }

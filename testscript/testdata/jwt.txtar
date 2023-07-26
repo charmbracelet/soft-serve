@@ -1,0 +1,14 @@
+# vi: set ft=conf
+
+# create user
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# generate jwt token
+soft jwt
+stdout '.*\..*\..*'
+soft jwt repo
+stdout '.*\..*\..*'
+usoft jwt
+stdout '.*\..*\..*'
+usoft jwt repo
+stdout '.*\..*\..*'

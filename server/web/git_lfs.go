@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
@@ -47,6 +48,9 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close() // nolint: errcheck
 	if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
 		logger.Errorf("error decoding json: %s", err)
+		renderJSON(w, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+			Message: "validation error in request: " + err.Error(),
+		})
 		return
 	}
 
@@ -67,6 +71,13 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
+	}
+
+	if len(batchRequest.Objects) == 0 {
+		renderJSON(w, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+			Message: "no objects found",
+		})
+		return
 	}
 
 	name := pat.Param(r, "repo")
@@ -169,6 +180,16 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	case lfs.OperationUpload:
+		// Check authorization
+		accessLevel := access.FromContext(ctx)
+		if accessLevel < access.ReadWriteAccess {
+			askCredentials(w, r)
+			renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
+				Message: "credentials needed",
+			})
+			return
+		}
+
 		// Object upload logic happens in the "basic" API route
 		for _, o := range batchRequest.Objects {
 			if !o.IsValid() {
@@ -368,7 +389,7 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&pointer); err != nil {
 		logger.Error("error decoding json", "err", err)
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid json",
+			Message: "invalid request: " + err.Error(),
 		})
 		return
 	}
@@ -446,7 +467,7 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding json", "err", err)
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request",
+			Message: "invalid request: " + err.Error(),
 		})
 		return
 	}
@@ -731,7 +752,7 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding request", "err", err)
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request",
+			Message: "invalid request: " + err.Error(),
 		})
 		return
 	}
@@ -837,7 +858,7 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding request", "err", err)
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request",
+			Message: "invalid request: " + err.Error(),
 		})
 		return
 	}

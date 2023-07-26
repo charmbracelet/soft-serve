@@ -132,6 +132,14 @@ func handleGit(s ssh.Session) {
 
 		return
 	case git.LFSTransferService, git.LFSAuthenticateService:
+		if !cfg.LFS.Enabled {
+			return
+		}
+
+		if service == git.LFSTransferService && !cfg.LFS.SSHEnabled {
+			return
+		}
+
 		if accessLevel < access.ReadWriteAccess {
 			sshFatal(s, git.ErrNotAuthed)
 			return

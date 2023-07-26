@@ -95,6 +95,16 @@ type DBConfig struct {
 	DataSource string `env:"DATA_SOURCE" yaml:"data_source"`
 }
 
+// LFSConfig is the configuration for Git LFS.
+type LFSConfig struct {
+	// Enabled is whether or not Git LFS is enabled.
+	Enabled bool `env:"ENABLED" yaml:"enabled"`
+
+	// SSHEnabled is whether or not Git LFS over SSH is enabled.
+	// This is only used if LFS is enabled.
+	SSHEnabled bool `env:"SSH_ENABLED" yaml:"ssh_enabled"`
+}
+
 // Config is the configuration for Soft Serve.
 type Config struct {
 	// Name is the name of the server.
@@ -117,6 +127,9 @@ type Config struct {
 
 	// DB is the database configuration.
 	DB DBConfig `envPrefix:"DB_" yaml:"db"`
+
+	// LFS is the configuration for Git LFS.
+	LFS LFSConfig `envPrefix:"LFS_" yaml:"lfs"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
@@ -156,6 +169,8 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_LOG_TIME_FORMAT=%s", c.Log.TimeFormat),
 		fmt.Sprintf("SOFT_SERVE_DB_DRIVER=%s", c.DB.Driver),
 		fmt.Sprintf("SOFT_SERVE_DB_DATA_SOURCE=%s", c.DB.DataSource),
+		fmt.Sprintf("SOFT_SERVE_LFS_ENABLED=%t", c.LFS.Enabled),
+		fmt.Sprintf("SOFT_SERVE_LFS_SSH_ENABLED=%t", c.LFS.SSHEnabled),
 	}...)
 
 	return envs
@@ -308,6 +323,10 @@ func DefaultConfig() *Config {
 			Driver: "sqlite",
 			DataSource: "soft-serve.db" +
 				"?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)",
+		},
+		LFS: LFSConfig{
+			Enabled:    true,
+			SSHEnabled: true,
 		},
 	}
 }
