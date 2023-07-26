@@ -19,6 +19,9 @@ func authenticate(r *http.Request) (proto.User, error) {
 	// Prefer the Authorization header
 	user, err := parseAuthHdr(r)
 	if err != nil || user == nil {
+		if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+			return nil, err
+		}
 		return nil, proto.ErrUserNotFound
 	}
 
