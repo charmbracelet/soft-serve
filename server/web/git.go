@@ -47,6 +47,8 @@ func (g GitRoute) Match(r *http.Request) *http.Request {
 		// This finds the Git objects & packs filenames in the URL.
 		file := strings.Replace(r.URL.Path, m[1]+"/", "", 1)
 		repo := utils.SanitizeRepo(m[1])
+		// Add repo suffix (.git)
+		r.URL.Path = fmt.Sprintf("%s.git/%s", repo, file)
 
 		var service git.Service
 		var oid string    // LFS object ID
@@ -218,6 +220,7 @@ func askCredentials(w http.ResponseWriter, _ *http.Request) {
 func withAccess(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		cfg := config.FromContext(ctx)
 		logger := log.FromContext(ctx)
 		be := backend.FromContext(ctx)
 
@@ -288,8 +291,17 @@ func withAccess(next http.Handler) http.HandlerFunc {
 					renderInternalServerError(w)
 					return
 				}
+
+				ctx = proto.WithRepositoryContext(ctx, repo)
+				r = r.WithContext(ctx)
 			}
 		case gitLfsService:
+			if !cfg.LFS.Enabled {
+				logger.Debug("LFS is not enabled, skipping")
+				renderNotFound(w)
+				return
+			}
+
 			switch {
 			case strings.HasPrefix(file, "info/lfs/locks"):
 				switch {
@@ -323,10 +335,20 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				}
 			}
 			if accessLevel < access.ReadOnlyAccess {
-				askCredentials(w, r)
-				renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
-					Message: "credentials needed",
-				})
+				if repo == nil {
+					renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+						Message: "repository not found",
+					})
+				} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+					renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+						Message: "bad credentials",
+					})
+				} else {
+					askCredentials(w, r)
+					renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
+						Message: "credentials needed",
+					})
+				}
 				return
 			}
 		default:
@@ -334,13 +356,15 @@ func withAccess(next http.Handler) http.HandlerFunc {
 			return
 		}
 
-		// If the repo doesn't exist, return 404
 		if repo == nil {
+			// If the repo doesn't exist, return 404
 			renderNotFound(w)
 			return
-		}
-
-		if accessLevel < access.ReadOnlyAccess {
+		} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+			// return 403 when bad credentials are provided
+			renderForbidden(w)
+			return
+		} else if accessLevel < access.ReadOnlyAccess {
 			askCredentials(w, r)
 			renderUnauthorized(w)
 			return

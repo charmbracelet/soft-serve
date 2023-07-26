@@ -16,12 +16,8 @@ type Route interface {
 
 // NewRouter returns a new HTTP router.
 // TODO: use gorilla/mux and friends
-func NewRouter(ctx context.Context) *goji.Mux {
+func NewRouter(ctx context.Context) http.Handler {
 	mux := goji.NewMux()
-
-	// Middlewares
-	mux.Use(NewContextMiddleware(ctx))
-	mux.Use(NewLoggingMiddleware)
 
 	// Git routes
 	for _, service := range gitRoutes {
@@ -31,5 +27,12 @@ func NewRouter(ctx context.Context) *goji.Mux {
 	// go-get handler
 	mux.Handle(pat.Get("/*"), GoGetHandler{})
 
-	return mux
+	// Middlewares
+	mux.Use(NewLoggingMiddleware)
+
+	// Context handler
+	// Adds context to the request
+	ctxHandler := NewContextHandler(ctx)
+
+	return ctxHandler(mux)
 }
