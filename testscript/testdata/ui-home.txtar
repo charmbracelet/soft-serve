@@ -1,0 +1,53 @@
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
+# test repositories tab
+ui '"    q"'
+cp stdout home.txt
+grep 'Test Soft Serve' home.txt
+grep '• Repositories' home.txt
+grep 'No items found' home.txt
+
+# test about tab
+ui '"\t    q"'
+cp stdout about.txt
+grep 'Create a `.soft-serve` repository and add a `README.md` file' about.txt
+
+# add a new repo
+soft repo create .soft-serve -n 'Config' -d '"Test Soft Serve"'
+soft repo description .soft-serve
+stdout 'Test Soft Serve'
+soft repo project-name .soft-serve
+stdout 'Config'
+
+# clone repo
+git clone ssh://localhost:$SSH_PORT/.soft-serve config
+
+# create readme file
+mkfile ./config/README.md '# Hello World\nTest Soft Serve'
+git -C config add -A
+git -C config commit -m 'Initial commit'
+git -C config push origin HEAD
+
+# test repositories tab
+ui '"    q"'
+cp stdout home2.txt
+grep 'Config' home2.txt
+grep 'Test Soft Serve' home2.txt
+grep 'git clone ssh://localhost:.*/.soft-serve' home2.txt
+
+# test about tab
+ui '"\t      q"'
+cp stdout about2.txt
+grep '• About' about2.txt
+grep 'Hello World' about2.txt
+grep 'Test Soft Serve' about2.txt
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+

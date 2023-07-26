@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/pkg/ui/pages/repo"
-	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +39,7 @@ var Command = &cobra.Command{
 
 		// Bubble Tea uses Termenv default output so we have to use the same
 		// thing here.
-		output := termenv.DefaultOutput()
+		output := lipgloss.DefaultRenderer()
 		ctx := cmd.Context()
 		c := common.NewCommon(ctx, output, 0, 0)
 		c.HideCloneCmd = true
