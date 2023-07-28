@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -23,64 +22,19 @@ import (
 	"github.com/charmbracelet/soft-serve/server/lfs"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/utils"
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"goji.io/pat"
-	"goji.io/pattern"
 )
 
 // GitRoute is a route for git services.
 type GitRoute struct {
 	method  []string
-	pattern *regexp.Regexp
 	handler http.HandlerFunc
+	path    string
 }
 
-var _ Route = GitRoute{}
-
-// Match implements goji.Pattern.
-func (g GitRoute) Match(r *http.Request) *http.Request {
-	re := g.pattern
-	ctx := r.Context()
-	cfg := config.FromContext(ctx)
-	if m := re.FindStringSubmatch(r.URL.Path); m != nil {
-		// This finds the Git objects & packs filenames in the URL.
-		file := strings.Replace(r.URL.Path, m[1]+"/", "", 1)
-		repo := utils.SanitizeRepo(m[1])
-		// Add repo suffix (.git)
-		r.URL.Path = fmt.Sprintf("%s.git/%s", repo, file)
-
-		var service git.Service
-		var oid string    // LFS object ID
-		var lockID string // LFS lock ID
-		switch {
-		case strings.HasSuffix(r.URL.Path, git.UploadPackService.String()):
-			service = git.UploadPackService
-		case strings.HasSuffix(r.URL.Path, git.ReceivePackService.String()):
-			service = git.ReceivePackService
-		case len(m) > 2:
-			if strings.HasPrefix(file, "info/lfs/objects/basic/") {
-				oid = m[2]
-			} else if strings.HasPrefix(file, "info/lfs/locks/") && strings.HasSuffix(file, "/unlock") {
-				lockID = m[2]
-			}
-			fallthrough
-		case strings.HasPrefix(file, "info/lfs"):
-			service = gitLfsService
-		}
-
-		ctx = context.WithValue(ctx, pattern.Variable("lock_id"), lockID)
-		ctx = context.WithValue(ctx, pattern.Variable("oid"), oid)
-		ctx = context.WithValue(ctx, pattern.Variable("service"), service.String())
-		ctx = context.WithValue(ctx, pattern.Variable("dir"), filepath.Join(cfg.DataPath, "repos", repo+".git"))
-		ctx = context.WithValue(ctx, pattern.Variable("repo"), repo)
-		ctx = context.WithValue(ctx, pattern.Variable("file"), file)
-
-		return r.WithContext(ctx)
-	}
-
-	return nil
-}
+var _ http.Handler = GitRoute{}
 
 // ServeHTTP implements http.Handler.
 func (g GitRoute) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -118,18 +72,49 @@ var (
 	}, []string{"repo", "file"})
 )
 
-var (
-	serviceRpcMatcher            = regexp.MustCompile("(.*?)/(?:git-upload-pack|git-receive-pack)$") // nolint: revive
-	getInfoRefsMatcher           = regexp.MustCompile("(.*?)/info/refs$")
-	getTextFileMatcher           = regexp.MustCompile("(.*?)/(?:HEAD|objects/info/alternates|objects/info/http-alternates|objects/info/[^/]*)$")
-	getInfoPacksMatcher          = regexp.MustCompile("(.*?)/objects/info/packs$")
-	getLooseObjectMatcher        = regexp.MustCompile("(.*?)/objects/[0-9a-f]{2}/[0-9a-f]{38}$")
-	getPackFileMatcher           = regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.pack$`)
-	getIdxFileMatcher            = regexp.MustCompile(`(.*?)/objects/pack/pack-[0-9a-f]{40}\.idx$`)
-	serviceLfsBatchMatcher       = regexp.MustCompile("(.*?)/info/lfs/objects/batch$")
-	serviceLfsBasicMatcher       = regexp.MustCompile("(.*?)/info/lfs/objects/basic/([0-9a-f]{64})$")
-	serviceLfsBasicVerifyMatcher = regexp.MustCompile("(.*?)/info/lfs/objects/basic/verify$")
-)
+func withParams(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		logger := log.FromContext(ctx)
+		cfg := config.FromContext(ctx)
+		vars := mux.Vars(r)
+		repo := vars["repo"]
+
+		// Construct "file" param from path
+		vars["file"] = strings.TrimPrefix(r.URL.Path, "/"+repo+"/")
+
+		// Set service type
+		switch {
+		case strings.HasSuffix(r.URL.Path, git.UploadPackService.String()):
+			vars["service"] = git.UploadPackService.String()
+		case strings.HasSuffix(r.URL.Path, git.ReceivePackService.String()):
+			vars["service"] = git.ReceivePackService.String()
+		}
+
+		repo = utils.SanitizeRepo(repo)
+		vars["repo"] = repo
+		vars["dir"] = filepath.Join(cfg.DataPath, "repos", repo+".git")
+		logger.Info("request vars", "vars", vars)
+
+		// Add repo suffix (.git)
+		r.URL.Path = fmt.Sprintf("%s.git/%s", repo, vars["file"])
+		r = mux.SetURLVars(r, vars)
+		h.ServeHTTP(w, r)
+	})
+}
+
+// GitController is a router for git services.
+func GitController(_ context.Context, r *mux.Router) {
+	basePrefix := "/{repo:.*}"
+	for _, route := range gitRoutes {
+		// NOTE: withParam must always be the outermost wrapper, otherwise the
+		// request vars will not be set.
+		r.Handle(basePrefix+route.path, withParams(withAccess(route)))
+	}
+
+	// Handle go-get
+	r.Handle(basePrefix, withParams(withAccess(GoGetHandler{}))).Methods(http.MethodGet)
+}
 
 var gitRoutes = []GitRoute{
 	// Git services
@@ -137,77 +122,72 @@ var gitRoutes = []GitRoute{
 	// This is handled through wrapping the handlers for each route.
 	// See below (withAccess).
 	{
-		pattern: serviceRpcMatcher,
 		method:  []string{http.MethodPost},
 		handler: serviceRpc,
+		path:    "/{service:(?:git-upload-pack|git-receive-pack)$}",
 	},
 	{
-		pattern: getInfoRefsMatcher,
 		method:  []string{http.MethodGet},
 		handler: getInfoRefs,
+		path:    "/info/refs",
 	},
 	{
-		pattern: getTextFileMatcher,
 		method:  []string{http.MethodGet},
 		handler: getTextFile,
+		path:    "/{_:(?:HEAD|objects/info/alternates|objects/info/http-alternates|objects/info/[^/]*)$}",
 	},
 	{
-		pattern: getTextFileMatcher,
-		method:  []string{http.MethodGet},
-		handler: getTextFile,
-	},
-	{
-		pattern: getInfoPacksMatcher,
 		method:  []string{http.MethodGet},
 		handler: getInfoPacks,
+		path:    "/objects/info/packs",
 	},
 	{
-		pattern: getLooseObjectMatcher,
 		method:  []string{http.MethodGet},
 		handler: getLooseObject,
+		path:    "/objects/{_:[0-9a-f]{2}/[0-9a-f]{38}$}",
 	},
 	{
-		pattern: getPackFileMatcher,
 		method:  []string{http.MethodGet},
 		handler: getPackFile,
+		path:    "/objects/pack/{_:pack-[0-9a-f]{40}\\.pack$}",
 	},
 	{
-		pattern: getIdxFileMatcher,
 		method:  []string{http.MethodGet},
 		handler: getIdxFile,
+		path:    "/objects/pack/{_:pack-[0-9a-f]{40}\\.idx$}",
 	},
 	// Git LFS
 	{
-		pattern: serviceLfsBatchMatcher,
 		method:  []string{http.MethodPost},
 		handler: serviceLfsBatch,
+		path:    "/info/lfs/objects/batch",
 	},
 	{
 		// Git LFS basic object handler
-		pattern: serviceLfsBasicMatcher,
 		method:  []string{http.MethodGet, http.MethodPut},
 		handler: serviceLfsBasic,
+		path:    "/info/lfs/objects/basic/{oid:[0-9a-f]{64}$}",
 	},
 	{
-		pattern: serviceLfsBasicVerifyMatcher,
 		method:  []string{http.MethodPost},
 		handler: serviceLfsBasicVerify,
+		path:    "/info/lfs/objects/basic/verify",
 	},
 	// Git LFS locks
 	{
-		pattern: regexp.MustCompile(`(.*?)/info/lfs/locks$`),
 		method:  []string{http.MethodPost, http.MethodGet},
 		handler: serviceLfsLocks,
+		path:    "/info/lfs/locks",
 	},
 	{
-		pattern: regexp.MustCompile(`(.*?)/info/lfs/locks/verify$`),
 		method:  []string{http.MethodPost},
 		handler: serviceLfsLocksVerify,
+		path:    "/info/lfs/locks/verify",
 	},
 	{
-		pattern: regexp.MustCompile(`(.*?)/info/lfs/locks/([0-9]+)/unlock$`),
 		method:  []string{http.MethodPost},
 		handler: serviceLfsLocksDelete,
+		path:    "/info/lfs/locks/{lock_id:[0-9]+}/unlock",
 	},
 }
 
@@ -227,7 +207,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		// Store repository in context
 		// We're not checking for errors here because we want to allow
 		// repo creation on the fly.
-		repoName := pat.Param(r, "repo")
+		repoName := mux.Vars(r)["repo"]
 		repo, _ := be.Repository(ctx, repoName)
 		ctx = proto.WithRepositoryContext(ctx, repo)
 		r = r.WithContext(ctx)
@@ -244,7 +224,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 
 		if user == nil && !be.AllowKeyless(ctx) {
 			askCredentials(w, r)
-			renderUnauthorized(w)
+			renderUnauthorized(w, r)
 			return
 		}
 
@@ -256,7 +236,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 			logger.Info("found user", "username", user.Username())
 		}
 
-		service := git.Service(pat.Param(r, "service"))
+		service := git.Service(mux.Vars(r)["service"])
 		if service == "" {
 			// Get service from request params
 			service = getServiceType(r)
@@ -266,20 +246,17 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		ctx = access.WithContext(ctx, accessLevel)
 		r = r.WithContext(ctx)
 
-		logger.Info("access level", "repo", repoName, "level", accessLevel)
-
-		file := pat.Param(r, "file")
+		file := mux.Vars(r)["file"]
 
 		// We only allow these services to proceed any other services should return 403
 		// - git-upload-pack
 		// - git-receive-pack
 		// - git-lfs
-		switch service {
-		case git.UploadPackService:
-		case git.ReceivePackService:
+		switch {
+		case service == git.ReceivePackService:
 			if accessLevel < access.ReadWriteAccess {
 				askCredentials(w, r)
-				renderUnauthorized(w)
+				renderUnauthorized(w, r)
 				return
 			}
 
@@ -288,17 +265,34 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				repo, err = be.CreateRepository(ctx, repoName, proto.RepositoryOptions{})
 				if err != nil {
 					logger.Error("failed to create repository", "repo", repoName, "err", err)
-					renderInternalServerError(w)
+					renderInternalServerError(w, r)
 					return
 				}
 
 				ctx = proto.WithRepositoryContext(ctx, repo)
 				r = r.WithContext(ctx)
 			}
-		case gitLfsService:
+
+			fallthrough
+		case service == git.UploadPackService:
+			if repo == nil {
+				// If the repo doesn't exist, return 404
+				renderNotFound(w, r)
+				return
+			} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+				// return 403 when bad credentials are provided
+				renderForbidden(w, r)
+				return
+			} else if accessLevel < access.ReadOnlyAccess {
+				askCredentials(w, r)
+				renderUnauthorized(w, r)
+				return
+			}
+
+		case strings.HasPrefix(file, "info/lfs"):
 			if !cfg.LFS.Enabled {
 				logger.Debug("LFS is not enabled, skipping")
-				renderNotFound(w)
+				renderNotFound(w, r)
 				return
 			}
 
@@ -334,6 +328,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 					// Basic verify
 				}
 			}
+
 			if accessLevel < access.ReadOnlyAccess {
 				if repo == nil {
 					renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
@@ -351,22 +346,19 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				}
 				return
 			}
-		default:
-			renderForbidden(w)
-			return
 		}
 
-		if repo == nil {
-			// If the repo doesn't exist, return 404
-			renderNotFound(w)
-			return
-		} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+		switch {
+		case r.URL.Query().Get("go-get") == "1" && accessLevel >= access.ReadOnlyAccess:
+			// Allow go-get requests to passthrough.
+			break
+		case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrInvalidPassword):
 			// return 403 when bad credentials are provided
-			renderForbidden(w)
+			renderForbidden(w, r)
 			return
-		} else if accessLevel < access.ReadOnlyAccess {
-			askCredentials(w, r)
-			renderUnauthorized(w)
+		case repo == nil, accessLevel < access.ReadOnlyAccess:
+			// Don't hint that the repo exists if the user doesn't have access
+			renderNotFound(w, r)
 			return
 		}
 
@@ -379,10 +371,10 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx)
-	service, dir, repoName := git.Service(pat.Param(r, "service")), pat.Param(r, "dir"), pat.Param(r, "repo")
+	service, dir, repoName := git.Service(mux.Vars(r)["service"]), mux.Vars(r)["dir"], mux.Vars(r)["repo"]
 
 	if !isSmart(r, service) {
-		renderForbidden(w)
+		renderForbidden(w, r)
 		return
 	}
 
@@ -431,7 +423,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		reader, err := gzip.NewReader(reader)
 		if err != nil {
 			logger.Errorf("failed to create gzip reader: %v", err)
-			renderInternalServerError(w)
+			renderInternalServerError(w, r)
 			return
 		}
 		defer reader.Close() // nolint: errcheck
@@ -441,10 +433,10 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 
 	if err := service.Handler(ctx, cmd); err != nil {
 		if errors.Is(err, git.ErrInvalidRepo) {
-			renderNotFound(w)
+			renderNotFound(w, r)
 			return
 		}
-		renderInternalServerError(w)
+		renderInternalServerError(w, r)
 		return
 	}
 
@@ -486,7 +478,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	cfg := config.FromContext(ctx)
-	dir, repoName, file := pat.Param(r, "dir"), pat.Param(r, "repo"), pat.Param(r, "file")
+	dir, repoName, file := mux.Vars(r)["dir"], mux.Vars(r)["repo"], mux.Vars(r)["file"]
 	service := getServiceType(r)
 	version := r.Header.Get("Git-Protocol")
 
@@ -518,7 +510,7 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := service.Handler(ctx, cmd); err != nil {
-			renderNotFound(w)
+			renderNotFound(w, r)
 			return
 		}
 
@@ -564,12 +556,12 @@ func getTextFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func sendFile(contentType string, w http.ResponseWriter, r *http.Request) {
-	dir, file := pat.Param(r, "dir"), pat.Param(r, "file")
+	dir, file := mux.Vars(r)["dir"], mux.Vars(r)["file"]
 	reqFile := filepath.Join(dir, file)
 
 	f, err := os.Stat(reqFile)
 	if os.IsNotExist(err) {
-		renderNotFound(w)
+		renderNotFound(w, r)
 		return
 	}
 
@@ -599,32 +591,32 @@ func updateServerInfo(ctx context.Context, dir string) error {
 
 // HTTP error response handling functions
 
-func renderBadRequest(w http.ResponseWriter) {
-	renderStatus(http.StatusBadRequest)(w, nil)
+func renderBadRequest(w http.ResponseWriter, r *http.Request) {
+	renderStatus(http.StatusBadRequest)(w, r)
 }
 
 func renderMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
 	if r.Proto == "HTTP/1.1" {
 		renderStatus(http.StatusMethodNotAllowed)(w, r)
 	} else {
-		renderBadRequest(w)
+		renderBadRequest(w, r)
 	}
 }
 
-func renderNotFound(w http.ResponseWriter) {
-	renderStatus(http.StatusNotFound)(w, nil)
+func renderNotFound(w http.ResponseWriter, r *http.Request) {
+	renderStatus(http.StatusNotFound)(w, r)
 }
 
-func renderUnauthorized(w http.ResponseWriter) {
-	renderStatus(http.StatusUnauthorized)(w, nil)
+func renderUnauthorized(w http.ResponseWriter, r *http.Request) {
+	renderStatus(http.StatusUnauthorized)(w, r)
 }
 
-func renderForbidden(w http.ResponseWriter) {
-	renderStatus(http.StatusForbidden)(w, nil)
+func renderForbidden(w http.ResponseWriter, r *http.Request) {
+	renderStatus(http.StatusForbidden)(w, r)
 }
 
-func renderInternalServerError(w http.ResponseWriter) {
-	renderStatus(http.StatusInternalServerError)(w, nil)
+func renderInternalServerError(w http.ResponseWriter, r *http.Request) {
+	renderStatus(http.StatusInternalServerError)(w, r)
 }
 
 // Header writing functions
