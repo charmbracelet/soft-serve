@@ -17,9 +17,9 @@ stderr 'Access token created'
 # list tokens
 usoft token list
 cp stdout tokens.txt
-grep '1         test1.*       -' tokens.txt
-grep '2         test2.*       1 year from now' tokens.txt
-grep '3         test3.*       expired' tokens.txt
+grep '1\s+test1.*-' tokens.txt
+grep '2\s+test2.*1 year from now' tokens.txt
+grep '3\s+test3.*expired' tokens.txt
 
 # delete token
 usoft token delete 1

@@ -5,7 +5,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,6 +28,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/store/database"
 	"github.com/charmbracelet/soft-serve/server/test"
 	"github.com/rogpeppe/go-internal/testscript"
+	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite" // sqlite Driver
 )
@@ -55,6 +59,7 @@ func TestScript(t *testing.T) {
 			"soft":     cmdSoft(admin1.Signer()),
 			"usoft":    cmdSoft(user1.Signer()),
 			"git":      cmdGit(key),
+			"curl":     cmdCurl,
 			"mkfile":   cmdMkfile,
 			"envfile":  cmdEnvfile,
 			"readfile": cmdReadfile,
@@ -294,4 +299,91 @@ func cmdEnvfile(ts *testscript.TestScript, neg bool, args []string) {
 		file := parts[1]
 		ts.Setenv(key, strings.TrimSpace(ts.ReadFile(file)))
 	}
+}
+
+func cmdCurl(ts *testscript.TestScript, neg bool, args []string) {
+	var verbose bool
+	var headers []string
+	var data string
+	method := http.MethodGet
+
+	cmd := &cobra.Command{
+		Use:  "curl",
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			url, err := url.Parse(args[0])
+			if err != nil {
+				return err
+			}
+
+			req, err := http.NewRequest(method, url.String(), nil)
+			if err != nil {
+				return err
+			}
+
+			if data != "" {
+				req.Body = io.NopCloser(strings.NewReader(data))
+			}
+
+			if verbose {
+				fmt.Fprintf(cmd.ErrOrStderr(), "< %s %s\n", req.Method, url.String())
+			}
+
+			for _, header := range headers {
+				parts := strings.SplitN(header, ":", 2)
+				if len(parts) != 2 {
+					return fmt.Errorf("invalid header: %s", header)
+				}
+				req.Header.Add(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+			}
+
+			if userInfo := url.User; userInfo != nil {
+				password, _ := userInfo.Password()
+				req.SetBasicAuth(userInfo.Username(), password)
+			}
+
+			if verbose {
+				for key, values := range req.Header {
+					for _, value := range values {
+						fmt.Fprintf(cmd.ErrOrStderr(), "< %s: %s\n", key, value)
+					}
+				}
+			}
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return err
+			}
+
+			if verbose {
+				fmt.Fprintf(ts.Stderr(), "> %s\n", resp.Status)
+				for key, values := range resp.Header {
+					for _, value := range values {
+						fmt.Fprintf(cmd.ErrOrStderr(), "> %s: %s\n", key, value)
+					}
+				}
+			}
+
+			defer resp.Body.Close()
+			buf, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+
+			cmd.Print(string(buf))
+
+			return nil
+		},
+	}
+
+	cmd.SetArgs(args)
+	cmd.SetOut(ts.Stdout())
+	cmd.SetErr(ts.Stderr())
+
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", verbose, "verbose")
+	cmd.Flags().StringArrayVarP(&headers, "header", "H", nil, "HTTP header")
+	cmd.Flags().StringVarP(&method, "request", "X", method, "HTTP method")
+	cmd.Flags().StringVarP(&data, "data", "d", data, "HTTP data")
+
+	check(ts, cmd.Execute(), neg)
 }

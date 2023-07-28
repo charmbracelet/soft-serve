@@ -17,7 +17,6 @@ func NewContextHandler(ctx context.Context) func(http.Handler) http.Handler {
 	cfg := config.FromContext(ctx)
 	be := backend.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http")
-	logger.Infof("data path %s", cfg.DataPath)
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 	return func(next http.Handler) http.Handler {

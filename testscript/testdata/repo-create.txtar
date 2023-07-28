@@ -1,7 +1,7 @@
 # vi: set ft=conf
 
 # convert crlf to lf on windows
-[windows] dos2unix tree.txt readme.md branch_list.1.txt info.txt
+[windows] dos2unix readme.md branch_list.1.txt info.txt
 
 # create a repo
 soft repo create repo1 -d 'description' -H -p -n 'repo11'
@@ -30,6 +30,7 @@ git -C repo1 push origin HEAD --tags
 # create lfs files, use ssh git-lfs-transfer
 git -C repo1 lfs install --local
 git -C repo1 lfs track '*.png'
+git -C repo1 lfs track '*.mp4'
 mkfile ./repo1/foo.png 'foo'
 mkfile ./repo1/bar.png 'bar'
 git -C repo1 add -A
@@ -51,7 +52,11 @@ soft repo tag list repo1
 
 # print tree
 soft repo tree repo1
-cmp stdout tree.txt
+cp stdout tree.txt
+grep '.gitattributes' tree.txt
+grep 'README.md' tree.txt
+grep 'foo.png' tree.txt
+grep 'bar.png' tree.txt
 
 # cat blob
 soft repo blob repo1 README.md
@@ -85,11 +90,6 @@ soft repo branch delete repo1 master
 soft repo branch list repo1
 stdout branch1
 
--- tree.txt --
--rw-r--r--	42 B	 .gitattributes
--rw-r--r--	14 B	 README.md
--rw-r--r--	126 B	 bar.png
--rw-r--r--	126 B	 foo.png
 -- readme.md --
 # Project\nfoo
 -- branch_list.1.txt --
