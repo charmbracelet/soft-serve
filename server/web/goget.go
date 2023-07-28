@@ -6,12 +6,13 @@ import (
 	"path"
 	"text/template"
 
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/utils"
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"goji.io/pattern"
 )
 
 var goGetCounter = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -26,7 +27,7 @@ var repoIndexHTMLTpl = template.Must(template.New("index").Parse(`<!DOCTYPE html
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <meta http-equiv="refresh" content="0; url=https://godoc.org/{{ .ImportRoot }}/{{.Repo}}">
-    <meta name="go-import" content="{{ .ImportRoot }}/{{ .Repo }} git {{ .Config.HTTP.PublicURL }}/{{ .Repo }}">
+    <meta name="go-import" content="{{ .ImportRoot }}/{{ .Repo }} git {{ .Config.HTTP.PublicURL }}/{{ .Repo }}.git">
 </head>
 <body>
 Redirecting to docs at <a href="https://godoc.org/{{ .ImportRoot }}/{{ .Repo }}">godoc.org/{{ .ImportRoot }}/{{ .Repo }}</a>...
@@ -40,15 +41,17 @@ type GoGetHandler struct{}
 var _ http.Handler = (*GoGetHandler)(nil)
 
 func (g GoGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	repo := pattern.Path(r.Context())
-	repo = utils.SanitizeRepo(repo)
 	ctx := r.Context()
 	cfg := config.FromContext(ctx)
 	be := backend.FromContext(ctx)
+	logger := log.FromContext(ctx)
+	repo := mux.Vars(r)["repo"]
 
 	// Handle go get requests.
 	//
-	// Always return a 200 status code, even if the repo doesn't exist.
+	// Always return a 200 status code, even if the repo path doesn't exist.
+	// It will try to find the repo by walking up the path until it finds one.
+	// If it can't find one, it will return a 404.
 	//
 	// https://golang.org/cmd/go/#hdr-Remote_import_paths
 	// https://go.dev/ref/mod#vcs-branch
@@ -78,11 +81,12 @@ func (g GoGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Config     *config.Config
 			ImportRoot string
 		}{
-			Repo:       url.PathEscape(repo),
+			Repo:       utils.SanitizeRepo(repo),
 			Config:     cfg,
 			ImportRoot: importRoot.Host,
 		}); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			logger.Error("failed to render go get template", "err", err)
+			renderInternalServerError(w, r)
 			return
 		}
 
@@ -90,5 +94,5 @@ func (g GoGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.NotFound(w, r)
+	renderNotFound(w, r)
 }

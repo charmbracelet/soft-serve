@@ -4,35 +4,25 @@ import (
 	"context"
 	"net/http"
 
-	"goji.io"
-	"goji.io/pat"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 )
 
-// Route is an interface for a route.
-type Route interface {
-	http.Handler
-	goji.Pattern
-}
-
 // NewRouter returns a new HTTP router.
-// TODO: use gorilla/mux and friends
 func NewRouter(ctx context.Context) http.Handler {
-	mux := goji.NewMux()
+	router := mux.NewRouter()
 
 	// Git routes
-	for _, service := range gitRoutes {
-		mux.Handle(service, withAccess(service))
-	}
+	GitController(ctx, router)
 
-	// go-get handler
-	mux.Handle(pat.Get("/*"), GoGetHandler{})
-
-	// Middlewares
-	mux.Use(NewLoggingMiddleware)
+	router.PathPrefix("/").HandlerFunc(renderNotFound)
 
 	// Context handler
 	// Adds context to the request
-	ctxHandler := NewContextHandler(ctx)
+	h := NewContextHandler(ctx)(router)
+	h = handlers.CompressHandler(h)
+	h = handlers.RecoveryHandler()(h)
+	h = NewLoggingMiddleware(h)
 
-	return ctxHandler(mux)
+	return h
 }

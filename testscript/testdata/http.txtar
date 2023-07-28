@@ -35,6 +35,11 @@ git -C repo2 tag v0.1.0
 git -C repo2 push origin HEAD
 git -C repo2 push origin HEAD --tags
 
+# dumb http git
+exec curl -s -XGET http://localhost:$HTTP_PORT/repo2.git/info/refs
+stdout '[0-9a-z]{40}	refs/heads/master\n[0-9a-z]{40}	refs/tags/v0.1.0'
+
+
 # http errors
 exec curl -s -XGET http://localhost:$HTTP_PORT/repo2111foobar.git/foo/bar
 stdout '404.*'
@@ -59,9 +64,22 @@ stdout '.*unsupported operation.*'
 exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' -d '{"operation":"download","objects":[{}]}' http://$TOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
 cmp stdout http1.txt
 exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' -d '{"operation":"upload","objects":[{}]}' http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
-stdout '.*credentials needed.*'
+stdout '.*write access required.*'
 exec curl -s -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' -d '{"operation":"upload","objects":[{}]}' http://$TOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
 cmp stdout http1.txt
+
+
+# go-get allow (public repo)
+exec curl -s http://localhost:$HTTP_PORT/repo2.git?go-get=1
+cmpenv stdout goget.txt
+exec curl -s http://localhost:$HTTP_PORT/repo2.git/subpackage?go-get=1
+cmpenv stdout goget.txt
+exec curl -s http://localhost:$HTTP_PORT/repo2/subpackage?go-get=1
+cmpenv stdout goget.txt
+
+# go-get not found (invalid method)
+exec curl -s -XPOST http://localhost:$HTTP_PORT/repo2/subpackage?go-get=1
+stdout '404.*'
 
 # set private
 soft repo private repo2 true
@@ -80,20 +98,32 @@ stdout '.*credentials needed.*'
 exec curl -s http://0$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
 cmp stdout http3.txt
 
+# deny dumb http git
+exec curl -s -XGET http://localhost:$HTTP_PORT/repo2.git/info/refs
+stdout '404.*'
+
 # deny access ask for credentials
 # this means the server responded with a 401 and prompted for credentials
 # but we disable git terminal prompting to we get a fatal instead of a 401 "Unauthorized"
 ! git clone http://localhost:$HTTP_PORT/repo2 repo2_clone
 cmpenv stderr gitclone.txt
 ! git clone http://someuser:somepassword@localhost:$HTTP_PORT/repo2 repo2_clone
-stderr '.*Forbidden.*'
+stderr '.*403.*'
 
-# go-get endpoints not found
-exec curl -s http://localhost:$HTTP_PORT/repo2.git
+# go-get not found (private repo)
+exec curl -s http://localhost:$HTTP_PORT/repo2.git?go-get=1
 stdout '404.*'
 
-# go-get endpoints
-exec curl -s http://localhost:$HTTP_PORT/repo2.git?go-get=1
+# go-get forbidden (private repo & expired token)
+exec curl -s http://$ETOKEN@localhost:$HTTP_PORT/repo2.git?go-get=1
+stdout '403.*'
+
+# go-get not found (private repo & different user)
+exec curl -s http://$UTOKEN@localhost:$HTTP_PORT/repo2.git?go-get=1
+stdout '404.*'
+
+# go-get with creds
+exec curl -s http://$TOKEN@localhost:$HTTP_PORT/repo2.git?go-get=1
 cmpenv stdout goget.txt
 
 -- http1.txt --
@@ -108,7 +138,7 @@ cmpenv stdout goget.txt
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <meta http-equiv="refresh" content="0; url=https://godoc.org/localhost:$HTTP_PORT/repo2">
-    <meta name="go-import" content="localhost:$HTTP_PORT/repo2 git http://localhost:$HTTP_PORT/repo2">
+    <meta name="go-import" content="localhost:$HTTP_PORT/repo2 git http://localhost:$HTTP_PORT/repo2.git">
 </head>
 <body>
 Redirecting to docs at <a href="https://godoc.org/localhost:$HTTP_PORT/repo2">godoc.org/localhost:$HTTP_PORT/repo2</a>...
