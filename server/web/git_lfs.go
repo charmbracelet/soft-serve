@@ -19,16 +19,12 @@ import (
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/models"
-	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/server/lfs"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/storage"
 	"github.com/charmbracelet/soft-serve/server/store"
-	"goji.io/pat"
+	"github.com/gorilla/mux"
 )
-
-// Place holder service to handle Git LFS requests.
-const gitLfsService git.Service = "git-lfs-service"
 
 // serviceLfsBatch handles a Git LFS batch requests.
 // https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md
@@ -80,7 +76,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := pat.Param(r, "repo")
+	name := mux.Vars(r)["repo"]
 	repo := proto.RepositoryFromContext(ctx)
 	if repo == nil {
 		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
@@ -184,8 +180,8 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 		accessLevel := access.FromContext(ctx)
 		if accessLevel < access.ReadWriteAccess {
 			askCredentials(w, r)
-			renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
-				Message: "credentials needed",
+			renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+				Message: "write access required",
 			})
 			return
 		}
@@ -255,7 +251,7 @@ func serviceLfsBasic(w http.ResponseWriter, r *http.Request) {
 // GET: /<repo>.git/info/lfs/objects/basic/<oid>
 func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	oid := pat.Param(r, "oid")
+	oid := mux.Vars(r)["oid"]
 	repo := proto.RepositoryFromContext(ctx)
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
@@ -304,14 +300,14 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	oid := pat.Param(r, "oid")
+	oid := mux.Vars(r)["oid"]
 	cfg := config.FromContext(ctx)
 	be := backend.FromContext(ctx)
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs"))
-	name := pat.Param(r, "repo")
+	name := mux.Vars(r)["repo"]
 
 	defer r.Body.Close() // nolint: errcheck
 	repo, err := be.Repository(ctx, name)
@@ -836,7 +832,7 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-locks")
-	lockIDStr := pat.Param(r, "lock_id")
+	lockIDStr := mux.Vars(r)["lock_id"]
 	if lockIDStr == "" {
 		logger.Error("error getting lock id")
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
