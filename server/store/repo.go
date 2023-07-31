@@ -11,7 +11,8 @@ import (
 type RepositoryStore interface {
 	GetRepoByName(ctx context.Context, h db.Handler, name string) (models.Repo, error)
 	GetAllRepos(ctx context.Context, h db.Handler) ([]models.Repo, error)
-	CreateRepo(ctx context.Context, h db.Handler, name string, projectName string, description string, isPrivate bool, isHidden bool, isMirror bool) error
+	GetUserRepos(ctx context.Context, h db.Handler, userID int64) ([]models.Repo, error)
+	CreateRepo(ctx context.Context, h db.Handler, name string, userID int64, projectName string, description string, isPrivate bool, isHidden bool, isMirror bool) error
 	DeleteRepoByName(ctx context.Context, h db.Handler, name string) error
 	SetRepoNameByName(ctx context.Context, h db.Handler, name string, newName string) error
 

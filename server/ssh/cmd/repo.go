@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/spf13/cobra"
 )
 
@@ -59,6 +60,14 @@ func repoCommand() *cobra.Command {
 					return err
 				}
 
+				var owner proto.User
+				if rr.UserID() > 0 {
+					owner, err = be.UserByID(ctx, rr.UserID())
+					if err != nil {
+						return err
+					}
+				}
+
 				branches, _ := r.Branches()
 				tags, _ := r.Tags()
 
@@ -70,6 +79,9 @@ func repoCommand() *cobra.Command {
 				cmd.Println("Private:", rr.IsPrivate())
 				cmd.Println("Hidden:", rr.IsHidden())
 				cmd.Println("Mirror:", rr.IsMirror())
+				if owner != nil {
+					cmd.Println(strings.TrimSpace(fmt.Sprint("Owner: ", owner.Username())))
+				}
 				cmd.Println("Default Branch:", head.Name().Short())
 				if len(branches) > 0 {
 					cmd.Println("Branches:")

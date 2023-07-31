@@ -21,8 +21,9 @@ func createCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
+			user := proto.UserFromContext(ctx)
 			name := args[0]
-			if _, err := be.CreateRepository(ctx, name, proto.RepositoryOptions{
+			if _, err := be.CreateRepository(ctx, name, user, proto.RepositoryOptions{
 				Private:     private,
 				Description: description,
 				ProjectName: projectName,

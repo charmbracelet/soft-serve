@@ -6,6 +6,7 @@ import (
 	"io"
 	"path"
 	"path/filepath"
+	"strconv"
 
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
@@ -18,7 +19,8 @@ import (
 // StoreRepoMissingLFSObjects stores missing LFS objects for a repository.
 func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx *db.DB, store store.Store, lfsClient lfs.Client) error {
 	cfg := config.FromContext(ctx)
-	lfsRoot := filepath.Join(cfg.DataPath, "lfs")
+	repoID := strconv.FormatInt(repo.ID(), 10)
+	lfsRoot := filepath.Join(cfg.DataPath, "lfs", repoID)
 
 	// TODO: support S3 storage
 	strg := storage.NewLocalStorage(lfsRoot)

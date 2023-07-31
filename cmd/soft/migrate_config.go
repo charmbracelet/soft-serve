@@ -177,7 +177,7 @@ var migrateConfig = &cobra.Command{
 					return fmt.Errorf("failed to copy repo: %w", err)
 				}
 
-				if _, err := sb.CreateRepository(ctx, dir.Name(), proto.RepositoryOptions{}); err != nil {
+				if _, err := sb.CreateRepository(ctx, dir.Name(), nil, proto.RepositoryOptions{}); err != nil {
 					fmt.Fprintf(os.Stderr, "failed to create repository: %s\n", err)
 				}
 			}
@@ -239,7 +239,7 @@ var migrateConfig = &cobra.Command{
 				}
 
 				// Create `.soft-serve` repository and add readme
-				if _, err := sb.CreateRepository(ctx, ".soft-serve", proto.RepositoryOptions{
+				if _, err := sb.CreateRepository(ctx, ".soft-serve", nil, proto.RepositoryOptions{
 					ProjectName: "Home",
 					Description: "Soft Serve home repository",
 					Hidden:      true,
