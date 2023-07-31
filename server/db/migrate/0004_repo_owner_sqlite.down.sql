@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS repos_old;

@@ -62,6 +62,13 @@ func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user prot
 	}
 
 	if r != nil {
+		if user != nil {
+			// If the user is the owner, they have admin access.
+			if r.UserID() == user.ID() {
+				return access.AdminAccess
+			}
+		}
+
 		// If the user is a collaborator, they have read/write access.
 		isCollab, _ := d.IsCollaborator(ctx, repo, username)
 		if isCollab {
@@ -119,6 +126,34 @@ func (d *Backend) User(ctx context.Context, username string) (proto.User, error)
 			return nil, proto.ErrUserNotFound
 		}
 		d.logger.Error("error finding user", "username", username, "error", err)
+		return nil, err
+	}
+
+	return &user{
+		user:       m,
+		publicKeys: pks,
+	}, nil
+}
+
+// UserByID finds a user by ID.
+func (d *Backend) UserByID(ctx context.Context, id int64) (proto.User, error) {
+	var m models.User
+	var pks []ssh.PublicKey
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		var err error
+		m, err = d.store.GetUserByID(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+
+		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
+		return err
+	}); err != nil {
+		err = db.WrapError(err)
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, proto.ErrUserNotFound
+		}
+		d.logger.Error("error finding user", "id", id, "error", err)
 		return nil, err
 	}
 
@@ -263,11 +298,13 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 		return err
 	}
 
-	return db.WrapError(
-		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-			return d.store.DeleteUserByUsername(ctx, tx, username)
-		}),
-	)
+	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		if err := d.store.DeleteUserByUsername(ctx, tx, username); err != nil {
+			return db.WrapError(err)
+		}
+
+		return d.DeleteUserRepositories(ctx, username)
+	})
 }
 
 // RemovePublicKey removes a public key from a user.

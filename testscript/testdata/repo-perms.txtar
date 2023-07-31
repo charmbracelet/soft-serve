@@ -82,6 +82,7 @@ Description: desc
 Private: true
 Hidden: false
 Mirror: false
+Owner: admin
 Default Branch: master
 Branches:
   - master

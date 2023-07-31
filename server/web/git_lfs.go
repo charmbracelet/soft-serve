@@ -89,7 +89,8 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 	// TODO: support S3 storage
-	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs"))
+	repoID := strconv.FormatInt(repo.ID(), 10)
+	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
 
 	baseHref := fmt.Sprintf("%s/%s/info/lfs/objects/basic", cfg.HTTP.PublicURL, name+".git")
 
@@ -257,7 +258,8 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
 	datastore := store.FromContext(ctx)
 	dbx := db.FromContext(ctx)
-	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs"))
+	repoID := strconv.FormatInt(repo.ID(), 10)
+	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
 
 	obj, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), oid)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
@@ -306,7 +308,9 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
-	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs"))
+	repo := proto.RepositoryFromContext(ctx)
+	repoID := strconv.FormatInt(repo.ID(), 10)
+	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
 	name := mux.Vars(r)["repo"]
 
 	defer r.Body.Close() // nolint: errcheck
@@ -393,7 +397,8 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 	cfg := config.FromContext(ctx)
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
-	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs"))
+	repoID := strconv.FormatInt(repo.ID(), 10)
+	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
 	if stat, err := strg.Stat(path.Join("objects", pointer.RelativePath())); err == nil {
 		// Verify object is in the database.
 		obj, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), pointer.Oid)

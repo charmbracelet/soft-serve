@@ -85,6 +85,7 @@ func LFSTransfer(ctx context.Context, cmd ServiceCommand) error {
 		return err
 	}
 
+	repoID := strconv.FormatInt(repo.ID(), 10)
 	cfg := config.FromContext(ctx)
 	processor := transfer.NewProcessor(handler, &lfsTransfer{
 		ctx:     ctx,
@@ -92,7 +93,7 @@ func LFSTransfer(ctx context.Context, cmd ServiceCommand) error {
 		dbx:     db.FromContext(ctx),
 		store:   store.FromContext(ctx),
 		logger:  logger,
-		storage: storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs")),
+		storage: storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID)),
 		repo:    repo,
 	})
 
@@ -132,7 +133,8 @@ func (t *lfsTransfer) Batch(_ string, pointers []transfer.Pointer, _ map[string]
 // Download implements transfer.Backend.
 func (t *lfsTransfer) Download(oid string, _ map[string]string) (fs.File, error) {
 	cfg := config.FromContext(t.ctx)
-	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs"))
+	repoID := strconv.FormatInt(t.repo.ID(), 10)
+	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
 	pointer := transfer.Pointer{Oid: oid}
 	return strg.Open(path.Join("objects", pointer.RelativePath()))
 }

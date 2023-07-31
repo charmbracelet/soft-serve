@@ -22,6 +22,9 @@ type Repository interface {
 	IsMirror() bool
 	// IsHidden returns whether the repository is hidden.
 	IsHidden() bool
+	// UserID returns the ID of the user who owns the repository.
+	// It returns 0 if the repository is not owned by a user.
+	UserID() int64
 	// UpdatedAt returns the time the repository was last updated.
 	// If the repository has never been updated, it returns the time it was created.
 	UpdatedAt() time.Time
@@ -36,4 +39,6 @@ type RepositoryOptions struct {
 	ProjectName string
 	Mirror      bool
 	Hidden      bool
+	LFS         bool
+	LFSEndpoint string
 }
