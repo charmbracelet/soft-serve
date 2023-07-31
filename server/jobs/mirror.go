@@ -1,32 +1,36 @@
-package server
+package jobs
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"runtime"
 
+	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/sync"
 )
 
-var jobSpecs = map[string]string{
-	"mirror": "@every 10m",
+func init() {
+	Register("mirror-pull", "@every 10m", mirrorPull)
 }
 
-// mirrorJob runs the (pull) mirror job task.
-func (s *Server) mirrorJob(b *backend.Backend) func() {
-	cfg := s.Config
-	logger := s.logger
+// mirrorPull runs the (pull) mirror job task.
+func mirrorPull(ctx context.Context) func() {
+	cfg := config.FromContext(ctx)
+	logger := log.FromContext(ctx).WithPrefix("jobs.mirror")
+	b := backend.FromContext(ctx)
 	return func() {
-		repos, err := b.Repositories(s.ctx)
+		repos, err := b.Repositories(ctx)
 		if err != nil {
 			logger.Error("error getting repositories", "err", err)
 			return
 		}
 
 		// Divide the work up among the number of CPUs.
-		wq := sync.NewWorkPool(s.ctx, runtime.GOMAXPROCS(0),
+		wq := sync.NewWorkPool(ctx, runtime.GOMAXPROCS(0),
 			sync.WithWorkPoolLogger(logger.Errorf),
 		)
 
@@ -41,7 +45,7 @@ func (s *Server) mirrorJob(b *backend.Backend) func() {
 
 				name := repo.Name()
 				wq.Add(name, func() {
-					cmd := git.NewCommand("remote", "update", "--prune")
+					cmd := git.NewCommand("remote", "update", "--prune").WithContext(ctx)
 					cmd.AddEnvs(
 						fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
 							filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
