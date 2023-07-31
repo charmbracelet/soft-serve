@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/charmbracelet/soft-serve/git"
@@ -28,7 +30,7 @@ func (d *Backend) reposPath() string {
 // CreateRepository creates a new repository.
 //
 // It implements backend.Backend.
-func (d *Backend) CreateRepository(ctx context.Context, name string, opts proto.RepositoryOptions) (proto.Repository, error) {
+func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.User, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
 		return nil, err
@@ -37,11 +39,17 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, opts proto.
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
+	var userID int64
+	if user != nil {
+		userID = user.ID()
+	}
+
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		if err := d.store.CreateRepo(
 			ctx,
 			tx,
 			name,
+			userID,
 			opts.ProjectName,
 			opts.Description,
 			opts.Private,
@@ -72,14 +80,19 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, opts proto.
 		return hooks.GenerateHooks(ctx, d.cfg, repo)
 	}); err != nil {
 		d.logger.Debug("failed to create repository in database", "err", err)
-		return nil, db.WrapError(err)
+		err = db.WrapError(err)
+		if errors.Is(err, db.ErrDuplicateKey) {
+			return nil, proto.ErrRepoExist
+		}
+
+		return nil, err
 	}
 
 	return d.Repository(ctx, name)
 }
 
 // ImportRepository imports a repository from remote.
-func (d *Backend) ImportRepository(ctx context.Context, name string, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
+func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
 		return nil, err
@@ -92,36 +105,41 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, remote stri
 		return nil, proto.ErrRepoExist
 	}
 
-	copts := git.CloneOptions{
-		Bare:   true,
-		Mirror: opts.Mirror,
-		Quiet:  true,
-		CommandOptions: git.CommandOptions{
-			Timeout: -1,
-			Context: ctx,
-			Envs: []string{
-				fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-					filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
-					d.cfg.SSH.ClientKeyPath,
-				),
-			},
-		},
+	if err := os.MkdirAll(rp, fs.ModePerm); err != nil {
+		return nil, err
 	}
 
-	if err := git.Clone(remote, rp, copts); err != nil {
+	cmd := exec.CommandContext(ctx, "git", "clone", "--bare", "--mirror", remote, ".")
+	cmd.Env = append(cmd.Env,
+		fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+			filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
+			d.cfg.SSH.ClientKeyPath,
+		),
+	)
+	cmd.Dir = rp
+	if err := cmd.Run(); err != nil {
 		d.logger.Error("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
 		// Cleanup the mess!
 		if rerr := os.RemoveAll(rp); rerr != nil {
 			err = errors.Join(err, rerr)
 		}
+
 		return nil, err
 	}
 
-	r, err := d.CreateRepository(ctx, name, opts)
+	r, err := d.CreateRepository(ctx, name, user, opts)
 	if err != nil {
 		d.logger.Error("failed to create repository", "err", err, "name", name)
 		return nil, err
 	}
+
+	defer func() {
+		if err != nil {
+			if rerr := d.DeleteRepository(ctx, name, opts.LFS); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
+		}
+	}()
 
 	rr, err := r.Open()
 	if err != nil {
@@ -135,20 +153,28 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, remote stri
 		return nil, err
 	}
 
-	rcfg.Section("lfs").SetOption("url", remote)
+	endpoint := remote
+	if opts.LFSEndpoint != "" {
+		endpoint = opts.LFSEndpoint
+	}
+
+	rcfg.Section("lfs").SetOption("url", endpoint)
 
 	if err := rr.SetConfig(rcfg); err != nil {
 		d.logger.Error("failed to set repository config", "err", err, "path", rp)
 		return nil, err
 	}
 
-	endpoint, err := lfs.NewEndpoint(remote)
+	ep, err := lfs.NewEndpoint(endpoint)
 	if err != nil {
 		d.logger.Error("failed to create lfs endpoint", "err", err, "path", rp)
 		return nil, err
 	}
 
-	client := lfs.NewClient(endpoint)
+	client := lfs.NewClient(ep)
+	if client == nil {
+		return nil, fmt.Errorf("failed to create lfs client: unsupported endpoint %s", endpoint)
+	}
 
 	if err := StoreRepoMissingLFSObjects(ctx, r, d.db, d.store, client); err != nil {
 		d.logger.Error("failed to store missing lfs objects", "err", err, "path", rp)
@@ -171,7 +197,13 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string, deleteLFS b
 		defer d.cache.Delete(name)
 
 		if deleteLFS {
-			strg := storage.NewLocalStorage(filepath.Join(d.cfg.DataPath, "lfs"))
+			repom, err := d.store.GetRepoByName(ctx, tx, name)
+			if err != nil {
+				return err
+			}
+
+			repoID := strconv.FormatInt(repom.ID, 10)
+			strg := storage.NewLocalStorage(filepath.Join(d.cfg.DataPath, "lfs", repoID))
 			objs, err := d.store.GetLFSObjectsByName(ctx, tx, name)
 			if err != nil {
 				return err
@@ -195,6 +227,29 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string, deleteLFS b
 		}
 
 		return os.RemoveAll(rp)
+	})
+}
+
+// DeleteUserRepositories deletes all user repositories.
+func (d *Backend) DeleteUserRepositories(ctx context.Context, username string, deleteLFS bool) error {
+	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		user, err := d.store.FindUserByUsername(ctx, tx, username)
+		if err != nil {
+			return err
+		}
+
+		repos, err := d.store.GetUserRepos(ctx, tx, user.ID)
+		if err != nil {
+			return err
+		}
+
+		for _, repo := range repos {
+			if err := d.DeleteRepository(ctx, repo.Name, deleteLFS); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 }
 
@@ -499,6 +554,17 @@ type repo struct {
 // It implements proto.Repository.
 func (r *repo) ID() int64 {
 	return r.repo.ID
+}
+
+// UserID returns the repository's owner's user ID.
+// If the repository is not owned by anyone, it returns 0.
+//
+// It implements proto.Repository.
+func (r *repo) UserID() int64 {
+	if r.repo.UserID.Valid {
+		return r.repo.UserID.Int64
+	}
+	return 0
 }
 
 // Description returns the repository's description.

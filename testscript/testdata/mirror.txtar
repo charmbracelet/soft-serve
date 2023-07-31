@@ -82,6 +82,7 @@ Description:
 Private: false
 Hidden: false
 Mirror: true
+Owner: admin
 Default Branch: main
 Branches:
   - main
@@ -92,6 +93,7 @@ Description: testing repo
 Private: true
 Hidden: true
 Mirror: true
+Owner: admin
 Default Branch: main
 Branches:
   - main

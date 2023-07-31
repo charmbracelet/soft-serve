@@ -14,12 +14,21 @@ type repoStore struct{}
 var _ store.RepositoryStore = (*repoStore)(nil)
 
 // CreateRepo implements store.RepositoryStore.
-func (*repoStore) CreateRepo(ctx context.Context, tx db.Handler, name string, projectName string, description string, isPrivate bool, isHidden bool, isMirror bool) error {
+func (*repoStore) CreateRepo(ctx context.Context, tx db.Handler, name string, userID int64, projectName string, description string, isPrivate bool, isHidden bool, isMirror bool) error {
 	name = utils.SanitizeRepo(name)
-	query := tx.Rebind(`INSERT INTO repos (name, project_name, description, private, mirror, hidden, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`)
-	_, err := tx.ExecContext(ctx, query,
-		name, projectName, description, isPrivate, isMirror, isHidden)
+	values := []interface{}{
+		name, projectName, description, isPrivate, isMirror, isHidden,
+	}
+	query := `INSERT INTO repos (name, project_name, description, private, mirror, hidden, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`
+	if userID > 0 {
+		query = `INSERT INTO repos (name, project_name, description, private, mirror, hidden, updated_at, user_id)
+			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?);`
+		values = append(values, userID)
+	}
+
+	query = tx.Rebind(query)
+	_, err := tx.ExecContext(ctx, query, values...)
 	return db.WrapError(err)
 }
 
@@ -36,6 +45,14 @@ func (*repoStore) GetAllRepos(ctx context.Context, tx db.Handler) ([]models.Repo
 	var repos []models.Repo
 	query := tx.Rebind("SELECT * FROM repos;")
 	err := tx.SelectContext(ctx, &repos, query)
+	return repos, db.WrapError(err)
+}
+
+// GetUserRepos implements store.RepositoryStore.
+func (*repoStore) GetUserRepos(ctx context.Context, tx db.Handler, userID int64) ([]models.Repo, error) {
+	var repos []models.Repo
+	query := tx.Rebind("SELECT * FROM repos WHERE user_id = ?;")
+	err := tx.SelectContext(ctx, &repos, query, userID)
 	return repos, db.WrapError(err)
 }
 

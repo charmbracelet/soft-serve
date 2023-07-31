@@ -85,7 +85,7 @@ func handleGit(s ssh.Session) {
 			return
 		}
 		if repo == nil {
-			if _, err := be.CreateRepository(ctx, name, proto.RepositoryOptions{Private: false}); err != nil {
+			if _, err := be.CreateRepository(ctx, name, user, proto.RepositoryOptions{Private: false}); err != nil {
 				log.Errorf("failed to create repo: %s", err)
 				sshFatal(s, err)
 				return

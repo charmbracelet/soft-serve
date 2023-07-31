@@ -90,6 +90,27 @@ soft repo branch delete repo1 master
 soft repo branch list repo1
 stdout branch1
 
+# create a new user
+soft user create bar --key "$USER1_AUTHORIZED_KEY"
+
+# user create a repo
+usoft repo create repo2 -d 'description' -H -p -n 'repo2'
+usoft repo hidden repo2
+stdout true
+usoft repo private repo2
+stdout true
+! exists $DATA_PATH/repos/repo2.git/git-daemon-export-ok
+usoft repo description repo2
+stdout 'description'
+readfile $DATA_PATH/repos/repo2.git/description 'description'
+usoft repo project-name repo2
+stdout 'repo2'
+
+# user delete a repo
+usoft repo delete repo2
+! exists $DATA_PATH/repos/repo2.git
+
+
 -- readme.md --
 # Project\nfoo
 -- branch_list.1.txt --
@@ -102,6 +123,7 @@ Description: description
 Private: true
 Hidden: true
 Mirror: false
+Owner: admin
 Default Branch: master
 Branches:
   - master
