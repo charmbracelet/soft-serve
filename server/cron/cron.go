@@ -48,3 +48,14 @@ func (s *Scheduler) Shutdown() {
 func (s *Scheduler) Start() {
 	s.Cron.Start()
 }
+
+// AddFunc adds a job to the Scheduler.
+func (s *Scheduler) AddFunc(spec string, fn func()) (int, error) {
+	id, err := s.Cron.AddFunc(spec, fn)
+	return int(id), err
+}
+
+// Remove removes a job from the Scheduler.
+func (s *Scheduler) Remove(id int) {
+	s.Cron.Remove(cron.EntryID(id))
+}

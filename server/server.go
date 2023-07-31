@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/cron"
 	"github.com/charmbracelet/soft-serve/server/daemon"
 	"github.com/charmbracelet/soft-serve/server/db"
+	"github.com/charmbracelet/soft-serve/server/jobs"
 	sshsrv "github.com/charmbracelet/soft-serve/server/ssh"
 	"github.com/charmbracelet/soft-serve/server/stats"
 	"github.com/charmbracelet/soft-serve/server/web"
@@ -44,8 +45,8 @@ func NewServer(ctx context.Context) (*Server, error) {
 	cfg := config.FromContext(ctx)
 	be := backend.FromContext(ctx)
 	db := db.FromContext(ctx)
+	logger := log.FromContext(ctx).WithPrefix("server")
 	srv := &Server{
-		Cron:    cron.NewScheduler(ctx),
 		Config:  cfg,
 		Backend: be,
 		DB:      db,
@@ -54,7 +55,17 @@ func NewServer(ctx context.Context) (*Server, error) {
 	}
 
 	// Add cron jobs.
-	_, _ = srv.Cron.AddFunc(jobSpecs["mirror"], srv.mirrorJob(be))
+	sched := cron.NewScheduler(ctx)
+	for n, j := range jobs.List() {
+		id, err := sched.AddFunc(j.Spec, j.Func(ctx))
+		if err != nil {
+			logger.Warn("error adding cron job", "job", n, "err", err)
+		}
+
+		j.ID = id
+	}
+
+	srv.Cron = sched
 
 	srv.SSHServer, err = sshsrv.NewSSHServer(ctx)
 	if err != nil {
@@ -133,7 +144,10 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		return s.StatsServer.Shutdown(ctx)
 	})
 	errg.Go(func() error {
-		s.Cron.Stop()
+		for _, j := range jobs.List() {
+			s.Cron.Remove(j.ID)
+		}
+		s.Cron.Shutdown()
 		return nil
 	})
 	// defer s.DB.Close() // nolint: errcheck
