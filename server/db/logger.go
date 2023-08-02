@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/jmoiron/sqlx"
@@ -10,6 +11,9 @@ import (
 
 func trace(l *log.Logger, query string, args ...interface{}) {
 	if l != nil {
+		// Remove newlines and tabs
+		query = strings.ReplaceAll(query, "\t", "")
+		query = strings.TrimSpace(query)
 		l.Debug("trace", "query", query, "args", args)
 	}
 }
