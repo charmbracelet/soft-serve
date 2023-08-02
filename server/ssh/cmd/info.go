@@ -6,12 +6,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func infoCommand() *cobra.Command {
+// InfoCommand returns a command that shows the user's info
+func InfoCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "info",
 		Short: "Show your info",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
 			pk := sshutils.PublicKeyFromContext(ctx)

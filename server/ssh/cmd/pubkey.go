@@ -8,7 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func pubkeyCommand() *cobra.Command {
+// PubkeyCommand returns a command that manages user public keys.
+func PubkeyCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "pubkey",
 		Aliases: []string{"pubkeys", "publickey", "publickeys"},
@@ -64,7 +65,7 @@ func pubkeyCommand() *cobra.Command {
 		Aliases: []string{"ls"},
 		Short:   "List public keys",
 		Args:    cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
 			pk := sshutils.PublicKeyFromContext(ctx)
