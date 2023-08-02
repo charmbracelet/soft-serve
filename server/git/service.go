@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/charmbracelet/log"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -112,7 +111,6 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		}
 	}
 
-	log.Debugf("git service command in %q: %s", cmd.Dir, cmd.String())
 	if err := cmd.Start(); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrInvalidRepo
