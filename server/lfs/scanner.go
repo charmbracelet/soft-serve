@@ -109,11 +109,13 @@ func catFileBatch(ctx context.Context, shasToBatchReader *io.PipeReader, catFile
 
 	stderr := new(bytes.Buffer)
 	var errbuf strings.Builder
-	if err := gitm.NewCommandWithContext(ctx, "cat-file", "--batch").RunInDirWithOptions(basePath, gitm.RunInDirOptions{
-		Stdout: catFileBatchWriter,
-		Stdin:  shasToBatchReader,
-		Stderr: stderr,
-	}); err != nil {
+	if err := gitm.NewCommandWithContext(ctx, "cat-file", "--batch").
+		WithTimeout(-1).
+		RunInDirWithOptions(basePath, gitm.RunInDirOptions{
+			Stdout: catFileBatchWriter,
+			Stdin:  shasToBatchReader,
+			Stderr: stderr,
+		}); err != nil {
 		_ = shasToBatchReader.CloseWithError(fmt.Errorf("git rev-list [%s]: %w - %s", basePath, err, errbuf.String()))
 	}
 }
@@ -157,11 +159,13 @@ func catFileBatchCheck(ctx context.Context, shasToCheckReader *io.PipeReader, ca
 
 	stderr := new(bytes.Buffer)
 	var errbuf strings.Builder
-	if err := gitm.NewCommandWithContext(ctx, "cat-file", "--batch-check").RunInDirWithOptions(basePath, gitm.RunInDirOptions{
-		Stdout: catFileCheckWriter,
-		Stdin:  shasToCheckReader,
-		Stderr: stderr,
-	}); err != nil {
+	if err := gitm.NewCommandWithContext(ctx, "cat-file", "--batch-check").
+		WithTimeout(-1).
+		RunInDirWithOptions(basePath, gitm.RunInDirOptions{
+			Stdout: catFileCheckWriter,
+			Stdin:  shasToCheckReader,
+			Stderr: stderr,
+		}); err != nil {
 		_ = shasToCheckReader.CloseWithError(fmt.Errorf("git rev-list [%s]: %w - %s", basePath, err, errbuf.String()))
 	}
 }
@@ -201,10 +205,12 @@ func revListAllObjects(ctx context.Context, revListWriter *io.PipeWriter, wg *sy
 
 	stderr := new(bytes.Buffer)
 	var errbuf strings.Builder
-	if err := gitm.NewCommandWithContext(ctx, "rev-list", "--objects", "--all").RunInDirWithOptions(basePath, gitm.RunInDirOptions{
-		Stdout: revListWriter,
-		Stderr: stderr,
-	}); err != nil {
+	if err := gitm.NewCommandWithContext(ctx, "rev-list", "--objects", "--all").
+		WithTimeout(-1).
+		RunInDirWithOptions(basePath, gitm.RunInDirOptions{
+			Stdout: revListWriter,
+			Stderr: stderr,
+		}); err != nil {
 		errChan <- fmt.Errorf("git rev-list [%s]: %w - %s", basePath, err, errbuf.String())
 	}
 }
