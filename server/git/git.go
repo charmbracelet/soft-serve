@@ -2,7 +2,6 @@ package git
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -12,27 +11,6 @@ import (
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	gitm "github.com/gogs/git-module"
-)
-
-var (
-
-	// ErrNotAuthed represents unauthorized access.
-	ErrNotAuthed = errors.New("you are not authorized to do this")
-
-	// ErrSystemMalfunction represents a general system error returned to clients.
-	ErrSystemMalfunction = errors.New("something went wrong")
-
-	// ErrInvalidRepo represents an attempt to access a non-existent repo.
-	ErrInvalidRepo = errors.New("invalid repo")
-
-	// ErrInvalidRequest represents an invalid request.
-	ErrInvalidRequest = errors.New("invalid request")
-
-	// ErrMaxConnections represents a maximum connection limit being reached.
-	ErrMaxConnections = errors.New("too many connections, try again later")
-
-	// ErrTimeout is returned when the maximum read timeout is exceeded.
-	ErrTimeout = errors.New("I/O timeout reached")
 )
 
 // WritePktline encodes and writes a pktline to the given writer.

@@ -75,7 +75,6 @@ var (
 func withParams(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		logger := log.FromContext(ctx)
 		cfg := config.FromContext(ctx)
 		vars := mux.Vars(r)
 		repo := vars["repo"]

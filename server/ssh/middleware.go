@@ -1,6 +1,9 @@
 package ssh
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
@@ -49,7 +52,6 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 
 			ctx := s.Context()
 			cfg := config.FromContext(ctx)
-			logger := log.FromContext(ctx)
 
 			args := s.Command()
 			cliCommandCounter.WithLabelValues(cmd.CommandName(args)).Inc()
@@ -110,11 +112,56 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 			}
 
 			if err := rootCmd.ExecuteContext(ctx); err != nil {
-				logger.Error("error executing command", "err", err)
 				s.Exit(1) // nolint: errcheck
 				return
 			}
 		}()
 		sh(s)
+	}
+}
+
+// LoggingMiddleware logs the ssh connection and command.
+func LoggingMiddleware(sh ssh.Handler) ssh.Handler {
+	return func(s ssh.Session) {
+		ctx := s.Context()
+		logger := log.FromContext(ctx).WithPrefix("ssh")
+		ct := time.Now()
+		hpk := sshutils.MarshalAuthorizedKey(s.PublicKey())
+		ptyReq, _, isPty := s.Pty()
+		addr := s.RemoteAddr().String()
+		user := proto.UserFromContext(ctx)
+		logArgs := []interface{}{
+			"addr",
+			addr,
+			"cmd",
+			s.Command(),
+		}
+
+		if user != nil {
+			logArgs = append([]interface{}{
+				"username",
+				user.Username(),
+			}, logArgs...)
+		}
+
+		if isPty {
+			logArgs = []interface{}{
+				"term", ptyReq.Term,
+				"width", ptyReq.Window.Width,
+				"height", ptyReq.Window.Height,
+			}
+		}
+
+		if config.IsVerbose() {
+			logArgs = append(logArgs,
+				"key", hpk,
+				"envs", s.Environ(),
+			)
+		}
+
+		msg := fmt.Sprintf("user %q", s.User())
+		logger.Debug(msg+" connected", logArgs...)
+		sh(s)
+		logger.Debug(msg+" disconnected", append(logArgs, "duration", time.Since(ct))...)
 	}
 }
