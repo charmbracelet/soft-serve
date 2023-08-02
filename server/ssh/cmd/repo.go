@@ -9,7 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func repoCommand() *cobra.Command {
+// RepoCommand returns a command for managing repositories.
+func RepoCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "repo",
 		Aliases: []string{"repos", "repository", "repositories"},

@@ -1,0 +1,99 @@
+# vi: set ft=conf
+
+[windows] dos2unix argserr1.txt argserr2.txt argserr3.txt invalidrepoerr.txt notauthorizederr.txt
+
+# create a user
+soft user create foo --key "$USER1_AUTHORIZED_KEY"
+
+# create a repo
+soft repo create repo1
+soft repo create repo1p -p
+usoft repo create repo2
+usoft repo create repo2p -p
+
+# SSH Git commands as admin
+! soft git-upload-pack
+cmp stderr argserr1.txt
+! soft git-upload-pack foobar
+cmp stderr invalidrepoerr.txt
+! soft git-upload-archive
+cmp stderr argserr1.txt
+! soft git-upload-archive foobar
+cmp stderr invalidrepoerr.txt
+! soft git-receive-pack
+cmp stderr argserr1.txt
+! soft git-receive-pack foobar
+stdout '.*0000 capabilities.*git.*' # git pack response
+stderr '.*something went wrong.*'
+! soft git-lfs-authenticate
+cmp stderr argserr2.txt
+! soft git-lfs-authenticate foobar
+cmp stderr argserr3.txt
+! soft git-lfs-authenticate foobar download
+cmp stderr invalidrepoerr.txt
+! soft git-lfs-authenticate foobar upload
+cmp stderr invalidrepoerr.txt
+soft git-lfs-authenticate repo1 download
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+soft git-lfs-authenticate repo1 upload
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+soft git-lfs-authenticate repo1p download
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+soft git-lfs-authenticate repo1p upload
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+soft git-lfs-authenticate repo2 download
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+soft git-lfs-authenticate repo2 upload
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+soft git-lfs-authenticate repo2p download
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+soft git-lfs-authenticate repo2p upload
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+
+# SSH Git commands as user
+! usoft git-upload-pack
+cmp stderr argserr1.txt
+! usoft git-upload-pack foobar
+cmp stderr invalidrepoerr.txt
+! usoft git-upload-archive
+cmp stderr argserr1.txt
+! usoft git-upload-archive foobar
+cmp stderr invalidrepoerr.txt
+! usoft git-receive-pack
+cmp stderr argserr1.txt
+! usoft git-receive-pack foobar
+stdout '.*0000 capabilities.*git.*' # git pack response
+stderr '.*something went wrong.*'
+! usoft git-lfs-authenticate
+cmp stderr argserr2.txt
+! usoft git-lfs-authenticate foobar download
+cmp stderr invalidrepoerr.txt
+! usoft git-lfs-authenticate foobar upload
+cmp stderr invalidrepoerr.txt
+usoft git-lfs-authenticate repo1 download
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+! usoft git-lfs-authenticate repo1 upload
+cmp stderr notauthorizederr.txt
+! usoft git-lfs-authenticate repo1p download
+cmp stderr notauthorizederr.txt
+! usoft git-lfs-authenticate repo1p upload
+cmp stderr notauthorizederr.txt
+usoft git-lfs-authenticate repo2 download
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+usoft git-lfs-authenticate repo2 upload
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+usoft git-lfs-authenticate repo2p download
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+usoft git-lfs-authenticate repo2p upload
+stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
+
+-- argserr1.txt --
+Error: accepts 1 arg(s), received 0
+-- argserr2.txt --
+Error: accepts 2 arg(s), received 0
+-- argserr3.txt --
+Error: accepts 2 arg(s), received 1
+-- invalidrepoerr.txt --
+Error: invalid repo
+-- notauthorizederr.txt --
+Error: you are not authorized to do this

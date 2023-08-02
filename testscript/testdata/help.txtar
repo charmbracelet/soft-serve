@@ -11,15 +11,15 @@ Usage:
   ssh -p $SSH_PORT localhost [command]
 
 Available Commands:
-  help         Help about any command
-  info         Show your info
-  jwt          Generate a JSON Web Token
-  pubkey       Manage your public keys
-  repo         Manage repositories
-  set-username Set your username
-  settings     Manage server settings
-  token        Manage access tokens
-  user         Manage users
+  help                 Help about any command
+  info                 Show your info
+  jwt                  Generate a JSON Web Token
+  pubkey               Manage your public keys
+  repo                 Manage repositories
+  set-username         Set your username
+  settings             Manage server settings
+  token                Manage access tokens
+  user                 Manage users
 
 Flags:
   -h, --help   help for this command
