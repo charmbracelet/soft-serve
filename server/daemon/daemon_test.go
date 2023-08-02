@@ -32,13 +32,13 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 	defer os.RemoveAll(tmp)
-	os.Setenv("SOFT_SERVE_DATA_PATH", tmp)
-	os.Setenv("SOFT_SERVE_GIT_MAX_CONNECTIONS", "3")
-	os.Setenv("SOFT_SERVE_GIT_MAX_TIMEOUT", "100")
-	os.Setenv("SOFT_SERVE_GIT_IDLE_TIMEOUT", "1")
-	os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort()))
 	ctx := context.TODO()
 	cfg := config.DefaultConfig()
+	cfg.DataPath = tmp
+	cfg.Git.MaxConnections = 3
+	cfg.Git.MaxTimeout = 100
+	cfg.Git.IdleTimeout = 1
+	cfg.Git.ListenAddr = fmt.Sprintf(":%d", test.RandomPort())
 	if err := cfg.Validate(); err != nil {
 		log.Fatal(err)
 	}
