@@ -1,1 +1,0 @@
-ALTER TABLE repos DROP COLUMN user_id;

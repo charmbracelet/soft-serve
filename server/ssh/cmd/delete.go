@@ -6,8 +6,6 @@ import (
 )
 
 func deleteCommand() *cobra.Command {
-	var lfs bool
-
 	cmd := &cobra.Command{
 		Use:               "delete REPOSITORY",
 		Aliases:           []string{"del", "remove", "rm"},
@@ -19,11 +17,9 @@ func deleteCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			name := args[0]
 
-			return be.DeleteRepository(ctx, name, lfs)
+			return be.DeleteRepository(ctx, name)
 		},
 	}
-
-	cmd.Flags().BoolVarP(&lfs, "lfs", "", false, "Delete LFS objects")
 
 	return cmd
 }
