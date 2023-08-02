@@ -199,9 +199,17 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 		// Delete repo from cache
 		defer d.cache.Delete(name)
 
-		repom, err := d.store.GetRepoByName(ctx, tx, name)
-		if err != nil {
-			return db.WrapError(err)
+		repom, dberr := d.store.GetRepoByName(ctx, tx, name)
+		_, ferr := os.Stat(rp)
+		if dberr != nil && ferr != nil {
+			return proto.ErrRepoNotFound
+		}
+
+		// If the repo is not in the database but the directory exists, remove it
+		if dberr != nil && ferr == nil {
+			return os.RemoveAll(rp)
+		} else if dberr != nil {
+			return db.WrapError(dberr)
 		}
 
 		repoID := strconv.FormatInt(repom.ID, 10)
