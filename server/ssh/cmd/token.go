@@ -13,7 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func tokenCommand() *cobra.Command {
+// TokenCommand returns a command that manages user access tokens.
+func TokenCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "token",
 		Aliases: []string{"access-token"},

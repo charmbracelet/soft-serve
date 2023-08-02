@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/db"
-	"github.com/charmbracelet/soft-serve/server/git"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/ssh"
@@ -41,55 +40,6 @@ var (
 		Name:      "keyboard_interactive_auth_total",
 		Help:      "The total number of keyboard interactive auth requests",
 	}, []string{"allowed"})
-
-	uploadPackCounter = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "soft_serve",
-		Subsystem: "git",
-		Name:      "upload_pack_total",
-		Help:      "The total number of git-upload-pack requests",
-	}, []string{"repo"})
-
-	receivePackCounter = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "soft_serve",
-		Subsystem: "git",
-		Name:      "receive_pack_total",
-		Help:      "The total number of git-receive-pack requests",
-	}, []string{"repo"})
-
-	uploadArchiveCounter = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "soft_serve",
-		Subsystem: "git",
-		Name:      "upload_archive_total",
-		Help:      "The total number of git-upload-archive requests",
-	}, []string{"repo"})
-
-	uploadPackSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "soft_serve",
-		Subsystem: "git",
-		Name:      "upload_pack_seconds_total",
-		Help:      "The total time spent on git-upload-pack requests",
-	}, []string{"repo"})
-
-	receivePackSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "soft_serve",
-		Subsystem: "git",
-		Name:      "receive_pack_seconds_total",
-		Help:      "The total time spent on git-receive-pack requests",
-	}, []string{"repo"})
-
-	uploadArchiveSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "soft_serve",
-		Subsystem: "git",
-		Name:      "upload_archive_seconds_total",
-		Help:      "The total time spent on git-upload-archive requests",
-	}, []string{"repo"})
-
-	createRepoCounter = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "soft_serve",
-		Subsystem: "ssh",
-		Name:      "create_repo_total",
-		Help:      "The total number of create repo requests",
-	}, []string{"repo"})
 )
 
 // SSHServer is a SSH server that implements the git protocol.
@@ -208,10 +158,4 @@ func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.Keyboard
 	ac := s.be.AllowKeyless(ctx)
 	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
 	return ac
-}
-
-// sshFatal prints to the session's STDOUT as a git response and exit 1.
-func sshFatal(s ssh.Session, err error) {
-	git.WritePktlineErr(s, err) // nolint: errcheck
-	s.Exit(1)                   // nolint: errcheck
 }

@@ -94,7 +94,6 @@ func withParams(h http.Handler) http.Handler {
 		repo = utils.SanitizeRepo(repo)
 		vars["repo"] = repo
 		vars["dir"] = filepath.Join(cfg.DataPath, "repos", repo+".git")
-		logger.Info("request vars", "vars", vars)
 
 		// Add repo suffix (.git)
 		r.URL.Path = fmt.Sprintf("%s.git/%s", repo, vars["file"])
@@ -233,7 +232,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		r = r.WithContext(ctx)
 
 		if user != nil {
-			logger.Info("found user", "username", user.Username())
+			logger.Debug("authenticated", "username", user.Username())
 		}
 
 		service := git.Service(mux.Vars(r)["service"])
