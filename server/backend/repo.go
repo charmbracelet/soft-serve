@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -105,19 +104,23 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 		return nil, proto.ErrRepoExist
 	}
 
-	if err := os.MkdirAll(rp, fs.ModePerm); err != nil {
-		return nil, err
+	copts := git.CloneOptions{
+		Bare:   true,
+		Mirror: opts.Mirror,
+		Quiet:  true,
+		CommandOptions: git.CommandOptions{
+			Timeout: -1,
+			Context: ctx,
+			Envs: []string{
+				fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+					filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
+					d.cfg.SSH.ClientKeyPath,
+				),
+			},
+		},
 	}
 
-	cmd := exec.CommandContext(ctx, "git", "clone", "--bare", "--mirror", remote, ".")
-	cmd.Env = append(cmd.Env,
-		fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-			filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
-			d.cfg.SSH.ClientKeyPath,
-		),
-	)
-	cmd.Dir = rp
-	if err := cmd.Run(); err != nil {
+	if err := git.Clone(remote, rp, copts); err != nil {
 		d.logger.Error("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
 		// Cleanup the mess!
 		if rerr := os.RemoveAll(rp); rerr != nil {
@@ -135,7 +138,7 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 
 	defer func() {
 		if err != nil {
-			if rerr := d.DeleteRepository(ctx, name, opts.LFS); rerr != nil {
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
 				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
 			}
 		}
@@ -187,51 +190,54 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 // DeleteRepository deletes a repository.
 //
 // It implements backend.Backend.
-func (d *Backend) DeleteRepository(ctx context.Context, name string, deleteLFS bool) error {
+func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	name = utils.SanitizeRepo(name)
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
-	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+	err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		// Delete repo from cache
 		defer d.cache.Delete(name)
 
-		if deleteLFS {
-			repom, err := d.store.GetRepoByName(ctx, tx, name)
-			if err != nil {
-				return err
+		repom, err := d.store.GetRepoByName(ctx, tx, name)
+		if err != nil {
+			return db.WrapError(err)
+		}
+
+		repoID := strconv.FormatInt(repom.ID, 10)
+		strg := storage.NewLocalStorage(filepath.Join(d.cfg.DataPath, "lfs", repoID))
+		objs, err := d.store.GetLFSObjectsByName(ctx, tx, name)
+		if err != nil {
+			return db.WrapError(err)
+		}
+
+		for _, obj := range objs {
+			p := lfs.Pointer{
+				Oid:  obj.Oid,
+				Size: obj.Size,
 			}
 
-			repoID := strconv.FormatInt(repom.ID, 10)
-			strg := storage.NewLocalStorage(filepath.Join(d.cfg.DataPath, "lfs", repoID))
-			objs, err := d.store.GetLFSObjectsByName(ctx, tx, name)
-			if err != nil {
-				return err
-			}
-
-			for _, obj := range objs {
-				p := lfs.Pointer{
-					Oid:  obj.Oid,
-					Size: obj.Size,
-				}
-
-				d.logger.Debug("deleting lfs object", "repo", name, "oid", obj.Oid)
-				if err := strg.Delete(path.Join("objects", p.RelativePath())); err != nil {
-					d.logger.Error("failed to delete lfs object", "repo", name, "err", err, "oid", obj.Oid)
-				}
+			d.logger.Debug("deleting lfs object", "repo", name, "oid", obj.Oid)
+			if err := strg.Delete(path.Join("objects", p.RelativePath())); err != nil {
+				d.logger.Error("failed to delete lfs object", "repo", name, "err", err, "oid", obj.Oid)
 			}
 		}
 
 		if err := d.store.DeleteRepoByName(ctx, tx, name); err != nil {
-			return err
+			return db.WrapError(err)
 		}
 
 		return os.RemoveAll(rp)
 	})
+	if errors.Is(err, db.ErrRecordNotFound) {
+		return proto.ErrRepoNotFound
+	}
+
+	return err
 }
 
 // DeleteUserRepositories deletes all user repositories.
-func (d *Backend) DeleteUserRepositories(ctx context.Context, username string, deleteLFS bool) error {
+func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) error {
 	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		user, err := d.store.FindUserByUsername(ctx, tx, username)
 		if err != nil {
@@ -244,7 +250,7 @@ func (d *Backend) DeleteUserRepositories(ctx context.Context, username string, d
 		}
 
 		for _, repo := range repos {
-			if err := d.DeleteRepository(ctx, repo.Name, deleteLFS); err != nil {
+			if err := d.DeleteRepository(ctx, repo.Name); err != nil {
 				return err
 			}
 		}

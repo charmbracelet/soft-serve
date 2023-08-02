@@ -3,6 +3,7 @@
 soft repo create repo1
 soft repo create repo-to-delete
 soft repo delete repo-to-delete
-soft repo delete nope # repo delete never fails
+! soft repo delete nope
+stderr '.*not found.*'
 soft repo list
 stdout 'repo1'
