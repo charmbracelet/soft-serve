@@ -209,15 +209,16 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 
 	repoPath := filepath.Join(reposDir, repoDir)
 	service := git.Service(cmd.Name())
+	stdin := cmd.InOrStdin()
+	stdout := cmd.OutOrStdout()
+	stderr := cmd.ErrOrStderr()
 	scmd := git.ServiceCommand{
-		Stdin:  cmd.InOrStdin(),
-		Stdout: s,
-		Stderr: s.Stderr(),
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
 		Env:    envs,
 		Dir:    repoPath,
 	}
-
-	logger.Debug("git middleware", "cmd", service, "access", accessLevel.String())
 
 	switch service {
 	case git.ReceivePackService:
@@ -237,16 +238,19 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		}
 
 		if err := service.Handler(ctx, scmd); err != nil {
+			logger.Error("failed to handle git service", "service", service, "err", err, "repo", name)
 			defer func() {
 				if repo == nil {
 					// If the repo was created, but the request failed, delete it.
 					be.DeleteRepository(ctx, name) // nolint: errcheck
 				}
 			}()
+
 			return git.ErrSystemMalfunction
 		}
 
 		if err := git.EnsureDefaultBranch(ctx, scmd); err != nil {
+			logger.Error("failed to ensure default branch", "err", err, "repo", name)
 			return git.ErrSystemMalfunction
 		}
 
@@ -279,7 +283,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		if errors.Is(err, git.ErrInvalidRepo) {
 			return git.ErrInvalidRepo
 		} else if err != nil {
-			logger.Error("git middleware", "err", err)
+			logger.Error("failed to handle git service", "service", service, "err", err, "repo", name)
 			return git.ErrSystemMalfunction
 		}
 
@@ -322,7 +326,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		}
 
 		if err := service.Handler(ctx, scmd); err != nil {
-			logger.Error("git middleware", "err", err)
+			logger.Error("failed to handle lfs service", "service", service, "err", err, "repo", name)
 			return git.ErrSystemMalfunction
 		}
 

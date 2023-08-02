@@ -18,7 +18,6 @@ import (
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
-	lm "github.com/charmbracelet/wish/logging"
 	rm "github.com/charmbracelet/wish/recover"
 	"github.com/muesli/termenv"
 	"github.com/prometheus/client_golang/prometheus"
@@ -74,12 +73,10 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 			bm.MiddlewareWithProgramHandler(SessionHandler, termenv.ANSI256),
 			// CLI middleware.
 			CommandMiddleware,
+			// Logging middleware.
+			LoggingMiddleware,
 			// Context middleware.
 			ContextMiddleware(cfg, dbx, datastore, be, logger),
-			// Logging middleware.
-			lm.MiddlewareWithLogger(
-				&loggerAdapter{logger, log.DebugLevel},
-			),
 		),
 	}
 
