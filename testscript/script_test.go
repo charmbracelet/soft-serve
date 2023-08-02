@@ -134,13 +134,10 @@ func TestScript(t *testing.T) {
 			be := backend.New(ctx, cfg, dbx)
 			ctx = backend.WithContext(ctx, be)
 
-			// prevent race condition in lipgloss...
-			// this will probably be autofixed when we start using the colors
-			// from the ssh session instead of the server.
-			// XXX: take another look at this soon
 			lock.Lock()
 			srv, err := server.NewServer(ctx)
 			if err != nil {
+				lock.Unlock()
 				return err
 			}
 			lock.Unlock()
@@ -155,6 +152,8 @@ func TestScript(t *testing.T) {
 				defer dbx.Close() // nolint: errcheck
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
+				lock.Lock()
+				defer lock.Unlock()
 				if err := srv.Shutdown(ctx); err != nil {
 					e.T().Fatal(err)
 				}
