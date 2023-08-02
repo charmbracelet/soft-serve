@@ -11,7 +11,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func userCommand() *cobra.Command {
+// UserCommand returns the user subcommand.
+func UserCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "user",
 		Aliases: []string{"users"},

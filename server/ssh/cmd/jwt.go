@@ -11,7 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func jwtCommand() *cobra.Command {
+// JWTCommand returns a command that generates a JSON Web Token.
+func JWTCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "jwt [repository1 repository2...]",
 		Short: "Generate a JSON Web Token",

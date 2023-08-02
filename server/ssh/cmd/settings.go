@@ -9,7 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func settingsCommand() *cobra.Command {
+// SettingsCommand returns a command that manages server settings.
+func SettingsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "settings",
 		Short: "Manage server settings",

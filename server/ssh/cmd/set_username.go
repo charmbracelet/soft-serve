@@ -6,7 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func setUsernameCommand() *cobra.Command {
+// SetUsernameCommand returns a command that sets the user's username.
+func SetUsernameCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set-username USERNAME",
 		Short: "Set your username",
