@@ -19,6 +19,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/lfs"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/storage"
+	"github.com/charmbracelet/soft-serve/server/task"
 	"github.com/charmbracelet/soft-serve/server/utils"
 )
 
@@ -91,7 +92,8 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 }
 
 // ImportRepository imports a repository from remote.
-func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
+// XXX: This a expensive operation and should be run in a goroutine.
+func (d *Backend) ImportRepository(_ context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
 		return nil, err
@@ -100,91 +102,110 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
+	tid := "import:" + name
+	if d.manager.Exists(tid) {
+		return nil, task.ErrAlreadyStarted
+	}
+
 	if _, err := os.Stat(rp); err == nil || os.IsExist(err) {
 		return nil, proto.ErrRepoExist
 	}
 
-	copts := git.CloneOptions{
-		Bare:   true,
-		Mirror: opts.Mirror,
-		Quiet:  true,
-		CommandOptions: git.CommandOptions{
-			Timeout: -1,
-			Context: ctx,
-			Envs: []string{
-				fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-					filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
-					d.cfg.SSH.ClientKeyPath,
-				),
+	done := make(chan error, 1)
+	repoc := make(chan proto.Repository, 1)
+	d.logger.Info("importing repository", "name", name, "remote", remote, "path", rp)
+	d.manager.Add(tid, func(ctx context.Context) (err error) {
+		copts := git.CloneOptions{
+			Bare:   true,
+			Mirror: opts.Mirror,
+			Quiet:  true,
+			CommandOptions: git.CommandOptions{
+				Timeout: -1,
+				Context: ctx,
+				Envs: []string{
+					fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+						filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
+						d.cfg.SSH.ClientKeyPath,
+					),
+				},
 			},
-		},
-	}
-
-	if err := git.Clone(remote, rp, copts); err != nil {
-		d.logger.Error("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
-		// Cleanup the mess!
-		if rerr := os.RemoveAll(rp); rerr != nil {
-			err = errors.Join(err, rerr)
 		}
 
-		return nil, err
-	}
-
-	r, err := d.CreateRepository(ctx, name, user, opts)
-	if err != nil {
-		d.logger.Error("failed to create repository", "err", err, "name", name)
-		return nil, err
-	}
-
-	defer func() {
-		if err != nil {
-			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
-				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+		if err := git.Clone(remote, rp, copts); err != nil {
+			d.logger.Error("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
+			// Cleanup the mess!
+			if rerr := os.RemoveAll(rp); rerr != nil {
+				err = errors.Join(err, rerr)
 			}
+
+			return err
 		}
+
+		r, err := d.CreateRepository(ctx, name, user, opts)
+		if err != nil {
+			d.logger.Error("failed to create repository", "err", err, "name", name)
+			return err
+		}
+
+		defer func() {
+			if err != nil {
+				if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+					d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+				}
+			}
+		}()
+
+		rr, err := r.Open()
+		if err != nil {
+			d.logger.Error("failed to open repository", "err", err, "path", rp)
+			return err
+		}
+
+		repoc <- r
+
+		rcfg, err := rr.Config()
+		if err != nil {
+			d.logger.Error("failed to get repository config", "err", err, "path", rp)
+			return err
+		}
+
+		endpoint := remote
+		if opts.LFSEndpoint != "" {
+			endpoint = opts.LFSEndpoint
+		}
+
+		rcfg.Section("lfs").SetOption("url", endpoint)
+
+		if err := rr.SetConfig(rcfg); err != nil {
+			d.logger.Error("failed to set repository config", "err", err, "path", rp)
+			return err
+		}
+
+		ep, err := lfs.NewEndpoint(endpoint)
+		if err != nil {
+			d.logger.Error("failed to create lfs endpoint", "err", err, "path", rp)
+			return err
+		}
+
+		client := lfs.NewClient(ep)
+		if client == nil {
+			return fmt.Errorf("failed to create lfs client: unsupported endpoint %s", endpoint)
+		}
+
+		if err := StoreRepoMissingLFSObjects(ctx, r, d.db, d.store, client); err != nil {
+			d.logger.Error("failed to store missing lfs objects", "err", err, "path", rp)
+			return err
+		}
+
+		return nil
+	})
+
+	go func() {
+		d.logger.Info("running import", "name", name)
+		d.manager.Run(tid, done)
 	}()
 
-	rr, err := r.Open()
-	if err != nil {
-		d.logger.Error("failed to open repository", "err", err, "path", rp)
-		return nil, err
-	}
-
-	rcfg, err := rr.Config()
-	if err != nil {
-		d.logger.Error("failed to get repository config", "err", err, "path", rp)
-		return nil, err
-	}
-
-	endpoint := remote
-	if opts.LFSEndpoint != "" {
-		endpoint = opts.LFSEndpoint
-	}
-
-	rcfg.Section("lfs").SetOption("url", endpoint)
-
-	if err := rr.SetConfig(rcfg); err != nil {
-		d.logger.Error("failed to set repository config", "err", err, "path", rp)
-		return nil, err
-	}
-
-	ep, err := lfs.NewEndpoint(endpoint)
-	if err != nil {
-		d.logger.Error("failed to create lfs endpoint", "err", err, "path", rp)
-		return nil, err
-	}
-
-	client := lfs.NewClient(ep)
-	if client == nil {
-		return nil, fmt.Errorf("failed to create lfs client: unsupported endpoint %s", endpoint)
-	}
-
-	if err := StoreRepoMissingLFSObjects(ctx, r, d.db, d.store, client); err != nil {
-		d.logger.Error("failed to store missing lfs objects", "err", err, "path", rp)
-		return nil, err
-	}
-
-	return r, nil
+	return <-repoc, <-done
 }
 
 // DeleteRepository deletes a repository.
