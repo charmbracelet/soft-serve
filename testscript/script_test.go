@@ -99,8 +99,7 @@ func TestScript(t *testing.T) {
 			cfg.Stats.ListenAddr = statsListen
 			cfg.DB.Driver = "sqlite"
 			cfg.LFS.Enabled = true
-			// TODO: run tests with both SSH enabled/disabled
-			cfg.LFS.SSHEnabled = false
+			cfg.LFS.SSHEnabled = true
 
 			if err := cfg.Validate(); err != nil {
 				return err
