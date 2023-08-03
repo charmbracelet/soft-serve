@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/config"
@@ -118,8 +119,8 @@ var createTables = Migration{
 
 			if hasTable(tx, "collab_old") {
 				sqlm := `
-				INSERT INTO collabs (id, user_id, repo_id, created_at, updated_at)
-					SELECT id, user_id, repo_id, created_at, updated_at FROM collab_old;
+				INSERT INTO collabs (id, user_id, repo_id, access_level, created_at, updated_at)
+					SELECT id, user_id, repo_id, ` + strconv.Itoa(int(access.ReadWriteAccess)) + `, created_at, updated_at FROM collab_old;
 				`
 				if _, err := tx.ExecContext(ctx, sqlm); err != nil {
 					return err

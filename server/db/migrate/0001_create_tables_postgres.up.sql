@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS collabs (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL,
   repo_id INTEGER NOT NULL,
+  access_level INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL,
   UNIQUE (user_id, repo_id),

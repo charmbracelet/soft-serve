@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/models"
 	"github.com/charmbracelet/soft-serve/server/utils"
@@ -12,7 +13,7 @@ import (
 // AddCollaborator adds a collaborator to a repository.
 //
 // It implements backend.Backend.
-func (d *Backend) AddCollaborator(ctx context.Context, repo string, username string) error {
+func (d *Backend) AddCollaborator(ctx context.Context, repo string, username string, level access.AccessLevel) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
 		return err
@@ -21,7 +22,7 @@ func (d *Backend) AddCollaborator(ctx context.Context, repo string, username str
 	repo = utils.SanitizeRepo(repo)
 	return db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-			return d.store.AddCollabByUsernameAndRepo(ctx, tx, username, repo)
+			return d.store.AddCollabByUsernameAndRepo(ctx, tx, username, repo, level)
 		}),
 	)
 }
@@ -48,12 +49,12 @@ func (d *Backend) Collaborators(ctx context.Context, repo string) ([]string, err
 	return usernames, nil
 }
 
-// IsCollaborator returns true if the user is a collaborator of the repository.
+// IsCollaborator returns the access level and true if the user is a collaborator of the repository.
 //
 // It implements backend.Backend.
-func (d *Backend) IsCollaborator(ctx context.Context, repo string, username string) (bool, error) {
+func (d *Backend) IsCollaborator(ctx context.Context, repo string, username string) (access.AccessLevel, bool, error) {
 	if username == "" {
-		return false, nil
+		return -1, false, nil
 	}
 
 	repo = utils.SanitizeRepo(repo)
@@ -63,10 +64,10 @@ func (d *Backend) IsCollaborator(ctx context.Context, repo string, username stri
 		m, err = d.store.GetCollabByUsernameAndRepo(ctx, tx, username, repo)
 		return err
 	}); err != nil {
-		return false, db.WrapError(err)
+		return -1, false, db.WrapError(err)
 	}
 
-	return m.ID > 0, nil
+	return m.AccessLevel, m.ID > 0, nil
 }
 
 // RemoveCollaborator removes a collaborator from a repository.

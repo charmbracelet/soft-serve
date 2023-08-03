@@ -60,7 +60,9 @@ stderr 'unauthorized'
 stderr 'unauthorized'
 
 # add user1 as collab
-soft repo collab add repo1 user1
+! soft repo collab add repo1 user1 foobar
+stderr 'invalid access level'
+soft repo collab add repo1 user1 read-write
 soft repo collab list repo1
 stdout user1
 usoft repo collab list repo1
