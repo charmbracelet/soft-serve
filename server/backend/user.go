@@ -69,13 +69,13 @@ func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user prot
 			}
 		}
 
-		// If the user is a collaborator, they have read/write access.
-		isCollab, _ := d.IsCollaborator(ctx, repo, username)
+		// If the user is a collaborator, they have return their access level.
+		collabAccess, isCollab, _ := d.IsCollaborator(ctx, repo, username)
 		if isCollab {
-			if anon > access.ReadWriteAccess {
+			if anon > collabAccess {
 				return anon
 			}
-			return access.ReadWriteAccess
+			return collabAccess
 		}
 
 		// If the repository is private, the user has no access.

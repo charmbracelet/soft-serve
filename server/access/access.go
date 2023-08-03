@@ -1,5 +1,10 @@
 package access
 
+import (
+	"encoding"
+	"errors"
+)
+
 // AccessLevel is the level of access allowed to a repo.
 type AccessLevel int // nolint: revive
 
@@ -47,4 +52,27 @@ func ParseAccessLevel(s string) AccessLevel {
 	default:
 		return AccessLevel(-1)
 	}
+}
+
+var _ encoding.TextMarshaler = AccessLevel(0)
+var _ encoding.TextUnmarshaler = (*AccessLevel)(nil)
+
+// ErrInvalidAccessLevel is returned when an invalid access level is provided.
+var ErrInvalidAccessLevel = errors.New("invalid access level")
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (a *AccessLevel) UnmarshalText(text []byte) error {
+	l := ParseAccessLevel(string(text))
+	if l < 0 {
+		return ErrInvalidAccessLevel
+	}
+
+	*a = l
+
+	return nil
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (a AccessLevel) MarshalText() (text []byte, err error) {
+	return []byte(a.String()), nil
 }

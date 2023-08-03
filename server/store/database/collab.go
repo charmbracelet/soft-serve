@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/models"
 	"github.com/charmbracelet/soft-serve/server/store"
@@ -15,7 +16,7 @@ type collabStore struct{}
 var _ store.CollaboratorStore = (*collabStore)(nil)
 
 // AddCollabByUsernameAndRepo implements store.CollaboratorStore.
-func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx db.Handler, username string, repo string) error {
+func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx db.Handler, username string, repo string, level access.AccessLevel) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
 		return err
@@ -23,8 +24,9 @@ func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx db.Handle
 
 	repo = utils.SanitizeRepo(repo)
 
-	query := tx.Rebind(`INSERT INTO collabs (user_id, repo_id, updated_at)
+	query := tx.Rebind(`INSERT INTO collabs (access_level, user_id, repo_id, updated_at)
 			VALUES (
+				?,
 				(
 					SELECT id FROM users WHERE username = ?
 				),
@@ -33,7 +35,7 @@ func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx db.Handle
 				),
 				CURRENT_TIMESTAMP
 			);`)
-	_, err := tx.ExecContext(ctx, query, username, repo)
+	_, err := tx.ExecContext(ctx, query, level, username, repo)
 	return err
 }
 
