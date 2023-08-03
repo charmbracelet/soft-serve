@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/spf13/cobra"
 )
@@ -20,17 +23,24 @@ func createCommand() *cobra.Command {
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			cfg := config.FromContext(ctx)
 			be := backend.FromContext(ctx)
 			user := proto.UserFromContext(ctx)
 			name := args[0]
-			if _, err := be.CreateRepository(ctx, name, user, proto.RepositoryOptions{
+			r, err := be.CreateRepository(ctx, name, user, proto.RepositoryOptions{
 				Private:     private,
 				Description: description,
 				ProjectName: projectName,
 				Hidden:      hidden,
-			}); err != nil {
+			})
+			if err != nil {
 				return err
 			}
+
+			cloneurl := fmt.Sprintf("%s/%s.git", cfg.SSH.PublicURL, r.Name())
+			cmd.PrintErrf("Created repository %s\n", r.Name())
+			cmd.Println(cloneurl)
+
 			return nil
 		},
 	}
