@@ -273,7 +273,7 @@ var migrateConfig = &cobra.Command{
 			}
 
 			for _, collab := range r.Collabs {
-				if err := sb.AddCollaborator(ctx, repo, collab); err != nil {
+				if err := sb.AddCollaborator(ctx, repo, collab, access.ReadWriteAccess); err != nil {
 					logger.Errorf("failed to add repo collab to %s: %s", repo, err)
 				}
 			}
@@ -308,7 +308,7 @@ var migrateConfig = &cobra.Command{
 			}
 
 			for _, repo := range user.CollabRepos {
-				if err := sb.AddCollaborator(ctx, repo, username); err != nil {
+				if err := sb.AddCollaborator(ctx, repo, username, access.ReadWriteAccess); err != nil {
 					logger.Errorf("failed to add user collab to %s: %s\n", repo, err)
 				}
 			}
