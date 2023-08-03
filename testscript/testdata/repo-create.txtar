@@ -5,6 +5,8 @@
 
 # create a repo
 soft repo create repo1 -d 'description' -H -p -n 'repo11'
+stderr 'Created repository repo1.*'
+stdout ssh://localhost:$SSH_PORT/repo1.git
 soft repo hidden repo1
 stdout true
 soft repo private repo1
@@ -95,6 +97,8 @@ soft user create bar --key "$USER1_AUTHORIZED_KEY"
 
 # user create a repo
 usoft repo create repo2 -d 'description' -H -p -n 'repo2'
+stderr 'Created repository repo2.*'
+stdout ssh://localhost:$SSH_PORT/repo2.git
 usoft repo hidden repo2
 stdout true
 usoft repo private repo2
