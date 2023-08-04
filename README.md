@@ -18,14 +18,17 @@ A tasty, self-hostable Git server for the command line. 🍦
 
 - Easy to navigate TUI available over SSH
 - Clone repos over SSH, HTTP, or Git protocol
+- Git LFS support with both HTTP and SSH backends
 - Manage repos with SSH
 - Create repos on demand with SSH or `git push`
-- Browse repos, files and commits with SSH-accessible
+- Browse repos, files and commits with SSH-accessible UI
 - Print files over SSH with or without syntax highlighting and line numbers
-- Easy access control with SSH
+- Easy access control
+  - SSH authentication using public keys
   - Allow/disallow anonymous access
   - Add collaborators with SSH public keys
   - Repos can be public or private
+  - User access tokens
 
 ## Where can I see it?
 
@@ -189,6 +192,13 @@ http:
   # This is the address that will be used to clone repositories.
   # Make sure to use https:// if you are using TLS.
   public_url: "http://localhost:23232"
+
+# Git LFS configuration.
+lfs:
+  # Enable Git LFS.
+  enabled: true
+  # Enable Git SSH transfer.
+  ssh_enabled: true
 
 # The stats server configuration.
 stats:
@@ -460,6 +470,9 @@ Use the `repo collab <command> <repo>` command to manage repo collaborators.
 ```sh
 # Add collaborator to soft-serve
 ssh -p 23231 localhost repo collab add soft-serve frankie
+
+# Add collaborator with a specific access level
+ssh -p 23231 localhost repo collab add soft-serve beatrice read-only
 
 # Remove collaborator
 ssh -p 23231 localhost repo collab remove soft-serve beatrice
