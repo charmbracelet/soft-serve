@@ -31,7 +31,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/hashicorp/golang-lru/v2 v2.0.4
+	github.com/hashicorp/golang-lru/v2 v2.0.5
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/lrstanley/bubblezone v0.0.0-20220716194435-3cb8c52f6a8f
