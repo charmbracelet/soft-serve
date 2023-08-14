@@ -193,6 +193,15 @@ http:
   # Make sure to use https:// if you are using TLS.
   public_url: "http://localhost:23232"
 
+# The database configuration.
+db:
+  # The database driver to use.
+  # Valid values are "sqlite" and "postgres".
+  driver: "sqlite"
+  # The database data source name.
+  # This is driver specific and can be a file path or connection string.
+  data_source: "soft-serve.db"
+
 # Git LFS configuration.
 lfs:
   # Enable Git LFS.
@@ -219,6 +228,34 @@ name all in uppercase. Here are some examples:
 - `SOFT_SERVE_HTTP_LISTEN_ADDR`: HTTP listen address
 - `SOFT_SERVE_HTTP_PUBLIC_URL`: HTTP public URL used for cloning
 - `SOFT_SERVE_GIT_MAX_CONNECTIONS`: The number of simultaneous connections to git daemon
+
+### Database Settings
+
+Soft Serve supports both SQLite and Postgres for its database. Like all other Soft Serve settings, you can change the database _driver_ and _data source_ using either `config.yaml` or environment variables. The default config uses SQLite as the default database driver.
+
+To use Postgres as your database, first create a Soft Serve database:
+
+```sh
+psql -h<hostname> -p<port> -U<user> -c 'CREATE DATABASE soft_serve'
+```
+
+Then set the database _data source_ to point to your Postgres database. For instance, if you're running Postgres locally, using the default user `postgres` and using a database name `soft_serve`, you would have this config in your config file or environment variable:
+
+```
+db:
+  driver: "postgres"
+  data_source: "postgres://postgres@localhost:5432/soft_serve?sslmode=disable"
+```
+
+Environment variables equivalent:
+
+```sh
+SOFT_SERVE_DB_DRIVER=postgres \
+SOFT_SERVE_DB_DATA_SOURCE="postgres://postgres@localhost:5432/soft_serve?sslmode=disable" \
+soft serve
+```
+
+You can specify a database connection password in the _data source_ url. For example, `postgres://myuser:dbpass@localhost:5432/my_soft_serve_db`.
 
 ## Configuration
 
