@@ -46,6 +46,9 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 		return err
 	}
 
+	// Convert to forward slashes for Windows.
+	ex = filepath.ToSlash(ex)
+
 	for _, hook := range []string{
 		PreReceiveHook,
 		UpdateHook,
