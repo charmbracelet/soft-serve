@@ -259,7 +259,7 @@ You can specify a database connection password in the _data source_ url. For exa
 
 #### LFS Configuration
 
-Soft Serve supports both Git LFS [HTTP](https://github.com/git-lfs/git-lfs/blob/main/docs/api/README.md) and [SSH](https://github.com/git-lfs/git-lfs/blob/main/docs/proposals/ssh_adapter.md) protocols our of the box, there is no need to do any extra set up.
+Soft Serve supports both Git LFS [HTTP](https://github.com/git-lfs/git-lfs/blob/main/docs/api/README.md) and [SSH](https://github.com/git-lfs/git-lfs/blob/main/docs/proposals/ssh_adapter.md) protocols out of the box, there is no need to do any extra set up.
 
 Use the `lfs` config section to customize your Git LFS server.
 
@@ -267,8 +267,7 @@ Use the `lfs` config section to customize your Git LFS server.
 
 Soft Serve at its core manages your server authentication and authorization. Authentication verifies the identity of a user, while authorization determines their access rights to a repository.
 
-To manage the server users and access, use the SSH command-line interface to
-manage access settings, users, and repos.
+To manage the server users, access, and repos, you can use the SSH command line interface.
 
 Try `ssh localhost -i ~/.ssh/id_ed25519 -p 23231 help` for more info. Make sure
 you use your key here.
