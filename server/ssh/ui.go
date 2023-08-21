@@ -1,4 +1,4 @@
-package ui
+package ssh
 
 import (
 	"errors"
@@ -45,8 +45,8 @@ type UI struct {
 	error       error
 }
 
-// New returns a new UI model.
-func New(c common.Common, initialRepo string) *UI {
+// NewUI returns a new UI model.
+func NewUI(c common.Common, initialRepo string) *UI {
 	serverName := c.Config().Name
 	h := header.New(c, serverName)
 	ui := &UI{
