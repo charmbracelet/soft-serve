@@ -74,7 +74,7 @@ var (
 		Subsystem: "git",
 		Name:      "upload_archive_seconds_total",
 		Help:      "The total time spent on git-upload-archive requests",
-	}, []string{"repo", "operation"})
+	}, []string{"repo"})
 
 	lfsAuthenticateSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
