@@ -18,14 +18,17 @@ A tasty, self-hostable Git server for the command line. 🍦
 
 - Easy to navigate TUI available over SSH
 - Clone repos over SSH, HTTP, or Git protocol
+- Git LFS support with both HTTP and SSH backends
 - Manage repos with SSH
 - Create repos on demand with SSH or `git push`
-- Browse repos, files and commits with SSH-accessible
+- Browse repos, files and commits with SSH-accessible UI
 - Print files over SSH with or without syntax highlighting and line numbers
-- Easy access control with SSH
+- Easy access control
+  - SSH authentication using public keys
   - Allow/disallow anonymous access
   - Add collaborators with SSH public keys
   - Repos can be public or private
+  - User access tokens
 
 ## Where can I see it?
 
@@ -119,7 +122,7 @@ service units.
 
 [systemd]: https://github.com/charmbracelet/soft-serve/blob/main/systemd.md
 
-### Server Settings
+### Server Configuration
 
 Once you start the server for the first time, the settings will be in
 `config.yaml` under your data directory. The default `config.yaml` is
@@ -190,6 +193,22 @@ http:
   # Make sure to use https:// if you are using TLS.
   public_url: "http://localhost:23232"
 
+# The database configuration.
+db:
+  # The database driver to use.
+  # Valid values are "sqlite" and "postgres".
+  driver: "sqlite"
+  # The database data source name.
+  # This is driver specific and can be a file path or connection string.
+  data_source: "soft-serve.db"
+
+# Git LFS configuration.
+lfs:
+  # Enable Git LFS.
+  enabled: true
+  # Enable Git SSH transfer.
+  ssh_enabled: true
+
 # The stats server configuration.
 stats:
   # The address on which the stats server will listen.
@@ -210,10 +229,45 @@ name all in uppercase. Here are some examples:
 - `SOFT_SERVE_HTTP_PUBLIC_URL`: HTTP public URL used for cloning
 - `SOFT_SERVE_GIT_MAX_CONNECTIONS`: The number of simultaneous connections to git daemon
 
-## Configuration
+#### Database Configuration
 
-Configuring Soft Serve is simple and straightforward. Use the SSH command-line
-interface to manage access settings, users, and repos.
+Soft Serve supports both SQLite and Postgres for its database. Like all other Soft Serve settings, you can change the database _driver_ and _data source_ using either `config.yaml` or environment variables. The default config uses SQLite as the default database driver.
+
+To use Postgres as your database, first create a Soft Serve database:
+
+```sh
+psql -h<hostname> -p<port> -U<user> -c 'CREATE DATABASE soft_serve'
+```
+
+Then set the database _data source_ to point to your Postgres database. For instance, if you're running Postgres locally, using the default user `postgres` and using a database name `soft_serve`, you would have this config in your config file or environment variable:
+
+```
+db:
+  driver: "postgres"
+  data_source: "postgres://postgres@localhost:5432/soft_serve?sslmode=disable"
+```
+
+Environment variables equivalent:
+
+```sh
+SOFT_SERVE_DB_DRIVER=postgres \
+SOFT_SERVE_DB_DATA_SOURCE="postgres://postgres@localhost:5432/soft_serve?sslmode=disable" \
+soft serve
+```
+
+You can specify a database connection password in the _data source_ url. For example, `postgres://myuser:dbpass@localhost:5432/my_soft_serve_db`.
+
+#### LFS Configuration
+
+Soft Serve supports both Git LFS [HTTP](https://github.com/git-lfs/git-lfs/blob/main/docs/api/README.md) and [SSH](https://github.com/git-lfs/git-lfs/blob/main/docs/proposals/ssh_adapter.md) protocols out of the box, there is no need to do any extra set up.
+
+Use the `lfs` config section to customize your Git LFS server.
+
+## Server Access
+
+Soft Serve at its core manages your server authentication and authorization. Authentication verifies the identity of a user, while authorization determines their access rights to a repository.
+
+To manage the server users, access, and repos, you can use the SSH command line interface.
 
 Try `ssh localhost -i ~/.ssh/id_ed25519 -p 23231 help` for more info. Make sure
 you use your key here.
@@ -243,19 +297,6 @@ git push origin main
 
 > **Note** The `-i` part will be omitted in the examples below for brevity. You
 > can add your server settings to your sshconfig for quicker access.
-
-### Access Levels
-
-Soft Serve offers a simple access control. There are four access levels,
-no-access, read-only, read-write, and admin-access.
-
-`admin-access` has full control of the server and can make changes to users and repos.
-
-`read-write` access gets full control of repos.
-
-`read-only` can read public repos.
-
-`no-access` denies access to all repos.
 
 ### Authentication
 
@@ -304,7 +345,45 @@ SSH Public Key authentication `read-only` access to public repos.
 `anon-access` is also used in combination with `allow-keyless` to determine the
 access level for HTTP(s) and git:// clone requests.
 
-## Authorization
+#### SSH
+
+Soft Serve doesn't allow duplicate SSH public keys for users. A public key can be associated with one user only. This makes SSH authentication simple and straight forward, add your public key to your Soft Serve user to be able to access Soft Serve.
+
+#### HTTP
+
+You can generate user access tokens through the SSH command line interface. Access tokens can have an optional expiration date. Use your access token as the basic auth user to access your Soft Serve repos through HTTP.
+
+```sh
+# Create a user token
+ssh -p 23231 localhost token create 'my new token'
+ss_1234abc56789012345678901234de246d798fghi
+
+# Or with an expiry date
+ssh -p 23231 localhost token create --expires-in 1y 'my other token'
+ss_98fghi1234abc56789012345678901234de246d7
+```
+
+Now you can access to repos that require `read-write` access.
+
+```sh
+git clone http://ss_98fghi1234abc56789012345678901234de246d7@localhost:23232/my-private-repo.git my-private-repo
+# Make changes and push
+```
+
+### Authorization
+
+Soft Serve offers a simple access control. There are four access levels,
+no-access, read-only, read-write, and admin-access.
+
+`admin-access` has full control of the server and can make changes to users and repos.
+
+`read-write` access gets full control of repos.
+
+`read-only` can read public repos.
+
+`no-access` denies access to all repos.
+
+## User Management
 
 Admins can manage users and their keys using the `user` command. Once a user is
 created and has access to the server, they can manage their own keys and
@@ -461,6 +540,9 @@ Use the `repo collab <command> <repo>` command to manage repo collaborators.
 # Add collaborator to soft-serve
 ssh -p 23231 localhost repo collab add soft-serve frankie
 
+# Add collaborator with a specific access level
+ssh -p 23231 localhost repo collab add soft-serve beatrice read-only
+
 # Remove collaborator
 ssh -p 23231 localhost repo collab remove soft-serve beatrice
 
@@ -468,7 +550,7 @@ ssh -p 23231 localhost repo collab remove soft-serve beatrice
 ssh -p 23231 localhost repo collab list soft-serve
 ```
 
-### Repository metadata
+### Repository Metadata
 
 You can also change the repo's description, project name, whether it's private,
 etc using the `repo <command>` command.
