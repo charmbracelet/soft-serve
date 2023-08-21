@@ -88,7 +88,7 @@ var (
 		Subsystem: "git",
 		Name:      "lfs_transfer_seconds_total",
 		Help:      "The total time spent on git-lfs-transfer requests",
-	}, []string{"repo"})
+	}, []string{"repo", "operation"})
 
 	createRepoCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
