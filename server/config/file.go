@@ -31,11 +31,11 @@ ssh:
   public_url: "{{ .SSH.PublicURL }}"
 
   # The path to the SSH server's private key.
-  key_path: "{{ .SSH.KeyPath }}"
+  key_path: {{ .SSH.KeyPath }}
 
   # The path to the server's client private key. This key will be used to
   # authenticate the server to make git requests to ssh remotes.
-  client_key_path: "{{ .SSH.ClientKeyPath }}"
+  client_key_path: {{ .SSH.ClientKeyPath }}
 
   # The maximum number of seconds a connection can take.
   # A value of 0 means no timeout.
@@ -66,10 +66,10 @@ http:
   listen_addr: "{{ .HTTP.ListenAddr }}"
 
   # The path to the TLS private key.
-  tls_key_path: "{{ .HTTP.TLSKeyPath }}"
+  tls_key_path: {{ .HTTP.TLSKeyPath }}
 
   # The path to the TLS certificate.
-  tls_cert_path: "{{ .HTTP.TLSCertPath }}"
+  tls_cert_path: {{ .HTTP.TLSCertPath }}
 
   # The public URL of the HTTP server.
   # This is the address that will be used to clone repositories.
