@@ -24,7 +24,7 @@ require (
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20230725143853-5dd0632f9245
 	github.com/charmbracelet/keygen v0.4.3
 	github.com/charmbracelet/log v0.2.3
-	github.com/charmbracelet/ssh v0.0.0-20230720143903-5bdd92839155
+	github.com/charmbracelet/ssh v0.0.0-20230822194956-1a051f898e09
 	github.com/go-jose/go-jose/v3 v3.0.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gogs/git-module v1.8.2
