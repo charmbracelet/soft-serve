@@ -68,6 +68,13 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 				cmd.GitUploadArchiveCommand(),
 				cmd.GitReceivePackCommand(),
 				cmd.RepoCommand(),
+				cmd.SettingsCommand(),
+				cmd.UserCommand(),
+				cmd.InfoCommand(),
+				cmd.PubkeyCommand(),
+				cmd.SetUsernameCommand(),
+				cmd.JWTCommand(),
+				cmd.TokenCommand(),
 			)
 
 			if cfg.LFS.Enabled {
@@ -91,25 +98,6 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 			rootCmd.SetOut(s)
 			rootCmd.SetErr(s.Stderr())
 			rootCmd.SetContext(ctx)
-
-			user := proto.UserFromContext(ctx)
-			isAdmin := cmd.IsPublicKeyAdmin(cfg, s.PublicKey()) || (user != nil && user.IsAdmin())
-			if user != nil || isAdmin {
-				if isAdmin {
-					rootCmd.AddCommand(
-						cmd.SettingsCommand(),
-						cmd.UserCommand(),
-					)
-				}
-
-				rootCmd.AddCommand(
-					cmd.InfoCommand(),
-					cmd.PubkeyCommand(),
-					cmd.SetUsernameCommand(),
-					cmd.JWTCommand(),
-					cmd.TokenCommand(),
-				)
-			}
 
 			if err := rootCmd.ExecuteContext(ctx); err != nil {
 				s.Exit(1) // nolint: errcheck
