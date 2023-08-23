@@ -21,6 +21,7 @@ type datastore struct {
 	*collabStore
 	*lfsStore
 	*accessTokenStore
+	*webhookStore
 }
 
 // New returns a new store.Store database.

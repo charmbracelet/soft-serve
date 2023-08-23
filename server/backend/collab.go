@@ -2,12 +2,15 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/server/access"
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/db/models"
+	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/utils"
+	"github.com/charmbracelet/soft-serve/server/webhook"
 )
 
 // AddCollaborator adds a collaborator to a repository.
@@ -20,11 +23,25 @@ func (d *Backend) AddCollaborator(ctx context.Context, repo string, username str
 	}
 
 	repo = utils.SanitizeRepo(repo)
-	return db.WrapError(
+	r, err := d.Repository(ctx, repo)
+	if err != nil {
+		return err
+	}
+
+	if err := db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.AddCollabByUsernameAndRepo(ctx, tx, username, repo, level)
 		}),
-	)
+	); err != nil {
+		return err
+	}
+
+	wh, err := webhook.NewCollaboratorEvent(ctx, proto.UserFromContext(ctx), r, username, webhook.CollaboratorEventAdded)
+	if err != nil {
+		return err
+	}
+
+	return webhook.SendEvent(ctx, wh)
 }
 
 // Collaborators returns a list of collaborators for a repository.
@@ -75,9 +92,27 @@ func (d *Backend) IsCollaborator(ctx context.Context, repo string, username stri
 // It implements backend.Backend.
 func (d *Backend) RemoveCollaborator(ctx context.Context, repo string, username string) error {
 	repo = utils.SanitizeRepo(repo)
-	return db.WrapError(
+	r, err := d.Repository(ctx, repo)
+	if err != nil {
+		return err
+	}
+
+	wh, err := webhook.NewCollaboratorEvent(ctx, proto.UserFromContext(ctx), r, username, webhook.CollaboratorEventRemoved)
+	if err != nil {
+		return err
+	}
+
+	if err := db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.RemoveCollabByUsernameAndRepo(ctx, tx, username, repo)
 		}),
-	)
+	); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return proto.ErrCollaboratorNotFound
+		}
+
+		return err
+	}
+
+	return webhook.SendEvent(ctx, wh)
 }

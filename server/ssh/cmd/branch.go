@@ -6,6 +6,8 @@ import (
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/backend"
+	"github.com/charmbracelet/soft-serve/server/proto"
+	"github.com/charmbracelet/soft-serve/server/webhook"
 	gitm "github.com/gogs/git-module"
 	"github.com/spf13/cobra"
 )
@@ -123,6 +125,15 @@ func branchDefaultCommand() *cobra.Command {
 				}); err != nil {
 					return err
 				}
+
+				// TODO: move this to backend?
+				user := proto.UserFromContext(ctx)
+				wh, err := webhook.NewRepositoryEvent(ctx, user, rr, webhook.RepositoryEventActionDefaultBranchChange)
+				if err != nil {
+					return err
+				}
+
+				return webhook.SendEvent(ctx, wh)
 			}
 
 			return nil
@@ -175,7 +186,21 @@ func branchDeleteCommand() *cobra.Command {
 				return fmt.Errorf("cannot delete the default branch")
 			}
 
-			return r.DeleteBranch(branch, gitm.DeleteBranchOptions{Force: true})
+			branchCommit, err := r.BranchCommit(branch)
+			if err != nil {
+				return err
+			}
+
+			if err := r.DeleteBranch(branch, gitm.DeleteBranchOptions{Force: true}); err != nil {
+				return err
+			}
+
+			wh, err := webhook.NewBranchTagEvent(ctx, proto.UserFromContext(ctx), rr, git.RefsHeads+branch, branchCommit.ID.String(), git.ZeroID)
+			if err != nil {
+				return err
+			}
+
+			return webhook.SendEvent(ctx, wh)
 		},
 	}
 

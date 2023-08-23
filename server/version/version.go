@@ -1,4 +1,4 @@
-// This package is used to store the version of the server during runtime.
+// Package version is used to store the version of the server during runtime.
 // The values are set during runtime in the main package.
 package version
 

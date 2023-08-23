@@ -137,9 +137,16 @@ func IsPublicKeyAdmin(cfg *config.Config, pk ssh.PublicKey) bool {
 	return false
 }
 
-func checkIfAdmin(cmd *cobra.Command, _ []string) error {
+func checkIfAdmin(cmd *cobra.Command, args []string) error {
+	var repo string
+	if len(args) > 0 {
+		repo = args[0]
+	}
+
 	ctx := cmd.Context()
 	cfg := config.FromContext(ctx)
+	be := backend.FromContext(ctx)
+	rn := utils.SanitizeRepo(repo)
 	pk := sshutils.PublicKeyFromContext(ctx)
 	if IsPublicKeyAdmin(cfg, pk) {
 		return nil
@@ -150,11 +157,16 @@ func checkIfAdmin(cmd *cobra.Command, _ []string) error {
 		return proto.ErrUnauthorized
 	}
 
-	if !user.IsAdmin() {
-		return proto.ErrUnauthorized
+	if user.IsAdmin() {
+		return nil
 	}
 
-	return nil
+	auth := be.AccessLevelForUser(cmd.Context(), rn, user)
+	if auth >= access.AdminAccess {
+		return nil
+	}
+
+	return proto.ErrUnauthorized
 }
 
 func checkIfCollab(cmd *cobra.Command, args []string) error {

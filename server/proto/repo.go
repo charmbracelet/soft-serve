@@ -25,6 +25,8 @@ type Repository interface {
 	// UserID returns the ID of the user who owns the repository.
 	// It returns 0 if the repository is not owned by a user.
 	UserID() int64
+	// CreatedAt returns the time the repository was created.
+	CreatedAt() time.Time
 	// UpdatedAt returns the time the repository was last updated.
 	// If the repository has never been updated, it returns the time it was created.
 	UpdatedAt() time.Time
@@ -41,4 +43,19 @@ type RepositoryOptions struct {
 	Hidden      bool
 	LFS         bool
 	LFSEndpoint string
+}
+
+// RepositoryDefaultBranch returns the default branch of a repository.
+func RepositoryDefaultBranch(repo Repository) (string, error) {
+	r, err := repo.Open()
+	if err != nil {
+		return "", err
+	}
+
+	ref, err := r.HEAD()
+	if err != nil {
+		return "", err
+	}
+
+	return ref.Name().Short(), nil
 }
