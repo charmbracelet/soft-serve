@@ -88,6 +88,7 @@ db:
   driver: "{{ .DB.Driver }}"
   # The database data source name.
   # This is driver specific and can be a file path or connection string.
+  # Make sure foreign key support is enabled when using SQLite.
   data_source: "{{ .DB.DataSource }}"
 
 # Git LFS configuration.

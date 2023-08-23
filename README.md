@@ -200,7 +200,8 @@ db:
   driver: "sqlite"
   # The database data source name.
   # This is driver specific and can be a file path or connection string.
-  data_source: "soft-serve.db"
+  # Make sure foreign key support is enabled when using SQLite.
+  data_source: "soft-serve.db?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
 
 # Git LFS configuration.
 lfs:
