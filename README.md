@@ -11,9 +11,9 @@
 A tasty, self-hostable Git server for the command line. 🍦
 
 <picture>
-  <source media="(max-width: 750px)" srcset="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0">
-  <source media="(min-width: 750px)" width="750" srcset="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0">
-  <img src="https://stuff.charm.sh/soft-serve/soft-serve-demo.gif?0" alt="Soft Serve screencast">
+  <source media="(max-width: 750px)" srcset="https://github.com/charmbracelet/soft-serve/assets/42545625/c754c746-dc4c-44a6-9c39-28649264cbf2">
+  <source media="(min-width: 750px)" width="750" srcset="https://github.com/charmbracelet/soft-serve/assets/42545625/c754c746-dc4c-44a6-9c39-28649264cbf2">
+  <img src="https://github.com/charmbracelet/soft-serve/assets/42545625/c754c746-dc4c-44a6-9c39-28649264cbf2" alt="Soft Serve screencast">
 </picture>
 
 - Easy to navigate TUI available over SSH
