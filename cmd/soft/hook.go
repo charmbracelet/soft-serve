@@ -101,9 +101,9 @@ var (
 			}
 
 			hks.Update(ctx, stdout, stderr, repoName, hooks.HookArg{
-				OldSha:  args[0],
-				NewSha:  args[1],
-				RefName: args[2],
+				RefName: args[0],
+				OldSha:  args[1],
+				NewSha:  args[2],
 			})
 		case hooks.PostUpdateHook:
 			hks.PostUpdate(ctx, stdout, stderr, repoName, args...)
