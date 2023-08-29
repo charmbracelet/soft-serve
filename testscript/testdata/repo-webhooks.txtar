@@ -1,0 +1,30 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+# [windows]
+
+# create a repo
+soft repo create repo-123
+stderr 'Created repository repo-123.*'
+stdout ssh://localhost:$SSH_PORT/repo-123.git
+
+# create webhook
+soft repo webhook create repo-123 https://webhook.site/794fa12b-08d4-4362-a0a9-a6f995f22e17 -e branch_tag_create -e branch_tag_delete -e collaborator -e push -e repository -e repository_import -e repository_visibility_change
+
+# list webhooks
+soft repo webhook list repo-123
+stdout '1.*https://webhook.site/794fa12b-08d4-4362-a0a9-a6f995f22e17.*'
+
+# clone repo
+git clone ssh://localhost:$SSH_PORT/repo-123 repo-123
+
+# create files
+mkfile ./repo-123/README.md 'foobar'
+git -C repo-123 add -A
+git -C repo-123 commit -m 'first'
+git -C repo-123 push origin HEAD
+stdout 'test'
+
+# list webhook deliveries
+soft repo webhook deliver list repo-123 1
+stdout '.*https://httpbin.org/posty.*'
