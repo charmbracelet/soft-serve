@@ -10,3 +10,33 @@ jobs:
     uses: charmbracelet/meta/.github/workflows/snapshot.yml@main
     secrets:
       goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+
+  test_postgres:
+    services:
+      postgres:
+        image: postgres
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ^1
+          cache: true
+      - name: Download Go modules
+        run: go mod download
+      - name: Test
+        run: go test ./...
+        env:
+          DB_DRIVER: postgres
+          DB_DATA_SOURCE: postgres://postgres:postgres@localhost/postgres?sslmode=disable
