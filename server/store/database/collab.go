@@ -93,8 +93,8 @@ func (*collabStore) ListCollabsByRepoAsUsers(ctx context.Context, tx db.Handler,
 			users.*
 		FROM
 			users
-		INNER JOIN repos ON repos.id = collabs.repo_id
 		INNER JOIN collabs ON collabs.user_id = users.id
+		INNER JOIN repos ON repos.id = collabs.repo_id
 		WHERE
 			repos.name = ?
 	`)

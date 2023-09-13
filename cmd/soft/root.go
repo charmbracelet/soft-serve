@@ -15,11 +15,8 @@ import (
 	logr "github.com/charmbracelet/soft-serve/server/log"
 	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/store/database"
-	_ "github.com/lib/pq" // postgres driver
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
-
-	_ "modernc.org/sqlite" // sqlite driver
 )
 
 var (

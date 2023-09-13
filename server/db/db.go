@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"  // postgres driver
 	_ "modernc.org/sqlite" // sqlite driver
 )
 
