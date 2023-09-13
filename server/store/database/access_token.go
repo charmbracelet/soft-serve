@@ -16,24 +16,19 @@ var _ store.AccessTokenStore = (*accessTokenStore)(nil)
 // CreateAccessToken implements store.AccessTokenStore.
 func (s *accessTokenStore) CreateAccessToken(ctx context.Context, h db.Handler, name string, userID int64, token string, expiresAt time.Time) (models.AccessToken, error) {
 	queryWithoutExpires := `INSERT INTO access_tokens (name, user_id, token, created_at, updated_at)
-	VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+	VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id`
 	queryWithExpires := `INSERT INTO access_tokens (name, user_id, token, expires_at, created_at, updated_at)
-	VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+	VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id`
 
 	query := queryWithoutExpires
 	values := []interface{}{name, userID, token}
 	if !expiresAt.IsZero() {
 		query = queryWithExpires
-		values = append(values, expiresAt)
+		values = append(values, expiresAt.UTC())
 	}
 
-	result, err := h.ExecContext(ctx, query, values...)
-	if err != nil {
-		return models.AccessToken{}, err
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
+	var id int64
+	if err := h.GetContext(ctx, &id, h.Rebind(query), values...); err != nil {
 		return models.AccessToken{}, err
 	}
 

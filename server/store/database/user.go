@@ -44,14 +44,10 @@ func (*userStore) CreateUser(ctx context.Context, tx db.Handler, username string
 	}
 
 	query := tx.Rebind(`INSERT INTO users (username, admin, updated_at)
-			VALUES (?, ?, CURRENT_TIMESTAMP);`)
-	result, err := tx.ExecContext(ctx, query, username, isAdmin)
-	if err != nil {
-		return err
-	}
+			VALUES (?, ?, CURRENT_TIMESTAMP) RETURNING id;`)
 
-	userID, err := result.LastInsertId()
-	if err != nil {
+	var userID int64
+	if err := tx.GetContext(ctx, &userID, query, username, isAdmin); err != nil {
 		return err
 	}
 
