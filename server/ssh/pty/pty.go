@@ -40,6 +40,7 @@ type Pty interface {
 	Resize(rows, cols int) error
 
 	// Control access to the underlying file descriptor in a blocking manner.
+	// Not implemented on Windows.
 	Control(f func(fd uintptr)) error
 }
 
@@ -80,7 +81,7 @@ type Cmd struct {
 	ProcessState *os.ProcessState
 
 	// Cancel is called when the command is canceled.
-	Cancel func()
+	Cancel func() error
 }
 
 // Start starts the specified command attached to the pseudo-terminal.
