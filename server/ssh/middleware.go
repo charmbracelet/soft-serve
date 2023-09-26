@@ -13,10 +13,44 @@ import (
 	"github.com/charmbracelet/soft-serve/server/sshutils"
 	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/ssh"
+	"github.com/charmbracelet/wish"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/cobra"
+	gossh "golang.org/x/crypto/ssh"
 )
+
+// ErrPermissionDenied is returned when a user is not allowed connect.
+var ErrPermissionDenied = fmt.Errorf("permission denied")
+
+// AuthenticationMiddleware handles authentication.
+func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
+	return func(s ssh.Session) {
+		// XXX: The authentication key is set in the context but gossh doesn't
+		// validate the authentication. We need to verify that the _last_ key
+		// that was approved is the one that's being used.
+
+		pk := s.PublicKey()
+		if pk != nil {
+			// There is no public key stored in the context, public-key auth
+			// was never requested, skip
+			perms := s.Permissions().Permissions
+			if perms == nil {
+				wish.Fatalln(s, ErrPermissionDenied)
+				return
+			}
+
+			// Check if the key is the same as the one we have in context
+			fp := perms.Extensions["pubkey-fp"]
+			if fp != gossh.FingerprintSHA256(pk) {
+				wish.Fatalln(s, ErrPermissionDenied)
+				return
+			}
+		}
+
+		sh(s)
+	}
+}
 
 // ContextMiddleware adds the config, backend, and logger to the session context.
 func ContextMiddleware(cfg *config.Config, dbx *db.DB, datastore store.Store, be *backend.Backend, logger *log.Logger) func(ssh.Handler) ssh.Handler {
