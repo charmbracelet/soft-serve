@@ -201,7 +201,7 @@ func (s *Selection) Init() tea.Cmd {
 	sortedItems := make(Items, 0)
 	for _, r := range repos {
 		if r.Name() == ".soft-serve" {
-			readme, path, err := backend.Readme(r)
+			readme, path, err := backend.Readme(r, nil)
 			if err != nil {
 				continue
 			}

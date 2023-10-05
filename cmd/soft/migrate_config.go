@@ -124,7 +124,7 @@ var migrateConfig = &cobra.Command{
 			}
 		}
 
-		readme, readmePath, err := git.LatestFile(r, "README*")
+		readme, readmePath, err := git.LatestFile(r, nil, "README*")
 		hasReadme := err == nil
 
 		// Set server name
