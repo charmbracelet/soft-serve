@@ -155,8 +155,7 @@ func (r *Readme) updateReadmeCmd() tea.Msg {
 	if r.repo == nil {
 		return common.ErrorMsg(common.ErrMissingRepo)
 	}
-	// TODO: display the readme of the current branch/tag
-	rm, rp, _ := backend.Readme(r.repo)
+	rm, rp, _ := backend.Readme(r.repo, r.ref)
 	m.Content = rm
 	m.Path = rp
 	return m
