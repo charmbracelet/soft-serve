@@ -18,22 +18,11 @@ const (
 // Reference is a wrapper around git.Reference with helper methods.
 type Reference struct {
 	*git.Reference
-	Hash Hash
 	path string // repo path
 }
 
 // ReferenceName is a Refspec wrapper.
 type ReferenceName string
-
-// NewReference creates a new reference.
-func NewReference(rp, refspec string) *Reference {
-	return &Reference{
-		Reference: &git.Reference{
-			Refspec: refspec,
-		},
-		path: rp,
-	}
-}
 
 // String returns the reference name i.e. refs/heads/master.
 func (r ReferenceName) String() string {
@@ -42,11 +31,7 @@ func (r ReferenceName) String() string {
 
 // Short returns the short name of the reference i.e. master.
 func (r ReferenceName) Short() string {
-	s := strings.Split(r.String(), "/")
-	if len(s) > 0 {
-		return s[len(s)-1]
-	}
-	return r.String()
+	return git.RefShortName(string(r))
 }
 
 // Name returns the reference name i.e. refs/heads/master.
@@ -62,15 +47,4 @@ func (r *Reference) IsBranch() bool {
 // IsTag returns true if the reference is a tag.
 func (r *Reference) IsTag() bool {
 	return strings.HasPrefix(r.Refspec, git.RefsTags)
-}
-
-// TargetHash returns the hash of the reference target.
-func (r *Reference) TargetHash() Hash {
-	if r.IsTag() {
-		id, err := git.ShowRefVerify(r.path, r.Refspec)
-		if err == nil {
-			return Hash(id)
-		}
-	}
-	return r.Hash
 }

@@ -4,27 +4,11 @@ import (
 	"github.com/gogs/git-module"
 )
 
-// ZeroHash is the zero hash.
-var ZeroHash Hash = git.EmptyID
-
-// Hash represents a git hash.
-type Hash string
-
-// String returns the string representation of a hash as a string.
-func (h Hash) String() string {
-	return string(h)
-}
-
-// SHA1 represents the hash as a SHA1.
-func (h Hash) SHA1() *git.SHA1 {
-	return git.MustIDFromString(h.String())
-}
+// ZeroID is the zero hash.
+const ZeroID = git.EmptyID
 
 // Commit is a wrapper around git.Commit with helper methods.
-type Commit struct {
-	*git.Commit
-	Hash Hash
-}
+type Commit = git.Commit
 
 // Commits is a list of commits.
 type Commits []*Commit

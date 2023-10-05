@@ -60,7 +60,7 @@ func blobCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				ref = head.Hash.String()
+				ref = head.ID
 			}
 
 			tree, err := r.LsTree(ref)

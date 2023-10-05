@@ -3,6 +3,8 @@ package repo
 import (
 	"fmt"
 	"io"
+	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -10,11 +12,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
+	"github.com/dustin/go-humanize"
+	"github.com/muesli/reflow/truncate"
 )
 
 // RefItem is a git reference item.
 type RefItem struct {
 	*git.Reference
+	*git.Tag
+	*git.Commit
 }
 
 // ID implements selector.IdentifiableItem.
@@ -51,7 +57,13 @@ func (cl RefItems) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
 
 // Less implements sort.Interface.
 func (cl RefItems) Less(i, j int) bool {
-	return cl[i].Short() < cl[j].Short()
+	if cl[i].Commit != nil && cl[j].Commit != nil {
+		return cl[i].Commit.Author.When.After(cl[j].Commit.Author.When)
+	} else if cl[i].Commit != nil && cl[j].Commit == nil {
+		return true
+	} else {
+		return false
+	}
 }
 
 // RefItemDelegate is the delegate for the ref item.
@@ -83,46 +95,94 @@ func (d RefItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 
 // Render implements list.ItemDelegate.
 func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	s := d.common.Styles.Ref
 	i, ok := listItem.(RefItem)
 	if !ok {
 		return
 	}
 
-	var st lipgloss.Style
-	var selector string
-
 	isTag := i.Reference.IsTag()
 	isActive := index == m.Index()
-
-	if isTag && isActive {
-		st = s.Active.ItemTag
-	} else if isTag {
-		st = s.Normal.ItemTag
-	} else if isActive {
-		st = s.Active.Item
-	} else {
-		st = s.Normal.Item
+	s := d.common.Styles.Ref
+	st := s.Normal
+	selector := "  "
+	if isActive {
+		st = s.Active
+		selector = s.ItemSelector.String()
 	}
 
-	if isActive {
-		selector = s.ItemSelector.String()
+	horizontalFrameSize := st.Base.GetHorizontalFrameSize()
+	var itemSt lipgloss.Style
+	if isTag && isActive {
+		itemSt = st.ItemTag
+	} else if isTag {
+		itemSt = st.ItemTag
+	} else if isActive {
+		itemSt = st.Item
 	} else {
-		selector = "  "
+		itemSt = st.Item
+	}
+
+	var hash string
+	c := i.Commit
+	if c != nil {
+		hash = c.ID.String()[:7]
 	}
 
 	ref := i.Short()
-	ref = s.ItemBranch.Render(ref)
-	refMaxWidth := m.Width() -
-		s.ItemSelector.GetMarginLeft() -
-		s.ItemSelector.GetWidth() -
-		s.Normal.Item.GetMarginLeft()
-	ref = common.TruncateString(ref, refMaxWidth)
-	ref = st.Render(ref)
+
+	var desc string
+	if isTag {
+		if c != nil {
+			date := c.Committer.When.Format("Jan 02")
+			if c.Committer.When.Year() != time.Now().Year() {
+				date += fmt.Sprintf(" %d", c.Committer.When.Year())
+			}
+			desc += " " + st.ItemDesc.Render(date)
+		}
+
+		t := i.Tag
+		if t != nil {
+			msgSt := st.ItemDesc.Copy().Faint(false)
+			msg := t.Message()
+			nl := strings.Index(msg, "\n")
+			if nl > 0 {
+				msg = msg[:nl]
+			}
+			msg = strings.TrimSpace(msg)
+			if msg != "" {
+				msg = common.TruncateString(msg, m.Width()-
+					horizontalFrameSize-
+					lipgloss.Width(selector)-
+					lipgloss.Width(ref)-
+					lipgloss.Width(hash)-
+					lipgloss.Width(desc)-3) // 3 is for the paddings and truncation symbol
+				desc = " " + msgSt.Render(msg) + desc
+			}
+		}
+	} else if c != nil {
+		on := "updated " + humanize.Time(c.Committer.When)
+		desc += " " + st.ItemDesc.Render(on)
+	}
+
+	ref = itemSt.Render(ref)
+	hash = st.ItemHash.Copy().
+		Align(lipgloss.Right).
+		PaddingLeft(1).
+		Width(m.Width() -
+			horizontalFrameSize -
+			lipgloss.Width(selector) -
+			lipgloss.Width(ref) -
+			lipgloss.Width(desc) - 1). // 1 is for the left padding
+		Render(hash)
 	fmt.Fprint(w,
 		d.common.Zone.Mark(
 			i.ID(),
-			fmt.Sprint(selector, ref),
+			st.Base.Render(
+				lipgloss.JoinVertical(lipgloss.Top,
+					truncate.String(selector+ref+desc+hash,
+						uint(m.Width()-horizontalFrameSize)),
+				),
+			),
 		),
 	)
 }

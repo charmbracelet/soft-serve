@@ -77,7 +77,6 @@ func (r *Repository) HEAD() (*Reference, error) {
 			ID:      hash,
 			Refspec: rn,
 		},
-		Hash: Hash(hash),
 		path: r.Path,
 	}, nil
 }
@@ -92,7 +91,6 @@ func (r *Repository) References() ([]*Reference, error) {
 	for _, ref := range refs {
 		rrefs = append(rrefs, &Reference{
 			Reference: ref,
-			Hash:      Hash(ref.ID),
 			path:      r.Path,
 		})
 	}
@@ -121,7 +119,7 @@ func (r *Repository) Tree(ref *Reference) (*Tree, error) {
 		}
 		ref = rref
 	}
-	return r.LsTree(ref.Hash.String())
+	return r.LsTree(ref.ID)
 }
 
 // TreePath returns the tree for the given path.
@@ -142,7 +140,7 @@ func (r *Repository) TreePath(ref *Reference, path string) (*Tree, error) {
 
 // Diff returns the diff for the given commit.
 func (r *Repository) Diff(commit *Commit) (*Diff, error) {
-	ddiff, err := r.Repository.Diff(commit.Hash.String(), DiffMaxFiles, DiffMaxFileLines, DiffMaxLineChars, git.DiffOptions{
+	ddiff, err := r.Repository.Diff(commit.ID.String(), DiffMaxFiles, DiffMaxFileLines, DiffMaxLineChars, git.DiffOptions{
 		CommandOptions: git.CommandOptions{
 			Envs: []string{"GIT_CONFIG_GLOBAL=/dev/null"},
 		},
@@ -192,10 +190,7 @@ func (r *Repository) CommitsByPage(ref *Reference, page, size int) (Commits, err
 	}
 	commits := make(Commits, len(cs))
 	for i, c := range cs {
-		commits[i] = &Commit{
-			Commit: c,
-			Hash:   Hash(c.ID.String()),
-		}
+		commits[i] = c
 	}
 	return commits, nil
 }

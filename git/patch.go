@@ -115,14 +115,14 @@ func (f *DiffFileChange) Mode() git.EntryMode {
 
 // Files returns the diff files.
 func (f *DiffFile) Files() (from *DiffFileChange, to *DiffFileChange) {
-	if f.OldIndex != ZeroHash.String() {
+	if f.OldIndex != ZeroID {
 		from = &DiffFileChange{
 			hash: f.OldIndex,
 			name: f.OldName(),
 			mode: f.OldMode(),
 		}
 	}
-	if f.Index != ZeroHash.String() {
+	if f.Index != ZeroID {
 		to = &DiffFileChange{
 			hash: f.Index,
 			name: f.Name,
@@ -298,14 +298,14 @@ func writeFilePatchHeader(sb *strings.Builder, filePatch *DiffFile) {
 		lines = append(lines,
 			fmt.Sprintf("diff --git %s %s", srcPrefix+to.Name(), dstPrefix+to.Name()),
 			fmt.Sprintf("new file mode %o", to.Mode()),
-			fmt.Sprintf("index %s..%s", ZeroHash, to.Hash()),
+			fmt.Sprintf("index %s..%s", ZeroID, to.Hash()),
 		)
 		lines = appendPathLines(lines, "/dev/null", dstPrefix+to.Name(), isBinary)
 	case to == nil:
 		lines = append(lines,
 			fmt.Sprintf("diff --git %s %s", srcPrefix+from.Name(), dstPrefix+from.Name()),
 			fmt.Sprintf("deleted file mode %o", from.Mode()),
-			fmt.Sprintf("index %s..%s", from.Hash(), ZeroHash),
+			fmt.Sprintf("index %s..%s", from.Hash(), ZeroID),
 		)
 		lines = appendPathLines(lines, srcPrefix+from.Name(), "/dev/null", isBinary)
 	}
