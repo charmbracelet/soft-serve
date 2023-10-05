@@ -89,15 +89,20 @@ type Styles struct {
 
 	Ref struct {
 		Normal struct {
-			Item    lipgloss.Style
-			ItemTag lipgloss.Style
+			Base     lipgloss.Style
+			Item     lipgloss.Style
+			ItemTag  lipgloss.Style
+			ItemDesc lipgloss.Style
+			ItemHash lipgloss.Style
 		}
 		Active struct {
-			Item    lipgloss.Style
-			ItemTag lipgloss.Style
+			Base     lipgloss.Style
+			Item     lipgloss.Style
+			ItemTag  lipgloss.Style
+			ItemDesc lipgloss.Style
+			ItemHash lipgloss.Style
 		}
 		ItemSelector lipgloss.Style
-		ItemBranch   lipgloss.Style
 		Paginator    lipgloss.Style
 	}
 
@@ -348,7 +353,9 @@ func DefaultStyles() *Styles {
 	s.Ref.Active.Item = lipgloss.NewStyle().
 		Foreground(highlightColorDim)
 
-	s.Ref.ItemBranch = lipgloss.NewStyle()
+	s.Ref.Normal.Base = lipgloss.NewStyle()
+
+	s.Ref.Active.Base = lipgloss.NewStyle()
 
 	s.Ref.Normal.ItemTag = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("39"))
@@ -360,6 +367,21 @@ func DefaultStyles() *Styles {
 	s.Ref.Active.Item = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(highlightColor)
+
+	s.Ref.Normal.ItemDesc = lipgloss.NewStyle().
+		Faint(true)
+
+	s.Ref.Active.ItemDesc = lipgloss.NewStyle().
+		Foreground(highlightColor).
+		Faint(true)
+
+	s.Ref.Normal.ItemHash = lipgloss.NewStyle().
+		Foreground(hashColor).
+		Bold(true)
+
+	s.Ref.Active.ItemHash = lipgloss.NewStyle().
+		Foreground(highlightColor).
+		Bold(true)
 
 	s.Ref.Paginator = s.Log.Paginator.Copy()
 
