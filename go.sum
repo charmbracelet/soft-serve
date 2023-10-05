@@ -33,8 +33,8 @@ github.com/charmbracelet/keygen v0.4.3 h1:ywOZRwkDlpmkawl0BgLTxaYWDSqp6Y4nfVVmgy
 github.com/charmbracelet/keygen v0.4.3/go.mod h1:4e4FT3HSdLU/u83RfJWvzJIaVb8aX4MxtDlfXwpDJaI=
 github.com/charmbracelet/lipgloss v0.8.0 h1:IS00fk4XAHcf8uZKc3eHeMUTCxUH6NkaTrdyCQk84RU=
 github.com/charmbracelet/lipgloss v0.8.0/go.mod h1:p4eYUZZJ/0oXTuCQKFF8mqyKCz0ja6y+7DniDDw5KKU=
-github.com/charmbracelet/log v0.2.4 h1:3pKtq5/Y5QMKtcZt7kDqD1p9w7lICzHYQACBFY4ocHA=
-github.com/charmbracelet/log v0.2.4/go.mod h1:nQGK8tvc4pS9cvVEH/pWJiZ50eUq1aoXUOjGpXvdD0k=
+github.com/charmbracelet/log v0.2.5 h1:1yVvyKCKVV639RR4LIq1iy1Cs1AKxuNO+Hx2LJtk7Wc=
+github.com/charmbracelet/log v0.2.5/go.mod h1:nQGK8tvc4pS9cvVEH/pWJiZ50eUq1aoXUOjGpXvdD0k=
 github.com/charmbracelet/ssh v0.0.0-20230822194956-1a051f898e09 h1:ZDIQmTtohv0S/AAYE//w8mYTxCzqphhF1+4ACPDMiLU=
 github.com/charmbracelet/ssh v0.0.0-20230822194956-1a051f898e09/go.mod h1:F1vgddWsb/Yr/OZilFeRZEh5sE/qU0Dt1mKkmke6Zvg=
 github.com/charmbracelet/wish v1.1.1 h1:KdICASKd2oh2JPvk1Z4CJtAi97cFErXF7NKienPICO4=

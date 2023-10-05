@@ -23,7 +23,7 @@ require (
 	github.com/caarlos0/tablewriter v0.1.0
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20230725143853-5dd0632f9245
 	github.com/charmbracelet/keygen v0.4.3
-	github.com/charmbracelet/log v0.2.4
+	github.com/charmbracelet/log v0.2.5
 	github.com/charmbracelet/ssh v0.0.0-20230822194956-1a051f898e09
 	github.com/go-jose/go-jose/v3 v3.0.0
 	github.com/gobwas/glob v0.2.3
