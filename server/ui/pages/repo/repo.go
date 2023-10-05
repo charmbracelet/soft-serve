@@ -23,27 +23,6 @@ const (
 	readyState
 )
 
-type tab int
-
-const (
-	readmeTab tab = iota
-	filesTab
-	commitsTab
-	branchesTab
-	tagsTab
-	lastTab
-)
-
-func (t tab) String() string {
-	return []string{
-		"Readme",
-		"Files",
-		"Commits",
-		"Branches",
-		"Tags",
-	}[t]
-}
-
 // EmptyRepoMsg is a message to indicate that the repository is empty.
 type EmptyRepoMsg struct{}
 
@@ -69,48 +48,36 @@ type CopyMsg struct {
 type Repo struct {
 	common       common.Common
 	selectedRepo proto.Repository
-	activeTab    tab
+	activeTab    int
 	tabs         *tabs.Tabs
 	statusbar    *statusbar.StatusBar
-	panes        []common.Component
+	panes        []common.TabComponent
 	ref          *git.Reference
 	state        state
 	spinner      spinner.Model
-	panesReady   [lastTab]bool
+	panesReady   []bool
 }
 
 // New returns a new Repo.
-func New(c common.Common) *Repo {
+func New(c common.Common, comps ...common.TabComponent) *Repo {
 	sb := statusbar.New(c)
-	ts := make([]string, lastTab)
-	// Tabs must match the order of tab constants above.
-	for i, t := range []tab{readmeTab, filesTab, commitsTab, branchesTab, tagsTab} {
-		ts[i] = t.String()
+	ts := make([]string, 0)
+	for _, c := range comps {
+		ts = append(ts, c.TabName())
 	}
 	c.Logger = c.Logger.WithPrefix("ui.repo")
 	tb := tabs.New(c, ts)
-	readme := NewReadme(c)
-	log := NewLog(c)
-	files := NewFiles(c)
-	branches := NewRefs(c, git.RefsHeads)
-	tags := NewRefs(c, git.RefsTags)
 	// Make sure the order matches the order of tab constants above.
-	panes := []common.Component{
-		readme,
-		files,
-		log,
-		branches,
-		tags,
-	}
 	s := spinner.New(spinner.WithSpinner(spinner.Dot),
 		spinner.WithStyle(c.Styles.Spinner))
 	r := &Repo{
-		common:    c,
-		tabs:      tb,
-		statusbar: sb,
-		panes:     panes,
-		state:     loadingState,
-		spinner:   s,
+		common:     c,
+		tabs:       tb,
+		statusbar:  sb,
+		panes:      comps,
+		state:      loadingState,
+		spinner:    s,
+		panesReady: make([]bool, len(comps)),
 	}
 	return r
 }
@@ -157,9 +124,13 @@ func (r *Repo) FullHelp() [][]key.Binding {
 
 // Init implements tea.View.
 func (r *Repo) Init() tea.Cmd {
+	r.state = loadingState
+	// r.panesReady = make([]bool, len(r.panes))
+	r.activeTab = 0
 	return tea.Batch(
 		r.tabs.Init(),
 		r.statusbar.Init(),
+		r.spinner.Tick,
 	)
 }
 
@@ -169,40 +140,27 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case RepoMsg:
 		// Set the state to loading when we get a new repository.
-		r.state = loadingState
-		r.panesReady = [lastTab]bool{}
-		r.activeTab = 0
 		r.selectedRepo = msg
 		cmds = append(cmds,
-			r.tabs.Init(),
+			r.Init(),
 			// This will set the selected repo in each pane's model.
 			r.updateModels(msg),
-			r.spinner.Tick,
 		)
 	case RefMsg:
 		r.ref = msg
-		for _, p := range r.panes {
-			// Init will initiate each pane's model with its contents.
-			cmds = append(cmds, p.Init())
-		}
 		cmds = append(cmds,
-			r.updateStatusBarCmd,
 			r.updateModels(msg),
 		)
+		r.state = readyState
 	case tabs.SelectTabMsg:
-		r.activeTab = tab(msg)
+		r.activeTab = int(msg)
 		t, cmd := r.tabs.Update(msg)
 		r.tabs = t.(*tabs.Tabs)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 	case tabs.ActiveTabMsg:
-		r.activeTab = tab(msg)
-		if r.selectedRepo != nil {
-			cmds = append(cmds,
-				r.updateStatusBarCmd,
-			)
-		}
+		r.activeTab = int(msg)
 	case tea.KeyMsg, tea.MouseMsg:
 		t, cmd := r.tabs.Update(msg)
 		r.tabs = t.(*tabs.Tabs)
@@ -210,7 +168,6 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		if r.selectedRepo != nil {
-			cmds = append(cmds, r.updateStatusBarCmd)
 			urlID := fmt.Sprintf("%s-url", r.selectedRepo.Name())
 			cmd := common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
 			if msg, ok := msg.(tea.MouseMsg); ok && r.common.Zone.Get(urlID).InBounds(msg) {
@@ -242,48 +199,68 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Value: msg.Message,
 			}
 		})
-	case ReadmeMsg, FileItemsMsg, LogCountMsg, LogItemsMsg, RefItemsMsg:
-		cmds = append(cmds, r.updateRepo(msg))
+	case ReadmeMsg:
+		cmds = append(cmds, r.updateTabComponent(&Readme{}, msg))
+	case FileItemsMsg:
+		cmds = append(cmds, r.updateTabComponent(&Files{}, msg))
+	case LogCountMsg, LogItemsMsg:
+		cmds = append(cmds, r.updateTabComponent(&Log{}, msg))
+	case RefItemsMsg:
+		cmds = append(cmds, r.updateTabComponent(&Refs{refPrefix: msg.prefix}, msg))
 	// We have two spinners, one is used to when loading the repository and the
 	// other is used when loading the log.
 	// Check if the spinner ID matches the spinner model.
 	case spinner.TickMsg:
-		switch msg.ID {
-		case r.spinner.ID():
-			if r.state == loadingState {
-				s, cmd := r.spinner.Update(msg)
-				r.spinner = s
-				if cmd != nil {
-					cmds = append(cmds, cmd)
+		if r.state == loadingState && r.spinner.ID() == msg.ID {
+			s, cmd := r.spinner.Update(msg)
+			r.spinner = s
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		} else {
+			for i, c := range r.panes {
+				if c.SpinnerID() == msg.ID {
+					m, cmd := c.Update(msg)
+					r.panes[i] = m.(common.TabComponent)
+					if cmd != nil {
+						cmds = append(cmds, cmd)
+					}
+					break
 				}
 			}
-		default:
-			cmds = append(cmds, r.updateRepo(msg))
 		}
-	case UpdateStatusBarMsg:
-		cmds = append(cmds, r.updateStatusBarCmd)
 	case tea.WindowSizeMsg:
+		r.SetSize(msg.Width, msg.Height)
 		cmds = append(cmds, r.updateModels(msg))
 	case EmptyRepoMsg:
 		r.ref = nil
 		r.state = readyState
-		cmds = append(cmds,
-			r.updateModels(msg),
-			r.updateStatusBarCmd,
-		)
+		cmds = append(cmds, r.updateModels(msg))
 	case common.ErrorMsg:
 		r.state = readyState
+	case SwitchTabMsg:
+		for i, c := range r.panes {
+			if c.TabName() == msg.TabName() {
+				cmds = append(cmds, tabs.SelectTabCmd(i))
+				break
+			}
+		}
 	}
-	s, cmd := r.statusbar.Update(msg)
-	r.statusbar = s.(*statusbar.StatusBar)
+	active := r.panes[r.activeTab]
+	m, cmd := active.Update(msg)
+	r.panes[r.activeTab] = m.(common.TabComponent)
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
-	m, cmd := r.panes[r.activeTab].Update(msg)
-	r.panes[r.activeTab] = m.(common.Component)
-	if cmd != nil {
-		cmds = append(cmds, cmd)
+
+	if r.selectedRepo != nil {
+		s, cmd := r.statusbar.Update(r.makeStatusBarMsg())
+		r.statusbar = s.(*statusbar.StatusBar)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	}
+
 	return r, tea.Batch(cmds...)
 }
 
@@ -364,12 +341,10 @@ func (r *Repo) headerView() string {
 	)
 }
 
-func (r *Repo) updateStatusBarCmd() tea.Msg {
-	if r.selectedRepo == nil {
-		return nil
-	}
-	value := r.panes[r.activeTab].(statusbar.Model).StatusBarValue()
-	info := r.panes[r.activeTab].(statusbar.Model).StatusBarInfo()
+func (r *Repo) makeStatusBarMsg() statusbar.StatusBarMsg {
+	active := r.panes[r.activeTab]
+	value := active.StatusBarValue()
+	info := active.StatusBarInfo()
 	branch := "*"
 	if r.ref != nil {
 		branch += " " + r.ref.Name().Short()
@@ -382,77 +357,31 @@ func (r *Repo) updateStatusBarCmd() tea.Msg {
 	}
 }
 
+func (r *Repo) updateTabComponent(c common.TabComponent, msg tea.Msg) tea.Cmd {
+	cmds := make([]tea.Cmd, 0)
+	for i, b := range r.panes {
+		if b.TabName() == c.TabName() {
+			m, cmd := b.Update(msg)
+			r.panes[i] = m.(common.TabComponent)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			break
+		}
+	}
+	return tea.Batch(cmds...)
+}
+
 func (r *Repo) updateModels(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	for i, b := range r.panes {
 		m, cmd := b.Update(msg)
-		r.panes[i] = m.(common.Component)
+		r.panes[i] = m.(common.TabComponent)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 	}
 	return tea.Batch(cmds...)
-}
-
-func (r *Repo) updateRepo(msg tea.Msg) tea.Cmd {
-	cmds := make([]tea.Cmd, 0)
-	switch msg := msg.(type) {
-	case LogCountMsg, LogItemsMsg, spinner.TickMsg:
-		switch msg.(type) {
-		case LogItemsMsg:
-			r.panesReady[commitsTab] = true
-		}
-		l, cmd := r.panes[commitsTab].Update(msg)
-		r.panes[commitsTab] = l.(*Log)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
-	case FileItemsMsg:
-		r.panesReady[filesTab] = true
-		f, cmd := r.panes[filesTab].Update(msg)
-		r.panes[filesTab] = f.(*Files)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
-	case RefItemsMsg:
-		switch msg.prefix {
-		case git.RefsHeads:
-			r.panesReady[branchesTab] = true
-			b, cmd := r.panes[branchesTab].Update(msg)
-			r.panes[branchesTab] = b.(*Refs)
-			if cmd != nil {
-				cmds = append(cmds, cmd)
-			}
-		case git.RefsTags:
-			r.panesReady[tagsTab] = true
-			t, cmd := r.panes[tagsTab].Update(msg)
-			r.panes[tagsTab] = t.(*Refs)
-			if cmd != nil {
-				cmds = append(cmds, cmd)
-			}
-		}
-	case ReadmeMsg:
-		r.panesReady[readmeTab] = true
-	}
-	if r.isReady() {
-		r.state = readyState
-	}
-	return tea.Batch(cmds...)
-}
-
-func (r *Repo) isReady() bool {
-	ready := true
-	// We purposely ignore the log pane here because it has its own spinner.
-	for _, b := range []bool{
-		r.panesReady[filesTab], r.panesReady[branchesTab],
-		r.panesReady[tagsTab], r.panesReady[readmeTab],
-	} {
-		if !b {
-			ready = false
-			break
-		}
-	}
-	return ready
 }
 
 func copyCmd(text, msg string) tea.Cmd {
@@ -464,10 +393,21 @@ func copyCmd(text, msg string) tea.Cmd {
 	}
 }
 
-func updateStatusBarCmd() tea.Msg {
-	return UpdateStatusBarMsg{}
-}
-
 func backCmd() tea.Msg {
 	return BackMsg{}
+}
+
+type SwitchTabMsg common.TabComponent
+
+func switchTabCmd(m common.TabComponent) tea.Cmd {
+	return func() tea.Msg {
+		return SwitchTabMsg(m)
+	}
+}
+
+func renderLoading(c common.Common, s spinner.Model) string {
+	msg := fmt.Sprintf("%s loading…", s.View())
+	return c.Styles.SpinnerContainer.Copy().
+		Height(c.Height).
+		Render(msg)
 }
