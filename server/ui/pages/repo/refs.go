@@ -9,14 +9,13 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/git"
-	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
 )
 
 // RefMsg is a message that contains a git.Reference.
-type RefMsg *ggit.Reference
+type RefMsg *git.Reference
 
 // RefItemsMsg is a message that contains a list of RefItem.
 type RefItemsMsg struct {
@@ -215,7 +214,19 @@ func (r *Refs) updateItemsCmd() tea.Msg {
 	}
 	for _, ref := range refs {
 		if strings.HasPrefix(ref.Name().String(), r.refPrefix) {
-			its = append(its, RefItem{Reference: ref})
+			refItem := RefItem{
+				Reference: ref,
+			}
+
+			if ref.IsTag() {
+				refItem.Tag, _ = rr.Tag(ref.Name().Short())
+				if refItem.Tag != nil {
+					refItem.Commit, _ = refItem.Tag.Commit()
+				}
+			} else {
+				refItem.Commit, _ = rr.CatFileCommit(ref.ID)
+			}
+			its = append(its, refItem)
 		}
 	}
 	sort.Sort(its)
@@ -238,7 +249,7 @@ func (r *Refs) setItems(items []selector.IdentifiableItem) tea.Cmd {
 	}
 }
 
-func switchRefCmd(ref *ggit.Reference) tea.Cmd {
+func switchRefCmd(ref *git.Reference) tea.Cmd {
 	return func() tea.Msg {
 		return RefMsg(ref)
 	}
