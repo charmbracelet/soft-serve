@@ -44,13 +44,16 @@ type CopyMsg struct {
 	Message string
 }
 
+// SwitchTabMsg is a message to switch tabs.
+type SwitchTabMsg common.TabComponent
+
 // Repo is a view for a git repository.
 type Repo struct {
 	common       common.Common
 	selectedRepo proto.Repository
 	activeTab    int
 	tabs         *tabs.Tabs
-	statusbar    *statusbar.StatusBar
+	statusbar    *statusbar.Model
 	panes        []common.TabComponent
 	ref          *git.Reference
 	state        state
@@ -125,7 +128,6 @@ func (r *Repo) FullHelp() [][]key.Binding {
 // Init implements tea.View.
 func (r *Repo) Init() tea.Cmd {
 	r.state = loadingState
-	// r.panesReady = make([]bool, len(r.panes))
 	r.activeTab = 0
 	return tea.Batch(
 		r.tabs.Init(),
@@ -146,12 +148,12 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// This will set the selected repo in each pane's model.
 			r.updateModels(msg),
 		)
+		r.setStatusBarInfo()
 	case RefMsg:
 		r.ref = msg
-		cmds = append(cmds,
-			r.updateModels(msg),
-		)
+		cmds = append(cmds, r.updateModels(msg))
 		r.state = readyState
+		r.setStatusBarInfo()
 	case tabs.SelectTabMsg:
 		r.activeTab = int(msg)
 		t, cmd := r.tabs.Update(msg)
@@ -161,6 +163,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tabs.ActiveTabMsg:
 		r.activeTab = int(msg)
+		r.setStatusBarInfo()
 	case tea.KeyMsg, tea.MouseMsg:
 		t, cmd := r.tabs.Update(msg)
 		r.tabs = t.(*tabs.Tabs)
@@ -189,21 +192,18 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+		r.setStatusBarInfo()
 	case CopyMsg:
 		txt := msg.Text
 		if cfg := r.common.Config(); cfg != nil {
 			r.common.Output.Copy(txt)
 		}
-		cmds = append(cmds, func() tea.Msg {
-			return statusbar.StatusBarMsg{
-				Value: msg.Message,
-			}
-		})
+		r.statusbar.SetStatus("", msg.Message, "", "")
 	case ReadmeMsg:
 		cmds = append(cmds, r.updateTabComponent(&Readme{}, msg))
-	case FileItemsMsg:
+	case FileItemsMsg, FileContentMsg:
 		cmds = append(cmds, r.updateTabComponent(&Files{}, msg))
-	case LogCountMsg, LogItemsMsg:
+	case LogItemsMsg, LogDiffMsg, LogCountMsg:
 		cmds = append(cmds, r.updateTabComponent(&Log{}, msg))
 	case RefItemsMsg:
 		cmds = append(cmds, r.updateTabComponent(&Refs{refPrefix: msg.prefix}, msg))
@@ -245,6 +245,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 		}
+	case UpdateStatusBarMsg:
+		r.setStatusBarInfo()
 	}
 	active := r.panes[r.activeTab]
 	m, cmd := active.Update(msg)
@@ -253,12 +255,10 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if r.selectedRepo != nil {
-		s, cmd := r.statusbar.Update(r.makeStatusBarMsg())
-		r.statusbar = s.(*statusbar.StatusBar)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+	s, cmd := r.statusbar.Update(msg)
+	r.statusbar = s.(*statusbar.Model)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
 	}
 
 	return r, tea.Batch(cmds...)
@@ -341,20 +341,21 @@ func (r *Repo) headerView() string {
 	)
 }
 
-func (r *Repo) makeStatusBarMsg() statusbar.StatusBarMsg {
+func (r *Repo) setStatusBarInfo() {
+	if r.selectedRepo == nil {
+		return
+	}
+
 	active := r.panes[r.activeTab]
+	key := r.selectedRepo.Name()
 	value := active.StatusBarValue()
 	info := active.StatusBarInfo()
-	branch := "*"
+	extra := "*"
 	if r.ref != nil {
-		branch += " " + r.ref.Name().Short()
+		extra += " " + r.ref.Name().Short()
 	}
-	return statusbar.StatusBarMsg{
-		Key:   r.selectedRepo.Name(),
-		Value: value,
-		Info:  info,
-		Extra: branch,
-	}
+
+	r.statusbar.SetStatus(key, value, info, extra)
 }
 
 func (r *Repo) updateTabComponent(c common.TabComponent, msg tea.Msg) tea.Cmd {
@@ -397,12 +398,14 @@ func backCmd() tea.Msg {
 	return BackMsg{}
 }
 
-type SwitchTabMsg common.TabComponent
-
 func switchTabCmd(m common.TabComponent) tea.Cmd {
 	return func() tea.Msg {
 		return SwitchTabMsg(m)
 	}
+}
+
+func updateStatusBarCmd() tea.Msg {
+	return UpdateStatusBarMsg{}
 }
 
 func renderLoading(c common.Common, s spinner.Model) string {

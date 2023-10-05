@@ -7,16 +7,8 @@ import (
 	"github.com/muesli/reflow/truncate"
 )
 
-// StatusBarMsg is a message sent to the status bar.
-type StatusBarMsg struct { //nolint:revive
-	Key   string
-	Value string
-	Info  string
-	Extra string
-}
-
-// StatusBar is a status bar model.
-type StatusBar struct {
+// Model is a status bar model.
+type Model struct {
 	common common.Common
 	key    string
 	value  string
@@ -25,38 +17,51 @@ type StatusBar struct {
 }
 
 // New creates a new status bar component.
-func New(c common.Common) *StatusBar {
-	s := &StatusBar{
+func New(c common.Common) *Model {
+	s := &Model{
 		common: c,
 	}
 	return s
 }
 
 // SetSize implements common.Component.
-func (s *StatusBar) SetSize(width, height int) {
+func (s *Model) SetSize(width, height int) {
 	s.common.Width = width
 	s.common.Height = height
 }
 
+// SetStatus sets the status bar status.
+func (s *Model) SetStatus(key, value, info, extra string) {
+	if key != "" {
+		s.key = key
+	}
+	if value != "" {
+		s.value = value
+	}
+	if info != "" {
+		s.info = info
+	}
+	if extra != "" {
+		s.extra = extra
+	}
+}
+
 // Init implements tea.Model.
-func (s *StatusBar) Init() tea.Cmd {
+func (s *Model) Init() tea.Cmd {
 	return nil
 }
 
 // Update implements tea.Model.
-func (s *StatusBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (s *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case StatusBarMsg:
-		s.key = msg.Key
-		s.value = msg.Value
-		s.info = msg.Info
-		s.extra = msg.Extra
+	case tea.WindowSizeMsg:
+		s.SetSize(msg.Width, msg.Height)
 	}
 	return s, nil
 }
 
 // View implements tea.Model.
-func (s *StatusBar) View() string {
+func (s *Model) View() string {
 	st := s.common.Styles
 	w := lipgloss.Width
 	help := s.common.Zone.Mark(
