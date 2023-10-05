@@ -138,6 +138,7 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case RefItem:
 			r.activeRef = sel.Reference
 		}
+		cmds = append(cmds, updateStatusBarCmd)
 	case selector.SelectMsg:
 		switch i := msg.IdentifiableItem.(type) {
 		case RefItem:
