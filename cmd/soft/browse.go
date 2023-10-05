@@ -33,22 +33,21 @@ var browseCmd = &cobra.Command{
 			return err
 		}
 
-		rp = abs
-
-		r, err := git.Open(rp)
-		if err != nil {
-			return err
-		}
-
 		// Bubble Tea uses Termenv default output so we have to use the same
 		// thing here.
 		output := termenv.DefaultOutput()
 		ctx := cmd.Context()
 		c := common.NewCommon(ctx, output, 0, 0)
 		m := &model{
-			m: repo.New(c),
-			r: r,
-			c: c,
+			m: repo.New(c,
+				repo.NewReadme(c),
+				repo.NewFiles(c),
+				repo.NewLog(c),
+				repo.NewRefs(c, git.RefsHeads),
+				repo.NewRefs(c, git.RefsTags),
+			),
+			repoPath: abs,
+			c:        c,
 		}
 
 		m.f = footer.New(c, m)
@@ -69,23 +68,24 @@ func init() {
 	rootCmd.AddCommand(browseCmd)
 }
 
+type state int
+
+const (
+	startState state = iota
+	errorState
+)
+
 type model struct {
 	m          *repo.Repo
 	f          *footer.Footer
-	r          *git.Repository
+	repoPath   string
 	c          common.Common
+	state      state
 	showFooter bool
+	error      error
 }
 
 var _ tea.Model = &model{}
-
-func (m model) repo() proto.Repository {
-	return repository{r: m.r}
-}
-
-func (m model) repoCmd() tea.Msg {
-	return repo.RepoMsg(m.repo())
-}
 
 func (m *model) SetSize(w, h int) {
 	m.c.SetSize(w, h)
@@ -102,35 +102,73 @@ func (m *model) SetSize(w, h int) {
 
 // ShortHelp implements help.KeyMap.
 func (m model) ShortHelp() []key.Binding {
-	return m.m.ShortHelp()
+	switch m.state {
+	case errorState:
+		return []key.Binding{
+			m.c.KeyMap.Back,
+			m.c.KeyMap.Quit,
+			m.c.KeyMap.Help,
+		}
+	default:
+		return m.m.ShortHelp()
+	}
 }
 
 // FullHelp implements help.KeyMap.
 func (m model) FullHelp() [][]key.Binding {
-	return m.m.FullHelp()
+	switch m.state {
+	case errorState:
+		return [][]key.Binding{
+			{
+				m.c.KeyMap.Back,
+			},
+			{
+				m.c.KeyMap.Quit,
+				m.c.KeyMap.Help,
+			},
+		}
+	default:
+		return m.m.FullHelp()
+	}
 }
 
 // Init implements tea.Model.
 func (m *model) Init() tea.Cmd {
+	rr, err := git.Open(m.repoPath)
+	if err != nil {
+		return common.ErrorCmd(err)
+	}
+
+	r := repository{rr}
 	return tea.Batch(
 		m.m.Init(),
 		m.f.Init(),
-		m.repoCmd,
-		repo.UpdateRefCmd(m.repo()),
+		func() tea.Msg {
+			return repo.RepoMsg(r)
+		},
+		repo.UpdateRefCmd(r),
 	)
 }
 
 // Update implements tea.Model.
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.c.Logger.Debugf("msg received: %T", msg)
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, m.c.KeyMap.Back) && m.error != nil:
+			m.error = nil
+			m.state = startState
+			// Always show the footer on error.
+			m.showFooter = m.f.ShowAll()
 		case key.Matches(msg, m.c.KeyMap.Help):
 			cmds = append(cmds, footer.ToggleFooterCmd)
 		case key.Matches(msg, m.c.KeyMap.Quit):
+			// Stop bubblezone background workers.
+			m.c.Zone.Close()
 			return m, tea.Quit
 		}
 	case tea.MouseMsg:
@@ -144,6 +182,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case footer.ToggleFooterMsg:
 		m.f.SetShowAll(!m.f.ShowAll())
 		m.showFooter = !m.showFooter
+	case common.ErrorMsg:
+		m.error = msg
+		m.state = errorState
+		m.showFooter = true
 	}
 
 	f, cmd := m.f.Update(msg)
@@ -171,7 +213,27 @@ func (m *model) View() string {
 		view = lipgloss.JoinVertical(lipgloss.Left, view, m.f.View())
 	}
 
-	return m.c.Zone.Scan(m.c.Styles.App.Render(view))
+	switch m.state {
+	case errorState:
+		appStyle := m.c.Styles.App.Copy()
+		wm, hm := appStyle.GetHorizontalFrameSize(), appStyle.GetVerticalFrameSize()
+		if m.showFooter {
+			hm += m.f.Height()
+		}
+
+		err := m.c.Styles.ErrorTitle.Render("Bummer")
+		err += m.c.Styles.ErrorBody.Render(m.error.Error())
+		return m.c.Styles.Error.Copy().
+			Width(m.c.Width -
+				wm -
+				m.c.Styles.ErrorBody.GetHorizontalFrameSize()).
+			Height(m.c.Height -
+				hm -
+				m.c.Styles.Error.GetVerticalFrameSize()).
+			Render(err)
+	default:
+		return m.c.Zone.Scan(m.c.Styles.App.Render(view))
+	}
 }
 
 type repository struct {

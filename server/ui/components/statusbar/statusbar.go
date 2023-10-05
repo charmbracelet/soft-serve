@@ -24,12 +24,6 @@ type StatusBar struct {
 	extra  string
 }
 
-// Model is an interface that supports setting the status bar information.
-type Model interface {
-	StatusBarValue() string
-	StatusBarInfo() string
-}
-
 // New creates a new status bar component.
 func New(c common.Common) *StatusBar {
 	s := &StatusBar{
@@ -53,18 +47,10 @@ func (s *StatusBar) Init() tea.Cmd {
 func (s *StatusBar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case StatusBarMsg:
-		if msg.Key != "" {
-			s.key = msg.Key
-		}
-		if msg.Value != "" {
-			s.value = msg.Value
-		}
-		if msg.Info != "" {
-			s.info = msg.Info
-		}
-		if msg.Extra != "" {
-			s.extra = msg.Extra
-		}
+		s.key = msg.Key
+		s.value = msg.Value
+		s.info = msg.Info
+		s.extra = msg.Extra
 	}
 	return s, nil
 }

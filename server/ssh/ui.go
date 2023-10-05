@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/footer"
@@ -133,7 +134,13 @@ func (ui *UI) SetSize(width, height int) {
 // Init implements tea.Model.
 func (ui *UI) Init() tea.Cmd {
 	ui.pages[selectionPage] = selection.New(ui.common)
-	ui.pages[repoPage] = repo.New(ui.common)
+	ui.pages[repoPage] = repo.New(ui.common,
+		repo.NewReadme(ui.common),
+		repo.NewFiles(ui.common),
+		repo.NewLog(ui.common),
+		repo.NewRefs(ui.common, git.RefsHeads),
+		repo.NewRefs(ui.common, git.RefsTags),
+	)
 	ui.SetSize(ui.common.Width, ui.common.Height)
 	cmds := make([]tea.Cmd, 0)
 	cmds = append(cmds,
