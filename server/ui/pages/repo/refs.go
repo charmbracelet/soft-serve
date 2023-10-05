@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/git"
 	ggit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
-	"github.com/charmbracelet/soft-serve/server/ui/components/tabs"
 )
 
 // RefMsg is a message that contains a git.Reference.
@@ -32,6 +32,8 @@ type Refs struct {
 	ref       *git.Reference
 	activeRef *git.Reference
 	refPrefix string
+	spinner   spinner.Model
+	isLoading bool
 }
 
 // NewRefs creates a new Refs component.
@@ -39,6 +41,7 @@ func NewRefs(common common.Common, refPrefix string) *Refs {
 	r := &Refs{
 		common:    common,
 		refPrefix: refPrefix,
+		isLoading: true,
 	}
 	s := selector.New(common, []selector.IdentifiableItem{}, RefItemDelegate{&common})
 	s.SetShowFilter(false)
@@ -49,7 +52,21 @@ func NewRefs(common common.Common, refPrefix string) *Refs {
 	s.SetFilteringEnabled(false)
 	s.DisableQuitKeybindings()
 	r.selector = s
+	sp := spinner.New(spinner.WithSpinner(spinner.Dot),
+		spinner.WithStyle(common.Styles.Spinner))
+	r.spinner = sp
 	return r
+}
+
+// TabName returns the name of the tab.
+func (r *Refs) TabName() string {
+	if r.refPrefix == git.RefsHeads {
+		return "Branches"
+	} else if r.refPrefix == git.RefsTags {
+		return "Tags"
+	} else {
+		return "Refs"
+	}
 }
 
 // SetSize implements common.Component.
@@ -94,7 +111,8 @@ func (r *Refs) FullHelp() [][]key.Binding {
 
 // Init implements tea.Model.
 func (r *Refs) Init() tea.Cmd {
-	return r.updateItemsCmd
+	r.isLoading = true
+	return tea.Batch(r.spinner.Tick, r.updateItemsCmd)
 }
 
 // Update implements tea.Model.
@@ -114,29 +132,37 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if i != nil {
 				r.activeRef = i.(RefItem).Reference
 			}
+			r.isLoading = false
 		}
 	case selector.ActiveMsg:
 		switch sel := msg.IdentifiableItem.(type) {
 		case RefItem:
 			r.activeRef = sel.Reference
 		}
-		cmds = append(cmds, updateStatusBarCmd)
 	case selector.SelectMsg:
 		switch i := msg.IdentifiableItem.(type) {
 		case RefItem:
 			cmds = append(cmds,
 				switchRefCmd(i.Reference),
-				tabs.SelectTabCmd(int(filesTab)),
+				switchTabCmd(&Files{}),
 			)
 		}
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, r.common.KeyMap.SelectItem):
-			cmds = append(cmds, r.selector.SelectItem)
+			cmds = append(cmds, r.selector.SelectItemCmd)
 		}
 	case EmptyRepoMsg:
 		r.ref = nil
 		cmds = append(cmds, r.setItems([]selector.IdentifiableItem{}))
+	case spinner.TickMsg:
+		if r.isLoading && r.spinner.ID() == msg.ID {
+			s, cmd := r.spinner.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			r.spinner = s
+		}
 	}
 	m, cmd := r.selector.Update(msg)
 	r.selector = m.(*selector.Selector)
@@ -148,7 +174,15 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (r *Refs) View() string {
+	if r.isLoading {
+		return renderLoading(r.common, r.spinner)
+	}
 	return r.selector.View()
+}
+
+// SpinnerID implements common.TabComponent.
+func (r *Refs) SpinnerID() int {
+	return r.spinner.ID()
 }
 
 // StatusBarValue implements statusbar.StatusBar.
