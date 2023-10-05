@@ -99,8 +99,10 @@ func (r *Readme) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.ref = msg
 		cmds = append(cmds, r.Init())
 	case EmptyRepoMsg:
-		r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(),
-			r.repo.Name()), ".md")
+		cmds = append(cmds,
+			r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(),
+				r.repo.Name()), ".md"),
+		)
 	case ReadmeMsg:
 		r.isLoading = false
 		r.readmePath = msg.Path
@@ -139,8 +141,8 @@ func (r *Readme) SpinnerID() int {
 // StatusBarValue implements statusbar.StatusBar.
 func (r *Readme) StatusBarValue() string {
 	dir := filepath.Dir(r.readmePath)
-	if dir == "." {
-		return ""
+	if dir == "." || dir == "" {
+		return " "
 	}
 	return dir
 }
