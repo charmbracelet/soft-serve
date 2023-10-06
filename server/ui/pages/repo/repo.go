@@ -84,13 +84,22 @@ func New(c common.Common, comps ...common.TabComponent) *Repo {
 	return r
 }
 
+func (r *Repo) getMargins() (w, h int) {
+	hh := 1
+	if r.selectedRepo != nil && r.selectedRepo.Description() != "" {
+		hh++
+	}
+	hm := r.common.Styles.Repo.Body.GetVerticalFrameSize() +
+		hh +
+		r.common.Styles.Repo.Header.GetVerticalFrameSize() +
+		r.common.Styles.StatusBar.GetHeight()
+	return 0, hm
+}
+
 // SetSize implements common.Component.
 func (r *Repo) SetSize(width, height int) {
 	r.common.SetSize(width, height)
-	hm := r.common.Styles.Repo.Body.GetVerticalFrameSize() +
-		r.common.Styles.Repo.Header.GetHeight() +
-		r.common.Styles.Repo.Header.GetVerticalFrameSize() +
-		r.common.Styles.StatusBar.GetHeight()
+	_, hm := r.getMargins()
 	r.tabs.SetSize(width, height-hm)
 	r.statusbar.SetSize(width, height-hm)
 	for _, p := range r.panes {
@@ -272,11 +281,8 @@ func (r *Repo) View() string {
 		Width(r.common.Width).
 		Height(r.common.Height)
 	repoBodyStyle := r.common.Styles.Repo.Body.Copy()
-	hm := repoBodyStyle.GetVerticalFrameSize() +
-		r.common.Styles.Repo.Header.GetHeight() +
-		r.common.Styles.Repo.Header.GetVerticalFrameSize() +
-		r.common.Styles.StatusBar.GetHeight() +
-		r.common.Styles.Tabs.GetHeight() +
+	_, hm := r.getMargins()
+	hm += r.common.Styles.Tabs.GetHeight() +
 		r.common.Styles.Tabs.GetVerticalFrameSize()
 	mainStyle := repoBodyStyle.
 		Height(r.common.Height - hm)
@@ -307,17 +313,17 @@ func (r *Repo) headerView() string {
 		return ""
 	}
 	truncate := lipgloss.NewStyle().MaxWidth(r.common.Width)
-	name := r.selectedRepo.ProjectName()
-	if name == "" {
-		name = r.selectedRepo.Name()
+	header := r.selectedRepo.ProjectName()
+	if header == "" {
+		header = r.selectedRepo.Name()
 	}
-	name = r.common.Styles.Repo.HeaderName.Render(name)
+	header = r.common.Styles.Repo.HeaderName.Render(header)
 	desc := strings.TrimSpace(r.selectedRepo.Description())
-	if desc == "" {
-		desc = name
-		name = ""
-	} else {
-		desc = r.common.Styles.Repo.HeaderDesc.Render(desc)
+	if desc != "" {
+		header = lipgloss.JoinVertical(lipgloss.Top,
+			header,
+			r.common.Styles.Repo.HeaderDesc.Render(desc),
+		)
 	}
 	urlStyle := r.common.Styles.URLStyle.Copy().
 		Width(r.common.Width - lipgloss.Width(desc) - 1).
@@ -331,15 +337,12 @@ func (r *Repo) headerView() string {
 		fmt.Sprintf("%s-url", r.selectedRepo.Name()),
 		urlStyle.Render(url),
 	)
+
+	header = lipgloss.JoinHorizontal(lipgloss.Left, header, url)
+
 	style := r.common.Styles.Repo.Header.Copy().Width(r.common.Width)
 	return style.Render(
-		lipgloss.JoinVertical(lipgloss.Top,
-			truncate.Render(name),
-			truncate.Render(lipgloss.JoinHorizontal(lipgloss.Left,
-				desc,
-				url,
-			)),
-		),
+		truncate.Render(header),
 	)
 }
 
