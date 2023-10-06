@@ -104,6 +104,7 @@ type Styles struct {
 		}
 		ItemSelector lipgloss.Style
 		Paginator    lipgloss.Style
+		Selector     lipgloss.Style
 	}
 
 	Tree struct {
@@ -384,6 +385,8 @@ func DefaultStyles() *Styles {
 		Bold(true)
 
 	s.Ref.Paginator = s.Log.Paginator.Copy()
+
+	s.Ref.Selector = lipgloss.NewStyle()
 
 	s.Tree.Selector = s.Tree.Normal.FileName.Copy().
 		Width(1).
