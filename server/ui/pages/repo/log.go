@@ -211,7 +211,6 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if i != nil {
 			l.activeCommit = i.(LogItem).Commit
 		}
-		cmds = append(cmds, updateStatusBarCmd)
 	case tea.KeyMsg, tea.MouseMsg:
 		switch l.activeView {
 		case logViewCommits:
@@ -242,22 +241,17 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(kmsg, l.common.KeyMap.BackItem):
-					cmds = append(cmds, backCmd)
+					l.goBack()
 				}
 			}
 		}
-	case BackMsg:
-		if l.activeView == logViewDiff {
-			l.activeView = logViewCommits
-			l.selectedCommit = nil
-			cmds = append(cmds, updateStatusBarCmd)
-		}
+	case GoBackMsg:
+		l.goBack()
 	case selector.ActiveMsg:
 		switch sel := msg.IdentifiableItem.(type) {
 		case LogItem:
 			l.activeCommit = sel.Commit
 		}
-		cmds = append(cmds, updateStatusBarCmd)
 	case selector.SelectMsg:
 		switch sel := msg.IdentifiableItem.(type) {
 		case LogItem:
@@ -280,10 +274,10 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 		l.vp.GotoTop()
 		l.activeView = logViewDiff
-		cmds = append(cmds, updateStatusBarCmd)
 	case footer.ToggleFooterMsg:
 		cmds = append(cmds, l.updateCommitsCmd)
 	case tea.WindowSizeMsg:
+		l.SetSize(msg.Width, msg.Height)
 		if l.selectedCommit != nil && l.currentDiff != nil {
 			l.vp.SetContent(
 				lipgloss.JoinVertical(lipgloss.Top,
@@ -311,7 +305,6 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		l.selector.Select(0)
 		cmds = append(cmds,
 			l.setItems([]selector.IdentifiableItem{}),
-			updateStatusBarCmd,
 		)
 	case spinner.TickMsg:
 		if l.activeView == logViewLoading && l.spinner.ID() == msg.ID {
@@ -398,6 +391,13 @@ func (l *Log) StatusBarInfo() string {
 		return fmt.Sprintf("☰ %.f%%", l.vp.ScrollPercent()*100)
 	default:
 		return ""
+	}
+}
+
+func (l *Log) goBack() {
+	if l.activeView == logViewDiff {
+		l.activeView = logViewCommits
+		l.selectedCommit = nil
 	}
 }
 

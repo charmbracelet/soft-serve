@@ -1,8 +1,6 @@
 package main
 
 import (
-	"io"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -208,22 +206,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (m *model) View() string {
-	view := m.m.View()
+	style := m.c.Styles.App.Copy()
+	wm, hm := style.GetHorizontalFrameSize(), style.GetVerticalFrameSize()
 	if m.showFooter {
-		view = lipgloss.JoinVertical(lipgloss.Left, view, m.f.View())
+		hm += m.f.Height()
 	}
 
+	var view string
 	switch m.state {
+	case startState:
+		view = m.m.View()
 	case errorState:
-		appStyle := m.c.Styles.App.Copy()
-		wm, hm := appStyle.GetHorizontalFrameSize(), appStyle.GetVerticalFrameSize()
-		if m.showFooter {
-			hm += m.f.Height()
-		}
-
 		err := m.c.Styles.ErrorTitle.Render("Bummer")
 		err += m.c.Styles.ErrorBody.Render(m.error.Error())
-		return m.c.Styles.Error.Copy().
+		view = m.c.Styles.Error.Copy().
 			Width(m.c.Width -
 				wm -
 				m.c.Styles.ErrorBody.GetHorizontalFrameSize()).
@@ -231,9 +227,13 @@ func (m *model) View() string {
 				hm -
 				m.c.Styles.Error.GetVerticalFrameSize()).
 			Render(err)
-	default:
-		return m.c.Zone.Scan(m.c.Styles.App.Render(view))
 	}
+
+	if m.showFooter {
+		view = lipgloss.JoinVertical(lipgloss.Top, view, m.f.View())
+	}
+
+	return m.c.Zone.Scan(style.Render(view))
 }
 
 type repository struct {
@@ -244,19 +244,7 @@ var _ proto.Repository = repository{}
 
 // Description implements proto.Repository.
 func (r repository) Description() string {
-	fp := filepath.Join(r.r.Path, "description")
-	f, err := os.Open(fp)
-	if err != nil {
-		return ""
-	}
-
-	defer f.Close() // nolint: errcheck
-	bts, err := io.ReadAll(f)
-	if err != nil {
-		return ""
-	}
-
-	return string(bts)
+	return ""
 }
 
 // ID implements proto.Repository.
