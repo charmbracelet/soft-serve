@@ -219,7 +219,6 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case FileItemsMsg:
 		cmds = append(cmds,
 			f.selector.SetItems(msg),
-			updateStatusBarCmd,
 		)
 		f.activeView = filesViewFiles
 		if f.cursor >= 0 {
@@ -231,7 +230,6 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		f.currentContent = msg
 		cmds = append(cmds,
 			f.code.SetContent(msg.content, msg.ext),
-			updateStatusBarCmd,
 		)
 		f.code.GotoTop()
 	case selector.SelectMsg:
@@ -245,9 +243,6 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, f.selectFileCmd)
 			}
 		}
-	case BackMsg:
-		f.path = filepath.Dir(f.path)
-		cmds = append(cmds, f.deselectItemCmd())
 	case tea.KeyMsg:
 		switch f.activeView {
 		case filesViewFiles:
@@ -255,12 +250,12 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, f.common.KeyMap.SelectItem):
 				cmds = append(cmds, f.selector.SelectItemCmd)
 			case key.Matches(msg, f.common.KeyMap.BackItem):
-				cmds = append(cmds, backCmd)
+				cmds = append(cmds, f.deselectItemCmd())
 			}
 		case filesViewContent:
 			switch {
 			case key.Matches(msg, f.common.KeyMap.BackItem):
-				cmds = append(cmds, backCmd)
+				cmds = append(cmds, f.deselectItemCmd())
 			case key.Matches(msg, f.common.KeyMap.Copy):
 				cmds = append(cmds, copyCmd(f.currentContent.content, "File contents copied to clipboard"))
 			case key.Matches(msg, lineNo):
@@ -270,6 +265,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case tea.WindowSizeMsg:
+		f.SetSize(msg.Width, msg.Height)
 		switch f.activeView {
 		case filesViewFiles:
 			if f.repo != nil {
@@ -284,8 +280,6 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-	case selector.ActiveMsg:
-		cmds = append(cmds, updateStatusBarCmd)
 	case EmptyRepoMsg:
 		f.ref = nil
 		f.path = ""
@@ -452,6 +446,7 @@ func (f *Files) selectFileCmd() tea.Msg {
 }
 
 func (f *Files) deselectItemCmd() tea.Cmd {
+	f.path = filepath.Dir(f.path)
 	index := 0
 	if len(f.lastSelected) > 0 {
 		index = f.lastSelected[len(f.lastSelected)-1]

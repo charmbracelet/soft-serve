@@ -124,6 +124,8 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RefMsg:
 		r.ref = msg
 		cmds = append(cmds, r.Init())
+	case tea.WindowSizeMsg:
+		r.SetSize(msg.Width, msg.Height)
 	case RefItemsMsg:
 		if r.refPrefix == msg.prefix {
 			cmds = append(cmds, r.selector.SetItems(msg.items))
@@ -138,7 +140,6 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case RefItem:
 			r.activeRef = sel.Reference
 		}
-		cmds = append(cmds, updateStatusBarCmd)
 	case selector.SelectMsg:
 		switch i := msg.IdentifiableItem.(type) {
 		case RefItem:

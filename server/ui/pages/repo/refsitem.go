@@ -178,7 +178,7 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		d.common.Zone.Mark(
 			i.ID(),
 			st.Base.Render(
-				lipgloss.JoinVertical(lipgloss.Top,
+				lipgloss.JoinHorizontal(lipgloss.Top,
 					truncate.String(selector+ref+desc+hash,
 						uint(m.Width()-horizontalFrameSize)),
 				),

@@ -98,6 +98,8 @@ func (r *Readme) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RefMsg:
 		r.ref = msg
 		cmds = append(cmds, r.Init())
+	case tea.WindowSizeMsg:
+		r.SetSize(msg.Width, msg.Height)
 	case EmptyRepoMsg:
 		cmds = append(cmds,
 			r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(),
