@@ -233,7 +233,7 @@ func DefaultStyles() *Styles {
 		Margin(1, 0)
 
 	s.Repo.Header = lipgloss.NewStyle().
-		Height(2).
+		MaxHeight(2).
 		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(lipgloss.Color("236"))
 
