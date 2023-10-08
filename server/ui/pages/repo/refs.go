@@ -63,6 +63,8 @@ func (r *Refs) TabName() string {
 		return "Branches"
 	} else if r.refPrefix == git.RefsTags {
 		return "Tags"
+	} else if r.refPrefix == git.RefsRemotes {
+		return "Remotes"
 	} else {
 		return "Refs"
 	}

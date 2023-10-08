@@ -13,6 +13,8 @@ const (
 	RefsHeads = git.RefsHeads
 	// RefsTags represents the prefix for tag references.
 	RefsTags = git.RefsTags
+	// RefsRemotes represents the prefix for remote references.
+	RefsRemotes	= "refs/remotes/"
 )
 
 // Reference is a wrapper around git.Reference with helper methods.
@@ -31,6 +33,9 @@ func (r ReferenceName) String() string {
 
 // Short returns the short name of the reference i.e. master.
 func (r ReferenceName) Short() string {
+	if (strings.HasPrefix(string(r), RefsRemotes)) {
+		return strings.TrimPrefix(string(r), RefsRemotes)
+	}
 	return git.RefShortName(string(r))
 }
 
@@ -41,7 +46,7 @@ func (r *Reference) Name() ReferenceName {
 
 // IsBranch returns true if the reference is a branch.
 func (r *Reference) IsBranch() bool {
-	return strings.HasPrefix(r.Refspec, git.RefsHeads)
+	return strings.HasPrefix(r.Refspec, git.RefsHeads) || strings.HasPrefix(r.Refspec, RefsRemotes)
 }
 
 // IsTag returns true if the reference is a tag.

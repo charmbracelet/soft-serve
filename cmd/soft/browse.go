@@ -42,6 +42,7 @@ var browseCmd = &cobra.Command{
 				repo.NewFiles(c),
 				repo.NewLog(c),
 				repo.NewRefs(c, git.RefsHeads),
+				repo.NewRefs(c, git.RefsRemotes),
 				repo.NewRefs(c, git.RefsTags),
 			),
 			repoPath: abs,
