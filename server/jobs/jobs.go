@@ -7,9 +7,14 @@ import (
 
 // Job is a job that can be registered with the scheduler.
 type Job struct {
-	ID   int
-	Spec string
-	Func func(context.Context) func()
+	ID     int
+	Runner Runner
+}
+
+// Runner is a job runner
+type Runner interface {
+	Spec(context.Context) string
+	Func(context.Context) func()
 }
 
 var (
@@ -18,10 +23,10 @@ var (
 )
 
 // Register registers a job.
-func Register(name, spec string, fn func(context.Context) func()) {
+func Register(name string, runner Runner) {
 	mtx.Lock()
 	defer mtx.Unlock()
-	jobs[name] = &Job{Spec: spec, Func: fn}
+	jobs[name] = &Job{Runner: runner}
 }
 
 // List returns a map of registered jobs.

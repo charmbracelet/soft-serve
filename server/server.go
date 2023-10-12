@@ -57,7 +57,7 @@ func NewServer(ctx context.Context) (*Server, error) {
 	// Add cron jobs.
 	sched := cron.NewScheduler(ctx)
 	for n, j := range jobs.List() {
-		id, err := sched.AddFunc(j.Spec, j.Func(ctx))
+		id, err := sched.AddFunc(j.Runner.Spec(ctx), j.Runner.Func(ctx))
 		if err != nil {
 			logger.Warn("error adding cron job", "job", n, "err", err)
 		}
