@@ -22,7 +22,7 @@ require (
 	github.com/caarlos0/env/v8 v8.0.0
 	github.com/caarlos0/tablewriter v0.1.0
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20230725143853-5dd0632f9245
-	github.com/charmbracelet/keygen v0.4.3
+	github.com/charmbracelet/keygen v0.5.0
 	github.com/charmbracelet/log v0.2.5
 	github.com/charmbracelet/ssh v0.0.0-20230822194956-1a051f898e09
 	github.com/go-jose/go-jose/v3 v3.0.0
@@ -43,7 +43,7 @@ require (
 	github.com/rubyist/tracerx v0.0.0-20170927163412-787959303086
 	github.com/spf13/cobra v1.7.0
 	go.uber.org/automaxprocs v1.5.3
-	golang.org/x/crypto v0.13.0
+	golang.org/x/crypto v0.14.0
 	golang.org/x/sync v0.3.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.26.0
@@ -55,7 +55,6 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/caarlos0/sshmarshal v0.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
@@ -91,8 +90,8 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.15.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
-	golang.org/x/term v0.12.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
