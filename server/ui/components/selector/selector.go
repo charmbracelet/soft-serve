@@ -48,7 +48,7 @@ func New(common common.Common, items []IdentifiableItem, delegate ItemDelegate) 
 		itms[i] = item
 	}
 	l := list.New(itms, delegate, common.Width, common.Height)
-	l.Styles.NoItems = common.Styles.NoItems
+	l.Styles.NoItems = common.Styles.NoContent
 	s := &Selector{
 		Model:  &l,
 		common: common,
