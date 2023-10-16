@@ -130,8 +130,6 @@ type Styles struct {
 
 	NoContent lipgloss.Style
 
-	NoItems lipgloss.Style
-
 	StatusBar       lipgloss.Style
 	StatusBarKey    lipgloss.Style
 	StatusBarValue  lipgloss.Style
@@ -430,12 +428,7 @@ func DefaultStyles() *Styles {
 	s.SpinnerContainer = lipgloss.NewStyle()
 
 	s.NoContent = lipgloss.NewStyle().
-		SetString("No Content.").
 		MarginTop(1).
-		MarginLeft(2).
-		Foreground(lipgloss.Color("242"))
-
-	s.NoItems = lipgloss.NewStyle().
 		MarginLeft(2).
 		Foreground(lipgloss.Color("242"))
 
