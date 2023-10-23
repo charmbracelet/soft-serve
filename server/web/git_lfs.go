@@ -683,52 +683,51 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 			},
 		})
 		return
-	} else {
-		locks, err := datastore.GetLFSLocks(ctx, dbx, repo.ID(), cursor, limit)
-		if err != nil {
-			logger.Error("error getting locks", "err", err)
-			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
-				Message: "internal server error",
-			})
-			return
-		}
+	}
 
-		lockList := make([]lfs.Lock, len(locks))
-		users := map[int64]models.User{}
-		for i, lock := range locks {
-			owner, ok := users[lock.UserID]
-			if !ok {
-				owner, err = datastore.GetUserByID(ctx, dbx, lock.UserID)
-				if err != nil {
-					logger.Error("error getting lock owner", "err", err)
-					renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
-						Message: "internal server error",
-					})
-					return
-				}
-				users[lock.UserID] = owner
-			}
-
-			lockList[i] = lfs.Lock{
-				ID:       strconv.FormatInt(lock.ID, 10),
-				Path:     lock.Path,
-				LockedAt: lock.CreatedAt,
-				Owner: lfs.Owner{
-					Name: owner.Username,
-				},
-			}
-		}
-
-		resp := lfs.LockListResponse{
-			Locks: lockList,
-		}
-		if len(locks) == limit {
-			resp.NextCursor = strconv.Itoa(cursor + 1)
-		}
-
-		renderJSON(w, http.StatusOK, resp)
+	locks, err := datastore.GetLFSLocks(ctx, dbx, repo.ID(), cursor, limit)
+	if err != nil {
+		logger.Error("error getting locks", "err", err)
+		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+			Message: "internal server error",
+		})
 		return
 	}
+
+	lockList := make([]lfs.Lock, len(locks))
+	users := map[int64]models.User{}
+	for i, lock := range locks {
+		owner, ok := users[lock.UserID]
+		if !ok {
+			owner, err = datastore.GetUserByID(ctx, dbx, lock.UserID)
+			if err != nil {
+				logger.Error("error getting lock owner", "err", err)
+				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+					Message: "internal server error",
+				})
+				return
+			}
+			users[lock.UserID] = owner
+		}
+
+		lockList[i] = lfs.Lock{
+			ID:       strconv.FormatInt(lock.ID, 10),
+			Path:     lock.Path,
+			LockedAt: lock.CreatedAt,
+			Owner: lfs.Owner{
+				Name: owner.Username,
+			},
+		}
+	}
+
+	resp := lfs.LockListResponse{
+		Locks: lockList,
+	}
+	if len(locks) == limit {
+		resp.NextCursor = strconv.Itoa(cursor + 1)
+	}
+
+	renderJSON(w, http.StatusOK, resp)
 }
 
 // POST: /<repo>.git/info/lfs/objects/locks/verify

@@ -89,7 +89,7 @@ func (r *Code) Init() tea.Cmd {
 		}
 		content = md
 	} else {
-		f, err := r.renderFile(r.extension, content, w)
+		f, err := r.renderFile(r.extension, content)
 		if err != nil {
 			return common.ErrorCmd(err)
 		}
@@ -209,7 +209,7 @@ func (r *Code) glamourize(w int, md string) (string, error) {
 	return mdt, nil
 }
 
-func (r *Code) renderFile(path, content string, width int) (string, error) {
+func (r *Code) renderFile(path, content string) (string, error) {
 	// FIXME chroma & glamour might break wrapping when using tabs since tab
 	// width depends on the terminal. This is a workaround to replace tabs with
 	// 4-spaces.

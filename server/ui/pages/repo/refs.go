@@ -63,9 +63,8 @@ func (r *Refs) TabName() string {
 		return "Branches"
 	} else if r.refPrefix == git.RefsTags {
 		return "Tags"
-	} else {
-		return "Refs"
 	}
+	return "Refs"
 }
 
 // SetSize implements common.Component.

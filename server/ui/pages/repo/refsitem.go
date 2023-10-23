@@ -61,9 +61,8 @@ func (cl RefItems) Less(i, j int) bool {
 		return cl[i].Commit.Author.When.After(cl[j].Commit.Author.When)
 	} else if cl[i].Commit != nil && cl[j].Commit == nil {
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 // RefItemDelegate is the delegate for the ref item.
