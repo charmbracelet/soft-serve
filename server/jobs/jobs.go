@@ -11,7 +11,7 @@ type Job struct {
 	Runner Runner
 }
 
-// Runner is a job runner
+// Runner is a job runner.
 type Runner interface {
 	Spec(context.Context) string
 	Func(context.Context) func()

@@ -22,7 +22,7 @@ func init() {
 
 type mirrorPull struct{}
 
-// Spec derives the spec used for pull mirrors and implements Runner
+// Spec derives the spec used for pull mirrors and implements Runner.
 func (m mirrorPull) Spec(ctx context.Context) string {
 	cfg := config.FromContext(ctx)
 	if cfg.Jobs.MirrorPull != "" {
@@ -31,7 +31,7 @@ func (m mirrorPull) Spec(ctx context.Context) string {
 	return "@every 10m"
 }
 
-// Func runs the (pull) mirror job task and implements Runner
+// Func runs the (pull) mirror job task and implements Runner.
 func (m mirrorPull) Func(ctx context.Context) func() {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("jobs.mirror")

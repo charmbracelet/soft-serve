@@ -105,7 +105,7 @@ type LFSConfig struct {
 	SSHEnabled bool `env:"SSH_ENABLED" yaml:"ssh_enabled"`
 }
 
-// JobsConfig is the configuration for cron jobs
+// JobsConfig is the configuration for cron jobs.
 type JobsConfig struct {
 	MirrorPull string `env:"MIRROR_PULL" yaml:"mirror_pull"`
 }
