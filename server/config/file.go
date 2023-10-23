@@ -98,6 +98,10 @@ lfs:
   # Enable Git SSH transfer.
   ssh_enabled: {{ .LFS.SSHEnabled }}
 
+# Cron job configuration
+jobs:
+  mirror_pull: "{{ .Jobs.MirrorPull }}"
+
 # Additional admin keys.
 #initial_admin_keys:
 #  - "ssh-rsa AAAAB3NzaC1yc2..."
