@@ -83,7 +83,7 @@ func NewFiles(common common.Common) *Files {
 	selector.KeyMap.NextPage = common.KeyMap.NextPage
 	selector.KeyMap.PrevPage = common.KeyMap.PrevPage
 	f.selector = selector
-	f.code.SetShowLineNumber(f.lineNumber)
+	f.code.ShowLineNumber = f.lineNumber
 	s := spinner.New(spinner.WithSpinner(spinner.Dot),
 		spinner.WithStyle(common.Styles.Spinner))
 	f.spinner = s
@@ -260,7 +260,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, copyCmd(f.currentContent.content, "File contents copied to clipboard"))
 			case key.Matches(msg, lineNo):
 				f.lineNumber = !f.lineNumber
-				f.code.SetShowLineNumber(f.lineNumber)
+				f.code.ShowLineNumber = f.lineNumber
 				cmds = append(cmds, f.code.SetContent(f.currentContent.content, f.currentContent.ext))
 			}
 		}
