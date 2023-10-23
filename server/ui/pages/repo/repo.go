@@ -258,8 +258,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Must come after we've updated the active tab
 	switch msg.(type) {
 	case RepoMsg, RefMsg, tabs.ActiveTabMsg, tea.KeyMsg, tea.MouseMsg,
-		FileItemsMsg, FileContentMsg, selector.ActiveMsg, LogItemsMsg,
-		GoBackMsg, LogDiffMsg, EmptyRepoMsg:
+		FileItemsMsg, FileContentMsg, FileBlameMsg, selector.ActiveMsg,
+		LogItemsMsg, GoBackMsg, LogDiffMsg, EmptyRepoMsg:
 		r.setStatusBarInfo()
 	}
 

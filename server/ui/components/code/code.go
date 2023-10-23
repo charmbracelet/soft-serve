@@ -1,6 +1,7 @@
 package code
 
 import (
+	"math"
 	"strings"
 	"sync"
 
@@ -21,14 +22,15 @@ const (
 // Code is a code snippet.
 type Code struct {
 	*vp.Viewport
-	common         common.Common
-	content        string
-	extension      string
-	renderContext  gansi.RenderContext
-	renderMutex    sync.Mutex
-	styleConfig    gansi.StyleConfig
-	ShowLineNumber bool
+	common        common.Common
+	sidenote      string
+	content       string
+	extension     string
+	renderContext gansi.RenderContext
+	renderMutex   sync.Mutex
+	styleConfig   gansi.StyleConfig
 
+	ShowLineNumber bool
 	NoContentStyle lipgloss.Style
 	UseGlamour     bool
 }
@@ -65,19 +67,58 @@ func (r *Code) SetContent(c, ext string) tea.Cmd {
 	return r.Init()
 }
 
+// SetSideNote sets the sidenote of the Code.
+func (r *Code) SetSideNote(s string) tea.Cmd {
+	r.sidenote = s
+	return r.Init()
+}
+
 // Init implements tea.Model.
 func (r *Code) Init() tea.Cmd {
 	w := r.common.Width
-	c := r.content
-	if c == "" {
+	content := r.content
+	if content == "" {
 		r.Viewport.Model.SetContent(r.NoContentStyle.String())
 		return nil
 	}
-	f, err := r.renderFile(r.extension, c, w)
-	if err != nil {
-		return common.ErrorCmd(err)
+
+	if r.UseGlamour {
+		md, err := r.glamourize(w, content)
+		if err != nil {
+			return common.ErrorCmd(err)
+		}
+		content = md
+	} else {
+		f, err := r.renderFile(r.extension, content, w)
+		if err != nil {
+			return common.ErrorCmd(err)
+		}
+		content = f
+		if r.ShowLineNumber {
+			var ml int
+			content, ml = common.FormatLineNumber(r.common.Styles, content, true)
+			w -= ml
+		}
 	}
-	r.Viewport.Model.SetContent(f)
+
+	const sideNotePercent = 0.3
+	if r.sidenote != "" {
+		lines := strings.Split(r.sidenote, "\n")
+		sideNoteWidth := int(math.Ceil(float64(r.Model.Width) * sideNotePercent))
+		for i, l := range lines {
+			lines[i] = common.TruncateString(l, sideNoteWidth)
+		}
+		content = lipgloss.JoinHorizontal(lipgloss.Left, strings.Join(lines, "\n"), content)
+	}
+
+	// Fix styles after hard wrapping
+	// https://github.com/muesli/reflow/issues/43
+	//
+	// TODO: solve this upstream in Glamour/Reflow.
+	content = lipgloss.NewStyle().Width(w).Render(content)
+
+	r.Viewport.Model.SetContent(content)
+
 	return nil
 }
 
@@ -181,43 +222,26 @@ func (r *Code) renderFile(path, content string, width int) (string, error) {
 	if lexer != nil && lexer.Config() != nil {
 		lang = lexer.Config().Name
 	}
-	var c string
-	if r.UseGlamour {
-		md, err := r.glamourize(width, content)
-		if err != nil {
-			return "", err
-		}
-		c = md
-	} else {
-		formatter := &gansi.CodeBlockElement{
-			Code:     content,
-			Language: lang,
-		}
-		s := strings.Builder{}
-		rc := r.renderContext
-		if r.ShowLineNumber {
-			st := common.StyleConfig()
-			var m uint
-			st.CodeBlock.Margin = &m
-			rc = gansi.NewRenderContext(gansi.Options{
-				ColorProfile: termenv.TrueColor,
-				Styles:       st,
-			})
-		}
-		err := formatter.Render(&s, rc)
-		if err != nil {
-			return "", err
-		}
-		c = s.String()
-		if r.ShowLineNumber {
-			var ml int
-			c, ml = common.FormatLineNumber(r.common.Styles, c, true)
-			width -= ml
-		}
+
+	formatter := &gansi.CodeBlockElement{
+		Code:     content,
+		Language: lang,
 	}
-	// Fix styling when after line breaks.
-	// https://github.com/muesli/reflow/issues/43
-	//
-	// TODO: solve this upstream in Glamour/Reflow.
-	return lipgloss.NewStyle().Width(width).Render(c), nil
+	s := strings.Builder{}
+	rc := r.renderContext
+	if r.ShowLineNumber {
+		st := common.StyleConfig()
+		var m uint
+		st.CodeBlock.Margin = &m
+		rc = gansi.NewRenderContext(gansi.Options{
+			ColorProfile: termenv.TrueColor,
+			Styles:       st,
+		})
+	}
+	err := formatter.Render(&s, rc)
+	if err != nil {
+		return "", err
+	}
+
+	return s.String(), nil
 }

@@ -123,6 +123,10 @@ type Styles struct {
 		Selector    lipgloss.Style
 		FileContent lipgloss.Style
 		Paginator   lipgloss.Style
+		Blame       struct {
+			Hash    lipgloss.Style
+			Message lipgloss.Style
+		}
 	}
 
 	Spinner          lipgloss.Style
@@ -424,6 +428,12 @@ func DefaultStyles() *Styles {
 	s.Tree.FileContent = lipgloss.NewStyle()
 
 	s.Tree.Paginator = s.Log.Paginator.Copy()
+
+	s.Tree.Blame.Hash = lipgloss.NewStyle().
+		Foreground(hashColor).
+		Bold(true)
+
+	s.Tree.Blame.Message = lipgloss.NewStyle()
 
 	s.Spinner = lipgloss.NewStyle().
 		MarginTop(1).
