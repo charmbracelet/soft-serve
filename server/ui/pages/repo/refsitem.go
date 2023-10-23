@@ -122,10 +122,10 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		itemSt = st.Item
 	}
 
-	var hash string
+	var sha string
 	c := i.Commit
 	if c != nil {
-		hash = c.ID.String()[:7]
+		sha = c.ID.String()[:7]
 	}
 
 	ref := i.Short()
@@ -150,35 +150,53 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 			}
 			msg = strings.TrimSpace(msg)
 			if msg != "" {
-				msg = common.TruncateString(msg, m.Width()-
-					horizontalFrameSize-
-					lipgloss.Width(selector)-
-					lipgloss.Width(ref)-
-					lipgloss.Width(hash)-
-					lipgloss.Width(desc)-3) // 3 is for the paddings and truncation symbol
-				desc = " " + msgSt.Render(msg) + desc
+				msgMargin := m.Width() -
+					horizontalFrameSize -
+					lipgloss.Width(selector) -
+					lipgloss.Width(ref) -
+					lipgloss.Width(desc) -
+					lipgloss.Width(sha) -
+					3 // 3 is for the paddings and truncation symbol
+				if msgMargin >= 0 {
+					msg = common.TruncateString(msg, msgMargin)
+					desc = " " + msgSt.Render(msg) + desc
+				}
 			}
 		}
 	} else if c != nil {
-		on := "updated " + humanize.Time(c.Committer.When)
-		desc += " " + st.ItemDesc.Render(on)
-	}
-
-	ref = itemSt.Render(ref)
-	hash = st.ItemHash.Copy().
-		Align(lipgloss.Right).
-		PaddingLeft(1).
-		Width(m.Width() -
+		onMargin := m.Width() -
 			horizontalFrameSize -
 			lipgloss.Width(selector) -
 			lipgloss.Width(ref) -
-			lipgloss.Width(desc) - 1). // 1 is for the left padding
-		Render(hash)
+			lipgloss.Width(desc) -
+			lipgloss.Width(sha) -
+			2 // 2 is for the padding and truncation symbol
+		if onMargin >= 0 {
+			on := common.TruncateString("updated "+humanize.Time(c.Committer.When), onMargin)
+			desc += " " + st.ItemDesc.Render(on)
+		}
+	}
+
+	var hash string
+	ref = itemSt.Render(ref)
+	hashMargin := m.Width() -
+		horizontalFrameSize -
+		lipgloss.Width(selector) -
+		lipgloss.Width(ref) -
+		lipgloss.Width(desc) -
+		lipgloss.Width(sha) -
+		1 // 1 is for the left padding
+	if hashMargin >= 0 {
+		hash = strings.Repeat(" ", hashMargin) + st.ItemHash.Copy().
+			Align(lipgloss.Right).
+			PaddingLeft(1).
+			Render(sha)
+	}
 	fmt.Fprint(w,
 		d.common.Zone.Mark(
 			i.ID(),
 			st.Base.Render(
-				lipgloss.JoinHorizontal(lipgloss.Top,
+				lipgloss.JoinHorizontal(lipgloss.Left,
 					truncate.String(selector+ref+desc+hash,
 						uint(m.Width()-horizontalFrameSize)),
 				),
