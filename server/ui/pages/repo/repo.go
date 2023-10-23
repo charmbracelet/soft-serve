@@ -84,11 +84,8 @@ func New(c common.Common, comps ...common.TabComponent) *Repo {
 	return r
 }
 
-func (r *Repo) getMargins() (w, h int) {
-	hh := 1
-	if r.selectedRepo != nil && r.selectedRepo.Description() != "" {
-		hh++
-	}
+func (r *Repo) getMargins() (int, int) {
+	hh := lipgloss.Height(r.headerView())
 	hm := r.common.Styles.Repo.Body.GetVerticalFrameSize() +
 		hh +
 		r.common.Styles.Repo.Header.GetVerticalFrameSize() +
@@ -277,14 +274,13 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (r *Repo) View() string {
-	s := r.common.Styles.Repo.Base.Copy().
-		Width(r.common.Width).
-		Height(r.common.Height)
-	repoBodyStyle := r.common.Styles.Repo.Body.Copy()
-	_, hm := r.getMargins()
+	wm, hm := r.getMargins()
 	hm += r.common.Styles.Tabs.GetHeight() +
 		r.common.Styles.Tabs.GetVerticalFrameSize()
-	mainStyle := repoBodyStyle.
+	s := r.common.Styles.Repo.Base.Copy().
+		Width(r.common.Width - wm).
+		Height(r.common.Height - hm)
+	mainStyle := r.common.Styles.Repo.Body.Copy().
 		Height(r.common.Height - hm)
 	var main string
 	var statusbar string
