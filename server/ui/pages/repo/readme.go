@@ -34,6 +34,7 @@ type Readme struct {
 func NewReadme(common common.Common) *Readme {
 	readme := code.New(common, "", "")
 	readme.NoContentStyle = readme.NoContentStyle.Copy().SetString("No readme found.")
+	readme.UseGlamour = true
 	s := spinner.New(spinner.WithSpinner(spinner.Dot),
 		spinner.WithStyle(common.Styles.Spinner))
 	return &Readme{

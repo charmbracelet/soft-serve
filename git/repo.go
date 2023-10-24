@@ -189,9 +189,7 @@ func (r *Repository) CommitsByPage(ref *Reference, page, size int) (Commits, err
 		return nil, err
 	}
 	commits := make(Commits, len(cs))
-	for i, c := range cs {
-		commits[i] = c
-	}
+	copy(commits, cs)
 	return commits, nil
 }
 

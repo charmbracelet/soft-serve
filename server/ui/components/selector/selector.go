@@ -299,11 +299,7 @@ func (s *Selector) SelectItemCmd() tea.Msg {
 
 func (s *Selector) activeCmd() tea.Msg {
 	item := s.SelectedItem()
-	i, ok := item.(IdentifiableItem)
-	if !ok {
-		return ActiveMsg{}
-	}
-	return ActiveMsg{i}
+	return ActiveMsg{item}
 }
 
 func (s *Selector) activeFilterCmd() tea.Msg {

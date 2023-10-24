@@ -123,6 +123,10 @@ type Styles struct {
 		Selector    lipgloss.Style
 		FileContent lipgloss.Style
 		Paginator   lipgloss.Style
+		Blame       struct {
+			Hash    lipgloss.Style
+			Message lipgloss.Style
+		}
 	}
 
 	Spinner          lipgloss.Style
@@ -141,6 +145,11 @@ type Styles struct {
 	TabInactive  lipgloss.Style
 	TabActive    lipgloss.Style
 	TabSeparator lipgloss.Style
+
+	Code struct {
+		LineDigit lipgloss.Style
+		LineBar   lipgloss.Style
+	}
 }
 
 // DefaultStyles returns default styles for the UI.
@@ -420,6 +429,12 @@ func DefaultStyles() *Styles {
 
 	s.Tree.Paginator = s.Log.Paginator.Copy()
 
+	s.Tree.Blame.Hash = lipgloss.NewStyle().
+		Foreground(hashColor).
+		Bold(true)
+
+	s.Tree.Blame.Message = lipgloss.NewStyle()
+
 	s.Spinner = lipgloss.NewStyle().
 		MarginTop(1).
 		MarginLeft(2).
@@ -474,6 +489,10 @@ func DefaultStyles() *Styles {
 		SetString("│").
 		Padding(0, 1).
 		Foreground(lipgloss.Color("238"))
+
+	s.Code.LineDigit = lipgloss.NewStyle().Foreground(lipgloss.Color("239"))
+
+	s.Code.LineBar = lipgloss.NewStyle().Foreground(lipgloss.Color("236"))
 
 	return s
 }

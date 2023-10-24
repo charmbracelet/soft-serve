@@ -68,6 +68,7 @@ func (r *Refs) TabName() string {
 	} else {
 		return "Refs"
 	}
+	return "Refs"
 }
 
 // SetSize implements common.Component.
