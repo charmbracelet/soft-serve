@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/server/ui/components/viewport"
+	"github.com/charmbracelet/soft-serve/server/ui/styles"
 	"github.com/muesli/reflow/wrap"
 	"github.com/muesli/termenv"
 )
@@ -268,8 +269,8 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		l.vp.SetContent(
 			lipgloss.JoinVertical(lipgloss.Top,
 				l.renderCommit(l.selectedCommit),
-				l.renderSummary(msg),
-				l.renderDiff(msg),
+				renderSummary(msg, l.common.Styles, l.common.Width),
+				renderDiff(msg, l.common.Width),
 			),
 		)
 		l.vp.GotoTop()
@@ -282,8 +283,8 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			l.vp.SetContent(
 				lipgloss.JoinVertical(lipgloss.Top,
 					l.renderCommit(l.selectedCommit),
-					l.renderSummary(l.currentDiff),
-					l.renderDiff(l.currentDiff),
+					renderSummary(l.currentDiff, l.common.Styles, l.common.Width),
+					renderDiff(l.currentDiff, l.common.Width),
 				),
 			)
 		}
@@ -496,21 +497,21 @@ func (l *Log) renderCommit(c *git.Commit) string {
 	return wrap.String(s.String(), l.common.Width-2)
 }
 
-func (l *Log) renderSummary(diff *git.Diff) string {
+func renderSummary(diff *git.Diff, styles *styles.Styles, width int) string {
 	stats := strings.Split(diff.Stats().String(), "\n")
 	for i, line := range stats {
 		ch := strings.Split(line, "|")
 		if len(ch) > 1 {
 			adddel := ch[len(ch)-1]
-			adddel = strings.ReplaceAll(adddel, "+", l.common.Styles.Log.CommitStatsAdd.Render("+"))
-			adddel = strings.ReplaceAll(adddel, "-", l.common.Styles.Log.CommitStatsDel.Render("-"))
+			adddel = strings.ReplaceAll(adddel, "+", styles.Log.CommitStatsAdd.Render("+"))
+			adddel = strings.ReplaceAll(adddel, "-", styles.Log.CommitStatsDel.Render("-"))
 			stats[i] = strings.Join(ch[:len(ch)-1], "|") + "|" + adddel
 		}
 	}
-	return wrap.String(strings.Join(stats, "\n"), l.common.Width-2)
+	return wrap.String(strings.Join(stats, "\n"), width-2)
 }
 
-func (l *Log) renderDiff(diff *git.Diff) string {
+func renderDiff(diff *git.Diff, width int) string {
 	var s strings.Builder
 	var pr strings.Builder
 	diffChroma := &gansi.CodeBlockElement{
@@ -523,7 +524,7 @@ func (l *Log) renderDiff(diff *git.Diff) string {
 	} else {
 		s.WriteString(fmt.Sprintf("\n%s", pr.String()))
 	}
-	return wrap.String(s.String(), l.common.Width)
+	return wrap.String(s.String(), width)
 }
 
 func (l *Log) setItems(items []selector.IdentifiableItem) tea.Cmd {

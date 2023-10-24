@@ -129,6 +129,17 @@ type Styles struct {
 		}
 	}
 
+	Stash struct {
+		Normal struct {
+			Message lipgloss.Style
+		}
+		Active struct {
+			Message lipgloss.Style
+		}
+		Title    lipgloss.Style
+		Selector lipgloss.Style
+	}
+
 	Spinner          lipgloss.Style
 	SpinnerContainer lipgloss.Style
 
@@ -493,6 +504,18 @@ func DefaultStyles() *Styles {
 	s.Code.LineDigit = lipgloss.NewStyle().Foreground(lipgloss.Color("239"))
 
 	s.Code.LineBar = lipgloss.NewStyle().Foreground(lipgloss.Color("236"))
+
+	s.Stash.Normal.Message = lipgloss.NewStyle().MarginLeft(1)
+
+	s.Stash.Active.Message = s.Stash.Normal.Message.Copy().Foreground(selectorColor)
+
+	s.Stash.Title = lipgloss.NewStyle().
+		Foreground(hashColor).
+		Bold(true)
+
+	s.Stash.Selector = lipgloss.NewStyle().
+		Width(1).
+		Foreground(selectorColor)
 
 	return s
 }

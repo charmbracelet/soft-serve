@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -31,24 +32,32 @@ var browseCmd = &cobra.Command{
 			return err
 		}
 
+		r, err := git.Open(abs)
+		if err != nil {
+			return fmt.Errorf("failed to open repository: %w", err)
+		}
+
 		// Bubble Tea uses Termenv default output so we have to use the same
 		// thing here.
 		output := termenv.DefaultOutput()
 		ctx := cmd.Context()
 		c := common.NewCommon(ctx, output, 0, 0)
+		comps := []common.TabComponent{
+			repo.NewReadme(c),
+			repo.NewFiles(c),
+			repo.NewLog(c),
+		}
+		if !r.IsBare {
+			comps = append(comps, repo.NewStash(c))
+		}
+		comps = append(comps, repo.NewRefs(c, git.RefsHeads), repo.NewRefs(c, git.RefsTags))
 		m := &model{
-			m: repo.New(c,
-				repo.NewReadme(c),
-				repo.NewFiles(c),
-				repo.NewLog(c),
-				repo.NewRefs(c, git.RefsHeads),
-				repo.NewRefs(c, git.RefsTags),
-			),
-			repoPath: abs,
-			c:        c,
+			model:  repo.New(c, comps...),
+			repo:   repository{r},
+			common: c,
 		}
 
-		m.f = footer.New(c, m)
+		m.footer = footer.New(c, m)
 		p := tea.NewProgram(m,
 			tea.WithAltScreen(),
 			tea.WithMouseCellMotion(),
@@ -74,10 +83,10 @@ const (
 )
 
 type model struct {
-	m          *repo.Repo
-	f          *footer.Footer
-	repoPath   string
-	c          common.Common
+	model      *repo.Repo
+	footer     *footer.Footer
+	repo       proto.Repository
+	common     common.Common
 	state      state
 	showFooter bool
 	error      error
@@ -86,16 +95,16 @@ type model struct {
 var _ tea.Model = &model{}
 
 func (m *model) SetSize(w, h int) {
-	m.c.SetSize(w, h)
-	style := m.c.Styles.App.Copy()
+	m.common.SetSize(w, h)
+	style := m.common.Styles.App.Copy()
 	wm := style.GetHorizontalFrameSize()
 	hm := style.GetVerticalFrameSize()
 	if m.showFooter {
-		hm += m.f.Height()
+		hm += m.footer.Height()
 	}
 
-	m.f.SetSize(w-wm, h-hm)
-	m.m.SetSize(w-wm, h-hm)
+	m.footer.SetSize(w-wm, h-hm)
+	m.model.SetSize(w-wm, h-hm)
 }
 
 // ShortHelp implements help.KeyMap.
@@ -103,12 +112,12 @@ func (m model) ShortHelp() []key.Binding {
 	switch m.state {
 	case errorState:
 		return []key.Binding{
-			m.c.KeyMap.Back,
-			m.c.KeyMap.Quit,
-			m.c.KeyMap.Help,
+			m.common.KeyMap.Back,
+			m.common.KeyMap.Quit,
+			m.common.KeyMap.Help,
 		}
 	default:
-		return m.m.ShortHelp()
+		return m.model.ShortHelp()
 	}
 }
 
@@ -118,67 +127,61 @@ func (m model) FullHelp() [][]key.Binding {
 	case errorState:
 		return [][]key.Binding{
 			{
-				m.c.KeyMap.Back,
+				m.common.KeyMap.Back,
 			},
 			{
-				m.c.KeyMap.Quit,
-				m.c.KeyMap.Help,
+				m.common.KeyMap.Quit,
+				m.common.KeyMap.Help,
 			},
 		}
 	default:
-		return m.m.FullHelp()
+		return m.model.FullHelp()
 	}
 }
 
 // Init implements tea.Model.
 func (m *model) Init() tea.Cmd {
-	rr, err := git.Open(m.repoPath)
-	if err != nil {
-		return common.ErrorCmd(err)
-	}
-
-	r := repository{rr}
 	return tea.Batch(
-		m.m.Init(),
-		m.f.Init(),
+		m.model.Init(),
+		m.footer.Init(),
 		func() tea.Msg {
-			return repo.RepoMsg(r)
+			return repo.RepoMsg(m.repo)
 		},
-		repo.UpdateRefCmd(r),
+		repo.UpdateRefCmd(m.repo),
 	)
 }
 
 // Update implements tea.Model.
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m.c.Logger.Debugf("msg received: %T", msg)
+	m.common.Logger.Debugf("msg received: %T", msg)
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, m.c.KeyMap.Back) && m.error != nil:
+		case key.Matches(msg, m.common.KeyMap.Back) && m.error != nil:
 			m.error = nil
 			m.state = startState
 			// Always show the footer on error.
-			m.showFooter = m.f.ShowAll()
-		case key.Matches(msg, m.c.KeyMap.Help):
+			m.showFooter = m.footer.ShowAll()
+		case key.Matches(msg, m.common.KeyMap.Help):
 			cmds = append(cmds, footer.ToggleFooterCmd)
-		case key.Matches(msg, m.c.KeyMap.Quit):
+		case key.Matches(msg, m.common.KeyMap.Quit):
 			// Stop bubblezone background workers.
-			m.c.Zone.Close()
+			m.common.Zone.Close()
 			return m, tea.Quit
 		}
 	case tea.MouseMsg:
 		switch msg.Type {
 		case tea.MouseLeft:
 			switch {
-			case m.c.Zone.Get("footer").InBounds(msg):
+			case m.common.Zone.Get("footer").InBounds(msg):
 				cmds = append(cmds, footer.ToggleFooterCmd)
 			}
 		}
 	case footer.ToggleFooterMsg:
-		m.f.SetShowAll(!m.f.ShowAll())
+		m.footer.SetShowAll(!m.footer.ShowAll())
 		m.showFooter = !m.showFooter
 	case common.ErrorMsg:
 		m.error = msg
@@ -186,54 +189,54 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showFooter = true
 	}
 
-	f, cmd := m.f.Update(msg)
-	m.f = f.(*footer.Footer)
+	f, cmd := m.footer.Update(msg)
+	m.footer = f.(*footer.Footer)
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
 
-	r, cmd := m.m.Update(msg)
-	m.m = r.(*repo.Repo)
+	r, cmd := m.model.Update(msg)
+	m.model = r.(*repo.Repo)
 	if cmd != nil {
 		cmds = append(cmds, cmd)
 	}
 
 	// This fixes determining the height margin of the footer.
-	m.SetSize(m.c.Width, m.c.Height)
+	m.SetSize(m.common.Width, m.common.Height)
 
 	return m, tea.Batch(cmds...)
 }
 
 // View implements tea.Model.
 func (m *model) View() string {
-	style := m.c.Styles.App.Copy()
+	style := m.common.Styles.App.Copy()
 	wm, hm := style.GetHorizontalFrameSize(), style.GetVerticalFrameSize()
 	if m.showFooter {
-		hm += m.f.Height()
+		hm += m.footer.Height()
 	}
 
 	var view string
 	switch m.state {
 	case startState:
-		view = m.m.View()
+		view = m.model.View()
 	case errorState:
-		err := m.c.Styles.ErrorTitle.Render("Bummer")
-		err += m.c.Styles.ErrorBody.Render(m.error.Error())
-		view = m.c.Styles.Error.Copy().
-			Width(m.c.Width -
+		err := m.common.Styles.ErrorTitle.Render("Bummer")
+		err += m.common.Styles.ErrorBody.Render(m.error.Error())
+		view = m.common.Styles.Error.Copy().
+			Width(m.common.Width -
 				wm -
-				m.c.Styles.ErrorBody.GetHorizontalFrameSize()).
-			Height(m.c.Height -
+				m.common.Styles.ErrorBody.GetHorizontalFrameSize()).
+			Height(m.common.Height -
 				hm -
-				m.c.Styles.Error.GetVerticalFrameSize()).
+				m.common.Styles.Error.GetVerticalFrameSize()).
 			Render(err)
 	}
 
 	if m.showFooter {
-		view = lipgloss.JoinVertical(lipgloss.Top, view, m.f.View())
+		view = lipgloss.JoinVertical(lipgloss.Top, view, m.footer.View())
 	}
 
-	return m.c.Zone.Scan(style.Render(view))
+	return m.common.Zone.Scan(style.Render(view))
 }
 
 type repository struct {

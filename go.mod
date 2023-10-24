@@ -2,6 +2,8 @@ module github.com/charmbracelet/soft-serve
 
 go 1.20
 
+replace github.com/gogs/git-module => github.com/aymanbagabas/git-module v1.4.1-0.20231025145308-5e8facf7a213
+
 require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/charmbracelet/bubbles v0.16.1

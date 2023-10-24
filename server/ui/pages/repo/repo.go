@@ -208,6 +208,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, r.updateTabComponent(&Log{}, msg))
 	case RefItemsMsg:
 		cmds = append(cmds, r.updateTabComponent(&Refs{refPrefix: msg.prefix}, msg))
+	case StashListMsg, StashPatchMsg:
+		cmds = append(cmds, r.updateTabComponent(&Stash{}, msg))
 	// We have two spinners, one is used to when loading the repository and the
 	// other is used when loading the log.
 	// Check if the spinner ID matches the spinner model.
@@ -259,7 +261,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case RepoMsg, RefMsg, tabs.ActiveTabMsg, tea.KeyMsg, tea.MouseMsg,
 		FileItemsMsg, FileContentMsg, FileBlameMsg, selector.ActiveMsg,
-		LogItemsMsg, GoBackMsg, LogDiffMsg, EmptyRepoMsg:
+		LogItemsMsg, GoBackMsg, LogDiffMsg, EmptyRepoMsg,
+		StashListMsg, StashPatchMsg:
 		r.setStatusBarInfo()
 	}
 
