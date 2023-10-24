@@ -196,10 +196,10 @@ func (r *Refs) StatusBarValue() string {
 // StatusBarInfo implements statusbar.StatusBar.
 func (r *Refs) StatusBarInfo() string {
 	totalPages := r.selector.TotalPages()
-	if totalPages > 1 {
-		return fmt.Sprintf("p. %d/%d", r.selector.Page()+1, totalPages)
+	if totalPages <= 1 {
+		return "p. 1/1"
 	}
-	return ""
+	return fmt.Sprintf("p. %d/%d", r.selector.Page()+1, totalPages)
 }
 
 func (r *Refs) updateItemsCmd() tea.Msg {
