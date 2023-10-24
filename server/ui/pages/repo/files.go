@@ -250,6 +250,11 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, f.selectFileCmd)
 			}
 		}
+	case GoBackMsg:
+		switch f.activeView {
+		case filesViewFiles, filesViewContent:
+			cmds = append(cmds, f.deselectItemCmd())
+		}
 	case tea.KeyMsg:
 		switch f.activeView {
 		case filesViewFiles:
