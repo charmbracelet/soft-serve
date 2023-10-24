@@ -278,6 +278,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					f.activeView = filesViewContent
 					cmds = append(cmds, f.code.SetSideNote(""))
 				}
+				cmds = append(cmds, f.spinner.Tick)
 			case key.Matches(msg, preview) && f.isSelectedMarkdown() && !f.blameView:
 				f.code.UseGlamour = !f.code.UseGlamour
 				cmds = append(cmds, f.code.SetContent(f.currentContent.content, f.currentContent.ext))
@@ -367,7 +368,7 @@ func (f *Files) StatusBarInfo() string {
 	case filesViewFiles:
 		return fmt.Sprintf("# %d/%d", f.selector.Index()+1, len(f.selector.VisibleItems()))
 	case filesViewContent:
-		return fmt.Sprintf("☰ %.f%%", f.code.ScrollPercent()*100)
+		return fmt.Sprintf("☰ %d%%", f.code.ScrollPosition())
 	default:
 		return ""
 	}
@@ -530,8 +531,11 @@ func (f *Files) setItems(items []selector.IdentifiableItem) tea.Cmd {
 }
 
 func (f *Files) isSelectedMarkdown() bool {
+	var lang string
 	lexer := lexers.Match(f.currentContent.ext)
-	lang := ""
+	if lexer == nil {
+		lexer = lexers.Analyse(f.currentContent.content)
+	}
 	if lexer != nil && lexer.Config() != nil {
 		lang = lexer.Config().Name
 	}

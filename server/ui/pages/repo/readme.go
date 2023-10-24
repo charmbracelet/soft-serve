@@ -152,7 +152,7 @@ func (r *Readme) StatusBarValue() string {
 
 // StatusBarInfo implements statusbar.StatusBar.
 func (r *Readme) StatusBarInfo() string {
-	return fmt.Sprintf("☰ %.f%%", r.code.ScrollPercent()*100)
+	return fmt.Sprintf("☰ %d%%", r.code.ScrollPosition())
 }
 
 func (r *Readme) updateReadmeCmd() tea.Msg {

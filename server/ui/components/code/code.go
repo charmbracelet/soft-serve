@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	tabWidth = 4
+	defaultTabWidth        = 4
+	defaultSideNotePercent = 0.3
 )
 
 // Code is a code snippet.
@@ -30,19 +31,23 @@ type Code struct {
 	renderMutex   sync.Mutex
 	styleConfig   gansi.StyleConfig
 
-	ShowLineNumber bool
-	NoContentStyle lipgloss.Style
-	UseGlamour     bool
+	SideNotePercent float64
+	TabWidth        int
+	ShowLineNumber  bool
+	NoContentStyle  lipgloss.Style
+	UseGlamour      bool
 }
 
 // New returns a new Code.
 func New(c common.Common, content, extension string) *Code {
 	r := &Code{
-		common:         c,
-		content:        content,
-		extension:      extension,
-		Viewport:       vp.New(c),
-		NoContentStyle: c.Styles.NoContent.Copy().SetString("No Content."),
+		common:          c,
+		content:         content,
+		extension:       extension,
+		TabWidth:        defaultTabWidth,
+		SideNotePercent: defaultSideNotePercent,
+		Viewport:        vp.New(c),
+		NoContentStyle:  c.Styles.NoContent.Copy().SetString("No Content."),
 	}
 	st := common.StyleConfig()
 	r.styleConfig = st
@@ -82,6 +87,11 @@ func (r *Code) Init() tea.Cmd {
 		return nil
 	}
 
+	// FIXME chroma & glamour might break wrapping when using tabs since tab
+	// width depends on the terminal. This is a workaround to replace tabs with
+	// 4-spaces.
+	content = strings.ReplaceAll(content, "\t", strings.Repeat(" ", r.TabWidth))
+
 	if r.UseGlamour {
 		md, err := r.glamourize(w, content)
 		if err != nil {
@@ -101,10 +111,9 @@ func (r *Code) Init() tea.Cmd {
 		}
 	}
 
-	const sideNotePercent = 0.3
 	if r.sidenote != "" {
 		lines := strings.Split(r.sidenote, "\n")
-		sideNoteWidth := int(math.Ceil(float64(r.Model.Width) * sideNotePercent))
+		sideNoteWidth := int(math.Ceil(float64(r.Model.Width) * r.SideNotePercent))
 		for i, l := range lines {
 			lines[i] = common.TruncateString(l, sideNoteWidth)
 		}
@@ -188,6 +197,15 @@ func (r *Code) ScrollPercent() float64 {
 	return r.Viewport.ScrollPercent()
 }
 
+// ScrollPosition returns the viewport's scroll position.
+func (r *Code) ScrollPosition() int {
+	scroll := r.ScrollPercent() * 100
+	if scroll < 0 || math.IsNaN(scroll) {
+		scroll = 0
+	}
+	return int(scroll)
+}
+
 func (r *Code) glamourize(w int, md string) (string, error) {
 	r.renderMutex.Lock()
 	defer r.renderMutex.Unlock()
@@ -210,10 +228,6 @@ func (r *Code) glamourize(w int, md string) (string, error) {
 }
 
 func (r *Code) renderFile(path, content string) (string, error) {
-	// FIXME chroma & glamour might break wrapping when using tabs since tab
-	// width depends on the terminal. This is a workaround to replace tabs with
-	// 4-spaces.
-	content = strings.ReplaceAll(content, "\t", strings.Repeat(" ", tabWidth))
 	lexer := lexers.Match(path)
 	if path == "" {
 		lexer = lexers.Analyse(content)
