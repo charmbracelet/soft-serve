@@ -56,8 +56,8 @@ type Repository struct {
 	Private bool `json:"private" url:"private"`
 	// Owner is the repository owner.
 	Owner User `json:"owner" url:"owner"`
-	// HTMLURL is the repository HTML URL.
-	HTMLURL string `json:"html_url" url:"html_url"`
+	// HTTPURL is the repository HTTP URL.
+	HTTPURL string `json:"http_url" url:"http_url"`
 	// SSHURL is the repository SSH URL.
 	SSHURL string `json:"ssh_url" url:"ssh_url"`
 	// GitURL is the repository Git URL.

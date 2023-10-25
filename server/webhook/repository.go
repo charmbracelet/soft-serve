@@ -62,7 +62,7 @@ func NewRepositoryEvent(ctx context.Context, user proto.User, repo proto.Reposit
 	}
 
 	cfg := config.FromContext(ctx)
-	payload.Repository.HTMLURL = repoURL(cfg.HTTP.PublicURL, repo.Name())
+	payload.Repository.HTTPURL = repoURL(cfg.HTTP.PublicURL, repo.Name())
 	payload.Repository.SSHURL = repoURL(cfg.SSH.PublicURL, repo.Name())
 	payload.Repository.GitURL = repoURL(cfg.Git.PublicURL, repo.Name())
 

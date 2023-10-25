@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/db"
 	"github.com/charmbracelet/soft-serve/server/proto"
 	"github.com/charmbracelet/soft-serve/server/store"
+	gitm "github.com/gogs/git-module"
 )
 
 // PushEvent is a push event.
@@ -52,7 +53,7 @@ func NewPushEvent(ctx context.Context, user proto.User, repo proto.Repository, r
 	}
 
 	cfg := config.FromContext(ctx)
-	payload.Repository.HTMLURL = repoURL(cfg.HTTP.PublicURL, repo.Name())
+	payload.Repository.HTTPURL = repoURL(cfg.HTTP.PublicURL, repo.Name())
 	payload.Repository.SSHURL = repoURL(cfg.SSH.PublicURL, repo.Name())
 	payload.Repository.GitURL = repoURL(cfg.Git.PublicURL, repo.Name())
 
