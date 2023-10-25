@@ -108,6 +108,11 @@ type LFSConfig struct {
 	SSHEnabled bool `env:"SSH_ENABLED" yaml:"ssh_enabled"`
 }
 
+// JobsConfig is the configuration for cron jobs.
+type JobsConfig struct {
+	MirrorPull string `env:"MIRROR_PULL" yaml:"mirror_pull"`
+}
+
 // Config is the configuration for Soft Serve.
 type Config struct {
 	// Name is the name of the server.
@@ -133,6 +138,9 @@ type Config struct {
 
 	// LFS is the configuration for Git LFS.
 	LFS LFSConfig `envPrefix:"LFS_" yaml:"lfs"`
+
+	// Jobs is the configuration for cron jobs
+	Jobs JobsConfig `envPrefix:"JOBS_" yaml:"jobs"`
 
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`

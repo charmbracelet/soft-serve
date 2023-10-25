@@ -210,6 +210,10 @@ lfs:
   # Enable Git SSH transfer.
   ssh_enabled: true
 
+# Cron job configuration
+jobs:
+  mirror_pull: "@every 10m"
+
 # The stats server configuration.
 stats:
   # The address on which the stats server will listen.

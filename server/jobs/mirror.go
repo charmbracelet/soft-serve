@@ -17,11 +17,22 @@ import (
 )
 
 func init() {
-	Register("mirror-pull", "@every 10m", mirrorPull)
+	Register("mirror-pull", mirrorPull{})
 }
 
-// mirrorPull runs the (pull) mirror job task.
-func mirrorPull(ctx context.Context) func() {
+type mirrorPull struct{}
+
+// Spec derives the spec used for pull mirrors and implements Runner.
+func (m mirrorPull) Spec(ctx context.Context) string {
+	cfg := config.FromContext(ctx)
+	if cfg.Jobs.MirrorPull != "" {
+		return cfg.Jobs.MirrorPull
+	}
+	return "@every 10m"
+}
+
+// Func runs the (pull) mirror job task and implements Runner.
+func (m mirrorPull) Func(ctx context.Context) func() {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("jobs.mirror")
 	b := backend.FromContext(ctx)
