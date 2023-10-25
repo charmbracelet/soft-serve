@@ -83,7 +83,11 @@ func NewPushEvent(ctx context.Context, user proto.User, repo proto.Repository, r
 		rev = fmt.Sprintf("%s..%s", before, after)
 	}
 
-	commits, err := r.Log(rev)
+	commits, err := r.Log(rev, gitm.LogOptions{
+		// XXX: limit to 20 commits for now
+		// TODO: implement a commits api
+		MaxCount: 20,
+	})
 	if err != nil {
 		return PushEvent{}, err
 	}
