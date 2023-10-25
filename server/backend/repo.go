@@ -21,6 +21,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/storage"
 	"github.com/charmbracelet/soft-serve/server/task"
 	"github.com/charmbracelet/soft-serve/server/utils"
+	"github.com/charmbracelet/soft-serve/server/webhook"
 )
 
 func (d *Backend) reposPath() string {
@@ -216,7 +217,20 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	repo := name + ".git"
 	rp := filepath.Join(d.reposPath(), repo)
 
-	err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+	user := proto.UserFromContext(ctx)
+	r, err := d.Repository(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	// We create the webhook event before deleting the repository so we can
+	// send the event after deleting the repository.
+	wh, err := webhook.NewRepositoryEvent(ctx, user, r, webhook.RepositoryEventActionDelete)
+	if err != nil {
+		return err
+	}
+
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		// Delete repo from cache
 		defer d.cache.Delete(name)
 
@@ -257,17 +271,20 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 		}
 
 		return os.RemoveAll(rp)
-	})
-	if errors.Is(err, db.ErrRecordNotFound) {
-		return proto.ErrRepoNotFound
+	}); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return proto.ErrRepoNotFound
+		}
+
+		return db.WrapError(err)
 	}
 
-	return err
+	return webhook.SendEvent(ctx, wh)
 }
 
 // DeleteUserRepositories deletes all user repositories.
 func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) error {
-	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		user, err := d.store.FindUserByUsername(ctx, tx, username)
 		if err != nil {
 			return err
@@ -285,7 +302,11 @@ func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) e
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return db.WrapError(err)
+	}
+
+	return nil
 }
 
 // RenameRepository renames a repository.
@@ -301,6 +322,11 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 	if err := utils.ValidateRepo(newName); err != nil {
 		return err
 	}
+
+	if oldName == newName {
+		return nil
+	}
+
 	oldRepo := oldName + ".git"
 	newRepo := newName + ".git"
 	op := filepath.Join(d.reposPath(), oldRepo)
@@ -331,7 +357,18 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 		return db.WrapError(err)
 	}
 
-	return nil
+	user := proto.UserFromContext(ctx)
+	repo, err := d.Repository(ctx, newName)
+	if err != nil {
+		return err
+	}
+
+	wh, err := webhook.NewRepositoryEvent(ctx, user, repo, webhook.RepositoryEventActionRename)
+	if err != nil {
+		return err
+	}
+
+	return webhook.SendEvent(ctx, wh)
 }
 
 // Repositories returns a list of repositories per page.
@@ -537,7 +574,7 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 	// Delete cache
 	d.cache.Delete(name)
 
-	return db.WrapError(
+	if err := db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			fp := filepath.Join(rp, "git-daemon-export-ok")
 			if !private {
@@ -556,7 +593,28 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 
 			return d.store.SetRepoIsPrivateByName(ctx, tx, name, private)
 		}),
-	)
+	); err != nil {
+		return err
+	}
+
+	user := proto.UserFromContext(ctx)
+	repo, err := d.Repository(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	if repo.IsPrivate() != !private {
+		wh, err := webhook.NewRepositoryEvent(ctx, user, repo, webhook.RepositoryEventActionVisibilityChange)
+		if err != nil {
+			return err
+		}
+
+		if err := webhook.SendEvent(ctx, wh); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // SetProjectName sets the project name of a repository.
@@ -649,6 +707,11 @@ func (r *repo) ProjectName() string {
 // It implements backend.Repository.
 func (r *repo) IsHidden() bool {
 	return r.repo.Hidden
+}
+
+// CreatedAt returns the repository's creation time.
+func (r *repo) CreatedAt() time.Time {
+	return r.repo.CreatedAt
 }
 
 // UpdatedAt returns the repository's last update time.

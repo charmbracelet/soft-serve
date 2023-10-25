@@ -299,3 +299,8 @@ func (r repository) UpdatedAt() time.Time {
 func (r repository) UserID() int64 {
 	return 0
 }
+
+// CreatedAt implements proto.Repository.
+func (r repository) CreatedAt() time.Time {
+	return time.Time{}
+}

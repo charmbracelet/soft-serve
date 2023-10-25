@@ -40,6 +40,9 @@ type GitConfig struct {
 	// ListenAddr is the address on which the Git daemon will listen.
 	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 
+	// PublicURL is the public URL of the Git daemon server.
+	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
+
 	// MaxTimeout is the maximum number of seconds a connection can take.
 	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout"`
 
@@ -157,6 +160,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_SSH_MAX_TIMEOUT=%d", c.SSH.MaxTimeout),
 		fmt.Sprintf("SOFT_SERVE_SSH_IDLE_TIMEOUT=%d", c.SSH.IdleTimeout),
 		fmt.Sprintf("SOFT_SERVE_GIT_LISTEN_ADDR=%s", c.Git.ListenAddr),
+		fmt.Sprintf("SOFT_SERVE_GIT_PUBLIC_URL=%s", c.Git.PublicURL),
 		fmt.Sprintf("SOFT_SERVE_GIT_MAX_TIMEOUT=%d", c.Git.MaxTimeout),
 		fmt.Sprintf("SOFT_SERVE_GIT_IDLE_TIMEOUT=%d", c.Git.IdleTimeout),
 		fmt.Sprintf("SOFT_SERVE_GIT_MAX_CONNECTIONS=%d", c.Git.MaxConnections),
@@ -304,6 +308,7 @@ func DefaultConfig() *Config {
 		},
 		Git: GitConfig{
 			ListenAddr:     ":9418",
+			PublicURL:      "git://localhost",
 			MaxTimeout:     0,
 			IdleTimeout:    3,
 			MaxConnections: 32,

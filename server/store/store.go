@@ -8,4 +8,5 @@ type Store interface {
 	SettingStore
 	LFSStore
 	AccessTokenStore
+	WebhookStore
 }

@@ -50,6 +50,10 @@ git:
   # The address on which the Git daemon will listen.
   listen_addr: "{{ .Git.ListenAddr }}"
 
+  # The public URL of the Git daemon server.
+  # This is the address that will be used to clone repositories.
+  public_url: "{{ .Git.PublicURL }}"
+
   # The maximum number of seconds a connection can take.
   # A value of 0 means no timeout.
   max_timeout: {{ .Git.MaxTimeout }}

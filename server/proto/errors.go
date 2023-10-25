@@ -19,4 +19,6 @@ var (
 	ErrTokenNotFound = errors.New("token not found")
 	// ErrTokenExpired is returned when a token is expired.
 	ErrTokenExpired = errors.New("token expired")
+	// ErrCollaboratorNotFound is returned when a collaborator is not found.
+	ErrCollaboratorNotFound = errors.New("collaborator not found")
 )

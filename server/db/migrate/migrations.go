@@ -16,6 +16,7 @@ var sqls embed.FS
 // Keep this in order of execution, oldest to newest.
 var migrations = []Migration{
 	createTables,
+	webhooks,
 }
 
 func execMigration(ctx context.Context, tx *db.Tx, version int, name string, down bool) error {

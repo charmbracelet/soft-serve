@@ -6,7 +6,7 @@ import (
 
 	"github.com/lib/pq"
 	sqlite "modernc.org/sqlite"
-	sqlite3 "modernc.org/sqlite/lib"
+	sqlitelib "modernc.org/sqlite/lib"
 )
 
 var (
@@ -28,9 +28,9 @@ func WrapError(err error) error {
 		// Handle sqlite constraint error.
 		if liteErr, ok := err.(*sqlite.Error); ok {
 			code := liteErr.Code()
-			if code == sqlite3.SQLITE_CONSTRAINT_PRIMARYKEY ||
-				code == sqlite3.SQLITE_CONSTRAINT_FOREIGNKEY ||
-				code == sqlite3.SQLITE_CONSTRAINT_UNIQUE {
+			if code == sqlitelib.SQLITE_CONSTRAINT_PRIMARYKEY ||
+				code == sqlitelib.SQLITE_CONSTRAINT_FOREIGNKEY ||
+				code == sqlitelib.SQLITE_CONSTRAINT_UNIQUE {
 				return ErrDuplicateKey
 			}
 		}

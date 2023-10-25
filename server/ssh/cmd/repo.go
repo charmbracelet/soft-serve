@@ -34,6 +34,7 @@ func RepoCommand() *cobra.Command {
 		renameCommand(),
 		tagCommand(),
 		treeCommand(),
+		webhookCommand(),
 	)
 
 	cmd.AddCommand(

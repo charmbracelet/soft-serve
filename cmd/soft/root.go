@@ -15,6 +15,7 @@ import (
 	logr "github.com/charmbracelet/soft-serve/server/log"
 	"github.com/charmbracelet/soft-serve/server/store"
 	"github.com/charmbracelet/soft-serve/server/store/database"
+	"github.com/charmbracelet/soft-serve/server/version"
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
 )
@@ -27,6 +28,10 @@ var (
 	// CommitSHA contains the SHA of the commit that this application was built
 	// against. It's set via ldflags when building.
 	CommitSHA = ""
+
+	// CommitDate contains the date of the commit that this application was
+	// built against. It's set via ldflags when building.
+	CommitDate = ""
 
 	rootCmd = &cobra.Command{
 		Use:          "soft",
@@ -61,6 +66,10 @@ func init() {
 		}
 	}
 	rootCmd.Version = Version
+
+	version.Version = Version
+	version.CommitSHA = CommitSHA
+	version.CommitDate = CommitDate
 }
 
 func main() {
