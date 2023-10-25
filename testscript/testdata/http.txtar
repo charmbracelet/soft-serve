@@ -84,6 +84,10 @@ cmpenv stdout goget.txt
 curl -XPOST http://localhost:$HTTP_PORT/repo2/subpackage?go-get=1
 stdout '404.*'
 
+# go-get not found (invalid repo)
+curl -XPOST http://localhost:$HTTP_PORT/repo299/subpackage?go-get=1
+stdout '404.*'
+
 # set private
 soft repo private repo2 true
 

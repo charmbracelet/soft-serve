@@ -70,6 +70,7 @@ func (g GoGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if repo == "" || repo == "." || repo == "/" {
+				renderNotFound(w, r)
 				return
 			}
 
