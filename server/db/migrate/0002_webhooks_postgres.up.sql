@@ -44,4 +44,3 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
   ON DELETE CASCADE
   ON UPDATE CASCADE
 );
-```
