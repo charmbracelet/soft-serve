@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/soft-serve/server/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/server/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/server/ui/components/viewport"
+	"github.com/charmbracelet/soft-serve/server/ui/styles"
 	"github.com/muesli/reflow/wrap"
 	"github.com/muesli/termenv"
 )
@@ -25,7 +26,8 @@ var waitBeforeLoading = time.Millisecond * 100
 type logView int
 
 const (
-	logViewCommits logView = iota
+	logViewLoading logView = iota
+	logViewCommits
 	logViewDiff
 )
 
@@ -55,7 +57,6 @@ type Log struct {
 	selectedCommit *git.Commit
 	currentDiff    *git.Diff
 	loadingTime    time.Time
-	loading        bool
 	spinner        spinner.Model
 }
 
@@ -81,6 +82,11 @@ func NewLog(common common.Common) *Log {
 		spinner.WithStyle(common.Styles.Spinner))
 	l.spinner = s
 	return l
+}
+
+// TabName returns the name of the tab.
+func (l *Log) TabName() string {
+	return "Commits"
 }
 
 // SetSize implements common.Component.
@@ -163,13 +169,8 @@ func (l *Log) FullHelp() [][]key.Binding {
 
 func (l *Log) startLoading() tea.Cmd {
 	l.loadingTime = time.Now()
-	l.loading = true
+	l.activeView = logViewLoading
 	return l.spinner.Tick
-}
-
-func (l *Log) stopLoading() tea.Cmd {
-	l.loading = false
-	return updateStatusBarCmd
 }
 
 // Init implements tea.Model.
@@ -179,9 +180,8 @@ func (l *Log) Init() tea.Cmd {
 	l.count = 0
 	l.activeCommit = nil
 	l.selectedCommit = nil
-	l.selector.Select(0)
 	return tea.Batch(
-		l.updateCommitsCmd,
+		l.countCommitsCmd,
 		// start loading on init
 		l.startLoading(),
 	)
@@ -195,15 +195,17 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		l.repo = msg
 	case RefMsg:
 		l.ref = msg
+		l.selector.Select(0)
 		cmds = append(cmds, l.Init())
 	case LogCountMsg:
 		l.count = int64(msg)
+		l.selector.SetTotalPages(int(msg))
+		l.selector.SetItems(make([]selector.IdentifiableItem, l.count))
+		cmds = append(cmds, l.updateCommitsCmd)
 	case LogItemsMsg:
-		cmds = append(cmds,
-			l.selector.SetItems(msg),
-			// stop loading after receiving items
-			l.stopLoading(),
-		)
+		// stop loading after receiving items
+		l.activeView = logViewCommits
+		cmds = append(cmds, l.selector.SetItems(msg))
 		l.selector.SetPage(l.nextPage)
 		l.SetSize(l.common.Width, l.common.Height)
 		i := l.selector.SelectedItem()
@@ -217,10 +219,11 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(kmsg, l.common.KeyMap.SelectItem):
-					cmds = append(cmds, l.selector.SelectItem)
+					cmds = append(cmds, l.selector.SelectItemCmd)
 				}
 			}
-			// This is a hack for loading commits on demand based on list.Pagination.
+			// XXX: This is a hack for loading commits on demand based on
+			// list.Pagination.
 			curPage := l.selector.Page()
 			s, cmd := l.selector.Update(msg)
 			m := s.(*selector.Selector)
@@ -239,22 +242,17 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(kmsg, l.common.KeyMap.BackItem):
-					cmds = append(cmds, backCmd)
+					l.goBack()
 				}
 			}
 		}
-	case BackMsg:
-		if l.activeView == logViewDiff {
-			l.activeView = logViewCommits
-			l.selectedCommit = nil
-			cmds = append(cmds, updateStatusBarCmd)
-		}
+	case GoBackMsg:
+		l.goBack()
 	case selector.ActiveMsg:
 		switch sel := msg.IdentifiableItem.(type) {
 		case LogItem:
 			l.activeCommit = sel.Commit
 		}
-		cmds = append(cmds, updateStatusBarCmd)
 	case selector.SelectMsg:
 		switch sel := msg.IdentifiableItem.(type) {
 		case LogItem:
@@ -271,26 +269,22 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		l.vp.SetContent(
 			lipgloss.JoinVertical(lipgloss.Top,
 				l.renderCommit(l.selectedCommit),
-				l.renderSummary(msg),
-				l.renderDiff(msg),
+				renderSummary(msg, l.common.Styles, l.common.Width),
+				renderDiff(msg, l.common.Width),
 			),
 		)
 		l.vp.GotoTop()
 		l.activeView = logViewDiff
-		cmds = append(cmds,
-			updateStatusBarCmd,
-			// stop loading after setting the viewport content
-			l.stopLoading(),
-		)
 	case footer.ToggleFooterMsg:
 		cmds = append(cmds, l.updateCommitsCmd)
 	case tea.WindowSizeMsg:
+		l.SetSize(msg.Width, msg.Height)
 		if l.selectedCommit != nil && l.currentDiff != nil {
 			l.vp.SetContent(
 				lipgloss.JoinVertical(lipgloss.Top,
 					l.renderCommit(l.selectedCommit),
-					l.renderSummary(l.currentDiff),
-					l.renderDiff(l.currentDiff),
+					renderSummary(l.currentDiff, l.common.Styles, l.common.Width),
+					renderDiff(l.currentDiff, l.common.Width),
 				),
 			)
 		}
@@ -304,21 +298,23 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case EmptyRepoMsg:
 		l.ref = nil
-		l.loading = false
 		l.activeView = logViewCommits
 		l.nextPage = 0
 		l.count = 0
 		l.activeCommit = nil
 		l.selectedCommit = nil
 		l.selector.Select(0)
-		cmds = append(cmds, l.setItems([]selector.IdentifiableItem{}))
-	}
-	if l.loading {
-		s, cmd := l.spinner.Update(msg)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
+		cmds = append(cmds,
+			l.setItems([]selector.IdentifiableItem{}),
+		)
+	case spinner.TickMsg:
+		if l.activeView == logViewLoading && l.spinner.ID() == msg.ID {
+			s, cmd := l.spinner.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			l.spinner = s
 		}
-		l.spinner = s
 	}
 	switch l.activeView {
 	case logViewDiff:
@@ -333,17 +329,19 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (l *Log) View() string {
-	if l.loading && l.loadingTime.Add(waitBeforeLoading).Before(time.Now()) {
-		msg := fmt.Sprintf("%s loading commit", l.spinner.View())
-		if l.selectedCommit == nil {
-			msg += "s"
-		}
-		msg += "…"
-		return l.common.Styles.SpinnerContainer.Copy().
-			Height(l.common.Height).
-			Render(msg)
-	}
 	switch l.activeView {
+	case logViewLoading:
+		if l.loadingTime.Add(waitBeforeLoading).Before(time.Now()) {
+			msg := fmt.Sprintf("%s loading commit", l.spinner.View())
+			if l.selectedCommit == nil {
+				msg += "s"
+			}
+			msg += "…"
+			return l.common.Styles.SpinnerContainer.Copy().
+				Height(l.common.Height).
+				Render(msg)
+		}
+		fallthrough
 	case logViewCommits:
 		return l.selector.View()
 	case logViewDiff:
@@ -353,9 +351,14 @@ func (l *Log) View() string {
 	}
 }
 
+// SpinnerID implements common.TabComponent.
+func (l *Log) SpinnerID() int {
+	return l.spinner.ID()
+}
+
 // StatusBarValue returns the status bar value.
 func (l *Log) StatusBarValue() string {
-	if l.loading {
+	if l.activeView == logViewLoading {
 		return ""
 	}
 	c := l.activeCommit
@@ -376,6 +379,11 @@ func (l *Log) StatusBarValue() string {
 // StatusBarInfo returns the status bar info.
 func (l *Log) StatusBarInfo() string {
 	switch l.activeView {
+	case logViewLoading:
+		if l.count == 0 {
+			return ""
+		}
+		fallthrough
 	case logViewCommits:
 		// We're using l.nextPage instead of l.selector.Paginator.Page because
 		// of the paginator hack above.
@@ -384,6 +392,13 @@ func (l *Log) StatusBarInfo() string {
 		return fmt.Sprintf("☰ %.f%%", l.vp.ScrollPercent()*100)
 	default:
 		return ""
+	}
+}
+
+func (l *Log) goBack() {
+	if l.activeView == logViewDiff {
+		l.activeView = logViewCommits
+		l.selectedCommit = nil
 	}
 }
 
@@ -404,28 +419,26 @@ func (l *Log) countCommitsCmd() tea.Msg {
 }
 
 func (l *Log) updateCommitsCmd() tea.Msg {
-	count := l.count
-	if l.count == 0 {
-		switch msg := l.countCommitsCmd().(type) {
-		case common.ErrorMsg:
-			return msg
-		case LogCountMsg:
-			count = int64(msg)
-		}
-	}
 	if l.ref == nil {
 		return nil
 	}
-	items := make([]selector.IdentifiableItem, count)
-	page := l.nextPage
-	limit := l.selector.PerPage()
-	skip := page * limit
 	r, err := l.repo.Open()
 	if err != nil {
 		return common.ErrorMsg(err)
 	}
+
+	count := l.count
+	if count == 0 {
+		return LogItemsMsg([]selector.IdentifiableItem{})
+	}
+
+	page := l.nextPage
+	limit := l.selector.PerPage()
+	skip := page * limit
+	ref := l.ref
+	items := make([]selector.IdentifiableItem, count)
 	// CommitsByPage pages start at 1
-	cc, err := r.CommitsByPage(l.ref, page+1, limit)
+	cc, err := r.CommitsByPage(ref, page+1, limit)
 	if err != nil {
 		l.common.Logger.Debugf("ui: error loading commits: %v", err)
 		return common.ErrorMsg(err)
@@ -447,6 +460,9 @@ func (l *Log) selectCommitCmd(commit *git.Commit) tea.Cmd {
 }
 
 func (l *Log) loadDiffCmd() tea.Msg {
+	if l.selectedCommit == nil {
+		return nil
+	}
 	r, err := l.repo.Open()
 	if err != nil {
 		l.common.Logger.Debugf("ui: error loading diff repository: %v", err)
@@ -481,21 +497,21 @@ func (l *Log) renderCommit(c *git.Commit) string {
 	return wrap.String(s.String(), l.common.Width-2)
 }
 
-func (l *Log) renderSummary(diff *git.Diff) string {
+func renderSummary(diff *git.Diff, styles *styles.Styles, width int) string {
 	stats := strings.Split(diff.Stats().String(), "\n")
 	for i, line := range stats {
 		ch := strings.Split(line, "|")
 		if len(ch) > 1 {
 			adddel := ch[len(ch)-1]
-			adddel = strings.ReplaceAll(adddel, "+", l.common.Styles.Log.CommitStatsAdd.Render("+"))
-			adddel = strings.ReplaceAll(adddel, "-", l.common.Styles.Log.CommitStatsDel.Render("-"))
+			adddel = strings.ReplaceAll(adddel, "+", styles.Log.CommitStatsAdd.Render("+"))
+			adddel = strings.ReplaceAll(adddel, "-", styles.Log.CommitStatsDel.Render("-"))
 			stats[i] = strings.Join(ch[:len(ch)-1], "|") + "|" + adddel
 		}
 	}
-	return wrap.String(strings.Join(stats, "\n"), l.common.Width-2)
+	return wrap.String(strings.Join(stats, "\n"), width-2)
 }
 
-func (l *Log) renderDiff(diff *git.Diff) string {
+func renderDiff(diff *git.Diff, width int) string {
 	var s strings.Builder
 	var pr strings.Builder
 	diffChroma := &gansi.CodeBlockElement{
@@ -508,7 +524,7 @@ func (l *Log) renderDiff(diff *git.Diff) string {
 	} else {
 		s.WriteString(fmt.Sprintf("\n%s", pr.String()))
 	}
-	return wrap.String(s.String(), l.common.Width)
+	return wrap.String(s.String(), width)
 }
 
 func (l *Log) setItems(items []selector.IdentifiableItem) tea.Cmd {

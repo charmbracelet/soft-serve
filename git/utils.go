@@ -8,14 +8,17 @@ import (
 )
 
 // LatestFile returns the contents of the first file at the specified path pattern in the repository and its file path.
-func LatestFile(repo *Repository, pattern string) (string, string, error) {
+func LatestFile(repo *Repository, ref *Reference, pattern string) (string, string, error) {
 	g := glob.MustCompile(pattern)
 	dir := filepath.Dir(pattern)
-	head, err := repo.HEAD()
-	if err != nil {
-		return "", "", err
+	if ref == nil {
+		head, err := repo.HEAD()
+		if err != nil {
+			return "", "", err
+		}
+		ref = head
 	}
-	t, err := repo.TreePath(head, dir)
+	t, err := repo.TreePath(ref, dir)
 	if err != nil {
 		return "", "", err
 	}

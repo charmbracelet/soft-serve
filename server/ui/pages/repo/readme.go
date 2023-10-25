@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/proto"
@@ -14,7 +15,8 @@ import (
 
 // ReadmeMsg is a message sent when the readme is loaded.
 type ReadmeMsg struct {
-	Msg tea.Msg
+	Content string
+	Path    string
 }
 
 // Readme is the readme component page.
@@ -24,16 +26,28 @@ type Readme struct {
 	ref        RefMsg
 	repo       proto.Repository
 	readmePath string
+	spinner    spinner.Model
+	isLoading  bool
 }
 
 // NewReadme creates a new readme model.
 func NewReadme(common common.Common) *Readme {
 	readme := code.New(common, "", "")
 	readme.NoContentStyle = readme.NoContentStyle.Copy().SetString("No readme found.")
+	readme.UseGlamour = true
+	s := spinner.New(spinner.WithSpinner(spinner.Dot),
+		spinner.WithStyle(common.Styles.Spinner))
 	return &Readme{
-		code:   readme,
-		common: common,
+		code:      readme,
+		common:    common,
+		spinner:   s,
+		isLoading: true,
 	}
+}
+
+// TabName returns the name of the tab.
+func (r *Readme) TabName() string {
+	return "Readme"
 }
 
 // SetSize implements common.Component.
@@ -72,7 +86,8 @@ func (r *Readme) FullHelp() [][]key.Binding {
 
 // Init implements tea.Model.
 func (r *Readme) Init() tea.Cmd {
-	return r.updateReadmeCmd
+	r.isLoading = true
+	return tea.Batch(r.spinner.Tick, r.updateReadmeCmd)
 }
 
 // Update implements tea.Model.
@@ -84,9 +99,26 @@ func (r *Readme) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RefMsg:
 		r.ref = msg
 		cmds = append(cmds, r.Init())
+	case tea.WindowSizeMsg:
+		r.SetSize(msg.Width, msg.Height)
 	case EmptyRepoMsg:
-		r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(),
-			r.repo.Name()), ".md")
+		cmds = append(cmds,
+			r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(),
+				r.repo.Name()), ".md"),
+		)
+	case ReadmeMsg:
+		r.isLoading = false
+		r.readmePath = msg.Path
+		r.code.GotoTop()
+		cmds = append(cmds, r.code.SetContent(msg.Content, msg.Path))
+	case spinner.TickMsg:
+		if r.isLoading && r.spinner.ID() == msg.ID {
+			s, cmd := r.spinner.Update(msg)
+			r.spinner = s
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
 	}
 	c, cmd := r.code.Update(msg)
 	r.code = c.(*code.Code)
@@ -98,34 +130,38 @@ func (r *Readme) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (r *Readme) View() string {
+	if r.isLoading {
+		return renderLoading(r.common, r.spinner)
+	}
 	return r.code.View()
+}
+
+// SpinnerID implements common.TabComponent.
+func (r *Readme) SpinnerID() int {
+	return r.spinner.ID()
 }
 
 // StatusBarValue implements statusbar.StatusBar.
 func (r *Readme) StatusBarValue() string {
 	dir := filepath.Dir(r.readmePath)
-	if dir == "." {
-		return ""
+	if dir == "." || dir == "" {
+		return " "
 	}
 	return dir
 }
 
 // StatusBarInfo implements statusbar.StatusBar.
 func (r *Readme) StatusBarInfo() string {
-	return fmt.Sprintf("☰ %.f%%", r.code.ScrollPercent()*100)
+	return fmt.Sprintf("☰ %d%%", r.code.ScrollPosition())
 }
 
 func (r *Readme) updateReadmeCmd() tea.Msg {
 	m := ReadmeMsg{}
 	if r.repo == nil {
-		return common.ErrorCmd(common.ErrMissingRepo)
+		return common.ErrorMsg(common.ErrMissingRepo)
 	}
-	rm, rp, _ := backend.Readme(r.repo)
-	r.readmePath = rp
-	r.code.GotoTop()
-	cmd := r.code.SetContent(rm, rp)
-	if cmd != nil {
-		m.Msg = cmd()
-	}
+	rm, rp, _ := backend.Readme(r.repo, r.ref)
+	m.Content = rm
+	m.Path = rp
 	return m
 }

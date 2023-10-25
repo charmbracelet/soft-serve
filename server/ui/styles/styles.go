@@ -89,16 +89,22 @@ type Styles struct {
 
 	Ref struct {
 		Normal struct {
-			Item    lipgloss.Style
-			ItemTag lipgloss.Style
+			Base     lipgloss.Style
+			Item     lipgloss.Style
+			ItemTag  lipgloss.Style
+			ItemDesc lipgloss.Style
+			ItemHash lipgloss.Style
 		}
 		Active struct {
-			Item    lipgloss.Style
-			ItemTag lipgloss.Style
+			Base     lipgloss.Style
+			Item     lipgloss.Style
+			ItemTag  lipgloss.Style
+			ItemDesc lipgloss.Style
+			ItemHash lipgloss.Style
 		}
 		ItemSelector lipgloss.Style
-		ItemBranch   lipgloss.Style
 		Paginator    lipgloss.Style
+		Selector     lipgloss.Style
 	}
 
 	Tree struct {
@@ -117,14 +123,27 @@ type Styles struct {
 		Selector    lipgloss.Style
 		FileContent lipgloss.Style
 		Paginator   lipgloss.Style
+		Blame       struct {
+			Hash    lipgloss.Style
+			Message lipgloss.Style
+		}
+	}
+
+	Stash struct {
+		Normal struct {
+			Message lipgloss.Style
+		}
+		Active struct {
+			Message lipgloss.Style
+		}
+		Title    lipgloss.Style
+		Selector lipgloss.Style
 	}
 
 	Spinner          lipgloss.Style
 	SpinnerContainer lipgloss.Style
 
 	NoContent lipgloss.Style
-
-	NoItems lipgloss.Style
 
 	StatusBar       lipgloss.Style
 	StatusBarKey    lipgloss.Style
@@ -137,6 +156,11 @@ type Styles struct {
 	TabInactive  lipgloss.Style
 	TabActive    lipgloss.Style
 	TabSeparator lipgloss.Style
+
+	Code struct {
+		LineDigit lipgloss.Style
+		LineBar   lipgloss.Style
+	}
 }
 
 // DefaultStyles returns default styles for the UI.
@@ -227,7 +251,7 @@ func DefaultStyles() *Styles {
 		Margin(1, 0)
 
 	s.Repo.Header = lipgloss.NewStyle().
-		Height(2).
+		MaxHeight(2).
 		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(lipgloss.Color("236"))
 
@@ -348,7 +372,9 @@ func DefaultStyles() *Styles {
 	s.Ref.Active.Item = lipgloss.NewStyle().
 		Foreground(highlightColorDim)
 
-	s.Ref.ItemBranch = lipgloss.NewStyle()
+	s.Ref.Normal.Base = lipgloss.NewStyle()
+
+	s.Ref.Active.Base = lipgloss.NewStyle()
 
 	s.Ref.Normal.ItemTag = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("39"))
@@ -361,7 +387,24 @@ func DefaultStyles() *Styles {
 		Bold(true).
 		Foreground(highlightColor)
 
+	s.Ref.Normal.ItemDesc = lipgloss.NewStyle().
+		Faint(true)
+
+	s.Ref.Active.ItemDesc = lipgloss.NewStyle().
+		Foreground(highlightColor).
+		Faint(true)
+
+	s.Ref.Normal.ItemHash = lipgloss.NewStyle().
+		Foreground(hashColor).
+		Bold(true)
+
+	s.Ref.Active.ItemHash = lipgloss.NewStyle().
+		Foreground(highlightColor).
+		Bold(true)
+
 	s.Ref.Paginator = s.Log.Paginator.Copy()
+
+	s.Ref.Selector = lipgloss.NewStyle()
 
 	s.Tree.Selector = s.Tree.Normal.FileName.Copy().
 		Width(1).
@@ -397,6 +440,12 @@ func DefaultStyles() *Styles {
 
 	s.Tree.Paginator = s.Log.Paginator.Copy()
 
+	s.Tree.Blame.Hash = lipgloss.NewStyle().
+		Foreground(hashColor).
+		Bold(true)
+
+	s.Tree.Blame.Message = lipgloss.NewStyle()
+
 	s.Spinner = lipgloss.NewStyle().
 		MarginTop(1).
 		MarginLeft(2).
@@ -405,12 +454,7 @@ func DefaultStyles() *Styles {
 	s.SpinnerContainer = lipgloss.NewStyle()
 
 	s.NoContent = lipgloss.NewStyle().
-		SetString("No Content.").
 		MarginTop(1).
-		MarginLeft(2).
-		Foreground(lipgloss.Color("242"))
-
-	s.NoItems = lipgloss.NewStyle().
 		MarginLeft(2).
 		Foreground(lipgloss.Color("242"))
 
@@ -456,6 +500,22 @@ func DefaultStyles() *Styles {
 		SetString("│").
 		Padding(0, 1).
 		Foreground(lipgloss.Color("238"))
+
+	s.Code.LineDigit = lipgloss.NewStyle().Foreground(lipgloss.Color("239"))
+
+	s.Code.LineBar = lipgloss.NewStyle().Foreground(lipgloss.Color("236"))
+
+	s.Stash.Normal.Message = lipgloss.NewStyle().MarginLeft(1)
+
+	s.Stash.Active.Message = s.Stash.Normal.Message.Copy().Foreground(selectorColor)
+
+	s.Stash.Title = lipgloss.NewStyle().
+		Foreground(hashColor).
+		Bold(true)
+
+	s.Stash.Selector = lipgloss.NewStyle().
+		Width(1).
+		Foreground(selectorColor)
 
 	return s
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/soft-serve/server/backend"
 	"github.com/charmbracelet/soft-serve/server/config"
 	"github.com/charmbracelet/soft-serve/server/proto"
-	"github.com/charmbracelet/soft-serve/server/ui"
 	"github.com/charmbracelet/soft-serve/server/ui/common"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -58,7 +57,7 @@ func SessionHandler(s ssh.Session) *tea.Program {
 	output := termenv.NewOutput(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
 	c := common.NewCommon(ctx, output, pty.Window.Width, pty.Window.Height)
 	c.SetValue(common.ConfigKey, cfg)
-	m := ui.New(c, initialRepo)
+	m := NewUI(c, initialRepo)
 	p := tea.NewProgram(m,
 		tea.WithInput(s),
 		tea.WithOutput(s),

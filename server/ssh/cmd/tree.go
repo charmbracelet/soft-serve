@@ -49,7 +49,7 @@ func treeCommand() *cobra.Command {
 					return err
 				}
 
-				ref = head.Hash.String()
+				ref = head.ID
 			}
 
 			tree, err := r.LsTree(ref)

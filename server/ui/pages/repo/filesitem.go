@@ -60,9 +60,8 @@ func (cl FileItems) Less(i, j int) bool {
 		return true
 	} else if cl[j].entry.IsTree() {
 		return false
-	} else {
-		return cl[i].Title() < cl[j].Title()
 	}
+	return cl[i].Title() < cl[j].Title()
 }
 
 // FileItemDelegate is the delegate for the file item list.
