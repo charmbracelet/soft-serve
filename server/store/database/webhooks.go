@@ -16,19 +16,15 @@ var _ store.WebhookStore = (*webhookStore)(nil)
 
 // CreateWebhook implements store.WebhookStore.
 func (*webhookStore) CreateWebhook(ctx context.Context, h db.Handler, repoID int64, url string, secret string, contentType int, active bool) (int64, error) {
+	var id int64
 	query := h.Rebind(`INSERT INTO webhooks (repo_id, url, secret, content_type, active, updated_at)
-			VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP);`)
-	result, err := h.ExecContext(ctx, query, repoID, url, secret, contentType, active)
+			VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) RETURNING id;`)
+	err := h.GetContext(ctx, &id, query, repoID, url, secret, contentType, active)
 	if err != nil {
 		return 0, err
 	}
 
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	return lastID, nil
+	return id, nil
 }
 
 // CreateWebhookDelivery implements store.WebhookStore.
