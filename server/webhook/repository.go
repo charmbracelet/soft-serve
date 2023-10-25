@@ -21,14 +21,10 @@ type RepositoryEvent struct {
 type RepositoryEventAction string
 
 const (
-	// RepositoryEventActionCreate is a repository created event.
-	RepositoryEventActionCreate RepositoryEventAction = "create"
 	// RepositoryEventActionDelete is a repository deleted event.
 	RepositoryEventActionDelete RepositoryEventAction = "delete"
 	// RepositoryEventActionRename is a repository renamed event.
 	RepositoryEventActionRename RepositoryEventAction = "rename"
-	// RepositoryEventActionImport is a repository imported event.
-	RepositoryEventActionImport RepositoryEventAction = "import"
 	// RepositoryEventActionVisibilityChange is a repository visibility changed event.
 	RepositoryEventActionVisibilityChange RepositoryEventAction = "visibility_change"
 	// RepositoryEventActionDefaultBranchChange is a repository default branch changed event.
@@ -39,8 +35,6 @@ const (
 func NewRepositoryEvent(ctx context.Context, user proto.User, repo proto.Repository, action RepositoryEventAction) (RepositoryEvent, error) {
 	var event Event
 	switch action {
-	case RepositoryEventActionImport:
-		event = EventRepositoryImport
 	case RepositoryEventActionVisibilityChange:
 		event = EventRepositoryVisibilityChange
 	default:

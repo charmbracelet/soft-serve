@@ -24,11 +24,8 @@ const (
 	// EventRepository is a repository create, delete, rename event.
 	EventRepository Event = 5
 
-	// EventRepositoryImport is a repository import event.
-	EventRepositoryImport Event = 6
-
 	// EventRepositoryVisibilityChange is a repository visibility change event.
-	EventRepositoryVisibilityChange Event = 7
+	EventRepositoryVisibilityChange Event = 6
 )
 
 // Events return all events.
@@ -39,7 +36,6 @@ func Events() []Event {
 		EventCollaborator,
 		EventPush,
 		EventRepository,
-		EventRepositoryImport,
 		EventRepositoryVisibilityChange,
 	}
 }
@@ -50,7 +46,6 @@ var eventStrings = map[Event]string{
 	EventCollaborator:               "collaborator",
 	EventPush:                       "push",
 	EventRepository:                 "repository",
-	EventRepositoryImport:           "repository_import",
 	EventRepositoryVisibilityChange: "repository_visibility_change",
 }
 
@@ -65,7 +60,6 @@ var stringEvent = map[string]Event{
 	"collaborator":                 EventCollaborator,
 	"push":                         EventPush,
 	"repository":                   EventRepository,
-	"repository_import":            EventRepositoryImport,
 	"repository_visibility_change": EventRepositoryVisibilityChange,
 }
 

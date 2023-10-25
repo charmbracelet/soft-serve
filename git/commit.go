@@ -11,7 +11,7 @@ const ZeroID = git.EmptyID
 
 // IsZeroHash returns whether the hash is a zero hash.
 func IsZeroHash(h string) bool {
-	pattern := regexp.MustCompile(`^[0]{40,}+$`)
+	pattern := regexp.MustCompile(`^0{40,}$`)
 	return pattern.MatchString(h)
 }
 

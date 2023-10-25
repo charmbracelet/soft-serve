@@ -89,18 +89,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 		return nil, err
 	}
 
-	r, err := d.Repository(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-
-	wh, err := webhook.NewRepositoryEvent(ctx, user, r, webhook.RepositoryEventActionCreate)
-	if err != nil {
-		d.logger.Error("failed to create webhook event", "err", err)
-		return r, err
-	}
-
-	return r, webhook.SendEvent(ctx, wh)
+	return d.Repository(ctx, name)
 }
 
 // ImportRepository imports a repository from remote.
@@ -209,12 +198,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 			return err
 		}
 
-		wh, err := webhook.NewRepositoryEvent(ctx, user, r, webhook.RepositoryEventActionImport)
-		if err != nil {
-			return err
-		}
-
-		return webhook.SendEvent(ctx, wh)
+		return nil
 	})
 
 	go func() {
