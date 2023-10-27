@@ -339,7 +339,7 @@ func DefaultConfig() *Config {
 		},
 		LFS: LFSConfig{
 			Enabled:    true,
-			SSHEnabled: true,
+			SSHEnabled: false,
 		},
 	}
 }
