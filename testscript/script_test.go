@@ -19,15 +19,15 @@ import (
 
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/log"
-	"github.com/charmbracelet/soft-serve/server"
-	"github.com/charmbracelet/soft-serve/server/backend"
-	"github.com/charmbracelet/soft-serve/server/config"
-	"github.com/charmbracelet/soft-serve/server/db"
-	"github.com/charmbracelet/soft-serve/server/db/migrate"
-	logr "github.com/charmbracelet/soft-serve/server/log"
-	"github.com/charmbracelet/soft-serve/server/store"
-	"github.com/charmbracelet/soft-serve/server/store/database"
-	"github.com/charmbracelet/soft-serve/server/test"
+	"github.com/charmbracelet/soft-serve/cmd/soft/serve"
+	"github.com/charmbracelet/soft-serve/pkg/backend"
+	"github.com/charmbracelet/soft-serve/pkg/config"
+	"github.com/charmbracelet/soft-serve/pkg/db"
+	"github.com/charmbracelet/soft-serve/pkg/db/migrate"
+	logr "github.com/charmbracelet/soft-serve/pkg/log"
+	"github.com/charmbracelet/soft-serve/pkg/store"
+	"github.com/charmbracelet/soft-serve/pkg/store/database"
+	"github.com/charmbracelet/soft-serve/pkg/test"
 	"github.com/rogpeppe/go-internal/testscript"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
@@ -153,7 +153,7 @@ func TestScript(t *testing.T) {
 			ctx = backend.WithContext(ctx, be)
 
 			lock.Lock()
-			srv, err := server.NewServer(ctx)
+			srv, err := serve.NewServer(ctx)
 			if err != nil {
 				lock.Unlock()
 				return err
