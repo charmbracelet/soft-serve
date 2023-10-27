@@ -25,8 +25,8 @@ github.com/charmbracelet/bubbles v0.16.1 h1:6uzpAAaT9ZqKssntbvZMlksWHruQLNxg49H5
 github.com/charmbracelet/bubbles v0.16.1/go.mod h1:2QCp9LFlEsBQMvIYERr7Ww2H2bA7xen1idUDIzm/+Xc=
 github.com/charmbracelet/bubbletea v0.24.2 h1:uaQIKx9Ai6Gdh5zpTbGiWpytMU+CfsPp06RaW2cx/SY=
 github.com/charmbracelet/bubbletea v0.24.2/go.mod h1:XdrNrV4J8GiyshTtx3DNuYkR1FDaJmO3l2nejekbsgg=
-github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20230725143853-5dd0632f9245 h1:PeGKqKX84IAFhFSWjTyPGiLzzEPcv94C9qKsYBk2nbQ=
-github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20230725143853-5dd0632f9245/go.mod h1:eXJuVicxnjRgRMokmutZdistxoMRjBjjfqvrYq7bCIU=
+github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20231027181609-f7ff6baf2ed0 h1:Wi80d2xNAqvi6r8Udlc9UgPMdrJ+ld5ylKH7d8SQ7gE=
+github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20231027181609-f7ff6baf2ed0/go.mod h1:AHLgIZ2TXQCgt3pDNXR6FgmpGHLH1wPM9cEJPHSVaYg=
 github.com/charmbracelet/glamour v0.6.0 h1:wi8fse3Y7nfcabbbDuwolqTqMQPMnVPeZhDM273bISc=
 github.com/charmbracelet/glamour v0.6.0/go.mod h1:taqWV4swIMMbWALc0m7AfE9JkPSU8om2538k9ITBxOc=
 github.com/charmbracelet/keygen v0.5.0 h1:XY0fsoYiCSM9axkrU+2ziE6u6YjJulo/b9Dghnw6MZc=

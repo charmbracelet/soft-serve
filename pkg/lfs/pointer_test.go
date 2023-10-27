@@ -2,8 +2,8 @@ package lfs
 
 import (
 	"errors"
+	"path"
 	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -78,8 +78,8 @@ size abc
 					t.Errorf("Expected a valid pointer")
 					return
 				}
-				if p.Oid != strings.ReplaceAll(p.RelativePath(), "/", "") {
-					t.Errorf("Expected oid to be the relative path without slashes")
+				if path.Join(p.Oid[:2], p.Oid[2:4], p.Oid) != p.RelativePath() {
+					t.Errorf("Expected a valid relative path")
 					return
 				}
 			}
