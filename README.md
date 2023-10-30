@@ -729,7 +729,7 @@ We’d love to hear your thoughts on this project. Feel free to drop us a note!
 
 ## License
 
-[MIT](https://github.com/charmbracelet/soft-serve/raw/main/LICENSE)
+The soft-serve project is available as open source under the terms of [MIT license](https://github.com/charmbracelet/soft-serve/raw/main/LICENSE).
 
 ---
 
