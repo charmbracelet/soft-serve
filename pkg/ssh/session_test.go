@@ -50,17 +50,10 @@ func TestSession(t *testing.T) {
 
 func setup(tb testing.TB) (*gossh.Session, func() error) {
 	tb.Helper()
-	is := is.New(tb)
 	dp := tb.TempDir()
-	is.NoErr(os.Setenv("SOFT_SERVE_DATA_PATH", dp))
-	is.NoErr(os.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", ":9418"))
-	is.NoErr(os.Setenv("SOFT_SERVE_SSH_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort())))
-	tb.Cleanup(func() {
-		is.NoErr(os.Unsetenv("SOFT_SERVE_DATA_PATH"))
-		is.NoErr(os.Unsetenv("SOFT_SERVE_GIT_LISTEN_ADDR"))
-		is.NoErr(os.Unsetenv("SOFT_SERVE_SSH_LISTEN_ADDR"))
-		is.NoErr(os.RemoveAll(dp))
-	})
+	tb.Setenv("SOFT_SERVE_DATA_PATH", dp)
+	tb.Setenv("SOFT_SERVE_GIT_LISTEN_ADDR", ":9418")
+	tb.Setenv("SOFT_SERVE_SSH_LISTEN_ADDR", fmt.Sprintf(":%d", test.RandomPort()))
 	ctx := context.TODO()
 	cfg := config.DefaultConfig()
 	if err := cfg.Validate(); err != nil {
