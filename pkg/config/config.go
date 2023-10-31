@@ -183,6 +183,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_DB_DATA_SOURCE=%s", c.DB.DataSource),
 		fmt.Sprintf("SOFT_SERVE_LFS_ENABLED=%t", c.LFS.Enabled),
 		fmt.Sprintf("SOFT_SERVE_LFS_SSH_ENABLED=%t", c.LFS.SSHEnabled),
+		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL=%s", c.Jobs.MirrorPull),
 	}...)
 
 	return envs
@@ -340,6 +341,9 @@ func DefaultConfig() *Config {
 		LFS: LFSConfig{
 			Enabled:    true,
 			SSHEnabled: false,
+		},
+		Jobs: JobsConfig{
+			MirrorPull: "@every 10m",
 		},
 	}
 }
