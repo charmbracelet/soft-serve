@@ -21,7 +21,7 @@ require (
 
 require (
 	github.com/caarlos0/duration v0.0.0-20220103233809-8df7c22fe305
-	github.com/caarlos0/env/v8 v8.0.0
+	github.com/caarlos0/env/v10 v10.0.0
 	github.com/caarlos0/tablewriter v0.1.0
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20231027181609-f7ff6baf2ed0
 	github.com/charmbracelet/keygen v0.5.0
