@@ -208,7 +208,7 @@ lfs:
   # Enable Git LFS.
   enabled: true
   # Enable Git SSH transfer.
-  ssh_enabled: true
+  ssh_enabled: false
 
 # Cron job configuration
 jobs:
@@ -267,6 +267,8 @@ You can specify a database connection password in the _data source_ url. For exa
 Soft Serve supports both Git LFS [HTTP](https://github.com/git-lfs/git-lfs/blob/main/docs/api/README.md) and [SSH](https://github.com/git-lfs/git-lfs/blob/main/docs/proposals/ssh_adapter.md) protocols out of the box, there is no need to do any extra set up.
 
 Use the `lfs` config section to customize your Git LFS server.
+
+> **Note**: The pure-SSH transfer is disabled by default.
 
 ## Server Access
 

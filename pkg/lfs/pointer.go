@@ -102,12 +102,13 @@ func (p Pointer) String() string {
 }
 
 // RelativePath returns the relative storage path of the pointer
+// https://github.com/git-lfs/git-lfs/blob/main/docs/spec.md#intercepting-git
 func (p Pointer) RelativePath() string {
 	if len(p.Oid) < 5 {
 		return p.Oid
 	}
 
-	return path.Join(p.Oid[0:2], p.Oid[2:4], p.Oid[4:])
+	return path.Join(p.Oid[0:2], p.Oid[2:4], p.Oid)
 }
 
 // GeneratePointer generates a pointer for arbitrary content

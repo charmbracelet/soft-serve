@@ -10,7 +10,6 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/git-lfs-transfer/transfer"
@@ -62,7 +61,7 @@ func LFSTransfer(ctx context.Context, cmd ServiceCommand) error {
 	}
 
 	logger := log.FromContext(ctx).WithPrefix("lfs-transfer")
-	handler := transfer.NewPktline(cmd.Stdin, cmd.Stdout)
+	handler := transfer.NewPktline(cmd.Stdin, cmd.Stdout, &lfsLogger{logger})
 	repo := proto.RepositoryFromContext(ctx)
 	if repo == nil {
 		logger.Error("no repository in context")
@@ -95,43 +94,36 @@ func LFSTransfer(ctx context.Context, cmd ServiceCommand) error {
 		logger:  logger,
 		storage: storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID)),
 		repo:    repo,
-	})
+	}, &lfsLogger{logger})
 
 	return processor.ProcessCommands(op)
 }
 
 // Batch implements transfer.Backend.
-func (t *lfsTransfer) Batch(_ string, pointers []transfer.Pointer, _ map[string]string) ([]transfer.BatchItem, error) {
-	items := make([]transfer.BatchItem, 0)
-	for _, p := range pointers {
-		obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), p.Oid)
+func (t *lfsTransfer) Batch(_ string, pointers []transfer.BatchItem, _ transfer.Args) ([]transfer.BatchItem, error) {
+	for i := range pointers {
+		obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), pointers[i].Oid)
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-			return items, db.WrapError(err)
+			return pointers, db.WrapError(err)
 		}
 
-		exist, err := t.storage.Exists(path.Join("objects", p.RelativePath()))
+		pointers[i].Present, err = t.storage.Exists(path.Join("objects", pointers[i].RelativePath()))
 		if err != nil {
-			return items, err
+			return pointers, err
 		}
 
-		if exist && obj.ID == 0 {
-			if err := t.store.CreateLFSObject(t.ctx, t.dbx, t.repo.ID(), p.Oid, p.Size); err != nil {
-				return items, db.WrapError(err)
+		if pointers[i].Present && obj.ID == 0 {
+			if err := t.store.CreateLFSObject(t.ctx, t.dbx, t.repo.ID(), pointers[i].Oid, pointers[i].Size); err != nil {
+				return pointers, db.WrapError(err)
 			}
 		}
-
-		item := transfer.BatchItem{
-			Pointer: p,
-			Present: exist,
-		}
-		items = append(items, item)
 	}
 
-	return items, nil
+	return pointers, nil
 }
 
 // Download implements transfer.Backend.
-func (t *lfsTransfer) Download(oid string, _ map[string]string) (fs.File, error) {
+func (t *lfsTransfer) Download(oid string, _ transfer.Args) (fs.File, error) {
 	cfg := config.FromContext(t.ctx)
 	repoID := strconv.FormatInt(t.repo.ID(), 10)
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
@@ -145,8 +137,12 @@ type uploadObject struct {
 	object storage.Object
 }
 
+func (u *uploadObject) Close() error {
+	return u.object.Close()
+}
+
 // StartUpload implements transfer.Backend.
-func (t *lfsTransfer) StartUpload(oid string, r io.Reader, _ map[string]string) (interface{}, error) {
+func (t *lfsTransfer) StartUpload(oid string, r io.Reader, _ transfer.Args) (io.Closer, error) {
 	if r == nil {
 		return nil, fmt.Errorf("no reader: %w", transfer.ErrMissingData)
 	}
@@ -174,7 +170,7 @@ func (t *lfsTransfer) StartUpload(oid string, r io.Reader, _ map[string]string) 
 
 	t.logger.Infof("Object name: %s", obj.Name())
 
-	return uploadObject{
+	return &uploadObject{
 		oid:    oid,
 		size:   written,
 		object: obj,
@@ -182,20 +178,13 @@ func (t *lfsTransfer) StartUpload(oid string, r io.Reader, _ map[string]string) 
 }
 
 // FinishUpload implements transfer.Backend.
-func (t *lfsTransfer) FinishUpload(state interface{}, args map[string]string) error {
-	upl, ok := state.(uploadObject)
+func (t *lfsTransfer) FinishUpload(state io.Closer, args transfer.Args) error {
+	upl, ok := state.(*uploadObject)
 	if !ok {
 		return errors.New("invalid state")
 	}
 
-	var size int64
-	for _, arg := range args {
-		if strings.HasPrefix(arg, "size=") {
-			size, _ = strconv.ParseInt(strings.TrimPrefix(arg, "size="), 10, 64)
-			break
-		}
-	}
-
+	size, _ := transfer.SizeFromArgs(args)
 	pointer := transfer.Pointer{
 		Oid: upl.oid,
 	}
@@ -220,24 +209,16 @@ func (t *lfsTransfer) FinishUpload(state interface{}, args map[string]string) er
 }
 
 // Verify implements transfer.Backend.
-func (t *lfsTransfer) Verify(oid string, args map[string]string) (transfer.Status, error) {
-	var expectedSize int64
-	var err error
-	size, ok := args[transfer.SizeKey]
-	if !ok {
-		return transfer.NewFailureStatus(transfer.StatusBadRequest, "missing size"), nil
-	}
-
-	expectedSize, err = strconv.ParseInt(size, 10, 64)
+func (t *lfsTransfer) Verify(oid string, args transfer.Args) (transfer.Status, error) {
+	expectedSize, err := transfer.SizeFromArgs(args)
 	if err != nil {
-		t.logger.Errorf("invalid size argument: %v", err)
-		return transfer.NewFailureStatus(transfer.StatusBadRequest, "invalid size argument"), nil
+		return transfer.NewStatus(transfer.StatusBadRequest, "missing size"), nil // nolint: nilerr
 	}
 
 	obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), oid)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return transfer.NewFailureStatus(transfer.StatusNotFound, "object not found"), nil
+			return transfer.NewStatus(transfer.StatusNotFound, "object not found"), nil
 		}
 		t.logger.Errorf("error getting object: %v", err)
 		return nil, err
@@ -245,7 +226,7 @@ func (t *lfsTransfer) Verify(oid string, args map[string]string) (transfer.Statu
 
 	if obj.Size != expectedSize {
 		t.logger.Errorf("size mismatch: %d != %d", obj.Size, expectedSize)
-		return transfer.NewFailureStatus(transfer.StatusConflict, "size mismatch"), nil
+		return transfer.NewStatus(transfer.StatusConflict, "size mismatch"), nil
 	}
 
 	return transfer.SuccessStatus(), nil
@@ -260,7 +241,7 @@ type lfsLockBackend struct {
 var _ transfer.LockBackend = (*lfsLockBackend)(nil)
 
 // LockBackend implements transfer.Backend.
-func (t *lfsTransfer) LockBackend(args map[string]string) transfer.LockBackend {
+func (t *lfsTransfer) LockBackend(args transfer.Args) transfer.LockBackend {
 	user := proto.UserFromContext(t.ctx)
 	if user == nil {
 		t.logger.Errorf("no user in context while creating lock backend, repo %s", t.repo.Name())
