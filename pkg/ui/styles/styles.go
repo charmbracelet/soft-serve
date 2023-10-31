@@ -126,6 +126,7 @@ type Styles struct {
 		Blame       struct {
 			Hash    lipgloss.Style
 			Message lipgloss.Style
+			Who     lipgloss.Style
 		}
 	}
 
@@ -445,6 +446,9 @@ func DefaultStyles() *Styles {
 		Bold(true)
 
 	s.Tree.Blame.Message = lipgloss.NewStyle()
+
+	s.Tree.Blame.Who = lipgloss.NewStyle().
+		Faint(true)
 
 	s.Spinner = lipgloss.NewStyle().
 		MarginTop(1).

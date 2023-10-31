@@ -497,9 +497,11 @@ func renderBlame(c common.Common, f *FileItem, b *gitm.Blame) string {
 		if commit == nil {
 			break
 		}
-		line := fmt.Sprintf("%s %s",
+		who := fmt.Sprintf("%s <%s>", commit.Author.Name, commit.Author.Email)
+		line := fmt.Sprintf("%s %s %s",
 			c.Styles.Tree.Blame.Hash.Render(commit.ID.String()[:7]),
 			c.Styles.Tree.Blame.Message.Render(commit.Summary()),
+			c.Styles.Tree.Blame.Who.Render(who),
 		)
 		if line != prev {
 			lines = append(lines, line)
