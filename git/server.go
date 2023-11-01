@@ -3,7 +3,7 @@ package git
 import (
 	"context"
 
-	"github.com/gogs/git-module"
+	"github.com/aymanbagabas/git-module"
 )
 
 // UpdateServerInfo updates the server info file for the given repo path.

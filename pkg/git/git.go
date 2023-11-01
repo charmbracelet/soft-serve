@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
-	gitm "github.com/gogs/git-module"
+	gitm "github.com/aymanbagabas/git-module"
 )
 
 // WritePktline encodes and writes a pktline to the given writer.

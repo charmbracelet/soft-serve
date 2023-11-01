@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
-	gitm "github.com/gogs/git-module"
+	gitm "github.com/aymanbagabas/git-module"
 	"github.com/spf13/cobra"
 )
 

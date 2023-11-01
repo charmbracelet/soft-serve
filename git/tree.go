@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/gogs/git-module"
+	"github.com/aymanbagabas/git-module"
 )
 
 // Tree is a wrapper around git.Tree with helper methods.

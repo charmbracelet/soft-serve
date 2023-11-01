@@ -3,7 +3,7 @@ package git
 import (
 	"strings"
 
-	"github.com/gogs/git-module"
+	"github.com/aymanbagabas/git-module"
 )
 
 const (

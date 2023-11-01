@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/store"
-	gitm "github.com/gogs/git-module"
+	gitm "github.com/aymanbagabas/git-module"
 )
 
 // PushEvent is a push event.

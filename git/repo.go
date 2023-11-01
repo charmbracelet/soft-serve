@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gogs/git-module"
+	"github.com/aymanbagabas/git-module"
 )
 
 var (

@@ -4,8 +4,8 @@ github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFI
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuWl6zY27l47sB3qLNK6tF2fkHG55UZxx8oIVo4=
 github.com/atotto/clipboard v0.1.4 h1:EH0zSVneZPSuFR11BlR9YppQTVDbh5+16AmcJi4g1z4=
 github.com/atotto/clipboard v0.1.4/go.mod h1:ZY9tmq7sm5xIbd9bOK4onWV4S6X0u6GY7Vn0Yu86PYI=
-github.com/aymanbagabas/git-module v1.4.1-0.20231025145308-5e8facf7a213 h1:/tUfPeV5T/tn2UjvQedq1incFa9B9WkFHTv0fdt5Ah0=
-github.com/aymanbagabas/git-module v1.4.1-0.20231025145308-5e8facf7a213/go.mod h1:3OBxY2gWeblk83u6BlGMO1TYDEbV4bspATMP/S2Kfsk=
+github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2 h1:3w5KT+shE3hzWhORGiu2liVjEoaCEXm9uZP47+Gw4So=
+github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2/go.mod h1:d4gQ7/3/S2sPq4NnKdtAgUOVr6XtLpWFtxyVV5/+76U=
 github.com/aymanbagabas/go-osc52 v1.0.3/go.mod h1:zT8H+Rk4VSabYN90pWyugflM3ZhpTZNC7cASDfUCdT4=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiErDT4WkJ2k=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1/go.mod h1:uYgXzlJ7ZpABp8OJ+exZzJJhRNQ2ASbcXHWsFqH8hp8=

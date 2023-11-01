@@ -15,7 +15,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/code"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/selector"
-	gitm "github.com/gogs/git-module"
+	gitm "github.com/aymanbagabas/git-module"
 )
 
 type filesView int

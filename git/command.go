@@ -1,6 +1,6 @@
 package git
 
-import "github.com/gogs/git-module"
+import "github.com/aymanbagabas/git-module"
 
 // RunInDirOptions are options for RunInDir.
 type RunInDirOptions = git.RunInDirOptions

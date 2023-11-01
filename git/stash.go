@@ -1,6 +1,6 @@
 package git
 
-import "github.com/gogs/git-module"
+import "github.com/aymanbagabas/git-module"
 
 // StashDiff returns the diff of the given stash index.
 func (r *Repository) StashDiff(index int) (*Diff, error) {
