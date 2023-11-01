@@ -48,6 +48,9 @@ ssh git.charm.sh repo blob soft-serve cmd/soft/root.go
 ssh git.charm.sh repo blob soft-serve cmd/soft/root.go -c -l
 ```
 
+Or you can use Soft Serve to browse local repositories using `soft browse
+[directory]` or running `soft` within a Git repository.
+
 ## Installation
 
 Soft Serve is a single binary called `soft`. You can get it from a package
@@ -617,12 +620,39 @@ ssh -p 23231 localhost repo blob soft-serve cmd/soft/root.go -c -l
 
 Use `--raw` to print raw file contents. This is useful for dumping binary data.
 
+### Repository webhooks
+
+Soft Serve supports repository webhooks using the `repo webhook` command. You
+can create and manage webhooks for different repository events such as _push_,
+_collaborators_, and _branch_tag_create_ events.
+
+```
+Manage repository webhooks
+
+Usage:
+  ssh -p 23231 localhost repo webhook [command]
+
+Aliases:
+  webhook, webhooks
+
+Available Commands:
+  create      Create a repository webhook
+  delete      Delete a repository webhook
+  deliveries  Manage webhook deliveries
+  list        List repository webhooks
+  update      Update a repository webhook
+
+Flags:
+  -h, --help   help for webhook
+```
+
 ## The Soft Serve TUI
 
 <img src="https://stuff.charm.sh/soft-serve/soft-serve-demo-commit.png" width="750" alt="TUI example showing a diff">
 
-Soft Serve serves a TUI over SSH for browsing repos, viewing files and commits,
-and grabbing clone commands:
+Soft Serve TUI is mainly used to browse repos over SSH. You can also use it to
+browse local repositories with `soft browse` or running `soft` within a Git
+repository.
 
 ```sh
 ssh localhost -p 23231
