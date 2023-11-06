@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dustin/go-humanize/english"
 	"github.com/aymanbagabas/git-module"
+	"github.com/dustin/go-humanize/english"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 

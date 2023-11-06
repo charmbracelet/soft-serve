@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/chroma/lexers"
+	gitm "github.com/aymanbagabas/git-module"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,7 +16,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/code"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/selector"
-	gitm "github.com/aymanbagabas/git-module"
 )
 
 type filesView int

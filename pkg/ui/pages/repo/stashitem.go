@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"io"
 
+	gitm "github.com/aymanbagabas/git-module"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
-	gitm "github.com/aymanbagabas/git-module"
 )
 
 // StashItem represents a stash item.
