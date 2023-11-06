@@ -32,7 +32,7 @@ require (
 	github.com/google/go-querystring v1.1.0
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/handlers v1.5.1
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
