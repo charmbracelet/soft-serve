@@ -64,14 +64,13 @@ func (r *logWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 }
 
 // NewLoggingMiddleware returns a new logging middleware.
-func NewLoggingMiddleware(next http.Handler) http.Handler {
+func NewLoggingMiddleware(next http.Handler, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := log.FromContext(r.Context())
 		start := time.Now()
 		writer := &logWriter{code: http.StatusOK, ResponseWriter: w}
 		logger.Debug("request",
 			"method", r.Method,
-			"uri", r.RequestURI,
+			"path", r.URL,
 			"addr", r.RemoteAddr)
 		next.ServeHTTP(writer, r)
 		elapsed := time.Since(start)

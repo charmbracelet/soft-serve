@@ -149,6 +149,11 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 	if err != nil && errors.Is(err, os.ErrNotExist) {
 		return ErrInvalidRepo
 	} else if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+			return fmt.Errorf("%s: %s", exitErr, exitErr.Stderr)
+		}
+
 		return err
 	}
 
