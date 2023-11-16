@@ -4,12 +4,14 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/charmbracelet/log"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
 // NewRouter returns a new HTTP router.
 func NewRouter(ctx context.Context) http.Handler {
+	logger := log.FromContext(ctx).WithPrefix("http")
 	router := mux.NewRouter()
 
 	// Git routes
@@ -19,10 +21,10 @@ func NewRouter(ctx context.Context) http.Handler {
 
 	// Context handler
 	// Adds context to the request
-	h := NewContextHandler(ctx)(router)
+	h := NewLoggingMiddleware(router, logger)
+	h = NewContextHandler(ctx)(h)
 	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
-	h = NewLoggingMiddleware(h)
 
 	return h
 }
