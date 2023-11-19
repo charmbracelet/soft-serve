@@ -72,7 +72,7 @@ var (
 	}, []string{"repo", "file"})
 )
 
-func withParams(h http.Handler) http.Handler {
+func withParams(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		cfg := config.FromContext(ctx)
@@ -97,7 +97,8 @@ func withParams(h http.Handler) http.Handler {
 		// Add repo suffix (.git)
 		r.URL.Path = fmt.Sprintf("%s.git/%s", repo, vars["file"])
 		r = mux.SetURLVars(r, vars)
-		h.ServeHTTP(w, r)
+
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -111,7 +112,7 @@ func GitController(_ context.Context, r *mux.Router) {
 	}
 
 	// Handle go-get
-	r.Handle(basePrefix, withParams(withAccess(GoGetHandler{}))).Methods(http.MethodGet)
+	r.Handle(basePrefix, withParams(withAccess(http.HandlerFunc(GoGetHandler)))).Methods(http.MethodGet)
 }
 
 var gitRoutes = []GitRoute{

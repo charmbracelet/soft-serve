@@ -32,6 +32,7 @@ func NewContextHandler(ctx context.Context) func(http.Handler) http.Handler {
 			ctx = db.WithContext(ctx, dbx)
 			ctx = store.WithContext(ctx, datastore)
 			r = r.WithContext(ctx)
+
 			next.ServeHTTP(w, r)
 		})
 	}

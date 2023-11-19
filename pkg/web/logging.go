@@ -40,6 +40,11 @@ func (r *logWriter) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
+// Unwrap returns the underlying http.ResponseWriter.
+func (r *logWriter) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
+}
+
 // Flush implements http.Flusher.
 func (r *logWriter) Flush() {
 	if f, ok := r.ResponseWriter.(http.Flusher); ok {
