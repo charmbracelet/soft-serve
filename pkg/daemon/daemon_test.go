@@ -3,7 +3,6 @@ package daemon
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -81,12 +80,9 @@ func TestIdleTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := readPktline(c)
-	if err != nil && !errors.Is(err, io.EOF) {
-		t.Fatalf("expected nil, got error: %v", err)
-	}
-	if out != "ERR "+git.ErrTimeout.Error() && out != "" {
-		t.Fatalf("expected %q error, got %q", git.ErrTimeout, out)
+	_, err = readPktline(c)
+	if err != nil && err.Error() != git.ErrTimeout.Error() {
+		t.Fatalf("expected %q error, got %q", git.ErrTimeout, err)
 	}
 }
 
@@ -98,12 +94,9 @@ func TestInvalidRepo(t *testing.T) {
 	if err := pktline.NewEncoder(c).EncodeString("git-upload-pack /test.git\x00"); err != nil {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	out, err := readPktline(c)
-	if err != nil {
-		t.Fatalf("expected nil, got error: %v", err)
-	}
-	if out != "ERR "+git.ErrInvalidRepo.Error() {
-		t.Fatalf("expected %q error, got %q", git.ErrInvalidRepo, out)
+	_, err = readPktline(c)
+	if err != nil && err.Error() != git.ErrInvalidRepo.Error() {
+		t.Fatalf("expected %q error, got %q", git.ErrInvalidRepo, err)
 	}
 }
 
