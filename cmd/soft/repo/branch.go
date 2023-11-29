@@ -1,0 +1,212 @@
+package repo
+
+import (
+	"fmt"
+	"strings"
+
+	gitm "github.com/aymanbagabas/git-module"
+	"github.com/charmbracelet/soft-serve/cmd"
+	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/pkg/access"
+	"github.com/charmbracelet/soft-serve/pkg/backend"
+	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/webhook"
+	"github.com/spf13/cobra"
+)
+
+func branchCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "branch",
+		Short: "Manage repository branches",
+	}
+
+	cmd.AddCommand(
+		branchListCommand(),
+		branchDefaultCommand(),
+		branchDeleteCommand(),
+	)
+
+	return cmd
+}
+
+func branchListCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list REPOSITORY",
+		Short: "List repository branches",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			ctx := c.Context()
+			be := backend.FromContext(ctx)
+			rn := strings.TrimSuffix(args[0], ".git")
+			rr, err := be.Repository(ctx, rn)
+			if err != nil {
+				return err
+			}
+
+			if !cmd.CheckUserHasAccess(c, rr.Name(), access.ReadOnlyAccess) {
+				return proto.ErrUnauthorized
+			}
+
+			r, err := rr.Open()
+			if err != nil {
+				return err
+			}
+
+			branches, _ := r.Branches()
+			for _, b := range branches {
+				c.Println(b)
+			}
+
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+func branchDefaultCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "default REPOSITORY [BRANCH]",
+		Short: "Set or get the default branch",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(c *cobra.Command, args []string) error {
+			ctx := c.Context()
+			be := backend.FromContext(ctx)
+			rn := strings.TrimSuffix(args[0], ".git")
+			rr, err := be.Repository(ctx, rn)
+			if err != nil {
+				return err
+			}
+
+			switch len(args) {
+			case 1:
+				if !cmd.CheckUserHasAccess(c, rr.Name(), access.ReadOnlyAccess) {
+					return proto.ErrUnauthorized
+				}
+
+				r, err := rr.Open()
+				if err != nil {
+					return err
+				}
+
+				head, err := r.HEAD()
+				if err != nil {
+					return err
+				}
+
+				c.Println(head.Name().Short())
+			case 2:
+				if !cmd.CheckUserHasAccess(c, rr.Name(), access.ReadWriteAccess) {
+					return proto.ErrUnauthorized
+				}
+
+				r, err := rr.Open()
+				if err != nil {
+					return err
+				}
+
+				branch := args[1]
+				branches, _ := r.Branches()
+				var exists bool
+				for _, b := range branches {
+					if branch == b {
+						exists = true
+						break
+					}
+				}
+
+				if !exists {
+					return git.ErrReferenceNotExist
+				}
+
+				if _, err := r.SymbolicRef(git.HEAD, gitm.RefsHeads+branch, gitm.SymbolicRefOptions{
+					CommandOptions: gitm.CommandOptions{
+						Context: ctx,
+					},
+				}); err != nil {
+					return err
+				}
+
+				// TODO: move this to backend?
+				user := proto.UserFromContext(ctx)
+				wh, err := webhook.NewRepositoryEvent(ctx, user, rr, webhook.RepositoryEventActionDefaultBranchChange)
+				if err != nil {
+					return err
+				}
+
+				return webhook.SendEvent(ctx, wh)
+			}
+
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+func branchDeleteCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "delete REPOSITORY BRANCH",
+		Aliases: []string{"remove", "rm", "del"},
+		Short:   "Delete a branch",
+		RunE: func(c *cobra.Command, args []string) error {
+			ctx := c.Context()
+			be := backend.FromContext(ctx)
+			rn := strings.TrimSuffix(args[0], ".git")
+			rr, err := be.Repository(ctx, rn)
+			if err != nil {
+				return err
+			}
+
+			if !cmd.CheckUserHasAccess(c, rr.Name(), access.ReadWriteAccess) {
+				return proto.ErrUnauthorized
+			}
+
+			r, err := rr.Open()
+			if err != nil {
+				return err
+			}
+
+			branch := args[1]
+			branches, _ := r.Branches()
+			var exists bool
+			for _, b := range branches {
+				if branch == b {
+					exists = true
+					break
+				}
+			}
+
+			if !exists {
+				return git.ErrReferenceNotExist
+			}
+
+			head, err := r.HEAD()
+			if err != nil {
+				return err
+			}
+
+			if head.Name().Short() == branch {
+				return fmt.Errorf("cannot delete the default branch")
+			}
+
+			branchCommit, err := r.BranchCommit(branch)
+			if err != nil {
+				return err
+			}
+
+			if err := r.DeleteBranch(branch, gitm.DeleteBranchOptions{Force: true}); err != nil {
+				return err
+			}
+
+			wh, err := webhook.NewBranchTagEvent(ctx, proto.UserFromContext(ctx), rr, git.RefsHeads+branch, branchCommit.ID.String(), git.ZeroID)
+			if err != nil {
+				return err
+			}
+
+			return webhook.SendEvent(ctx, wh)
+		},
+	}
+
+	return cmd
+}

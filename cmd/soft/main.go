@@ -10,7 +10,11 @@ import (
 	"github.com/charmbracelet/soft-serve/cmd/soft/admin"
 	"github.com/charmbracelet/soft-serve/cmd/soft/browse"
 	"github.com/charmbracelet/soft-serve/cmd/soft/hook"
+	"github.com/charmbracelet/soft-serve/cmd/soft/repo"
 	"github.com/charmbracelet/soft-serve/cmd/soft/serve"
+	"github.com/charmbracelet/soft-serve/cmd/soft/settings"
+	"github.com/charmbracelet/soft-serve/cmd/soft/shell"
+	"github.com/charmbracelet/soft-serve/cmd/soft/user"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	logr "github.com/charmbracelet/soft-serve/pkg/log"
 	"github.com/charmbracelet/soft-serve/pkg/version"
@@ -33,6 +37,10 @@ var (
 	// built against. It's set via ldflags when building.
 	CommitDate = ""
 
+	// When this flag is set, the user will be checked for access to the
+	// repository before the command is run during cmd.CheckUserHasAccess.
+	strict bool
+
 	rootCmd = &cobra.Command{
 		Use:          "soft",
 		Short:        "A self-hostable Git server for the command line",
@@ -49,7 +57,7 @@ var (
 		Args:   cobra.NoArgs,
 		Hidden: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			manPage, err := mcobra.NewManPage(1, rootCmd) //.
+			manPage, err := mcobra.NewManPage(1, rootCmd)
 			if err != nil {
 				return err
 			}
@@ -64,13 +72,18 @@ var (
 
 func init() {
 	rootCmd.AddCommand(
-		manCmd,
-		serve.Command,
-		hook.Command,
 		admin.Command,
 		browse.Command,
+		hook.Command,
+		manCmd,
+		repo.Command,
+		serve.Command,
+		settings.Command,
+		shell.Command,
+		user.Command,
 	)
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
+	rootCmd.PersistentFlags().BoolVarP(&strict, "strict", "", false, "Check if the user has access to the command")
 
 	if len(CommitSHA) >= 7 {
 		vt := rootCmd.VersionTemplate()

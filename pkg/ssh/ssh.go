@@ -17,9 +17,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
-	bm "github.com/charmbracelet/wish/bubbletea"
 	rm "github.com/charmbracelet/wish/recover"
-	"github.com/muesli/termenv"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gossh "golang.org/x/crypto/ssh"
@@ -70,9 +68,10 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		rm.MiddlewareWithLogger(
 			logger,
 			// BubbleTea middleware.
-			bm.MiddlewareWithProgramHandler(SessionHandler, termenv.ANSI256),
+			// bm.MiddlewareWithProgramHandler(SessionHandler, termenv.ANSI256),
 			// CLI middleware.
-			CommandMiddleware,
+			// CommandMiddleware,
+			ShellMiddleware,
 			// Logging middleware.
 			LoggingMiddleware,
 			// Context middleware.
@@ -86,6 +85,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 	}
 
 	s.srv, err = wish.NewServer(
+		ssh.AllocatePty(),
 		ssh.PublicKeyAuth(s.PublicKeyHandler),
 		ssh.KeyboardInteractiveAuth(s.KeyboardInteractiveHandler),
 		wish.WithAddress(cfg.SSH.ListenAddr),

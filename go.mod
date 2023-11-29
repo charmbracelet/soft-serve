@@ -18,14 +18,16 @@ require (
 )
 
 require (
+	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be
 	github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2
+	github.com/aymanbagabas/go-pty v0.2.0
 	github.com/caarlos0/duration v0.0.0-20220103233809-8df7c22fe305
 	github.com/caarlos0/env/v10 v10.0.0
 	github.com/caarlos0/tablewriter v0.1.0
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20231027181609-f7ff6baf2ed0
 	github.com/charmbracelet/keygen v0.5.0
 	github.com/charmbracelet/log v0.3.1
-	github.com/charmbracelet/ssh v0.0.0-20230822194956-1a051f898e09
+	github.com/charmbracelet/ssh v0.0.0-20231129225614-669b249ca6ee
 	github.com/go-jose/go-jose/v3 v3.0.1
 	github.com/gobwas/glob v0.2.3
 	github.com/golang-jwt/jwt/v5 v5.1.0
@@ -37,6 +39,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/lrstanley/bubblezone v0.0.0-20220716194435-3cb8c52f6a8f
+	github.com/mattn/go-tty v0.0.3
 	github.com/muesli/mango-cobra v1.2.0
 	github.com/muesli/roff v0.1.0
 	github.com/prometheus/client_golang v1.17.0
@@ -52,13 +55,13 @@ require (
 )
 
 require (
-	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
+	github.com/creack/pty v1.1.15 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/git-lfs/pktline v0.0.0-20230103162542-ca444d533ef1 // indirect
@@ -87,6 +90,7 @@ require (
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/sahilm/fuzzy v0.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/u-root/u-root v0.11.0 // indirect
 	github.com/yuin/goldmark v1.5.2 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect

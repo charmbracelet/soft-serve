@@ -167,11 +167,11 @@ func LoggingMiddleware(sh ssh.Handler) ssh.Handler {
 		}
 
 		if isPty {
-			logArgs = []interface{}{
+			logArgs = append([]interface{}{
 				"term", ptyReq.Term,
 				"width", ptyReq.Window.Width,
 				"height", ptyReq.Window.Height,
-			}
+			}, logArgs...)
 		}
 
 		if config.IsVerbose() {
