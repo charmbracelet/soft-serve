@@ -1,10 +1,8 @@
 package daemon
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -101,11 +99,7 @@ func TestInvalidRepo(t *testing.T) {
 }
 
 func readPktline(c net.Conn) (string, error) {
-	buf, err := io.ReadAll(c)
-	if err != nil {
-		return "", err
-	}
-	pktout := pktline.NewScanner(bytes.NewReader(buf))
+	pktout := pktline.NewScanner(c)
 	if !pktout.Scan() {
 		return "", pktout.Err()
 	}
