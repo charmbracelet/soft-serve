@@ -2,6 +2,7 @@ package git
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -11,6 +12,11 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
+)
+
+var (
+	// ErrNoBranches is returned when a repo has no branches.
+	ErrNoBranches = errors.New("no branches found")
 )
 
 // WritePktline encodes and writes a pktline to the given writer.
@@ -57,17 +63,17 @@ func EnsureWithin(reposDir string, repo string) error {
 
 // EnsureDefaultBranch ensures the repo has a default branch.
 // It will prefer choosing "main" or "master" if available.
-func EnsureDefaultBranch(ctx context.Context, scmd ServiceCommand) error {
-	r, err := git.Open(scmd.Dir)
+func EnsureDefaultBranch(ctx context.Context, repoPath string) error {
+	r, err := git.Open(repoPath)
 	if err != nil {
 		return err
 	}
 	brs, err := r.Branches()
+	if len(brs) == 0 {
+		return ErrNoBranches
+	}
 	if err != nil {
 		return err
-	}
-	if len(brs) == 0 {
-		return fmt.Errorf("no branches found")
 	}
 	// Rename the default branch to the first branch available
 	_, err = r.HEAD()

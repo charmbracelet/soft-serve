@@ -50,7 +50,7 @@ func TestMain(m *testing.M) {
 	}
 	datastore := database.New(ctx, dbx)
 	ctx = store.WithContext(ctx, datastore)
-	be := backend.New(ctx, cfg, dbx)
+	be := backend.New(ctx, cfg, dbx, datastore)
 	ctx = backend.WithContext(ctx, be)
 	d, err := NewGitDaemon(ctx)
 	if err != nil {

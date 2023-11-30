@@ -149,7 +149,7 @@ func TestScript(t *testing.T) {
 			ctx = db.WithContext(ctx, dbx)
 			datastore := database.New(ctx, dbx)
 			ctx = store.WithContext(ctx, datastore)
-			be := backend.New(ctx, cfg, dbx)
+			be := backend.New(ctx, cfg, dbx, datastore)
 			ctx = backend.WithContext(ctx, be)
 
 			lock.Lock()

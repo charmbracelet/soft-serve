@@ -76,7 +76,7 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 	}
 	dbstore := database.New(ctx, dbx)
 	ctx = store.WithContext(ctx, dbstore)
-	be := backend.New(ctx, cfg, dbx)
+	be := backend.New(ctx, cfg, dbx, dbstore)
 	ctx = backend.WithContext(ctx, be)
 	return testsession.New(tb, &ssh.Server{
 		Handler: ContextMiddleware(cfg, dbx, dbstore, be, log.Default())(bm.MiddlewareWithProgramHandler(SessionHandler, termenv.ANSI256)(func(s ssh.Session) {

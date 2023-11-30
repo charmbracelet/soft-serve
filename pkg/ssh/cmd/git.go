@@ -249,7 +249,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 			return git.ErrSystemMalfunction
 		}
 
-		if err := git.EnsureDefaultBranch(ctx, scmd); err != nil {
+		if err := git.EnsureDefaultBranch(ctx, scmd.Dir); err != nil {
 			logger.Error("failed to ensure default branch", "err", err, "repo", name)
 			return git.ErrSystemMalfunction
 		}

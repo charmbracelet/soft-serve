@@ -11,6 +11,9 @@ import (
 
 // NewLogger returns a new logger with default settings.
 func NewLogger(cfg *config.Config) (*log.Logger, *os.File, error) {
+	if cfg == nil {
+		return nil, nil, config.ErrNilConfig
+	}
 	logger := log.NewWithOptions(os.Stderr, log.Options{
 		ReportTimestamp: true,
 		TimeFormat:      time.DateOnly,

@@ -21,16 +21,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/storage"
 	"github.com/charmbracelet/soft-serve/pkg/store"
-	"github.com/rubyist/tracerx"
 )
-
-func init() {
-	// git-lfs-transfer uses tracerx for logging.
-	// use a custom key to avoid conflicts
-	// SOFT_SERVE_TRACE=1 to enable tracing git-lfs-transfer in soft-serve
-	tracerx.DefaultKey = "SOFT_SERVE"
-	tracerx.Prefix = "trace soft-serve-lfs-transfer: "
-}
 
 // lfsTransfer implements transfer.Backend.
 type lfsTransfer struct {
