@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -34,7 +35,7 @@ func TestMain(m *testing.M) {
 	cfg.DataPath = tmp
 	cfg.Git.MaxConnections = 3
 	cfg.Git.MaxTimeout = 100
-	cfg.Git.IdleTimeout = 3
+	cfg.Git.IdleTimeout = 1
 	cfg.Git.ListenAddr = fmt.Sprintf(":%d", test.RandomPort())
 	if err := cfg.Validate(); err != nil {
 		log.Fatal(err)
@@ -78,6 +79,7 @@ func TestIdleTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	time.Sleep(2 * time.Second)
 	_, err = readPktline(c)
 	if err != nil && err.Error() != git.ErrTimeout.Error() {
 		t.Errorf("expected %q error, got %q", git.ErrTimeout, err)
