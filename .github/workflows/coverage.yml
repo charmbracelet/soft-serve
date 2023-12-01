@@ -18,7 +18,13 @@ jobs:
           go-version: ^1
 
       - name: Test
-        run: go test -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt ./... -timeout 5m
+        run: |
+          mkdir covdatafiles
+          GOCOVERDIR=$PWD/covdatafiles \
+            go test -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt ./... -timeout 5m
+
+          # Convert coverage data to legacy format
+          go tool covdata textfmt -i=covdatafiles -o=covdata.txt
       - uses: codecov/codecov-action@v3
         with:
-          file: ./coverage.txt
+          files: coverage.txt,covdata.txt
