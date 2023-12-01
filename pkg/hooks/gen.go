@@ -3,7 +3,6 @@ package hooks
 import (
 	"bytes"
 	"context"
-	"flag"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -30,11 +29,6 @@ const (
 // This function should be called by the backend when a repository is created.
 // TODO: support context.
 func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
-	// TODO: support git hook tests.
-	if flag.Lookup("test.v") != nil {
-		log.WithPrefix("backend.hooks").Warn("refusing to set up hooks when in test")
-		return nil
-	}
 	repo = utils.SanitizeRepo(repo) + ".git"
 	hooksPath := filepath.Join(cfg.DataPath, "repos", repo, "hooks")
 	if err := os.MkdirAll(hooksPath, os.ModePerm); err != nil {

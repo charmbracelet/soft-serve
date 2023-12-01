@@ -11,7 +11,6 @@ import (
 )
 
 func TestGenerateHooks(t *testing.T) {
-	t.Skip("TODO: support git hook tests")
 	tmp := t.TempDir()
 	cfg := config.DefaultConfig()
 	cfg.DataPath = tmp

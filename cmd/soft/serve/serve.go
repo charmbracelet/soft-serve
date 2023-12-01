@@ -82,7 +82,6 @@ var (
 			done := make(chan os.Signal, 1)
 			lch := make(chan error, 1)
 			go func() {
-				defer close(lch)
 				defer close(done)
 				lch <- s.Start()
 			}()

@@ -3,41 +3,60 @@ package testscript
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"flag"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/charmbracelet/keygen"
-	"github.com/charmbracelet/log"
-	"github.com/charmbracelet/soft-serve/cmd/soft/serve"
-	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
-	"github.com/charmbracelet/soft-serve/pkg/db/migrate"
-	logr "github.com/charmbracelet/soft-serve/pkg/log"
-	"github.com/charmbracelet/soft-serve/pkg/store"
-	"github.com/charmbracelet/soft-serve/pkg/store/database"
 	"github.com/charmbracelet/soft-serve/pkg/test"
 	"github.com/rogpeppe/go-internal/testscript"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 )
 
-var update = flag.Bool("update", false, "update script files")
+var (
+	update = flag.Bool("update", false, "update script files")
+
+	// binPath is the path to the soft binary.
+	binPath string
+)
+
+func TestMain(m *testing.M) {
+	tmp, err := os.MkdirTemp("", "soft-serve*")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %s", err)
+		os.Exit(1)
+	}
+	defer os.RemoveAll(tmp)
+
+	binPath = filepath.Join(tmp, "soft")
+
+	// Build the soft binary with -cover flag.
+	cmd := exec.Command("go", "build", "-o", binPath, "-cover", filepath.Join("..", "cmd", "soft"))
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build soft-serve binary: %s", err)
+		os.Exit(1)
+	}
+
+	// Run tests
+	os.Exit(m.Run())
+}
 
 func TestScript(t *testing.T) {
 	flag.Parse()
-	var lock sync.Mutex
 
 	mkkey := func(name string) (string, *keygen.SSHKeyPair) {
 		path := filepath.Join(t.TempDir(), name)
@@ -87,6 +106,16 @@ func TestScript(t *testing.T) {
 			e.Setenv("SSH_KNOWN_HOSTS_FILE", filepath.Join(t.TempDir(), "known_hosts"))
 			e.Setenv("SSH_KNOWN_CONFIG_FILE", filepath.Join(t.TempDir(), "config"))
 
+			// Soft Serve debug environment variables
+			for _, env := range []string{
+				"SOFT_SERVE_DEBUG",
+				"SOFT_SERVE_VERBOSE",
+			} {
+				if v, ok := os.LookupEnv(env); ok {
+					e.Setenv(env, v)
+				}
+			}
+
 			cfg := config.DefaultConfig()
 			cfg.DataPath = data
 			cfg.Name = serverName
@@ -97,20 +126,16 @@ func TestScript(t *testing.T) {
 			cfg.HTTP.ListenAddr = httpListen
 			cfg.HTTP.PublicURL = "http://" + httpListen
 			cfg.Stats.ListenAddr = statsListen
-			cfg.DB.Driver = "sqlite"
 			cfg.LFS.Enabled = true
-			cfg.LFS.SSHEnabled = true
+			// cfg.LFS.SSHEnabled = true
 
-			dbDriver := os.Getenv("DB_DRIVER")
-			if dbDriver != "" {
-				cfg.DB.Driver = dbDriver
+			// Parse os SOFT_SERVE environment variables
+			if err := cfg.ParseEnv(); err != nil {
+				return err
 			}
 
-			dbDsn := os.Getenv("DB_DATA_SOURCE")
-			if dbDsn != "" {
-				cfg.DB.DataSource = dbDsn
-			}
-
+			// Override the database data source if we're using postgres
+			// so we can create a temporary database for the tests.
 			if cfg.DB.Driver == "postgres" {
 				err, cleanup := setupPostgres(e.T(), cfg)
 				if err != nil {
@@ -121,58 +146,33 @@ func TestScript(t *testing.T) {
 				}
 			}
 
-			if err := cfg.Validate(); err != nil {
-				return err
+			for _, env := range cfg.Environ() {
+				parts := strings.SplitN(env, "=", 2)
+				if len(parts) != 2 {
+					e.T().Fatal("invalid environment variable", env)
+				}
+				e.Setenv(parts[0], parts[1])
 			}
 
 			ctx := config.WithContext(context.Background(), cfg)
 
-			logger, f, err := logr.NewLogger(cfg)
-			if err != nil {
-				log.Errorf("failed to create logger: %v", err)
-			}
+			cmd := exec.CommandContext(ctx, binPath, "serve")
+			cmd.Dir = e.WorkDir
+			cmd.Env = e.Vars
+			cmd.Stderr = os.Stderr
 
-			ctx = log.WithContext(ctx, logger)
-			if f != nil {
-				defer f.Close() // nolint: errcheck
-			}
-
-			dbx, err := db.Open(ctx, cfg.DB.Driver, cfg.DB.DataSource)
-			if err != nil {
-				return fmt.Errorf("open database: %w", err)
-			}
-
-			if err := migrate.Migrate(ctx, dbx); err != nil {
-				return fmt.Errorf("migrate database: %w", err)
-			}
-
-			ctx = db.WithContext(ctx, dbx)
-			datastore := database.New(ctx, dbx)
-			ctx = store.WithContext(ctx, datastore)
-			be := backend.New(ctx, cfg, dbx, datastore)
-			ctx = backend.WithContext(ctx, be)
-
-			lock.Lock()
-			srv, err := serve.NewServer(ctx)
-			if err != nil {
-				lock.Unlock()
-				return err
-			}
-			lock.Unlock()
-
+			// Start the server
 			go func() {
-				if err := srv.Start(); err != nil {
+				if err := cmd.Run(); err != nil {
 					e.T().Fatal(err)
 				}
 			}()
 
 			e.Defer(func() {
-				defer dbx.Close() // nolint: errcheck
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				lock.Lock()
-				defer lock.Unlock()
-				if err := srv.Shutdown(ctx); err != nil {
+				if cmd.Process == nil {
+					e.T().Fatal("process not started")
+				}
+				if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 					e.T().Fatal(err)
 				}
 			})
@@ -408,8 +408,9 @@ func cmdCurl(ts *testscript.TestScript, neg bool, args []string) {
 func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
 	// Indicates postgres
 	// Create a disposable database
-	dbName := fmt.Sprintf("softserve_test_%d", time.Now().UnixNano())
-	dbDsn := os.Getenv("DB_DATA_SOURCE")
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	dbName := fmt.Sprintf("softserve_test_%d", rnd.Int63())
+	dbDsn := cfg.DB.DataSource
 	if dbDsn == "" {
 		cfg.DB.DataSource = "postgres://postgres@localhost:5432/postgres?sslmode=disable"
 	}
@@ -419,7 +420,17 @@ func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
 		return err, nil
 	}
 
-	connInfo := fmt.Sprintf("host=%s sslmode=disable", dbUrl.Hostname())
+	scheme := dbUrl.Scheme
+	if scheme == "" {
+		scheme = "postgres"
+	}
+
+	host := dbUrl.Hostname()
+	if host == "" {
+		host = "localhost"
+	}
+
+	connInfo := fmt.Sprintf("host=%s sslmode=disable", host)
 	username := dbUrl.User.Username()
 	if username != "" {
 		connInfo += fmt.Sprintf(" user=%s", username)
@@ -431,6 +442,7 @@ func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
 		username = fmt.Sprintf("%s@", username)
 	} else {
 		connInfo += " user=postgres"
+		username = "postgres@"
 	}
 
 	port := dbUrl.Port()
@@ -440,32 +452,31 @@ func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
 	}
 
 	cfg.DB.DataSource = fmt.Sprintf("%s://%s%s%s/%s?sslmode=disable",
-		dbUrl.Scheme,
+		scheme,
 		username,
-		dbUrl.Hostname(),
+		host,
 		port,
 		dbName,
 	)
 
 	// Create the database
-	db, err := sql.Open(cfg.DB.Driver, connInfo)
+	dbx, err := db.Open(context.TODO(), cfg.DB.Driver, connInfo)
 	if err != nil {
 		return err, nil
 	}
 
-	if _, err := db.Exec("CREATE DATABASE " + dbName); err != nil {
+	if _, err := dbx.Exec("CREATE DATABASE " + dbName); err != nil {
 		return err, nil
 	}
 
 	return nil, func() {
-		db, err := sql.Open(cfg.DB.Driver, connInfo)
+		dbx, err := db.Open(context.TODO(), cfg.DB.Driver, connInfo)
 		if err != nil {
-			t.Log("failed to open database", dbName, err)
-			return
+			t.Fatal("failed to open database", dbName, err)
 		}
 
-		if _, err := db.Exec("DROP DATABASE " + dbName); err != nil {
-			t.Log("failed to drop database", dbName, err)
+		if _, err := dbx.Exec("DROP DATABASE " + dbName); err != nil {
+			t.Fatal("failed to drop database", dbName, err)
 		}
 	}
 }
