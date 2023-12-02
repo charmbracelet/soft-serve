@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -59,6 +60,7 @@ func TestMain(m *testing.M) {
 func TestScript(t *testing.T) {
 	flag.Parse()
 
+	var lock sync.Mutex
 	mkkey := func(name string) (string, *keygen.SSHKeyPair) {
 		path := filepath.Join(t.TempDir(), name)
 		pair, err := keygen.New(path, keygen.WithKeyType(keygen.Ed25519), keygen.WithWrite())
@@ -158,6 +160,7 @@ func TestScript(t *testing.T) {
 
 			ctx := config.WithContext(context.Background(), cfg)
 
+			lock.Lock()
 			// XXX: Right now, --sync-hooks is the only flag option we have for
 			// the serve command.
 			// TODO: Find a way to test different flag options.
@@ -172,8 +175,11 @@ func TestScript(t *testing.T) {
 					e.T().Fatal(err)
 				}
 			}()
+			lock.Unlock()
 
 			e.Defer(func() {
+				lock.Lock()
+				defer lock.Unlock()
 				if cmd.Process == nil {
 					e.T().Fatal("process not started")
 				}
