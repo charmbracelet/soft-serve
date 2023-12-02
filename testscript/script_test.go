@@ -3,6 +3,7 @@ package testscript
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -45,7 +46,7 @@ func TestMain(m *testing.M) {
 	binPath = filepath.Join(tmp, "soft")
 
 	// Build the soft binary with -cover flag.
-	cmd := exec.Command("go", "build", "-o", binPath, "-cover", filepath.Join("..", "cmd", "soft"))
+	cmd := exec.Command("go", "build", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to build soft-serve binary: %s", err)
 		os.Exit(1)
@@ -75,14 +76,15 @@ func TestScript(t *testing.T) {
 		Dir:           "./testdata/",
 		UpdateScripts: *update,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"soft":     cmdSoft(admin1.Signer()),
-			"usoft":    cmdSoft(user1.Signer()),
-			"git":      cmdGit(key),
-			"curl":     cmdCurl,
-			"mkfile":   cmdMkfile,
-			"envfile":  cmdEnvfile,
-			"readfile": cmdReadfile,
-			"dos2unix": cmdDos2Unix,
+			"soft":        cmdSoft(admin1.Signer()),
+			"usoft":       cmdSoft(user1.Signer()),
+			"git":         cmdGit(key),
+			"curl":        cmdCurl,
+			"mkfile":      cmdMkfile,
+			"envfile":     cmdEnvfile,
+			"readfile":    cmdReadfile,
+			"dos2unix":    cmdDos2Unix,
+			"new-webhook": cmdNewWebhook,
 		},
 		Setup: func(e *testscript.Env) error {
 			data := t.TempDir()
@@ -156,7 +158,10 @@ func TestScript(t *testing.T) {
 
 			ctx := config.WithContext(context.Background(), cfg)
 
-			cmd := exec.CommandContext(ctx, binPath, "serve")
+			// XXX: Right now, --sync-hooks is the only flag option we have for
+			// the serve command.
+			// TODO: Find a way to test different flag options.
+			cmd := exec.CommandContext(ctx, binPath, "serve", "--sync-hooks")
 			cmd.Dir = e.WorkDir
 			cmd.Env = e.Vars
 			cmd.Stderr = os.Stderr
@@ -316,6 +321,29 @@ func cmdEnvfile(ts *testscript.TestScript, neg bool, args []string) {
 		file := parts[1]
 		ts.Setenv(key, strings.TrimSpace(ts.ReadFile(file)))
 	}
+}
+
+func cmdNewWebhook(ts *testscript.TestScript, neg bool, args []string) {
+	type webhookSite struct {
+		UUID string `json:"uuid"`
+	}
+
+	if len(args) != 1 {
+		ts.Fatalf("usage: new-webhook <env-name>")
+	}
+
+	const whSite = "https://webhook.site"
+	req, err := http.NewRequest(http.MethodPost, whSite+"/token", nil)
+	check(ts, err, neg)
+
+	resp, err := http.DefaultClient.Do(req)
+	check(ts, err, neg)
+
+	defer resp.Body.Close()
+	var site webhookSite
+	check(ts, json.NewDecoder(resp.Body).Decode(&site), neg)
+
+	ts.Setenv(args[0], whSite+"/"+site.UUID)
 }
 
 func cmdCurl(ts *testscript.TestScript, neg bool, args []string) {
