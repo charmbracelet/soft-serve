@@ -2,55 +2,60 @@ package ssh
 
 import (
 	"fmt"
-	"io"
+	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/charmbracelet/log"
-	"github.com/charmbracelet/soft-serve/pkg/shell"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 )
 
 // ShellMiddleware is a middleware for the SSH shell.
 func ShellMiddleware(sh ssh.Handler) ssh.Handler {
+	softBin, err := os.Executable()
+	if err != nil {
+		// TODO: handle this better
+		panic(err)
+	}
+
 	return func(s ssh.Session) {
 		ctx := s.Context()
 		logger := log.FromContext(ctx).WithPrefix("ssh")
-		envs := &sessionEnv{s}
-
-		ppty, _, isInteractive := s.Pty()
-
-		var (
-			in  io.Reader = s
-			out io.Writer = s
-			er  io.Writer = s.Stderr()
-			err error
-		)
-
-		if isInteractive {
-			in, out, er, err = ptyNew(ppty.Pty)
-			if err != nil {
-				logger.Errorf("could not create pty: %v", err)
-				// TODO: replace this err with a declared error
-				wish.Fatalln(s, fmt.Errorf("internal server error"))
-				return
-			}
-		}
 
 		args := s.Command()
-		if len(args) == 0 {
-			// XXX: args cannot be nil, otherwise cobra will use os.Args[1:]
-			args = []string{}
+		ppty, winch, isInteractive := s.Pty()
+
+		envs := s.Environ()
+		if len(args) > 0 {
+			envs = append(envs, "SSH_ORIGINAL_COMMAND="+strings.Join(args, " "))
 		}
 
-		cmd := shell.Command(ctx, envs, isInteractive)
-		cmd.SetArgs(args)
-		cmd.SetIn(in)
-		cmd.SetOut(out)
-		cmd.SetErr(er)
-		cmd.SetContext(ctx)
+		var cmd interface {
+			Run() error
+		}
+		cmdArgs := []string{"shell", "-c", fmt.Sprintf("'%s'", strings.Join(args, " "))}
+		if isInteractive && ppty.Pty != nil {
+			ppty.Pty.Resize(ppty.Window.Width, ppty.Window.Height)
+			go func() {
+				for win := range winch {
+					log.Printf("resizing to %d x %d", win.Width, win.Height)
+					ppty.Pty.Resize(win.Width, win.Height)
+				}
+			}()
 
-		if err := cmd.ExecuteContext(ctx); err != nil {
-			wish.Fatalln(s, err)
+			c := ppty.Pty.CommandContext(ctx, softBin, cmdArgs...)
+			c.Env = append(envs, "PATH="+os.Getenv("PATH"))
+			cmd = c
+		} else {
+			c := exec.CommandContext(ctx, softBin, cmdArgs...)
+			c.Env = append(envs, "PATH="+os.Getenv("PATH"))
+			cmd = c
+		}
+
+		if err := cmd.Run(); err != nil {
+			logger.Errorf("error running command: %s", err)
+			wish.Fatal(s, "internal server error")
 			return
 		}
 

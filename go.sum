@@ -16,8 +16,8 @@ github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2/go.mod h
 github.com/aymanbagabas/go-osc52 v1.0.3/go.mod h1:zT8H+Rk4VSabYN90pWyugflM3ZhpTZNC7cASDfUCdT4=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiErDT4WkJ2k=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1/go.mod h1:uYgXzlJ7ZpABp8OJ+exZzJJhRNQ2ASbcXHWsFqH8hp8=
-github.com/aymanbagabas/go-pty v0.2.0 h1:fC2ATGqFG+zH0Hr0Ks46h0lrRU2ExmQxR7iHUjBG1Do=
-github.com/aymanbagabas/go-pty v0.2.0/go.mod h1:Ul2Zd4Z3Cby9ByGdurtjlAafh6pjgrjiHNAsx4LC5yE=
+github.com/aymanbagabas/go-pty v0.2.1 h1:bqnC0bCkr4OAQ1fZdqqriRzGnZTHC71wogGNOPjSNHQ=
+github.com/aymanbagabas/go-pty v0.2.1/go.mod h1:1EXZe9k53iaw8QnevpvYenkDazponD+qtcp1s1E7CsQ=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/beevik/ntp v0.3.0/go.mod h1:hIHWr+l3+/clUnF44zdK+CWW7fO8dR5cIylAQ76NRpg=
@@ -51,8 +51,8 @@ github.com/charmbracelet/lipgloss v0.9.1 h1:PNyd3jvaJbg4jRHKWXnCj1akQm4rh8dbEzN1
 github.com/charmbracelet/lipgloss v0.9.1/go.mod h1:1mPmG4cxScwUQALAAnacHaigiiHB9Pmr+v1VEawJl6I=
 github.com/charmbracelet/log v0.3.1 h1:TjuY4OBNbxmHWSwO3tosgqs5I3biyY8sQPny/eCMTYw=
 github.com/charmbracelet/log v0.3.1/go.mod h1:OR4E1hutLsax3ZKpXbgUqPtTjQfrh1pG3zwHGWuuq8g=
-github.com/charmbracelet/ssh v0.0.0-20231129225614-669b249ca6ee h1:r0yd6qZE8iLT2smnxiYre41b9/atj4kFxsfuIXW0Oqs=
-github.com/charmbracelet/ssh v0.0.0-20231129225614-669b249ca6ee/go.mod h1:Lq6b5f587hn2S27yNPgSB4Nei+iqOkghe9Ep7syGuQY=
+github.com/charmbracelet/ssh v0.0.0-20231203183338-c29875a2932c h1:ylmTNGYtwoe8Dfl5piAxQOrzBOnYtjnY4C+aAHXcoVU=
+github.com/charmbracelet/ssh v0.0.0-20231203183338-c29875a2932c/go.mod h1:PzGIpBYAWrMVea9T6tpJiIHm7Z/Hpnm7WTfOTkZ63xc=
 github.com/charmbracelet/wish v1.2.0 h1:h5Wj9pr97IQz/l4gM5Xep2lXcY/YM+6O2RC2o3x0JIQ=
 github.com/charmbracelet/wish v1.2.0/go.mod h1:JX3fC+178xadJYAhPu6qWtVDpJTwpnFvpdjz9RKJlUE=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=

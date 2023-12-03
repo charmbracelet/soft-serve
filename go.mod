@@ -20,14 +20,14 @@ require (
 require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be
 	github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2
-	github.com/aymanbagabas/go-pty v0.2.0
+	github.com/aymanbagabas/go-pty v0.2.1
 	github.com/caarlos0/duration v0.0.0-20220103233809-8df7c22fe305
 	github.com/caarlos0/env/v10 v10.0.0
 	github.com/caarlos0/tablewriter v0.1.0
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20231027181609-f7ff6baf2ed0
 	github.com/charmbracelet/keygen v0.5.0
 	github.com/charmbracelet/log v0.3.1
-	github.com/charmbracelet/ssh v0.0.0-20231129225614-669b249ca6ee
+	github.com/charmbracelet/ssh v0.0.0-20231203183338-c29875a2932c
 	github.com/go-jose/go-jose/v3 v3.0.1
 	github.com/gobwas/glob v0.2.3
 	github.com/golang-jwt/jwt/v5 v5.1.0

@@ -2,11 +2,8 @@ package shell
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"io/fs"
-	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -141,9 +138,10 @@ func startCommand(co *cobra.Command, args []string) error {
 
 	cmdPath := filepath.Join(cmdsDir, args[0])
 
-	if stat, err := os.Stat(cmdPath); errors.Is(err, fs.ErrNotExist) || stat.Mode()&0111 == 0 {
-		return fmt.Errorf("command not found: %s", args[0])
-	}
+	// if stat, err := os.Stat(cmdPath); errors.Is(err, fs.ErrNotExist) || stat.Mode()&0111 == 0 {
+	// 	log.Printf("command mode %s", stat.Mode().String())
+	// 	return fmt.Errorf("command not found: %s", args[0])
+	// }
 
 	cmdPath, err := filepath.Abs(cmdPath)
 	if err != nil {
