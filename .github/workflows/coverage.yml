@@ -28,7 +28,8 @@ jobs:
           # https://go.dev/testing/coverage/
           # https://dustinspecker.com/posts/go-combined-unit-integration-code-coverage/
           # https://github.com/golang/go/issues/51430#issuecomment-1344711300
-          mkdir -p coverage/{unit,integration}
+          mkdir -p coverage/unit
+          mkdir -p coverage/integration
 
           # Collect integration tests coverage
           GOCOVERDIR=$PWD/coverage/integration go test -failfast -race -timeout 5m ./...
