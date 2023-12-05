@@ -15,10 +15,12 @@ func TestGoodNewLogger(t *testing.T) {
 	} {
 		_, f, err := NewLogger(c)
 		if err != nil {
-			t.Errorf("NewLogger(%v) => _, _, %v, want _, _, nil", c, err)
+			t.Errorf("expected nil got %v", err)
 		}
 		if f != nil {
-			f.Close()
+			if err := f.Close(); err != nil {
+				t.Errorf("failed to close logger: %v", err)
+			}
 		}
 	}
 }
@@ -30,10 +32,12 @@ func TestBadNewLogger(t *testing.T) {
 	} {
 		_, f, err := NewLogger(c)
 		if err == nil {
-			t.Errorf("NewLogger(%v) => _, _, nil, want _, _, %v", c, err)
+			t.Errorf("expected error got nil")
 		}
 		if f != nil {
-			f.Close()
+			if err := f.Close(); err != nil {
+				t.Errorf("failed to close logger: %v", err)
+			}
 		}
 	}
 }
