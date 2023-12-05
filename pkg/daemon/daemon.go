@@ -171,6 +171,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 	case <-ctx.Done():
 		if err := ctx.Err(); err != nil {
 			d.logger.Debugf("git: connection context error: %v", err)
+			d.fatal(c, git.ErrTimeout)
 		}
 		return
 	case <-readc:

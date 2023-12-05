@@ -81,7 +81,7 @@ func TestIdleTimeout(t *testing.T) {
 	_, err = readPktline(c)
 	// FIXME: flaky test, supposed to fail with timeout error (ErrTimeout)
 	if err == nil {
-		t.Errorf("expected error error, got nil")
+		t.Errorf("expected error, got nil")
 	}
 }
 
