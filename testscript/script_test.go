@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -45,6 +47,9 @@ func TestMain(m *testing.M) {
 	defer os.RemoveAll(tmp)
 
 	binPath = filepath.Join(tmp, "soft")
+	if runtime.GOOS == "windows" {
+		binPath += ".exe"
+	}
 
 	// Build the soft binary with -cover flag.
 	cmd := exec.Command("go", "build", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
@@ -59,8 +64,8 @@ func TestMain(m *testing.M) {
 
 func TestScript(t *testing.T) {
 	flag.Parse()
-
 	var lock sync.Mutex
+
 	mkkey := func(name string) (string, *keygen.SSHKeyPair) {
 		path := filepath.Join(t.TempDir(), name)
 		pair, err := keygen.New(path, keygen.WithKeyType(keygen.Ed25519), keygen.WithWrite())
@@ -168,14 +173,18 @@ func TestScript(t *testing.T) {
 			cmd.Dir = e.WorkDir
 			cmd.Env = e.Vars
 			cmd.Stderr = os.Stderr
+			lock.Unlock()
 
 			// Start the server
 			go func() {
 				if err := cmd.Run(); err != nil {
-					e.T().Fatal(err)
+					var exitErr *exec.ExitError
+					if !errors.As(err, &exitErr) {
+						e.T().Fatal(err)
+					}
+					e.T().Log(exitErr.Stderr)
 				}
 			}()
-			lock.Unlock()
 
 			e.Defer(func() {
 				lock.Lock()
@@ -183,8 +192,15 @@ func TestScript(t *testing.T) {
 				if cmd.Process == nil {
 					e.T().Fatal("process not started")
 				}
-				if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-					e.T().Fatal(err)
+				if runtime.GOOS == "windows" {
+					// Windows doesn't support SIGTERM
+					if err := cmd.Process.Kill(); err != nil {
+						e.T().Fatal(err)
+					}
+				} else {
+					if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+						e.T().Fatal(err)
+					}
 				}
 			})
 
