@@ -57,6 +57,11 @@ func NewRefs(common common.Common, refPrefix string) *Refs {
 	return r
 }
 
+// Path implements common.TabComponent.
+func (r *Refs) Path() string {
+	return ""
+}
+
 // TabName returns the name of the tab.
 func (r *Refs) TabName() string {
 	if r.refPrefix == git.RefsHeads {

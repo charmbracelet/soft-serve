@@ -196,7 +196,9 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					ui.common.Zone.Close()
 					return ui, tea.Quit
 				}
-			case ui.activePage == repoPage && key.Matches(msg, ui.common.KeyMap.Back):
+			case ui.activePage == repoPage &&
+				ui.pages[ui.activePage].(*repo.Repo).Path() == "" &&
+				key.Matches(msg, ui.common.KeyMap.Back):
 				ui.activePage = selectionPage
 				// Always show the footer on selection page.
 				ui.showFooter = true

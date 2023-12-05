@@ -104,6 +104,11 @@ func (r *Repo) SetSize(width, height int) {
 	}
 }
 
+// Path returns the current component path.
+func (r *Repo) Path() string {
+	return r.panes[r.activeTab].Path()
+}
+
 func (r *Repo) commonHelp() []key.Binding {
 	b := make([]key.Binding, 0)
 	back := r.common.KeyMap.Back
@@ -192,6 +197,13 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case r.common.Zone.Get("repo-main").InBounds(msg):
 					cmds = append(cmds, goBackCmd)
 				}
+			}
+		}
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, r.common.KeyMap.Back):
+				cmds = append(cmds, goBackCmd)
 			}
 		}
 	case CopyMsg:

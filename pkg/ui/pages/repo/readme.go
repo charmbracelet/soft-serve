@@ -45,6 +45,11 @@ func NewReadme(common common.Common) *Readme {
 	}
 }
 
+// Path implements common.TabComponent.
+func (r *Readme) Path() string {
+	return ""
+}
+
 // TabName returns the name of the tab.
 func (r *Readme) TabName() string {
 	return "Readme"

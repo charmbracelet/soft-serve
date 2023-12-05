@@ -64,6 +64,11 @@ func NewStash(common common.Common) *Stash {
 	}
 }
 
+// Path implements common.TabComponent.
+func (s *Stash) Path() string {
+	return ""
+}
+
 // TabName returns the name of the tab.
 func (s *Stash) TabName() string {
 	return "Stash"

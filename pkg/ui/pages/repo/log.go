@@ -83,6 +83,16 @@ func NewLog(common common.Common) *Log {
 	return l
 }
 
+// Path implements common.TabComponent.
+func (l *Log) Path() string {
+	switch l.activeView {
+	case logViewCommits:
+		return ""
+	default:
+		return "diff" // XXX: this is a place holder and doesn't mean anything
+	}
+}
+
 // TabName returns the name of the tab.
 func (l *Log) TabName() string {
 	return "Commits"

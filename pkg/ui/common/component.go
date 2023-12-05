@@ -28,4 +28,7 @@ type TabComponent interface {
 
 	// TabName returns the name of the tab.
 	TabName() string
+
+	// Path returns the hierarchical path of the tab.
+	Path() string
 }

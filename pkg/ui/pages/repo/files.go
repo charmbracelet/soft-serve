@@ -105,6 +105,15 @@ func NewFiles(common common.Common) *Files {
 	return f
 }
 
+// Path implements common.TabComponent.
+func (f *Files) Path() string {
+	path := f.path
+	if path == "." {
+		return ""
+	}
+	return path
+}
+
 // TabName returns the tab name.
 func (f *Files) TabName() string {
 	return "Files"
