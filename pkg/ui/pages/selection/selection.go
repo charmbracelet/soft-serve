@@ -62,6 +62,7 @@ func New(c common.Common) *Selection {
 		tabs:       t,
 	}
 	readme := code.New(c, "", "")
+	readme.UseGlamour = true
 	readme.NoContentStyle = c.Styles.NoContent.Copy().
 		SetString(defaultNoContent)
 	selector := selector.New(c,
