@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
-	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 )
 
@@ -108,13 +107,6 @@ func commitCommand() *cobra.Command {
 	return cmd
 }
 
-func renderCtx() gansi.RenderContext {
-	return gansi.NewRenderContext(gansi.Options{
-		ColorProfile: termenv.TrueColor,
-		Styles:       common.StyleConfig(),
-	})
-}
-
 func renderDiff(patch string, color bool) string {
 	c := patch
 
@@ -127,7 +119,7 @@ func renderDiff(patch string, color bool) string {
 			Language: "diff",
 		}
 
-		err := diffChroma.Render(&pr, renderCtx())
+		err := diffChroma.Render(&pr, common.StyleRenderer())
 
 		if err != nil {
 			s.WriteString(fmt.Sprintf("\n%s", err.Error()))

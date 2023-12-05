@@ -18,7 +18,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/viewport"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
 	"github.com/muesli/reflow/wrap"
-	"github.com/muesli/termenv"
 )
 
 var waitBeforeLoading = time.Millisecond * 100
@@ -476,13 +475,6 @@ func (l *Log) loadDiffCmd() tea.Msg {
 	return LogDiffMsg(diff)
 }
 
-func renderCtx() gansi.RenderContext {
-	return gansi.NewRenderContext(gansi.Options{
-		ColorProfile: termenv.TrueColor,
-		Styles:       common.StyleConfig(),
-	})
-}
-
 func (l *Log) renderCommit(c *git.Commit) string {
 	s := strings.Builder{}
 	// FIXME: lipgloss prints empty lines when CRLF is used
@@ -518,7 +510,7 @@ func renderDiff(diff *git.Diff, width int) string {
 		Code:     diff.Patch(),
 		Language: "diff",
 	}
-	err := diffChroma.Render(&pr, renderCtx())
+	err := diffChroma.Render(&pr, common.StyleRenderer())
 	if err != nil {
 		s.WriteString(fmt.Sprintf("\n%s", err.Error()))
 	} else {

@@ -7,7 +7,6 @@ import (
 	"github.com/alecthomas/chroma/lexers"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
-	"github.com/muesli/termenv"
 )
 
 // FormatLineNumber adds line numbers to a string.
@@ -48,10 +47,7 @@ func FormatHighlight(p, c string) (string, error) {
 	r := strings.Builder{}
 	styles := StyleConfig()
 	styles.CodeBlock.Margin = &zero
-	rctx := gansi.NewRenderContext(gansi.Options{
-		Styles:       styles,
-		ColorProfile: termenv.TrueColor,
-	})
+	rctx := StyleRendererWithStyles(styles)
 	err := formatter.Render(&r, rctx)
 	if err != nil {
 		return "", err

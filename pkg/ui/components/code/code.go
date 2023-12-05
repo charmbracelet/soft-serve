@@ -51,10 +51,7 @@ func New(c common.Common, content, extension string) *Code {
 	}
 	st := common.StyleConfig()
 	r.styleConfig = st
-	r.renderContext = gansi.NewRenderContext(gansi.Options{
-		ColorProfile: termenv.TrueColor,
-		Styles:       st,
-	})
+	r.renderContext = common.StyleRendererWithStyles(st)
 	r.SetSize(c.Width, c.Height)
 	return r
 }

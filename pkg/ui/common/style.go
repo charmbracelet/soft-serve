@@ -3,6 +3,12 @@ package common
 import (
 	"github.com/charmbracelet/glamour"
 	gansi "github.com/charmbracelet/glamour/ansi"
+	"github.com/muesli/termenv"
+)
+
+var (
+	// DefaultColorProfile is the default color profile used by the SSH server.
+	DefaultColorProfile = termenv.ANSI256
 )
 
 func strptr(s string) *string {
@@ -24,4 +30,18 @@ func StyleConfig() gansi.StyleConfig {
 	// highlighting empty spaces with red in Dockerfile type.
 	s.CodeBlock.Chroma.Error.BackgroundColor = noColor
 	return s
+}
+
+// StyleRenderer returns a new Glamour renderer with the DefaultColorProfile.
+func StyleRenderer() gansi.RenderContext {
+	return StyleRendererWithStyles(StyleConfig())
+}
+
+// StyleRendererWithStyles returns a new Glamour renderer with the
+// DefaultColorProfile and styles.
+func StyleRendererWithStyles(styles gansi.StyleConfig) gansi.RenderContext {
+	return gansi.NewRenderContext(gansi.Options{
+		ColorProfile: DefaultColorProfile,
+		Styles:       styles,
+	})
 }
