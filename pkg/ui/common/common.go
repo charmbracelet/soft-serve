@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
@@ -33,6 +34,7 @@ type Common struct {
 	Zone          *zone.Manager
 	Output        *termenv.Output
 	Logger        *log.Logger
+	HideCloneCmd  bool
 }
 
 // NewCommon returns a new Common struct.
@@ -94,4 +96,12 @@ func (c *Common) PublicKey() ssh.PublicKey {
 		return p
 	}
 	return nil
+}
+
+// CloneCmd returns the clone command string.
+func (c *Common) CloneCmd(publicURL, name string) string {
+	if c.HideCloneCmd {
+		return ""
+	}
+	return fmt.Sprintf("git clone %s", RepoURL(publicURL, name))
 }

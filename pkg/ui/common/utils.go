@@ -33,8 +33,3 @@ func RepoURL(publicURL, name string) string {
 
 	return fmt.Sprintf("%s/%s", publicURL, name)
 }
-
-// CloneCmd returns the URL of the repository.
-var CloneCmd = func(publicURL, name string) string {
-	return fmt.Sprintf("git clone %s", RepoURL(publicURL, name))
-}

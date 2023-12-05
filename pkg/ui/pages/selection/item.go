@@ -11,7 +11,6 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/dustin/go-humanize"
@@ -54,16 +53,20 @@ type Item struct {
 }
 
 // New creates a new Item.
-func NewItem(repo proto.Repository, cfg *config.Config) (Item, error) {
+func NewItem(c common.Common, repo proto.Repository) (Item, error) {
 	var lastUpdate *time.Time
 	lu := repo.UpdatedAt()
 	if !lu.IsZero() {
 		lastUpdate = &lu
 	}
+	var cmd string
+	if cfg := c.Config(); cfg != nil {
+		cmd = c.CloneCmd(cfg.SSH.PublicURL, repo.Name())
+	}
 	return Item{
 		repo:       repo,
 		lastUpdate: lastUpdate,
-		cmd:        common.CloneCmd(cfg.SSH.PublicURL, repo.Name()),
+		cmd:        cmd,
 	}, nil
 }
 

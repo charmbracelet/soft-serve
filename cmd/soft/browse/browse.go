@@ -43,6 +43,7 @@ var Command = &cobra.Command{
 		output := termenv.DefaultOutput()
 		ctx := cmd.Context()
 		c := common.NewCommon(ctx, output, 0, 0)
+		c.HideCloneCmd = true
 		comps := []common.TabComponent{
 			repo.NewReadme(c),
 			repo.NewFiles(c),
@@ -67,12 +68,6 @@ var Command = &cobra.Command{
 		_, err = p.Run()
 		return err
 	},
-}
-
-func init() {
-	// HACK: This is a hack to hide the clone url
-	// TODO: Make this configurable
-	common.CloneCmd = func(publicURL, name string) string { return "" }
 }
 
 type state int

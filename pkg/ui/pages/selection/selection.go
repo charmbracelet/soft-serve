@@ -215,7 +215,7 @@ func (s *Selection) Init() tea.Cmd {
 		}
 		al := be.AccessLevelByPublicKey(ctx, r.Name(), pk)
 		if al >= access.ReadOnlyAccess {
-			item, err := NewItem(r, cfg)
+			item, err := NewItem(s.common, r)
 			if err != nil {
 				s.common.Logger.Debugf("ui: failed to create item for %s: %v", r.Name(), err)
 				continue

@@ -174,7 +174,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if r.selectedRepo != nil {
 			urlID := fmt.Sprintf("%s-url", r.selectedRepo.Name())
-			cmd := common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
+			cmd := r.common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
 			if msg, ok := msg.(tea.MouseMsg); ok && r.common.Zone.Get(urlID).InBounds(msg) {
 				cmds = append(cmds, copyCmd(cmd, "Command copied to clipboard"))
 			}
@@ -329,7 +329,7 @@ func (r *Repo) headerView() string {
 		Align(lipgloss.Right)
 	var url string
 	if cfg := r.common.Config(); cfg != nil {
-		url = common.CloneCmd(cfg.SSH.PublicURL, r.selectedRepo.Name())
+		url = r.common.CloneCmd(cfg.SSH.PublicURL, r.selectedRepo.Name())
 	}
 	url = common.TruncateString(url, r.common.Width-lipgloss.Width(desc)-1)
 	url = r.common.Zone.Mark(
