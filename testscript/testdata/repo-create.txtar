@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix readme.md branch_list.1.txt info.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create a repo
 soft repo create repo1 -d 'description' -H -p -n 'repo11'
 stderr 'Created repository repo1.*'

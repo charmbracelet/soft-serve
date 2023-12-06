@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix repo3.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # import private
 soft repo import --private repo1 https://github.com/charmbracelet/catwalk.git
 soft repo private repo1

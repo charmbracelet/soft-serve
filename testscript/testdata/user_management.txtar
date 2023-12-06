@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix info.txt admin_key_list1.txt admin_key_list2.txt list1.txt list2.txt foo_info1.txt foo_info2.txt foo_info3.txt foo_info4.txt foo_info5.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # add key to admin
 soft user add-pubkey admin "$ADMIN2_AUTHORIZED_KEY"
 soft user info admin

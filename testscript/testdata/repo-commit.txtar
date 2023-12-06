@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix commit1.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create a repo
 soft repo import basic1 https://github.com/git-fixtures/basic
 

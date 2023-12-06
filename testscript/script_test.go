@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -17,8 +16,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -32,9 +29,7 @@ import (
 )
 
 var (
-	update = flag.Bool("update", false, "update script files")
-
-	// binPath is the path to the soft binary.
+	update  = flag.Bool("update", false, "update script files")
 	binPath string
 )
 
@@ -52,7 +47,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Build the soft binary with -cover flag.
-	cmd := exec.Command("go", "build", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
+	cmd := exec.Command("go", "build", "-coverpkg=./...", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to build soft-serve binary: %s", err)
 		os.Exit(1)
@@ -60,11 +55,13 @@ func TestMain(m *testing.M) {
 
 	// Run tests
 	os.Exit(m.Run())
+
+	// Add binPath to PATH
+	os.Setenv("PATH", fmt.Sprintf("%s%c%s", os.Getenv("PATH"), os.PathListSeparator, filepath.Dir(binPath)))
 }
 
 func TestScript(t *testing.T) {
 	flag.Parse()
-	var lock sync.Mutex
 
 	mkkey := func(name string) (string, *keygen.SSHKeyPair) {
 		path := filepath.Join(t.TempDir(), name)
@@ -80,22 +77,26 @@ func TestScript(t *testing.T) {
 	_, user1 := mkkey("user1")
 
 	testscript.Run(t, testscript.Params{
-		Dir:           "./testdata/",
-		UpdateScripts: *update,
+		Dir:                 "./testdata/",
+		UpdateScripts:       *update,
+		RequireExplicitExec: true,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"soft":        cmdSoft(admin1.Signer()),
-			"usoft":       cmdSoft(user1.Signer()),
-			"git":         cmdGit(key),
-			"curl":        cmdCurl,
-			"mkfile":      cmdMkfile,
-			"envfile":     cmdEnvfile,
-			"readfile":    cmdReadfile,
-			"dos2unix":    cmdDos2Unix,
-			"new-webhook": cmdNewWebhook,
+			"soft":          cmdSoft(admin1.Signer()),
+			"usoft":         cmdSoft(user1.Signer()),
+			"git":           cmdGit(key),
+			"curl":          cmdCurl,
+			"mkfile":        cmdMkfile,
+			"envfile":       cmdEnvfile,
+			"readfile":      cmdReadfile,
+			"dos2unix":      cmdDos2Unix,
+			"new-webhook":   cmdNewWebhook,
+			"waitforserver": cmdWaitforserver,
 		},
 		Setup: func(e *testscript.Env) error {
-			data := t.TempDir()
+			// Add binPath to PATH
+			e.Setenv("PATH", fmt.Sprintf("%s%c%s", filepath.Dir(binPath), os.PathListSeparator, e.Getenv("PATH")))
 
+			data := t.TempDir()
 			sshPort := test.RandomPort()
 			sshListen := fmt.Sprintf("localhost:%d", sshPort)
 			gitPort := test.RandomPort()
@@ -125,6 +126,7 @@ func TestScript(t *testing.T) {
 				}
 			}
 
+			// TODO: test different configs
 			cfg := config.DefaultConfig()
 			cfg.DataPath = data
 			cfg.Name = serverName
@@ -161,60 +163,6 @@ func TestScript(t *testing.T) {
 					e.T().Fatal("invalid environment variable", env)
 				}
 				e.Setenv(parts[0], parts[1])
-			}
-
-			ctx := config.WithContext(context.Background(), cfg)
-
-			lock.Lock()
-			// XXX: Right now, --sync-hooks is the only flag option we have for
-			// the serve command.
-			// TODO: Find a way to test different flag options.
-			cmd := exec.CommandContext(ctx, binPath, "serve", "--sync-hooks")
-			cmd.Dir = e.WorkDir
-			cmd.Env = e.Vars
-			cmd.Stderr = os.Stderr
-			lock.Unlock()
-
-			// Start the server
-			go func() {
-				if err := cmd.Run(); err != nil {
-					var exitErr *exec.ExitError
-					if !errors.As(err, &exitErr) {
-						e.T().Fatal(err)
-					}
-					e.T().Log(exitErr.Stderr)
-				}
-			}()
-
-			e.Defer(func() {
-				lock.Lock()
-				defer lock.Unlock()
-				if cmd.Process == nil {
-					e.T().Fatal("process not started")
-				}
-				if runtime.GOOS == "windows" {
-					// Windows doesn't support SIGTERM
-					if err := cmd.Process.Kill(); err != nil {
-						e.T().Fatal(err)
-					}
-				} else {
-					if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-						e.T().Fatal(err)
-					}
-				}
-			})
-
-			// wait until the server is up
-			for {
-				conn, _ := net.DialTimeout(
-					"tcp",
-					net.JoinHostPort("localhost", fmt.Sprintf("%d", sshPort)),
-					time.Second,
-				)
-				if conn != nil {
-					conn.Close()
-					break
-				}
 			}
 
 			return nil
@@ -453,6 +401,21 @@ func cmdCurl(ts *testscript.TestScript, neg bool, args []string) {
 	cmd.Flags().StringVarP(&data, "data", "d", data, "HTTP data")
 
 	check(ts, cmd.Execute(), neg)
+}
+
+func cmdWaitforserver(ts *testscript.TestScript, neg bool, args []string) {
+	// wait until the server is up
+	for {
+		conn, _ := net.DialTimeout(
+			"tcp",
+			net.JoinHostPort("localhost", fmt.Sprintf("%s", ts.Getenv("SSH_PORT"))),
+			time.Second,
+		)
+		if conn != nil {
+			conn.Close()
+			break
+		}
+	}
 }
 
 func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {

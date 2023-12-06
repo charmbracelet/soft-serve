@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix info1.txt info2.txt tree.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # import a repo
 soft repo import --mirror charmbracelet/catwalk https://github.com/charmbracelet/catwalk.git
 

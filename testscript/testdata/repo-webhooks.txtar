@@ -1,5 +1,10 @@
 # vi: set ft=conf
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create a repo
 soft repo create repo-123
 stderr 'Created repository repo-123.*'

@@ -6,6 +6,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix http1.txt http2.txt http3.txt goget.txt gitclone.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create user
 soft user create user1 --key "$USER1_AUTHORIZED_KEY"
 

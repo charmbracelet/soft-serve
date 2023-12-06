@@ -1,4 +1,10 @@
 # vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # setup
 soft repo import test https://github.com/charmbracelet/catwalk.git
 soft user create foo --key "$USER1_AUTHORIZED_KEY"

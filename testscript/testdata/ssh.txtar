@@ -2,6 +2,11 @@
 
 [windows] dos2unix argserr1.txt argserr2.txt argserr3.txt invalidrepoerr.txt notauthorizederr.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create a user
 soft user create foo --key "$USER1_AUTHORIZED_KEY"
 

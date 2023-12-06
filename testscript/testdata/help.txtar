@@ -1,6 +1,11 @@
 # vi: set ft=conf
 [windows] dos2unix help.txt
 
+# start soft serve
+exec soft serve --sync-hooks &
+# wait for server to start
+waitforserver
+
 soft --help
 cmpenv stdout help.txt
 
