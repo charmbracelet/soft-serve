@@ -15,11 +15,6 @@ var (
 )
 
 // KeyPair returns the server's SSH key pair.
-func (c SSHConfig) KeyPair() (*keygen.SSHKeyPair, error) {
-	return keygen.New(c.KeyPath, keygen.WithKeyType(keygen.Ed25519))
-}
-
-// KeyPair returns the server's SSH key pair.
 func KeyPair(cfg *Config) (*keygen.SSHKeyPair, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
