@@ -22,21 +22,23 @@ jobs:
 
       - name: Test
         run: |
-          go test -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt ./... -timeout 5m
-
           # We collect coverage data from two sources,
           # 1) unit tests 2) integration tests
           #
           # https://go.dev/testing/coverage/
           # https://dustinspecker.com/posts/go-combined-unit-integration-code-coverage/
           # https://github.com/golang/go/issues/51430#issuecomment-1344711300
-          mkdir -p coverage
+          mkdir -p coverage/unit
+          mkdir -p coverage/int
+
+          # Collect unit tests coverage
+          go test -failfast -race -timeout 5m -skip=^TestScript -cover ./... -args -test.gocoverdir=$PWD/coverage/unit
 
           # Collect integration tests coverage
-          GOCOVERDIR=$PWD/coverage go test -failfast -race -timeout 5m ./...
+          GOCOVERDIR=$PWD/coverage/int go test -failfast -race -timeout 5m -run=^TestScript ./...
 
           # Convert coverage data to legacy textfmt format to upload
-          go tool covdata textfmt -i=coverage -o=integration.txt
+          go tool covdata textfmt -i=coverage/unit,coverage/int -o=coverage.txt
       - uses: codecov/codecov-action@v3
         with:
-          files: coverage.txt,integration.txt
+          file: ./coverage.txt

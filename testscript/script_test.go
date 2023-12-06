@@ -47,7 +47,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Build the soft binary with -cover flag.
-	cmd := exec.Command("go", "build", "-coverpkg=./...", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
+	cmd := exec.Command("go", "build", "-race", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to build soft-serve binary: %s", err)
 		os.Exit(1)
