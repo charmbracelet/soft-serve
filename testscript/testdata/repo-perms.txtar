@@ -82,6 +82,10 @@ usoft repo delete repo1
 usoft repo list
 ! stdout .
 
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
 -- info.txt --
 Project Name: proj
 Repository: repo1

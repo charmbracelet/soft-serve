@@ -22,3 +22,7 @@ stdout 'foo'
 soft repo collab remove test foo
 soft repo collab list test
 ! stdout .
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

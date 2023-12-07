@@ -47,6 +47,9 @@ stderr 'file not found'
 ! stdout .
 stderr 'revision does not exist'
 
+# stop the server
+[windows] stopserver
+
 -- tree1.txt --
 drwxrwxrwx	-	 folder
 -rw-r--r--	-	 .hidden

@@ -9,6 +9,10 @@ waitforserver
 soft --help
 cmpenv stdout help.txt
 
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
 -- help.txt --
 Soft Serve is a self-hostable Git server for the command line.
 

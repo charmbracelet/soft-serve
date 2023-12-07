@@ -15,6 +15,10 @@ soft repo import basic1 https://github.com/git-fixtures/basic
 soft repo commit basic1 b8e471f58bcbca63b07bda20e428190409c2db47
 cmp stdout commit1.txt
 
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
 -- commit1.txt --
 commit b8e471f58bcbca63b07bda20e428190409c2db47
 Author: Daniel Ripolles

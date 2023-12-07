@@ -79,6 +79,10 @@ cmp stdout info2.txt
 soft repo blob charmbracelet/test LICENSE
 stdout '.*Creative Commons.*'
 
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
 
 -- info1.txt --
 Project Name:

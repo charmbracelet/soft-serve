@@ -12,3 +12,7 @@ soft repo delete repo-to-delete
 stderr '.*not found.*'
 soft repo list
 stdout 'repo1'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

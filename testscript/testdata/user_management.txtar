@@ -68,6 +68,10 @@ soft user delete foo2
 soft user list
 cmpenv stdout list1.txt
 
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
 
 -- info.txt --
 Username: admin

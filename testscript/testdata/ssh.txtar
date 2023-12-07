@@ -92,6 +92,10 @@ stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
 usoft git-lfs-authenticate repo2p upload
 stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
 
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
 -- argserr1.txt --
 Error: accepts 1 arg(s), received 0
 -- argserr2.txt --

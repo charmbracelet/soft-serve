@@ -41,3 +41,6 @@ stdout 'admin-access.*'
 ! stdout .
 stderr .
 
+# stop the server
+[windows] stopserver
+

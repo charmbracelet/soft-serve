@@ -17,6 +17,10 @@ soft set-username test
 soft info
 cmpenv stdout info2.txt
 
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
 -- info1.txt --
 Username: admin
 Admin: true

@@ -91,6 +91,7 @@ func TestScript(t *testing.T) {
 			"dos2unix":      cmdDos2Unix,
 			"new-webhook":   cmdNewWebhook,
 			"waitforserver": cmdWaitforserver,
+			"stopserver":    cmdStopserver,
 		},
 		Setup: func(e *testscript.Env) error {
 			// Add binPath to PATH
@@ -115,6 +116,9 @@ func TestScript(t *testing.T) {
 			e.Setenv("USER1_AUTHORIZED_KEY", user1.AuthorizedKey())
 			e.Setenv("SSH_KNOWN_HOSTS_FILE", filepath.Join(t.TempDir(), "known_hosts"))
 			e.Setenv("SSH_KNOWN_CONFIG_FILE", filepath.Join(t.TempDir(), "config"))
+
+			// This is used to set up test specific configuration and http endpoints
+			e.Setenv("SOFT_SERVE_TESTRUN", "1")
 
 			// Soft Serve debug environment variables
 			for _, env := range []string{
@@ -416,6 +420,14 @@ func cmdWaitforserver(ts *testscript.TestScript, neg bool, args []string) {
 			break
 		}
 	}
+}
+
+func cmdStopserver(ts *testscript.TestScript, neg bool, args []string) {
+	// stop the server
+	resp, err := http.DefaultClient.Head(fmt.Sprintf("%s/__stop", ts.Getenv("SOFT_SERVE_HTTP_PUBLIC_URL")))
+	check(ts, err, neg)
+	defer resp.Body.Close()
+	time.Sleep(time.Second * 2) // Allow some time for the server to stop
 }
 
 func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {

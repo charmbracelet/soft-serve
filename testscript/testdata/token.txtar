@@ -31,3 +31,6 @@ usoft token delete 1
 stderr 'Access token deleted'
 ! usoft token delete 1
 stderr 'token not found'
+
+# stop the server
+[windows] stopserver

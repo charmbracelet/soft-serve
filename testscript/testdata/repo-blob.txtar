@@ -48,6 +48,9 @@ stderr 'revision does not exist'
 ! stdout .
 stderr 'revision does not exist'
 
+# stop the server
+[windows] stopserver
+
 -- blob1.txt --
 # Hello\n\nwelcome
 -- blob2.txt --

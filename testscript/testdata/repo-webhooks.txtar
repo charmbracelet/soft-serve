@@ -28,3 +28,7 @@ git -C repo-123 push origin HEAD
 # list webhook deliveries
 soft repo webhook deliver list repo-123 1
 stdout '✅.*push.*'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

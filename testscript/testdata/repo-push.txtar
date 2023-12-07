@@ -1,8 +1,5 @@
 # vi: set ft=conf
 
-# convert crlf to lf on windows
-[windows] dos2unix
-
 # start soft serve
 exec soft serve &
 # wait for server to start
@@ -16,3 +13,6 @@ git clone ssh://localhost:$SSH_PORT/repo-empty repo-empty
 
 # push repo
 ! git -C repo-empty push origin HEAD
+
+# stop the server
+[windows] stopserver

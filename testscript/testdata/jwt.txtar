@@ -17,3 +17,7 @@ usoft jwt
 stdout '.*\..*\..*'
 usoft jwt repo
 stdout '.*\..*\..*'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

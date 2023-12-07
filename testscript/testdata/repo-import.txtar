@@ -23,6 +23,10 @@ soft repo import --name 'repo33' --description 'descriptive' repo3 https://githu
 soft repo info repo3
 cmp stdout repo3.txt
 
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
 -- repo3.txt --
 Project Name: repo33
 Repository: repo3

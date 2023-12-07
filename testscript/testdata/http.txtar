@@ -138,6 +138,10 @@ stdout '404.*'
 curl http://$TOKEN@localhost:$HTTP_PORT/repo2.git?go-get=1
 cmpenv stdout goget.txt
 
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
 -- http1.txt --
 {"transfer":"basic","objects":[{"oid":"","size":0,"error":{"code":422,"message":"invalid object"}}],"hash_algo":"sha256"}
 -- http2.txt --

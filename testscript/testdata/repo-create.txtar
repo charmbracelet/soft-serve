@@ -119,6 +119,10 @@ stdout 'repo2'
 usoft repo delete repo2
 ! exists $DATA_PATH/repos/repo2.git
 
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
 
 -- readme.md --
 # Project\nfoo
