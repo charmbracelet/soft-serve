@@ -55,7 +55,7 @@ manager:
 brew tap charmbracelet/tap && brew install charmbracelet/tap/soft-serve
 
 ## Windows (with Winget)
-winget install charmbracelet.soft-serve
+winget install soft-serve
 
 # Arch Linux
 pacman -S soft-serve
