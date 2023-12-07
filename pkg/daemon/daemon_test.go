@@ -75,8 +75,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestIdleTimeout(t *testing.T) {
-	// FIXME: flaky test, supposed to fail with timeout error (ErrTimeout)
-	t.Skip("flaky test")
 	c, err := net.Dial("tcp", testDaemon.addr)
 	if err != nil {
 		t.Fatal(err)

@@ -150,21 +150,16 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		d.conns.Close(c) // nolint: errcheck
 	}()
 
-	readc := make(chan struct{}, 1)
+	errc := make(chan error, 1)
+
 	s := pktline.NewScanner(c)
 	go func() {
 		if !s.Scan() {
 			if err := s.Err(); err != nil {
-				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
-					d.fatal(c, git.ErrTimeout)
-				} else {
-					d.logger.Debugf("git: error scanning pktline: %v", err)
-					d.fatal(c, git.ErrSystemMalfunction)
-				}
+				errc <- err
 			}
-			return
 		}
-		readc <- struct{}{}
+		errc <- nil
 	}()
 
 	select {
@@ -174,7 +169,16 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			d.fatal(c, git.ErrTimeout)
 		}
 		return
-	case <-readc:
+	case err := <-errc:
+		if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+			d.fatal(c, git.ErrTimeout)
+			return
+		} else if err != nil {
+			d.logger.Debugf("git: error scanning pktline: %v", err)
+			d.fatal(c, git.ErrSystemMalfunction)
+			return
+		}
+
 		line := s.Bytes()
 		split := bytes.SplitN(line, []byte{' '}, 2)
 		if len(split) != 2 {
