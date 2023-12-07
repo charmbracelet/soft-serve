@@ -1,0 +1,5 @@
+# vi: set ft=conf
+
+# test `soft man` output
+exec soft man
+stdout .
