@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix info.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create a repo & user1 with admin
 soft repo create repo1 -p
 soft user create user1 -k "$USER1_AUTHORIZED_KEY"
@@ -76,6 +81,10 @@ cmp stdout info.txt
 usoft repo delete repo1
 usoft repo list
 ! stdout .
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
 
 -- info.txt --
 Project Name: proj

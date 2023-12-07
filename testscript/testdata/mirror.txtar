@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix info1.txt info2.txt tree.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # import a repo
 soft repo import --mirror charmbracelet/catwalk https://github.com/charmbracelet/catwalk.git
 
@@ -73,6 +78,10 @@ cmp stdout info2.txt
 # get a file
 soft repo blob charmbracelet/test LICENSE
 stdout '.*Creative Commons.*'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
 
 
 -- info1.txt --

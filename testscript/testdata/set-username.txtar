@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix info1.txt info2.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # get original username
 soft info
 cmpenv stdout info1.txt
@@ -11,6 +16,10 @@ cmpenv stdout info1.txt
 soft set-username test
 soft info
 cmpenv stdout info2.txt
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
 
 -- info1.txt --
 Username: admin

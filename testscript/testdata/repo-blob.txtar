@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix blob1.txt blob2.txt blob3.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create a repo
 soft repo create repo1
 
@@ -42,6 +47,9 @@ stderr 'revision does not exist'
 ! soft repo blob repo1 badrev README.md
 ! stdout .
 stderr 'revision does not exist'
+
+# stop the server
+[windows] stopserver
 
 -- blob1.txt --
 # Hello\n\nwelcome

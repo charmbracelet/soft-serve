@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -50,7 +51,7 @@ func TestMain(m *testing.M) {
 	}
 	datastore := database.New(ctx, dbx)
 	ctx = store.WithContext(ctx, datastore)
-	be := backend.New(ctx, cfg, dbx)
+	be := backend.New(ctx, cfg, dbx, datastore)
 	ctx = backend.WithContext(ctx, be)
 	d, err := NewGitDaemon(ctx)
 	if err != nil {
@@ -78,9 +79,10 @@ func TestIdleTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	time.Sleep(time.Second)
 	_, err = readPktline(c)
-	if err != nil && err.Error() != git.ErrTimeout.Error() {
-		t.Fatalf("expected %q error, got %q", git.ErrTimeout, err)
+	if err == nil {
+		t.Errorf("expected error, got nil")
 	}
 }
 
@@ -94,7 +96,7 @@ func TestInvalidRepo(t *testing.T) {
 	}
 	_, err = readPktline(c)
 	if err != nil && err.Error() != git.ErrInvalidRepo.Error() {
-		t.Fatalf("expected %q error, got %q", git.ErrInvalidRepo, err)
+		t.Errorf("expected %q error, got %q", git.ErrInvalidRepo, err)
 	}
 }
 

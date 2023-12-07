@@ -1,0 +1,18 @@
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
+# create a repo
+soft repo create repo-empty -d 'description' -H -p -n 'repo-empty'
+
+# clone repo
+git clone ssh://localhost:$SSH_PORT/repo-empty repo-empty
+
+# push repo
+! git -C repo-empty push origin HEAD
+
+# stop the server
+[windows] stopserver

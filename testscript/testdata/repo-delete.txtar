@@ -1,5 +1,10 @@
 # vi: set ft=conf
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 soft repo create repo1
 soft repo create repo-to-delete
 soft repo delete repo-to-delete
@@ -7,3 +12,7 @@ soft repo delete repo-to-delete
 stderr '.*not found.*'
 soft repo list
 stdout 'repo1'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

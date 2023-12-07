@@ -1,5 +1,10 @@
 # vi: set ft=conf
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create user
 soft user create user1 --key "$USER1_AUTHORIZED_KEY"
 
@@ -26,3 +31,6 @@ usoft token delete 1
 stderr 'Access token deleted'
 ! usoft token delete 1
 stderr 'token not found'
+
+# stop the server
+[windows] stopserver

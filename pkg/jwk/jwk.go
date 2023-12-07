@@ -32,7 +32,7 @@ func (p Pair) JWK() jose.JSONWebKey {
 
 // NewPair creates a new JSON Web Key pair.
 func NewPair(cfg *config.Config) (Pair, error) {
-	kp, err := cfg.SSH.KeyPair()
+	kp, err := config.KeyPair(cfg)
 	if err != nil {
 		return Pair{}, err
 	}

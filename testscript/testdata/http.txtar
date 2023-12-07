@@ -6,6 +6,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix http1.txt http2.txt http3.txt goget.txt gitclone.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create user
 soft user create user1 --key "$USER1_AUTHORIZED_KEY"
 
@@ -132,6 +137,10 @@ stdout '404.*'
 # go-get with creds
 curl http://$TOKEN@localhost:$HTTP_PORT/repo2.git?go-get=1
 cmpenv stdout goget.txt
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
 
 -- http1.txt --
 {"transfer":"basic","objects":[{"oid":"","size":0,"error":{"code":422,"message":"invalid object"}}],"hash_algo":"sha256"}

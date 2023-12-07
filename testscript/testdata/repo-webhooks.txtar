@@ -1,27 +1,34 @@
 # vi: set ft=conf
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create a repo
 soft repo create repo-123
 stderr 'Created repository repo-123.*'
 stdout ssh://localhost:$SSH_PORT/repo-123.git
 
 # create webhook
-soft repo webhook create repo-123 https://webhook.site/794fa12b-08d4-4362-a0a9-a6f995f22e17 -e branch_tag_create -e branch_tag_delete -e collaborator -e push -e repository -e repository_visibility_change
+new-webhook WH_REPO_123
+soft repo webhook create repo-123 $WH_REPO_123 -e branch_tag_create -e branch_tag_delete -e collaborator -e push -e repository -e repository_visibility_change
 
 # list webhooks
 soft repo webhook list repo-123
-stdout '1.*https://webhook.site/794fa12b-08d4-4362-a0a9-a6f995f22e17.*'
+stdout '1.*webhook.site/.*'
 
-# clone repo
+# clone repo and commit files
 git clone ssh://localhost:$SSH_PORT/repo-123 repo-123
-
-# create files
 mkfile ./repo-123/README.md 'foobar'
 git -C repo-123 add -A
 git -C repo-123 commit -m 'first'
 git -C repo-123 push origin HEAD
 
 # list webhook deliveries
-# TODO: enable this test when githooks tests are fixed
-# soft repo webhook deliver list repo-123 1
-# stdout '.*https://webhook.site/.*'
+soft repo webhook deliver list repo-123 1
+stdout '✅.*push.*'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix repo3.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # import private
 soft repo import --private repo1 https://github.com/charmbracelet/catwalk.git
 soft repo private repo1
@@ -17,6 +22,10 @@ stdout 'true'
 soft repo import --name 'repo33' --description 'descriptive' repo3 https://github.com/charmbracelet/catwalk.git
 soft repo info repo3
 cmp stdout repo3.txt
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
 
 -- repo3.txt --
 Project Name: repo33

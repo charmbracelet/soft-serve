@@ -3,6 +3,11 @@
 # convert crlf to lf on windows
 [windows] dos2unix tree1.txt tree2.txt tree3.txt
 
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # create a repo
 soft repo create repo1
 
@@ -41,6 +46,9 @@ stderr 'file not found'
 ! soft repo tree repo1 badrev folder
 ! stdout .
 stderr 'revision does not exist'
+
+# stop the server
+[windows] stopserver
 
 -- tree1.txt --
 drwxrwxrwx	-	 folder

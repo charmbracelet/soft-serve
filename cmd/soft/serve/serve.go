@@ -3,9 +3,12 @@ package serve
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -80,10 +83,26 @@ var (
 			}
 
 			done := make(chan os.Signal, 1)
+			doneOnce := sync.OnceFunc(func() { close(done) })
+
 			lch := make(chan error, 1)
+
+			// This endpoint is added for testing purposes
+			// It allows us to stop the server from the test suite.
+			// This is needed since Windows doesn't support signals.
+			if testRun, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_TESTRUN")); testRun {
+				h := s.HTTPServer.Server.Handler
+				s.HTTPServer.Server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/__stop" && r.Method == http.MethodHead {
+						doneOnce()
+						return
+					}
+					h.ServeHTTP(w, r)
+				})
+			}
+
 			go func() {
-				defer close(lch)
-				defer close(done)
+				defer doneOnce()
 				lch <- s.Start()
 			}()
 

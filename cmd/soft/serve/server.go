@@ -147,7 +147,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		for _, j := range jobs.List() {
 			s.Cron.Remove(j.ID)
 		}
-		s.Cron.Shutdown()
+		s.Cron.Stop()
 		return nil
 	})
 	// defer s.DB.Close() // nolint: errcheck

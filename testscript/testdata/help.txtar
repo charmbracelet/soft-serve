@@ -1,8 +1,17 @@
 # vi: set ft=conf
 [windows] dos2unix help.txt
 
+# start soft serve
+exec soft serve --sync-hooks &
+# wait for server to start
+waitforserver
+
 soft --help
 cmpenv stdout help.txt
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
 
 -- help.txt --
 Soft Serve is a self-hostable Git server for the command line.

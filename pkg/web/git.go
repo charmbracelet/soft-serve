@@ -441,7 +441,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if service == git.ReceivePackService {
-		if err := git.EnsureDefaultBranch(ctx, cmd); err != nil {
+		if err := git.EnsureDefaultBranch(ctx, cmd.Dir); err != nil {
 			logger.Errorf("failed to ensure default branch: %s", err)
 		}
 	}

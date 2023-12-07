@@ -1,0 +1,29 @@
+# vi: set ft=conf
+
+[windows] skip
+
+# clone repo
+git clone https://github.com/charmbracelet/catwalk.git catwalk
+
+# run soft browse
+ttyin input.txt
+exec soft browse ./catwalk
+
+# cd and run soft
+cd catwalk
+ttyin ../input.txt
+exec soft
+
+-- input.txt --
+jjkkdduu
+
+jjkkdduu
+
+jjkkdduu
+
+jjkkdduu
+
+jjkkdduu
+
+qqq
+

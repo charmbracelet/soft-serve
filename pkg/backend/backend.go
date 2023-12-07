@@ -23,14 +23,13 @@ type Backend struct {
 }
 
 // New returns a new Soft Serve backend.
-func New(ctx context.Context, cfg *config.Config, db *db.DB) *Backend {
-	dbstore := store.FromContext(ctx)
+func New(ctx context.Context, cfg *config.Config, db *db.DB, st store.Store) *Backend {
 	logger := log.FromContext(ctx).WithPrefix("backend")
 	b := &Backend{
 		ctx:     ctx,
 		cfg:     cfg,
 		db:      db,
-		store:   dbstore,
+		store:   st,
 		logger:  logger,
 		manager: task.NewManager(ctx),
 	}

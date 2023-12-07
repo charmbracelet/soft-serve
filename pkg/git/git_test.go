@@ -2,8 +2,12 @@ package git
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/charmbracelet/soft-serve/git"
 )
 
 func TestPktline(t *testing.T) {
@@ -52,5 +56,42 @@ func TestPktline(t *testing.T) {
 				t.Errorf("expected %q, got %q", c.out, out.Bytes())
 			}
 		})
+	}
+}
+
+func TestEnsureWithinBad(t *testing.T) {
+	tmp := t.TempDir()
+	for _, f := range []string{
+		"..",
+		"../../../",
+	} {
+		if err := EnsureWithin(tmp, f); err == nil {
+			t.Errorf("EnsureWithin(%q, %q) => nil, want non-nil error", tmp, f)
+		}
+	}
+}
+
+func TestEnsureWithinGood(t *testing.T) {
+	tmp := t.TempDir()
+	for _, f := range []string{
+		tmp,
+		tmp + "/foo",
+		tmp + "/foo/bar",
+	} {
+		if err := EnsureWithin(tmp, f); err != nil {
+			t.Errorf("EnsureWithin(%q, %q) => %v, want nil error", tmp, f, err)
+		}
+	}
+}
+
+func TestEnsureDefaultBranchEmpty(t *testing.T) {
+	tmp := t.TempDir()
+	r, err := git.Init(tmp, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := EnsureDefaultBranch(context.TODO(), r.Path); !errors.Is(err, ErrNoBranches) {
+		t.Errorf("EnsureDefaultBranch(%q) => %v, want ErrNoBranches", tmp, err)
 	}
 }

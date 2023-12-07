@@ -1,4 +1,10 @@
 # vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
 # setup
 soft repo import test https://github.com/charmbracelet/catwalk.git
 soft user create foo --key "$USER1_AUTHORIZED_KEY"
@@ -16,3 +22,7 @@ stdout 'foo'
 soft repo collab remove test foo
 soft repo collab list test
 ! stdout .
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

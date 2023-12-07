@@ -33,7 +33,7 @@ func InitBackendContext(cmd *cobra.Command, _ []string) error {
 	ctx = db.WithContext(ctx, dbx)
 	dbstore := database.New(ctx, dbx)
 	ctx = store.WithContext(ctx, dbstore)
-	be := backend.New(ctx, cfg, dbx)
+	be := backend.New(ctx, cfg, dbx, dbstore)
 	ctx = backend.WithContext(ctx, be)
 
 	cmd.SetContext(ctx)

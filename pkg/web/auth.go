@@ -136,7 +136,7 @@ var ErrInvalidToken = errors.New("invalid token")
 func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error) {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.auth")
-	kp, err := cfg.SSH.KeyPair()
+	kp, err := config.KeyPair(cfg)
 	if err != nil {
 		return nil, err
 	}
