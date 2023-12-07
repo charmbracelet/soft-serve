@@ -11,6 +11,18 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest] # TODO: add macos & windows
+    services:
+      postgres:
+        image: postgres
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -30,15 +42,19 @@ jobs:
           # https://github.com/golang/go/issues/51430#issuecomment-1344711300
           mkdir -p coverage/unit
           mkdir -p coverage/int
+          mkdir -p coverage/int2
 
           # Collect unit tests coverage
           go test -failfast -race -timeout 5m -skip=^TestScript -cover ./... -args -test.gocoverdir=$PWD/coverage/unit
 
           # Collect integration tests coverage
           GOCOVERDIR=$PWD/coverage/int go test -failfast -race -timeout 5m -run=^TestScript ./...
+          SOFT_SERVE_DB_DRIVER=postgres \
+            SOFT_SERVE_DB_DATA_SOURCE=postgres://postgres:postgres@localhost/postgres?sslmode=disable \
+            GOCOVERDIR=$PWD/coverage/int2 go test -failfast -race -timeout 5m -run=^TestScript ./...
 
           # Convert coverage data to legacy textfmt format to upload
-          go tool covdata textfmt -i=coverage/unit,coverage/int -o=coverage.txt
+          go tool covdata textfmt -i=coverage/unit,coverage/int,coverage/int2 -o=coverage.txt
       - uses: codecov/codecov-action@v3
         with:
           file: ./coverage.txt
