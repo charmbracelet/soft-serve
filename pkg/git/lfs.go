@@ -159,8 +159,6 @@ func (t *lfsTransfer) StartUpload(oid string, r io.Reader, _ transfer.Args) (io.
 		return nil, err
 	}
 
-	t.logger.Infof("Object name: %s", obj.Name())
-
 	return &uploadObject{
 		oid:    oid,
 		size:   written,

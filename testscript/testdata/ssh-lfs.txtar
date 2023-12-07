@@ -1,0 +1,76 @@
+# vi: set ft=conf
+
+[windows] dos2unix err1.txt err2.txt err3.txt errauth.txt
+
+# enable ssh lfs transfer
+env SOFT_SERVE_LFS_SSH_ENABLED=true
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
+# create a user
+soft user create foo --key "$USER1_AUTHORIZED_KEY"
+
+# create a repo
+soft repo create repo1
+soft repo create repo1p -p
+usoft repo create repo2
+usoft repo create repo2p -p
+
+# SSH Git LFS Transfer command
+! soft git-lfs-transfer
+cmp stderr err1.txt
+! soft git-lfs-transfer repo1
+cmp stderr err2.txt
+soft git-lfs-transfer repo1 download
+stdout '000eversion=1\n000clocking\n0000'
+soft git-lfs-transfer repo1 upload
+stdout '000eversion=1\n000clocking\n0000'
+usoft git-lfs-transfer repo1 download
+stdout '000eversion=1\n000clocking\n0000'
+! usoft git-lfs-transfer repo1 upload
+cmp stderr errauth.txt
+
+# Unauthorized user
+! usoft git-lfs-transfer
+cmp stderr err1.txt
+! usoft git-lfs-transfer repo1p
+cmp stderr err2.txt
+! usoft git-lfs-transfer repo1p download
+cmp stderr errauth.txt
+! usoft git-lfs-transfer repo1p upload
+cmp stderr errauth.txt
+
+# push & create repo with some files, commits, tags...
+mkdir ./repo1
+git -c init.defaultBranch=master -C repo1 init
+mkfile ./repo1/README.md '# Project\nfoo'
+mkfile ./repo1/foo.png 'foo'
+mkfile ./repo1/bar.png 'bar'
+git -C repo1 remote add origin ssh://localhost:$SSH_PORT/repo1
+git -C repo1 lfs install --local
+git -C repo1 lfs track '*.png'
+git -C repo1 add -A
+git -C repo1 commit -m 'first'
+git -C repo1 tag v0.1.0
+git -C repo1 push origin HEAD
+git -C repo1 push origin HEAD --tags
+
+# clone repo with ssh lfs-transfer
+git clone ssh://localhost:$SSH_PORT/repo1 repo1c
+exists repo1c/README.md
+exists repo1c/foo.png
+exists repo1c/bar.png
+
+# stop the server
+[windows] stopserver
+
+-- err1.txt --
+Error: accepts 2 arg(s), received 0
+-- err2.txt --
+Error: accepts 2 arg(s), received 1
+-- err3.txt --
+Error: invalid request
+-- errauth.txt --
+Error: you are not authorized to do this
