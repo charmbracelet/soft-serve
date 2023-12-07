@@ -148,7 +148,6 @@ func TestScript(t *testing.T) {
 			cfg.HTTP.PublicURL = "http://" + httpListen
 			cfg.Stats.ListenAddr = statsListen
 			cfg.LFS.Enabled = true
-			// cfg.LFS.SSHEnabled = true
 
 			// Parse os SOFT_SERVE environment variables
 			if err := cfg.ParseEnv(); err != nil {
