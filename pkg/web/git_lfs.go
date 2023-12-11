@@ -520,7 +520,15 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 						})
 						return
 					}
-					lockOwner.Name = owner.Username
+					handle, err := datastore.GetHandleByUserID(ctx, dbx, owner.ID)
+					if err != nil {
+						logger.Error("error getting lock owner handle", "err", err)
+						renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+							Message: "internal server error",
+						})
+						return
+					}
+					lockOwner.Name = handle.Handle
 				}
 				errResp.Lock.Owner = lockOwner
 			}
@@ -632,6 +640,15 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		handle, err := datastore.GetHandleByUserID(ctx, dbx, owner.ID)
+		if err != nil {
+			logger.Error("error getting lock owner handle", "err", err)
+			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+				Message: "internal server error",
+			})
+			return
+		}
+
 		renderJSON(w, http.StatusOK, lfs.LockListResponse{
 			Locks: []lfs.Lock{
 				{
@@ -639,7 +656,7 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 					Path:     lock.Path,
 					LockedAt: lock.CreatedAt,
 					Owner: lfs.Owner{
-						Name: owner.Username,
+						Name: handle.Handle,
 					},
 				},
 			},
@@ -670,6 +687,15 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		handle, err := datastore.GetHandleByUserID(ctx, dbx, owner.ID)
+		if err != nil {
+			logger.Error("error getting lock owner handle", "err", err)
+			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+				Message: "internal server error",
+			})
+			return
+		}
+
 		renderJSON(w, http.StatusOK, lfs.LockListResponse{
 			Locks: []lfs.Lock{
 				{
@@ -677,7 +703,7 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 					Path:     lock.Path,
 					LockedAt: lock.CreatedAt,
 					Owner: lfs.Owner{
-						Name: owner.Username,
+						Name: handle.Handle,
 					},
 				},
 			},
@@ -695,11 +721,11 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lockList := make([]lfs.Lock, len(locks))
-	users := map[int64]models.User{}
+	users := map[int64]userModel{}
 	for i, lock := range locks {
 		owner, ok := users[lock.UserID]
 		if !ok {
-			owner, err = datastore.GetUserByID(ctx, dbx, lock.UserID)
+			user, err := datastore.GetUserByID(ctx, dbx, lock.UserID)
 			if err != nil {
 				logger.Error("error getting lock owner", "err", err)
 				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
@@ -707,7 +733,15 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 				})
 				return
 			}
-			users[lock.UserID] = owner
+			handle, err := datastore.GetHandleByUserID(ctx, dbx, user.ID)
+			if err != nil {
+				logger.Error("error getting lock owner handle", "err", err)
+				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+					Message: "internal server error",
+				})
+				return
+			}
+			users[lock.UserID] = userModel{User: user, Handle: handle}
 		}
 
 		lockList[i] = lfs.Lock{
@@ -715,7 +749,7 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 			Path:     lock.Path,
 			LockedAt: lock.CreatedAt,
 			Owner: lfs.Owner{
-				Name: owner.Username,
+				Name: owner.Handle.Handle,
 			},
 		}
 	}
@@ -728,6 +762,11 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderJSON(w, http.StatusOK, resp)
+}
+
+type userModel struct {
+	models.User
+	models.Handle
 }
 
 // POST: /<repo>.git/info/lfs/objects/locks/verify
@@ -786,11 +825,11 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users := map[int64]models.User{}
+	users := map[int64]userModel{}
 	for _, lock := range locks {
 		owner, ok := users[lock.UserID]
 		if !ok {
-			owner, err = datastore.GetUserByID(ctx, dbx, lock.UserID)
+			user, err := datastore.GetUserByID(ctx, dbx, lock.UserID)
 			if err != nil {
 				logger.Error("error getting lock owner", "err", err)
 				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
@@ -798,7 +837,15 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 				})
 				return
 			}
-			users[lock.UserID] = owner
+			handle, err := datastore.GetHandleByUserID(ctx, dbx, user.ID)
+			if err != nil {
+				logger.Error("error getting lock owner handle", "err", err)
+				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+					Message: "internal server error",
+				})
+				return
+			}
+			users[lock.UserID] = userModel{User: user, Handle: handle}
 		}
 
 		l := lfs.Lock{
@@ -806,7 +853,7 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 			Path:     lock.Path,
 			LockedAt: lock.CreatedAt,
 			Owner: lfs.Owner{
-				Name: owner.Username,
+				Name: owner.Handle.Handle,
 			},
 		}
 
@@ -893,13 +940,22 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	handle, err := datastore.GetHandleByUserID(ctx, dbx, owner.ID)
+	if err != nil {
+		logger.Error("error getting lock owner handle", "err", err)
+		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+			Message: "internal server error",
+		})
+		return
+	}
+
 	// Delete another user's lock
 	l := lfs.Lock{
 		ID:       strconv.FormatInt(lock.ID, 10),
 		Path:     lock.Path,
 		LockedAt: lock.CreatedAt,
 		Owner: lfs.Owner{
-			Name: owner.Username,
+			Name: handle.Handle,
 		},
 	}
 	if req.Force {

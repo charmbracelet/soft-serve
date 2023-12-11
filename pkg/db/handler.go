@@ -9,6 +9,7 @@ import (
 
 // Handler is a database handler.
 type Handler interface {
+	DriverName() string
 	Rebind(string) string
 
 	Select(interface{}, string, ...interface{}) error

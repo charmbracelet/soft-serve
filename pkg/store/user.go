@@ -25,4 +25,9 @@ type UserStore interface {
 	ListPublicKeysByUsername(ctx context.Context, h db.Handler, username string) ([]ssh.PublicKey, error)
 	SetUserPassword(ctx context.Context, h db.Handler, userID int64, password string) error
 	SetUserPasswordByUsername(ctx context.Context, h db.Handler, username string, password string) error
+
+	AddUserEmail(ctx context.Context, h db.Handler, userID int64, email string, isPrimary bool) error
+	ListUserEmails(ctx context.Context, h db.Handler, userID int64) ([]models.UserEmail, error)
+	UpdateUserEmail(ctx context.Context, h db.Handler, userID int64, oldEmail string, newEmail string, isPrimary bool) error
+	DeleteUserEmail(ctx context.Context, h db.Handler, userID int64, email string) error
 }

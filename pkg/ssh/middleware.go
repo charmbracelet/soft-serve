@@ -104,6 +104,7 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 				cmd.RepoCommand(),
 				cmd.SettingsCommand(),
 				cmd.UserCommand(),
+				cmd.OrgCommand(),
 				cmd.InfoCommand(),
 				cmd.PubkeyCommand(),
 				cmd.SetUsernameCommand(),

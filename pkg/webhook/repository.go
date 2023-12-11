@@ -74,8 +74,13 @@ func NewRepositoryEvent(ctx context.Context, user proto.User, repo proto.Reposit
 		return RepositoryEvent{}, db.WrapError(err)
 	}
 
+	handle, err := datastore.GetHandleByUserID(ctx, dbx, owner.ID)
+	if err != nil {
+		return RepositoryEvent{}, db.WrapError(err)
+	}
+
 	payload.Repository.Owner.ID = owner.ID
-	payload.Repository.Owner.Username = owner.Username
+	payload.Repository.Owner.Username = handle.Handle
 	payload.Repository.DefaultBranch, _ = proto.RepositoryDefaultBranch(repo)
 
 	return payload, nil

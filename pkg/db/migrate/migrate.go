@@ -11,15 +11,17 @@ import (
 )
 
 // MigrateFunc is a function that executes a migration.
-type MigrateFunc func(ctx context.Context, tx *db.Tx) error // nolint:revive
+type MigrateFunc func(ctx context.Context, h db.Handler) error // nolint:revive
 
 // Migration is a struct that contains the name of the migration and the
 // function to execute it.
 type Migration struct {
-	Version  int64
-	Name     string
-	Migrate  MigrateFunc
-	Rollback MigrateFunc
+	Version     int64
+	Name        string
+	PreMigrate  MigrateFunc
+	Migrate     MigrateFunc
+	PostMigrate MigrateFunc
+	Rollback    MigrateFunc
 }
 
 // Migrations is a database model to store migrations.
@@ -62,37 +64,50 @@ func (Migrations) schema(driverName string) string {
 // Migrate runs the migrations.
 func Migrate(ctx context.Context, dbx *db.DB) error {
 	logger := log.FromContext(ctx).WithPrefix("migrate")
-	return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
-		if !hasTable(tx, "migrations") {
-			if _, err := tx.Exec(Migrations{}.schema(tx.DriverName())); err != nil {
+
+	if !hasTable(dbx, "migrations") {
+		if _, err := dbx.Exec(Migrations{}.schema(dbx.DriverName())); err != nil {
+			return err
+		}
+	}
+
+	var migrs Migrations
+	if err := dbx.Get(&migrs, dbx.Rebind("SELECT * FROM migrations ORDER BY version DESC LIMIT 1")); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+	}
+
+	for _, m := range migrations {
+		if m.Version <= migrs.Version {
+			continue
+		}
+
+		logger.Infof("running migration %d. %s", m.Version, m.Name)
+		if m.PreMigrate != nil {
+			if err := m.PreMigrate(ctx, dbx); err != nil {
 				return err
 			}
 		}
 
-		var migrs Migrations
-		if err := tx.Get(&migrs, tx.Rebind("SELECT * FROM migrations ORDER BY version DESC LIMIT 1")); err != nil {
-			if !errors.Is(err, sql.ErrNoRows) {
+		if err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
+			return m.Migrate(ctx, tx)
+		}); err != nil {
+			return err
+		}
+
+		if m.PostMigrate != nil {
+			if err := m.PostMigrate(ctx, dbx); err != nil {
 				return err
 			}
 		}
 
-		for _, m := range migrations {
-			if m.Version <= migrs.Version {
-				continue
-			}
-
-			logger.Infof("running migration %d. %s", m.Version, m.Name)
-			if err := m.Migrate(ctx, tx); err != nil {
-				return err
-			}
-
-			if _, err := tx.Exec(tx.Rebind("INSERT INTO migrations (name, version) VALUES (?, ?)"), m.Name, m.Version); err != nil {
-				return err
-			}
+		if _, err := dbx.Exec(dbx.Rebind("INSERT INTO migrations (name, version) VALUES (?, ?)"), m.Name, m.Version); err != nil {
+			return err
 		}
+	}
 
-		return nil
-	})
+	return nil
 }
 
 // Rollback rolls back a migration.
@@ -124,7 +139,7 @@ func Rollback(ctx context.Context, dbx *db.DB) error {
 	})
 }
 
-func hasTable(tx *db.Tx, tableName string) bool {
+func hasTable(tx db.Handler, tableName string) bool {
 	var query string
 	switch tx.DriverName() {
 	case "sqlite3", "sqlite":

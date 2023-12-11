@@ -17,19 +17,19 @@ func SanitizeRepo(repo string) string {
 	return repo
 }
 
-// ValidateUsername returns an error if any of the given usernames are invalid.
-func ValidateUsername(username string) error {
-	if username == "" {
-		return fmt.Errorf("username cannot be empty")
+// ValidateHandle returns an error if any of the given usernames are invalid.
+func ValidateHandle(handle string) error {
+	if handle == "" {
+		return fmt.Errorf("cannot be empty")
 	}
 
-	if !unicode.IsLetter(rune(username[0])) {
-		return fmt.Errorf("username must start with a letter")
+	if !unicode.IsLetter(rune(handle[0])) {
+		return fmt.Errorf("must start with a letter")
 	}
 
-	for _, r := range username {
+	for _, r := range handle {
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' {
-			return fmt.Errorf("username can only contain letters, numbers, and hyphens")
+			return fmt.Errorf("can only contain letters, numbers, and hyphens")
 		}
 	}
 
