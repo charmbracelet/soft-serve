@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS user_emails (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  is_primary BOOLEAN NOT NULL,
+  is_primary BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL,
   CONSTRAINT user_id_fk
@@ -77,6 +77,9 @@ CREATE TABLE IF NOT EXISTS user_emails (
   ON DELETE CASCADE
   ON UPDATE CASCADE
 );
+
+-- Create unique index for primary email
+CREATE UNIQUE INDEX user_emails_user_id_is_primary_idx ON user_emails (user_id) WHERE is_primary;
 
 -- Add name to users table
 ALTER TABLE users ADD COLUMN name TEXT;
@@ -112,7 +115,7 @@ ALTER TABLE repos ADD CONSTRAINT org_id_fk
 ALTER TABLE repos ALTER COLUMN user_id DROP NOT NULL;
 
 -- Check that both user_id and org_id can't be null
-ALTER TABLE repos ADD CONSTRAINT user_id_org_id_not_null CHECK (user_id IS NULL <> org_id IS NULL);
+ALTER TABLE repos ADD CONSTRAINT user_id_org_id_not_null CHECK ((user_id IS NULL) <> (org_id IS NULL));
 
 -- Add team_id to collabs table
 ALTER TABLE collabs ADD COLUMN team_id INTEGER;
@@ -125,7 +128,7 @@ ALTER TABLE collabs ADD CONSTRAINT team_id_fk
 ALTER TABLE collabs ALTER COLUMN user_id DROP NOT NULL;
 
 -- Check that both user_id and team_id can't be null
-ALTER TABLE collabs ADD CONSTRAINT user_id_team_id_not_null CHECK (user_id IS NULL <> team_id IS NULL);
+ALTER TABLE collabs ADD CONSTRAINT user_id_team_id_not_null CHECK ((user_id IS NULL) <> (team_id IS NULL));
 
 -- Alter unique constraint on collabs table
 ALTER TABLE collabs DROP CONSTRAINT collabs_user_id_repo_id_key;

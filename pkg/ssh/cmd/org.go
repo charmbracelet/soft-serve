@@ -33,7 +33,7 @@ func OrgCommand() *cobra.Command {
 		Use:   "list",
 		Short: "List organizations",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
 			user := proto.UserFromContext(ctx)

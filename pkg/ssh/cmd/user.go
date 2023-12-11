@@ -22,9 +22,9 @@ func UserCommand() *cobra.Command {
 	var admin bool
 	var key string
 	userCreateCommand := &cobra.Command{
-		Use:               "create USERNAME",
+		Use:               "create USERNAME [EMAIL]",
 		Short:             "Create a new user",
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MinimumNArgs(1),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var pubkeys []ssh.PublicKey
@@ -43,6 +43,10 @@ func UserCommand() *cobra.Command {
 			opts := proto.UserOptions{
 				Admin:      admin,
 				PublicKeys: pubkeys,
+			}
+
+			if len(args) > 1 {
+				opts.Emails = append(opts.Emails, args[1])
 			}
 
 			_, err := be.CreateUser(ctx, username, opts)
@@ -166,6 +170,14 @@ func UserCommand() *cobra.Command {
 				cmd.Printf("  %s\n", sshutils.MarshalAuthorizedKey(pk))
 			}
 
+			emails := user.Emails()
+			if len(emails) > 0 {
+				cmd.Printf("Emails:\n")
+				for _, e := range emails {
+					cmd.Printf("  %s (primary: %v)\n", e.Email(), e.IsPrimary())
+				}
+			}
+
 			return nil
 		},
 	}
@@ -185,6 +197,63 @@ func UserCommand() *cobra.Command {
 		},
 	}
 
+	userAddEmailCommand := &cobra.Command{
+		Use:               "add-email USERNAME EMAIL",
+		Short:             "Add an email to a user",
+		Args:              cobra.ExactArgs(2),
+		PersistentPreRunE: checkIfAdmin,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			username := args[0]
+			email := args[1]
+			u, err := be.User(ctx, username)
+			if err != nil {
+				return err
+			}
+
+			return be.AddUserEmail(ctx, u, email)
+		},
+	}
+
+	userRemoveEmailCommand := &cobra.Command{
+		Use:               "remove-email USERNAME EMAIL",
+		Short:             "Remove an email from a user",
+		Args:              cobra.ExactArgs(2),
+		PersistentPreRunE: checkIfAdmin,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			username := args[0]
+			email := args[1]
+			u, err := be.User(ctx, username)
+			if err != nil {
+				return err
+			}
+
+			return be.RemoveUserEmail(ctx, u, email)
+		},
+	}
+
+	userSetPrimaryEmailCommand := &cobra.Command{
+		Use:               "set-primary-email USERNAME EMAIL",
+		Short:             "Set a user's primary email",
+		Args:              cobra.ExactArgs(2),
+		PersistentPreRunE: checkIfAdmin,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			username := args[0]
+			email := args[1]
+			u, err := be.User(ctx, username)
+			if err != nil {
+				return err
+			}
+
+			return be.SetUserPrimaryEmail(ctx, u, email)
+		},
+	}
+
 	cmd.AddCommand(
 		userCreateCommand,
 		userAddPubkeyCommand,
@@ -194,6 +263,9 @@ func UserCommand() *cobra.Command {
 		userRemovePubkeyCommand,
 		userSetAdminCommand,
 		userSetUsernameCommand,
+		userAddEmailCommand,
+		userRemoveEmailCommand,
+		userSetPrimaryEmailCommand,
 	)
 
 	return cmd

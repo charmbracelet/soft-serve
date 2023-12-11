@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -39,7 +40,7 @@ func (*userStore) AddPublicKeyByUsername(ctx context.Context, tx db.Handler, use
 }
 
 // CreateUser implements store.UserStore.
-func (s *userStore) CreateUser(ctx context.Context, tx db.Handler, username string, isAdmin bool, pks []ssh.PublicKey) error {
+func (s *userStore) CreateUser(ctx context.Context, tx db.Handler, username string, isAdmin bool, pks []ssh.PublicKey, emails []string) error {
 	handleID, err := s.CreateHandle(ctx, tx, username)
 	if err != nil {
 		return err
@@ -67,6 +68,12 @@ func (s *userStore) CreateUser(ctx context.Context, tx db.Handler, username stri
 		ak := sshutils.MarshalAuthorizedKey(pk)
 		_, err := tx.ExecContext(ctx, query, userID, ak)
 		if err != nil {
+			return err
+		}
+	}
+
+	for i, e := range emails {
+		if err := s.AddUserEmail(ctx, tx, userID, e, i == 0); err != nil {
 			return err
 		}
 	}
@@ -255,6 +262,9 @@ func (*userStore) SetUserPasswordByUsername(ctx context.Context, tx db.Handler, 
 
 // AddUserEmail implements store.UserStore.
 func (*userStore) AddUserEmail(ctx context.Context, tx db.Handler, userID int64, email string, isPrimary bool) error {
+	if err := utils.ValidateEmail(email); err != nil {
+		return err
+	}
 	query := tx.Rebind(`INSERT INTO user_emails (user_id, email, is_primary, updated_at)
 			VALUES (?, ?, ?, CURRENT_TIMESTAMP);`)
 	_, err := tx.ExecContext(ctx, query, userID, email, isPrimary)
@@ -269,16 +279,40 @@ func (*userStore) ListUserEmails(ctx context.Context, tx db.Handler, userID int6
 	return ms, err
 }
 
-// UpdateUserEmail implements store.UserStore.
-func (*userStore) UpdateUserEmail(ctx context.Context, tx db.Handler, userID int64, oldEmail string, newEmail string, isPrimary bool) error {
-	query := tx.Rebind(`UPDATE user_emails SET email = ?, is_primary = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND email = ?;`)
-	_, err := tx.ExecContext(ctx, query, newEmail, isPrimary, userID, oldEmail)
-	return err
+// RemoveUserEmail implements store.UserStore.
+func (*userStore) RemoveUserEmail(ctx context.Context, tx db.Handler, userID int64, email string) error {
+	var e models.UserEmail
+	query := tx.Rebind(`DELETE FROM user_emails WHERE user_id = ? AND email = ? RETURNING *;`)
+	if err := tx.GetContext(ctx, &e, query, userID, email); err != nil {
+		return err
+	}
+
+	if e.IsPrimary {
+		return fmt.Errorf("cannot remove primary email")
+	} else if e.ID == 0 {
+		return db.ErrRecordNotFound
+	}
+
+	return nil
 }
 
-// DeleteUserEmail implements store.UserStore.
-func (*userStore) DeleteUserEmail(ctx context.Context, tx db.Handler, userID int64, email string) error {
-	query := tx.Rebind(`DELETE FROM user_emails WHERE user_id = ? AND email = ?;`)
-	_, err := tx.ExecContext(ctx, query, userID, email)
-	return err
+// SetUserPrimaryEmail implements store.UserStore.
+func (*userStore) SetUserPrimaryEmail(ctx context.Context, tx db.Handler, userID int64, email string) error {
+	query := tx.Rebind(`UPDATE user_emails SET is_primary = FALSE WHERE user_id = ?;`)
+	_, err := tx.ExecContext(ctx, query, userID)
+	if err != nil {
+		return err
+	}
+
+	var emailID int64
+	query = tx.Rebind(`UPDATE user_emails SET is_primary = TRUE WHERE user_id = ? AND email = ? RETURNING id;`)
+	if err := tx.GetContext(ctx, &emailID, query, userID, email); err != nil {
+		return err
+	}
+
+	if emailID == 0 {
+		return db.ErrRecordNotFound
+	}
+
+	return nil
 }

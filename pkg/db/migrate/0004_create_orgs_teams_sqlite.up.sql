@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS user_emails (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  is_primary BOOLEAN NOT NULL,
+  is_primary BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL,
   CONSTRAINT user_id_fk
@@ -79,6 +79,9 @@ CREATE TABLE IF NOT EXISTS user_emails (
   ON DELETE CASCADE
   ON UPDATE CASCADE
 );
+
+-- Create unique index for primary email
+CREATE UNIQUE INDEX user_emails_user_id_is_primary_idx ON user_emails (user_id) WHERE is_primary;
 
 ALTER TABLE users RENAME TO _users_old;
 

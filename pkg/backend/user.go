@@ -26,6 +26,7 @@ func (d *Backend) User(ctx context.Context, username string) (proto.User, error)
 	var m models.User
 	var pks []ssh.PublicKey
 	var hl models.Handle
+	var ems []proto.UserEmail
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		m, err = d.store.FindUserByUsername(ctx, tx, username)
@@ -36,6 +37,15 @@ func (d *Backend) User(ctx context.Context, username string) (proto.User, error)
 		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
 		if err != nil {
 			return err
+		}
+
+		emails, err := d.store.ListUserEmails(ctx, tx, m.ID)
+		if err != nil {
+			return err
+		}
+
+		for _, e := range emails {
+			ems = append(ems, &userEmail{e})
 		}
 
 		hl, err = d.store.GetHandleByUserID(ctx, tx, m.ID)
@@ -53,6 +63,7 @@ func (d *Backend) User(ctx context.Context, username string) (proto.User, error)
 		user:       m,
 		publicKeys: pks,
 		handle:     hl,
+		emails:     ems,
 	}, nil
 }
 
@@ -61,6 +72,7 @@ func (d *Backend) UserByID(ctx context.Context, id int64) (proto.User, error) {
 	var m models.User
 	var pks []ssh.PublicKey
 	var hl models.Handle
+	var ems []proto.UserEmail
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		m, err = d.store.GetUserByID(ctx, tx, id)
@@ -71,6 +83,15 @@ func (d *Backend) UserByID(ctx context.Context, id int64) (proto.User, error) {
 		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
 		if err != nil {
 			return err
+		}
+
+		emails, err := d.store.ListUserEmails(ctx, tx, m.ID)
+		if err != nil {
+			return err
+		}
+
+		for _, e := range emails {
+			ems = append(ems, &userEmail{e})
 		}
 
 		hl, err = d.store.GetHandleByUserID(ctx, tx, m.ID)
@@ -88,6 +109,7 @@ func (d *Backend) UserByID(ctx context.Context, id int64) (proto.User, error) {
 		user:       m,
 		publicKeys: pks,
 		handle:     hl,
+		emails:     ems,
 	}, nil
 }
 
@@ -98,6 +120,7 @@ func (d *Backend) UserByPublicKey(ctx context.Context, pk ssh.PublicKey) (proto.
 	var m models.User
 	var pks []ssh.PublicKey
 	var hl models.Handle
+	var ems []proto.UserEmail
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		m, err = d.store.FindUserByPublicKey(ctx, tx, pk)
@@ -108,6 +131,15 @@ func (d *Backend) UserByPublicKey(ctx context.Context, pk ssh.PublicKey) (proto.
 		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
 		if err != nil {
 			return err
+		}
+
+		emails, err := d.store.ListUserEmails(ctx, tx, m.ID)
+		if err != nil {
+			return err
+		}
+
+		for _, e := range emails {
+			ems = append(ems, &userEmail{e})
 		}
 
 		hl, err = d.store.GetHandleByUserID(ctx, tx, m.ID)
@@ -125,6 +157,7 @@ func (d *Backend) UserByPublicKey(ctx context.Context, pk ssh.PublicKey) (proto.
 		user:       m,
 		publicKeys: pks,
 		handle:     hl,
+		emails:     ems,
 	}, nil
 }
 
@@ -134,6 +167,7 @@ func (d *Backend) UserByAccessToken(ctx context.Context, token string) (proto.Us
 	var m models.User
 	var pks []ssh.PublicKey
 	var hl models.Handle
+	var ems []proto.UserEmail
 	token = HashToken(token)
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
@@ -156,6 +190,15 @@ func (d *Backend) UserByAccessToken(ctx context.Context, token string) (proto.Us
 			return err
 		}
 
+		emails, err := d.store.ListUserEmails(ctx, tx, m.ID)
+		if err != nil {
+			return err
+		}
+
+		for _, e := range emails {
+			ems = append(ems, &userEmail{e})
+		}
+
 		hl, err = d.store.GetHandleByUserID(ctx, tx, m.ID)
 		return err
 	}); err != nil {
@@ -171,6 +214,7 @@ func (d *Backend) UserByAccessToken(ctx context.Context, token string) (proto.Us
 		user:       m,
 		publicKeys: pks,
 		handle:     hl,
+		emails:     ems,
 	}, nil
 }
 
@@ -228,7 +272,7 @@ func (d *Backend) AddPublicKey(ctx context.Context, username string, pk ssh.Publ
 // It implements backend.Backend.
 func (d *Backend) CreateUser(ctx context.Context, username string, opts proto.UserOptions) (proto.User, error) {
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		return d.store.CreateUser(ctx, tx, username, opts.Admin, opts.PublicKeys)
+		return d.store.CreateUser(ctx, tx, username, opts.Admin, opts.PublicKeys, opts.Emails)
 	}); err != nil {
 		return nil, db.WrapError(err)
 	}
@@ -335,10 +379,60 @@ func (d *Backend) SetPassword(ctx context.Context, username string, rawPassword 
 	)
 }
 
+// AddUserEmail adds an email to a user.
+func (d *Backend) AddUserEmail(ctx context.Context, user proto.User, email string) error {
+	return db.WrapError(
+		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+			return d.store.AddUserEmail(ctx, tx, user.ID(), email, false)
+		}),
+	)
+}
+
+// ListUserEmails lists the emails of a user.
+func (d *Backend) ListUserEmails(ctx context.Context, user proto.User) ([]proto.UserEmail, error) {
+	var ems []proto.UserEmail
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		emails, err := d.store.ListUserEmails(ctx, tx, user.ID())
+		if err != nil {
+			return err
+		}
+
+		for _, e := range emails {
+			ems = append(ems, &userEmail{e})
+		}
+
+		return nil
+	}); err != nil {
+		return nil, db.WrapError(err)
+	}
+
+	return ems, nil
+}
+
+// RemoveUserEmail deletes an email for a user.
+// The deleted email must not be the primary email.
+func (d *Backend) RemoveUserEmail(ctx context.Context, user proto.User, email string) error {
+	return db.WrapError(
+		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+			return d.store.RemoveUserEmail(ctx, tx, user.ID(), email)
+		}),
+	)
+}
+
+// SetUserPrimaryEmail sets the primary email of a user.
+func (d *Backend) SetUserPrimaryEmail(ctx context.Context, user proto.User, email string) error {
+	return db.WrapError(
+		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+			return d.store.SetUserPrimaryEmail(ctx, tx, user.ID(), email)
+		}),
+	)
+}
+
 type user struct {
 	user       models.User
 	publicKeys []ssh.PublicKey
 	handle     models.Handle
+	emails     []proto.UserEmail
 }
 
 var _ proto.User = (*user)(nil)
@@ -370,4 +464,30 @@ func (u *user) Password() string {
 	}
 
 	return ""
+}
+
+// Emails implements proto.User.
+func (u *user) Emails() []proto.UserEmail {
+	return u.emails
+}
+
+type userEmail struct {
+	email models.UserEmail
+}
+
+var _ proto.UserEmail = (*userEmail)(nil)
+
+// Email implements proto.UserEmail.
+func (e *userEmail) Email() string {
+	return e.email.Email
+}
+
+// ID implements proto.UserEmail.
+func (e *userEmail) ID() int64 {
+	return e.email.ID
+}
+
+// IsPrimary implements proto.UserEmail.
+func (e *userEmail) IsPrimary() bool {
+	return e.email.IsPrimary
 }

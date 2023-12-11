@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
 	"github.com/charmbracelet/soft-serve/pkg/store"
+	"github.com/charmbracelet/soft-serve/pkg/utils"
 )
 
 var _ store.OrgStore = (*orgStore)(nil)
@@ -15,6 +16,10 @@ type orgStore struct{ *handleStore }
 
 // UpdateOrgContactEmail implements store.OrgStore.
 func (*orgStore) UpdateOrgContactEmail(ctx context.Context, h db.Handler, org int64, email string) error {
+	if err := utils.ValidateEmail(email); err != nil {
+		return err
+	}
+
 	query := h.Rebind(`
 		UPDATE organizations
 		SET
@@ -58,6 +63,10 @@ func (s *orgStore) DeleteOrgByID(ctx context.Context, h db.Handler, user, id int
 
 // Create implements store.OrgStore.
 func (s *orgStore) CreateOrg(ctx context.Context, h db.Handler, user int64, name, email string) (models.Organization, error) {
+	if err := utils.ValidateEmail(email); err != nil {
+		return models.Organization{}, err
+	}
+
 	handle, err := s.CreateHandle(ctx, h, name)
 	if err != nil {
 		return models.Organization{}, err
