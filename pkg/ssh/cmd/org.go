@@ -45,7 +45,7 @@ func OrgCommand() *cobra.Command {
 				return err
 			}
 			for _, o := range orgs {
-				cmd.Println(o.Name())
+				cmd.Println(o.Handle())
 			}
 			return nil
 		},
@@ -81,7 +81,7 @@ func OrgCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cmd.Println(org.Name())
+			cmd.Println(org.Handle())
 			return nil
 		},
 	})

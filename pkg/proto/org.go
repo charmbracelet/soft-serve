@@ -4,8 +4,8 @@ package proto
 type Org interface {
 	// ID returns the user's ID.
 	ID() int64
-	// Name returns the org's name.
-	Name() string
-	// DisplayName
+	// Handle returns the org's name.
+	Handle() string
+	// DisplayName returns the org's display name.
 	DisplayName() string
 }

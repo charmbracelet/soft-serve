@@ -60,7 +60,7 @@ func (o org) ID() int64 {
 	return o.o.ID
 }
 
-// Name implements proto.Org.
-func (o org) Name() string {
+// Handle implements proto.Org.
+func (o org) Handle() string {
 	return o.o.Handle.Handle
 }

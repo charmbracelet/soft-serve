@@ -112,7 +112,7 @@ func TeamCommand() *cobra.Command {
 				return err
 			}
 
-			cmd.Println(org.Name(), "/", team.Name())
+			cmd.Println(org.Handle(), "/", team.Name())
 			return nil
 		},
 	})
