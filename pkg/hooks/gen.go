@@ -35,14 +35,6 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 		return err
 	}
 
-	ex, err := os.Executable()
-	if err != nil {
-		return err
-	}
-
-	// Convert to forward slashes for Windows.
-	ex = filepath.ToSlash(ex)
-
 	for _, hook := range []string{
 		PreReceiveHook,
 		UpdateHook,
@@ -78,7 +70,7 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 			Hook       string
 			Args       string
 		}{
-			Executable: ex,
+			Executable: "\"${SOFT_SERVE_BIN_PATH}\"",
 			Hook:       hook,
 			Args:       args,
 		}); err != nil {
@@ -88,7 +80,7 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 
 		// Write the soft-serve hook inside ${hook}.d directory.
 		hp = filepath.Join(hp, "soft-serve")
-		err = os.WriteFile(hp, data.Bytes(), os.ModePerm) //nolint:gosec
+		err := os.WriteFile(hp, data.Bytes(), os.ModePerm) //nolint:gosec
 		if err != nil {
 			log.WithPrefix("hooks").Error("failed to write hook", "err", err)
 			continue
