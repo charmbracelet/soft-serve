@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var binPath string
+var binPath = "soft"
 
 // SSHConfig is the configuration for the SSH server.
 type SSHConfig struct {
