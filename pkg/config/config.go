@@ -425,10 +425,7 @@ func (c *Config) AdminKeys() []ssh.PublicKey {
 }
 
 func init() {
-	ex, err := os.Executable()
-	if err != nil {
-		ex = "soft"
+	if ex, err := os.Executable(); err == nil {
+		binPath = filepath.ToSlash(ex)
 	}
-	ex = filepath.ToSlash(ex)
-	binPath = ex
 }
