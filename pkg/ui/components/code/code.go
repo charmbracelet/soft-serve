@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/alecthomas/chroma/lexers"
+	"github.com/alecthomas/chroma/v2/lexers"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	gansi "github.com/charmbracelet/glamour/ansi"
@@ -89,7 +89,7 @@ func (r *Code) Init() tea.Cmd {
 	// 4-spaces.
 	content = strings.ReplaceAll(content, "\t", strings.Repeat(" ", r.TabWidth))
 
-	if r.UseGlamour {
+	if r.UseGlamour && common.IsFileMarkdown(content, r.extension) {
 		md, err := r.glamourize(w, content)
 		if err != nil {
 			return common.ErrorCmd(err)
@@ -213,7 +213,6 @@ func (r *Code) glamourize(w int, md string) (string, error) {
 		glamour.WithStyles(r.styleConfig),
 		glamour.WithWordWrap(w),
 	)
-
 	if err != nil {
 		return "", err
 	}

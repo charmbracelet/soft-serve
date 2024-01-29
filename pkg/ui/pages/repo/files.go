@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/alecthomas/chroma/lexers"
 	gitm "github.com/aymanbagabas/git-module"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -159,7 +158,8 @@ func (f *Files) FullHelp() [][]key.Binding {
 		actionKeys = append(actionKeys, lineNo)
 	}
 	actionKeys = append(actionKeys, blameView)
-	if f.isSelectedMarkdown() && !f.blameView {
+	if common.IsFileMarkdown(f.currentContent.content, f.currentContent.ext) &&
+		!f.blameView {
 		actionKeys = append(actionKeys, preview)
 	}
 	switch f.activeView {
@@ -240,7 +240,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case FileContentMsg:
 		f.activeView = filesViewContent
 		f.currentContent = msg
-		f.code.UseGlamour = f.isSelectedMarkdown()
+		f.code.UseGlamour = common.IsFileMarkdown(f.currentContent.content, f.currentContent.ext)
 		cmds = append(cmds, f.code.SetContent(msg.content, msg.ext))
 		f.code.GotoTop()
 	case FileBlameMsg:
@@ -293,7 +293,8 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, f.code.SetSideNote(""))
 				}
 				cmds = append(cmds, f.spinner.Tick)
-			case key.Matches(msg, preview) && f.isSelectedMarkdown() && !f.blameView:
+			case key.Matches(msg, preview) &&
+				common.IsFileMarkdown(f.currentContent.content, f.currentContent.ext) && !f.blameView:
 				f.code.UseGlamour = !f.code.UseGlamour
 				cmds = append(cmds, f.code.SetContent(f.currentContent.content, f.currentContent.ext))
 			}
@@ -544,16 +545,4 @@ func (f *Files) setItems(items []selector.IdentifiableItem) tea.Cmd {
 	return func() tea.Msg {
 		return FileItemsMsg(items)
 	}
-}
-
-func (f *Files) isSelectedMarkdown() bool {
-	var lang string
-	lexer := lexers.Match(f.currentContent.ext)
-	if lexer == nil {
-		lexer = lexers.Analyse(f.currentContent.content)
-	}
-	if lexer != nil && lexer.Config() != nil {
-		lang = lexer.Config().Name
-	}
-	return lang == "markdown"
 }
