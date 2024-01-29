@@ -14,6 +14,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var binPath = "soft"
+
 // SSHConfig is the configuration for the SSH server.
 type SSHConfig struct {
 	// ListenAddr is the address on which the SSH server will listen.
@@ -151,7 +153,9 @@ type Config struct {
 
 // Environ returns the config as a list of environment variables.
 func (c *Config) Environ() []string {
-	envs := []string{}
+	envs := []string{
+		fmt.Sprintf("SOFT_SERVE_BIN_PATH=%s", binPath),
+	}
 	if c == nil {
 		return envs
 	}
@@ -418,4 +422,10 @@ func parseAuthKeys(aks []string) []ssh.PublicKey {
 // AdminKeys returns the server admin keys.
 func (c *Config) AdminKeys() []ssh.PublicKey {
 	return parseAuthKeys(c.InitialAdminKeys)
+}
+
+func init() {
+	if ex, err := os.Executable(); err == nil {
+		binPath = filepath.ToSlash(ex)
+	}
 }
