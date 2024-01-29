@@ -6,13 +6,15 @@
 git clone https://github.com/charmbracelet/catwalk.git catwalk
 
 # run soft browse
-ttyin input.txt
-exec soft browse ./catwalk
+# disable this temporarily
+#ttyin input.txt
+#exec soft browse ./catwalk
 
 # cd and run soft
-cd catwalk
-ttyin ../input.txt
-exec soft
+# disable this temporarily
+#cd catwalk
+#ttyin ../input.txt
+#exec soft
 
 -- input.txt --
 jjkkdduu
