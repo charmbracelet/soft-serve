@@ -65,7 +65,7 @@ func NewCollaboratorEvent(ctx context.Context, user proto.User, repo proto.Repos
 
 	payload.Repository.Owner.ID = owner.ID
 	payload.Repository.Owner.Username = owner.Username
-	payload.Repository.DefaultBranch, err = proto.RepositoryDefaultBranch(repo)
+	payload.Repository.DefaultBranch, err = getDefaultBranch(repo)
 	if err != nil {
 		return CollaboratorEvent{}, err
 	}

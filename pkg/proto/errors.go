@@ -21,4 +21,6 @@ var (
 	ErrTokenExpired = errors.New("token expired")
 	// ErrCollaboratorNotFound is returned when a collaborator is not found.
 	ErrCollaboratorNotFound = errors.New("collaborator not found")
+	// ErrCollaboratorExist is returned when a collaborator already exists.
+	ErrCollaboratorExist = errors.New("collaborator already exists")
 )

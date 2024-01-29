@@ -7,12 +7,15 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
+	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/soft-serve/pkg/version"
@@ -141,4 +144,17 @@ func SendEvent(ctx context.Context, payload EventPayload) error {
 
 func repoURL(publicURL string, repo string) string {
 	return fmt.Sprintf("%s/%s.git", publicURL, utils.SanitizeRepo(repo))
+}
+
+func getDefaultBranch(repo proto.Repository) (string, error) {
+	branch, err := proto.RepositoryDefaultBranch(repo)
+	// XXX: we check for ErrReferenceNotExist here because we don't want to
+	// return an error if the repo is an empty repo.
+	// This means that the repo doesn't have a default branch yet and this is
+	// the first push to it.
+	if err != nil && !errors.Is(err, git.ErrReferenceNotExist) {
+		return "", err
+	}
+
+	return branch, nil
 }

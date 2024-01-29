@@ -33,6 +33,10 @@ func (d *Backend) AddCollaborator(ctx context.Context, repo string, username str
 			return d.store.AddCollabByUsernameAndRepo(ctx, tx, username, repo, level)
 		}),
 	); err != nil {
+		if errors.Is(err, db.ErrDuplicateKey) {
+			return proto.ErrCollaboratorExist
+		}
+
 		return err
 	}
 
