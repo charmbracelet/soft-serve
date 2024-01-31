@@ -48,7 +48,7 @@ func NewCommon(ctx context.Context, out *lipgloss.Renderer, width, height int) C
 		Width:  width,
 		Height: height,
 		Output: out.Output(),
-		Styles: styles.DefaultStyles(),
+		Styles: styles.DefaultStyles(out),
 		KeyMap: keymap.DefaultKeyMap(),
 		Zone:   zone.New(),
 		Logger: log.FromContext(ctx).WithPrefix("ui"),

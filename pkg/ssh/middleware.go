@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
+	bm "github.com/charmbracelet/wish/bubbletea"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/cobra"
@@ -84,6 +85,8 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 				return
 			}
 
+			r := bm.MakeRenderer(s)
+
 			ctx := s.Context()
 			cfg := config.FromContext(ctx)
 
@@ -101,7 +104,7 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 				cmd.GitUploadPackCommand(),
 				cmd.GitUploadArchiveCommand(),
 				cmd.GitReceivePackCommand(),
-				cmd.RepoCommand(),
+				cmd.RepoCommand(r),
 				cmd.SettingsCommand(),
 				cmd.UserCommand(),
 				cmd.InfoCommand(),

@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/spf13/cobra"
 )
 
 // RepoCommand returns a command for managing repositories.
-func RepoCommand() *cobra.Command {
+func RepoCommand(renderer *lipgloss.Renderer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "repo",
 		Aliases: []string{"repos", "repository", "repositories"},
@@ -18,10 +19,10 @@ func RepoCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		blobCommand(),
+		blobCommand(renderer),
 		branchCommand(),
 		collabCommand(),
-		commitCommand(),
+		commitCommand(renderer),
 		createCommand(),
 		deleteCommand(),
 		descriptionCommand(),

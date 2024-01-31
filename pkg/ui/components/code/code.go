@@ -121,7 +121,7 @@ func (r *Code) Init() tea.Cmd {
 	// https://github.com/muesli/reflow/issues/43
 	//
 	// TODO: solve this upstream in Glamour/Reflow.
-	content = lipgloss.NewStyle().Width(w).Render(content)
+	content = r.common.Styles.Renderer.NewStyle().Width(w).Render(content)
 
 	r.Viewport.Model.SetContent(content)
 
@@ -213,7 +213,6 @@ func (r *Code) glamourize(w int, md string) (string, error) {
 		glamour.WithStyles(r.styleConfig),
 		glamour.WithWordWrap(w),
 	)
-
 	if err != nil {
 		return "", err
 	}

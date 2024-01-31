@@ -189,12 +189,12 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.Type {
 			case tea.MouseLeft:
 				switch {
-				case r.common.Zone.Get("repo-help").InBounds(msg):
+				case r.common.Zone.Get("repo - help").InBounds(msg):
 					cmds = append(cmds, footer.ToggleFooterCmd)
 				}
 			case tea.MouseRight:
 				switch {
-				case r.common.Zone.Get("repo-main").InBounds(msg):
+				case r.common.Zone.Get("repo - main").InBounds(msg):
 					cmds = append(cmds, goBackCmd)
 				}
 			}
@@ -323,7 +323,7 @@ func (r *Repo) headerView() string {
 	if r.selectedRepo == nil {
 		return ""
 	}
-	truncate := lipgloss.NewStyle().MaxWidth(r.common.Width)
+	truncate := r.common.Styles.Renderer.NewStyle().MaxWidth(r.common.Width)
 	header := r.selectedRepo.ProjectName()
 	if header == "" {
 		header = r.selectedRepo.Name()
