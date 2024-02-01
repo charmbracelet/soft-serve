@@ -23,17 +23,17 @@ const (
 var migrateLfsObjects = Migration{
 	Name:    migrateLfsObjectsName,
 	Version: migrateLfsObjectsVersion,
-	Migrate: func(ctx context.Context, tx *db.Tx) error {
+	Migrate: func(ctx context.Context, h db.Handler) error {
 		cfg := config.FromContext(ctx)
 		logger := log.FromContext(ctx).WithPrefix("migrate_lfs_objects")
 
 		var repoIds []int64
-		if err := tx.Select(&repoIds, "SELECT id FROM repos"); err != nil {
+		if err := h.Select(&repoIds, "SELECT id FROM repos"); err != nil {
 			return err
 		}
 		for _, r := range repoIds {
 			var objs []models.LFSObject
-			if err := tx.Select(&objs, "SELECT * FROM lfs_objects WHERE repo_id = ?", r); err != nil {
+			if err := h.Select(&objs, "SELECT * FROM lfs_objects WHERE repo_id = ?", r); err != nil {
 				return err
 			}
 			objsp := filepath.Join(cfg.DataPath, "lfs", strconv.FormatInt(r, 10), "objects")
@@ -50,7 +50,7 @@ var migrateLfsObjects = Migration{
 		}
 		return nil
 	},
-	Rollback: func(ctx context.Context, tx *db.Tx) error {
+	Rollback: func(ctx context.Context, h db.Handler) error {
 		return nil
 	},
 }

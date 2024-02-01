@@ -18,7 +18,7 @@ import (
 // It implements backend.Backend.
 func (d *Backend) AddCollaborator(ctx context.Context, repo string, username string, level access.AccessLevel) error {
 	username = strings.ToLower(username)
-	if err := utils.ValidateUsername(username); err != nil {
+	if err := utils.ValidateHandle(username); err != nil {
 		return err
 	}
 
@@ -50,17 +50,31 @@ func (d *Backend) AddCollaborator(ctx context.Context, repo string, username str
 func (d *Backend) Collaborators(ctx context.Context, repo string) ([]string, error) {
 	repo = utils.SanitizeRepo(repo)
 	var users []models.User
+	var usernames []string
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		users, err = d.store.ListCollabsByRepoAsUsers(ctx, tx, repo)
-		return err
+		if err != nil {
+			return err
+		}
+
+		ids := make([]int64, len(users))
+		for i, u := range users {
+			ids[i] = u.ID
+		}
+
+		handles, err := d.store.ListHandlesForIDs(ctx, tx, ids)
+		if err != nil {
+			return err
+		}
+
+		for _, h := range handles {
+			usernames = append(usernames, h.Handle)
+		}
+
+		return nil
 	}); err != nil {
 		return nil, db.WrapError(err)
-	}
-
-	var usernames []string
-	for _, u := range users {
-		usernames = append(usernames, u.Username)
 	}
 
 	return usernames, nil

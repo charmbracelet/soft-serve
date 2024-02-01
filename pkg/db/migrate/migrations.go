@@ -18,15 +18,16 @@ var migrations = []Migration{
 	createTables,
 	webhooks,
 	migrateLfsObjects,
+	createOrgsTeams,
 }
 
-func execMigration(ctx context.Context, tx *db.Tx, version int, name string, down bool) error {
+func execMigration(ctx context.Context, h db.Handler, version int, name string, down bool) error {
 	direction := "up"
 	if down {
 		direction = "down"
 	}
 
-	driverName := tx.DriverName()
+	driverName := h.DriverName()
 	if driverName == "sqlite3" {
 		driverName = "sqlite"
 	}
@@ -37,19 +38,19 @@ func execMigration(ctx context.Context, tx *db.Tx, version int, name string, dow
 		return err
 	}
 
-	if _, err := tx.ExecContext(ctx, string(sqlstr)); err != nil {
+	if _, err := h.ExecContext(ctx, string(sqlstr)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func migrateUp(ctx context.Context, tx *db.Tx, version int, name string) error {
-	return execMigration(ctx, tx, version, name, false)
+func migrateUp(ctx context.Context, h db.Handler, version int, name string) error {
+	return execMigration(ctx, h, version, name, false)
 }
 
-func migrateDown(ctx context.Context, tx *db.Tx, version int, name string) error {
-	return execMigration(ctx, tx, version, name, true)
+func migrateDown(ctx context.Context, h db.Handler, version int, name string) error {
+	return execMigration(ctx, h, version, name, true)
 }
 
 var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")

@@ -14,10 +14,10 @@ const (
 var webhooks = Migration{
 	Name:    webhooksName,
 	Version: webhooksVersion,
-	Migrate: func(ctx context.Context, tx *db.Tx) error {
-		return migrateUp(ctx, tx, webhooksVersion, webhooksName)
+	Migrate: func(ctx context.Context, h db.Handler) error {
+		return migrateUp(ctx, h, webhooksVersion, webhooksName)
 	},
-	Rollback: func(ctx context.Context, tx *db.Tx) error {
-		return migrateDown(ctx, tx, webhooksVersion, webhooksName)
+	Rollback: func(ctx context.Context, h db.Handler) error {
+		return migrateDown(ctx, h, webhooksVersion, webhooksName)
 	},
 }

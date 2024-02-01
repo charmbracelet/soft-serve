@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -63,8 +64,13 @@ func NewCollaboratorEvent(ctx context.Context, user proto.User, repo proto.Repos
 		return CollaboratorEvent{}, db.WrapError(err)
 	}
 
+	handle, err := datastore.GetHandleByUserID(ctx, dbx, owner.ID)
+	if err != nil {
+		return CollaboratorEvent{}, db.WrapError(err)
+	}
+
 	payload.Repository.Owner.ID = owner.ID
-	payload.Repository.Owner.Username = owner.Username
+	payload.Repository.Owner.Username = handle.Handle
 	payload.Repository.DefaultBranch, err = proto.RepositoryDefaultBranch(repo)
 	if err != nil {
 		return CollaboratorEvent{}, err
@@ -76,7 +82,11 @@ func NewCollaboratorEvent(ctx context.Context, user proto.User, repo proto.Repos
 	}
 
 	payload.AccessLevel = collab.AccessLevel
-	payload.Collaborator.ID = collab.UserID
+	if !collab.UserID.Valid {
+		return CollaboratorEvent{}, fmt.Errorf("collaborator user ID is invalid")
+	}
+
+	payload.Collaborator.ID = collab.UserID.Int64
 	payload.Collaborator.Username = collabUsername
 
 	return payload, nil

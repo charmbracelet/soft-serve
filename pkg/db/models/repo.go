@@ -15,6 +15,7 @@ type Repo struct {
 	Mirror      bool          `db:"mirror"`
 	Hidden      bool          `db:"hidden"`
 	UserID      sql.NullInt64 `db:"user_id"`
+	OrgID       sql.NullInt64 `db:"org_id"`
 	CreatedAt   time.Time     `db:"created_at"`
 	UpdatedAt   time.Time     `db:"updated_at"`
 }

@@ -4,9 +4,12 @@ package store
 type Store interface {
 	RepositoryStore
 	UserStore
+	OrgStore
+	TeamStore
 	CollaboratorStore
 	SettingStore
 	LFSStore
 	AccessTokenStore
 	WebhookStore
+	HandleStore
 }

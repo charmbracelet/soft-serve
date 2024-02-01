@@ -15,7 +15,7 @@ type UserStore interface {
 	FindUserByPublicKey(ctx context.Context, h db.Handler, pk ssh.PublicKey) (models.User, error)
 	FindUserByAccessToken(ctx context.Context, h db.Handler, token string) (models.User, error)
 	GetAllUsers(ctx context.Context, h db.Handler) ([]models.User, error)
-	CreateUser(ctx context.Context, h db.Handler, username string, isAdmin bool, pks []ssh.PublicKey) error
+	CreateUser(ctx context.Context, h db.Handler, username string, isAdmin bool, pks []ssh.PublicKey, emails []string) error
 	DeleteUserByUsername(ctx context.Context, h db.Handler, username string) error
 	SetUsernameByUsername(ctx context.Context, h db.Handler, username string, newUsername string) error
 	SetAdminByUsername(ctx context.Context, h db.Handler, username string, isAdmin bool) error
@@ -25,4 +25,9 @@ type UserStore interface {
 	ListPublicKeysByUsername(ctx context.Context, h db.Handler, username string) ([]ssh.PublicKey, error)
 	SetUserPassword(ctx context.Context, h db.Handler, userID int64, password string) error
 	SetUserPasswordByUsername(ctx context.Context, h db.Handler, username string, password string) error
+
+	AddUserEmail(ctx context.Context, h db.Handler, userID int64, email string, isPrimary bool) error
+	ListUserEmails(ctx context.Context, h db.Handler, userID int64) ([]models.UserEmail, error)
+	RemoveUserEmail(ctx context.Context, h db.Handler, userID int64, email string) error
+	SetUserPrimaryEmail(ctx context.Context, h db.Handler, userID int64, email string) error
 }

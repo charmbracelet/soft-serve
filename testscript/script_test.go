@@ -76,6 +76,7 @@ func TestScript(t *testing.T) {
 	key, admin1 := mkkey("admin1")
 	_, admin2 := mkkey("admin2")
 	_, user1 := mkkey("user1")
+	_, user2 := mkkey("user2")
 
 	testscript.Run(t, testscript.Params{
 		Dir:                 "./testdata/",
@@ -117,6 +118,7 @@ func TestScript(t *testing.T) {
 			e.Setenv("ADMIN1_AUTHORIZED_KEY", admin1.AuthorizedKey())
 			e.Setenv("ADMIN2_AUTHORIZED_KEY", admin2.AuthorizedKey())
 			e.Setenv("USER1_AUTHORIZED_KEY", user1.AuthorizedKey())
+			e.Setenv("USER2_AUTHORIZED_KEY", user2.AuthorizedKey())
 			e.Setenv("SSH_KNOWN_HOSTS_FILE", filepath.Join(t.TempDir(), "known_hosts"))
 			e.Setenv("SSH_KNOWN_CONFIG_FILE", filepath.Join(t.TempDir(), "config"))
 

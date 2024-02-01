@@ -75,8 +75,13 @@ func NewBranchTagEvent(ctx context.Context, user proto.User, repo proto.Reposito
 		return BranchTagEvent{}, db.WrapError(err)
 	}
 
+	handle, err := datastore.GetHandleByUserID(ctx, dbx, owner.ID)
+	if err != nil {
+		return BranchTagEvent{}, db.WrapError(err)
+	}
+
 	payload.Repository.Owner.ID = owner.ID
-	payload.Repository.Owner.Username = owner.Username
+	payload.Repository.Owner.Username = handle.Handle
 	payload.Repository.DefaultBranch, err = proto.RepositoryDefaultBranch(repo)
 	if err != nil {
 		return BranchTagEvent{}, err

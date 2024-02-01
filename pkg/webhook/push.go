@@ -66,8 +66,13 @@ func NewPushEvent(ctx context.Context, user proto.User, repo proto.Repository, r
 		return PushEvent{}, db.WrapError(err)
 	}
 
+	handle, err := datastore.GetHandleByUserID(ctx, dbx, owner.ID)
+	if err != nil {
+		return PushEvent{}, db.WrapError(err)
+	}
+
 	payload.Repository.Owner.ID = owner.ID
-	payload.Repository.Owner.Username = owner.Username
+	payload.Repository.Owner.Username = handle.Handle
 
 	// Find commits.
 	r, err := repo.Open()

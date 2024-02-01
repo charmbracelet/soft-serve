@@ -1,7 +1,7 @@
 # vi: set ft=conf
 
 # convert crlf to lf on windows
-[windows] dos2unix info.txt admin_key_list1.txt admin_key_list2.txt list1.txt list2.txt foo_info1.txt foo_info2.txt foo_info3.txt foo_info4.txt foo_info5.txt
+[windows] dos2unix info.txt admin_key_list1.txt admin_key_list2.txt list1.txt list2.txt foo_info1.txt foo_info2.txt foo_info3.txt foo_info4.txt foo_info5.txt bar_info.txt
 
 # start soft serve
 exec soft serve &
@@ -68,6 +68,38 @@ soft user delete foo2
 soft user list
 cmpenv stdout list1.txt
 
+# create a new user with an invalid email
+! soft user create bar --key "$USER2_AUTHORIZED_KEY" "foobar"
+stderr 'invalid email address.*'
+
+# create a new user with a valid email
+soft user create bar --key "$USER2_AUTHORIZED_KEY" "foo@bar.baz"
+! stdout .
+# add email to existing user
+soft user add-email bar "foobar@fubar.baz"
+! stdout .
+# add existing email
+! soft user add-email bar "foobar@fubar.baz"
+stderr 'duplicate key.*'
+
+# get new user info
+soft user info bar
+cmpenv stdout bar_info.txt
+
+# remove primary email from user
+! soft user remove-email bar "foo@bar.baz"
+stderr 'cannot remove primary email.*'
+
+# set primary email that doesn't exist
+! soft user set-primary-email bar "foobar@foofoo.foo"
+stderr 'no rows in result set.*'
+# set primary email
+soft user set-primary-email bar "foobar@fubar.baz"
+! stdout .
+# remove other email
+soft user remove-email bar "foo@bar.baz"
+! stdout .
+
 # stop the server
 [windows] stopserver
 [windows] ! stderr .
@@ -112,3 +144,11 @@ $ADMIN1_AUTHORIZED_KEY
 $ADMIN2_AUTHORIZED_KEY
 -- admin_key_list2.txt --
 $ADMIN1_AUTHORIZED_KEY
+-- bar_info.txt --
+Username: bar
+Admin: false
+Public keys:
+  $USER2_AUTHORIZED_KEY
+Emails:
+  foo@bar.baz (primary: true)
+  foobar@fubar.baz (primary: false)

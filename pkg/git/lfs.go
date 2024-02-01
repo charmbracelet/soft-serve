@@ -255,6 +255,11 @@ func (l *lfsLockBackend) Create(path string, refname string) (transfer.Lock, err
 		}
 
 		lock.owner, err = l.store.GetUserByID(l.ctx, tx, lock.lock.UserID)
+		if err != nil {
+			return db.WrapError(err)
+		}
+
+		lock.handle, err = l.store.GetHandleByUserID(l.ctx, tx, lock.owner.ID)
 		return db.WrapError(err)
 	}); err != nil {
 		// Return conflict (409) if the lock already exists.
@@ -286,6 +291,11 @@ func (l *lfsLockBackend) FromID(id string) (transfer.Lock, error) {
 		}
 
 		lock.owner, err = l.store.GetUserByID(l.ctx, tx, lock.lock.UserID)
+		if err != nil {
+			return db.WrapError(err)
+		}
+
+		lock.handle, err = l.store.GetHandleByUserID(l.ctx, tx, lock.owner.ID)
 		return db.WrapError(err)
 	}); err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
@@ -312,6 +322,11 @@ func (l *lfsLockBackend) FromPath(path string) (transfer.Lock, error) {
 		}
 
 		lock.owner, err = l.store.GetUserByID(l.ctx, tx, lock.lock.UserID)
+		if err != nil {
+			return db.WrapError(err)
+		}
+
+		lock.handle, err = l.store.GetHandleByUserID(l.ctx, tx, lock.owner.ID)
 		return db.WrapError(err)
 	}); err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
@@ -410,6 +425,7 @@ func (l *lfsLockBackend) Unlock(lock transfer.Lock) error {
 type LFSLock struct {
 	lock    models.LFSLock
 	owner   models.User
+	handle  models.Handle
 	backend *lfsLockBackend
 }
 
@@ -459,7 +475,7 @@ func (l *LFSLock) ID() string {
 
 // OwnerName implements transfer.Lock.
 func (l *LFSLock) OwnerName() string {
-	return l.owner.Username
+	return l.handle.Handle
 }
 
 // Path implements transfer.Lock.

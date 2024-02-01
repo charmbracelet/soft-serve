@@ -1,10 +1,18 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
+	"net/mail"
 	"path"
 	"strings"
 	"unicode"
+)
+
+var (
+
+	// ErrInvalidEmail indicates that an email address is invalid.
+	ErrInvalidEmail = errors.New("invalid email address")
 )
 
 // SanitizeRepo returns a sanitized version of the given repository name.
@@ -17,19 +25,19 @@ func SanitizeRepo(repo string) string {
 	return repo
 }
 
-// ValidateUsername returns an error if any of the given usernames are invalid.
-func ValidateUsername(username string) error {
-	if username == "" {
-		return fmt.Errorf("username cannot be empty")
+// ValidateHandle returns an error if any of the given usernames are invalid.
+func ValidateHandle(handle string) error {
+	if handle == "" {
+		return fmt.Errorf("cannot be empty")
 	}
 
-	if !unicode.IsLetter(rune(username[0])) {
-		return fmt.Errorf("username must start with a letter")
+	if !unicode.IsLetter(rune(handle[0])) {
+		return fmt.Errorf("must start with a letter")
 	}
 
-	for _, r := range username {
+	for _, r := range handle {
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' {
-			return fmt.Errorf("username can only contain letters, numbers, and hyphens")
+			return fmt.Errorf("can only contain letters, numbers, and hyphens")
 		}
 	}
 
@@ -46,6 +54,20 @@ func ValidateRepo(repo string) error {
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' && r != '_' && r != '.' && r != '/' {
 			return fmt.Errorf("repo can only contain letters, numbers, hyphens, underscores, periods, and slashes")
 		}
+	}
+
+	return nil
+}
+
+// ValidateEmail returns an error if the given email address is invalid.
+func ValidateEmail(email string) error {
+	if strings.ContainsAny(email, " <>") {
+		return ErrInvalidEmail
+	}
+
+	_, err := mail.ParseAddress(email)
+	if err != nil {
+		return fmt.Errorf("%w: %s", ErrInvalidEmail, err)
 	}
 
 	return nil

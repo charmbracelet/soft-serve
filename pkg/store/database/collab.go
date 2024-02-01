@@ -18,7 +18,7 @@ var _ store.CollaboratorStore = (*collabStore)(nil)
 // AddCollabByUsernameAndRepo implements store.CollaboratorStore.
 func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx db.Handler, username string, repo string, level access.AccessLevel) error {
 	username = strings.ToLower(username)
-	if err := utils.ValidateUsername(username); err != nil {
+	if err := utils.ValidateHandle(username); err != nil {
 		return err
 	}
 
@@ -28,7 +28,9 @@ func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx db.Handle
 			VALUES (
 				?,
 				(
-					SELECT id FROM users WHERE username = ?
+					SELECT id FROM users WHERE handle_id = (
+						SELECT id FROM handles WHERE handle = ?
+					)
 				),
 				(
 					SELECT id FROM repos WHERE name = ?
@@ -44,7 +46,7 @@ func (*collabStore) GetCollabByUsernameAndRepo(ctx context.Context, tx db.Handle
 	var m models.Collab
 
 	username = strings.ToLower(username)
-	if err := utils.ValidateUsername(username); err != nil {
+	if err := utils.ValidateHandle(username); err != nil {
 		return models.Collab{}, err
 	}
 
@@ -56,9 +58,10 @@ func (*collabStore) GetCollabByUsernameAndRepo(ctx context.Context, tx db.Handle
 		FROM
 			collabs
 		INNER JOIN users ON users.id = collabs.user_id
+		INNER JOIN handles ON handles.id = users.handle_id
 		INNER JOIN repos ON repos.id = collabs.repo_id
 		WHERE
-			users.username = ? AND repos.name = ?
+			handles.handle = ? AND repos.name = ?
 	`), username, repo)
 
 	return m, err
@@ -106,7 +109,7 @@ func (*collabStore) ListCollabsByRepoAsUsers(ctx context.Context, tx db.Handler,
 // RemoveCollabByUsernameAndRepo implements store.CollaboratorStore.
 func (*collabStore) RemoveCollabByUsernameAndRepo(ctx context.Context, tx db.Handler, username string, repo string) error {
 	username = strings.ToLower(username)
-	if err := utils.ValidateUsername(username); err != nil {
+	if err := utils.ValidateHandle(username); err != nil {
 		return err
 	}
 
@@ -116,7 +119,9 @@ func (*collabStore) RemoveCollabByUsernameAndRepo(ctx context.Context, tx db.Han
 			collabs
 		WHERE
 			user_id = (
-				SELECT id FROM users WHERE username = ?
+				SELECT id FROM users WHERE handle_id = (
+					SELECT id FROM handles WHERE handle = ?
+				)
 			) AND repo_id = (
 				SELECT id FROM repos WHERE name = ?
 			)
