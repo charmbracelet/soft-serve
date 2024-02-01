@@ -55,6 +55,6 @@ jobs:
 
           # Convert coverage data to legacy textfmt format to upload
           go tool covdata textfmt -i=coverage/unit,coverage/int,coverage/int2 -o=coverage.txt
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           file: ./coverage.txt
