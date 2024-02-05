@@ -23,6 +23,18 @@ soft repo collab remove test foo
 soft repo collab list test
 ! stdout .
 
+# create empty repo
+soft repo create empty '-d "empty repo"'
+
+# add collab
+soft repo collab add empty foo
+# add collab again
+# test issue #464 https://github.com/charmbracelet/soft-serve/issues/464
+! soft repo collab add empty foo
+stderr '.*already exists.*'
+# a placeholder to reset stderr
+soft help
+
 # stop the server
 [windows] stopserver
 [windows] ! stderr .

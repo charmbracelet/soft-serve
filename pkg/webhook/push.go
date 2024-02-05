@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	gitm "github.com/aymanbagabas/git-module"
@@ -75,12 +74,8 @@ func NewPushEvent(ctx context.Context, user proto.User, repo proto.Repository, r
 		return PushEvent{}, err
 	}
 
-	payload.Repository.DefaultBranch, err = proto.RepositoryDefaultBranch(repo)
-	// XXX: we check for ErrReferenceNotExist here because we don't want to
-	// return an error if the repo is an empty repo.
-	// This means that the repo doesn't have a default branch yet and this is
-	// the first push to it.
-	if err != nil && !errors.Is(err, git.ErrReferenceNotExist) {
+	payload.Repository.DefaultBranch, err = getDefaultBranch(repo)
+	if err != nil {
 		return PushEvent{}, err
 	}
 

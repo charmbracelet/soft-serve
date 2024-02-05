@@ -76,7 +76,10 @@ func NewRepositoryEvent(ctx context.Context, user proto.User, repo proto.Reposit
 
 	payload.Repository.Owner.ID = owner.ID
 	payload.Repository.Owner.Username = owner.Username
-	payload.Repository.DefaultBranch, _ = proto.RepositoryDefaultBranch(repo)
+	payload.Repository.DefaultBranch, err = getDefaultBranch(repo)
+	if err != nil {
+		return RepositoryEvent{}, err
+	}
 
 	return payload, nil
 }

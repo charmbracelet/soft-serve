@@ -3,7 +3,7 @@
 [windows] skip
 
 # clone repo
-git clone https://github.com/charmbracelet/catwalk.git catwalk
+#git clone https://github.com/charmbracelet/catwalk.git catwalk
 
 # run soft browse
 # disable this temporarily
