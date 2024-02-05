@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alecthomas/chroma/lexers"
+	"github.com/alecthomas/chroma/v2/lexers"
 	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
 )

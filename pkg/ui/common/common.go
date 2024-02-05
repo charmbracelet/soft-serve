@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
@@ -105,4 +106,18 @@ func (c *Common) CloneCmd(publicURL, name string) string {
 		return ""
 	}
 	return fmt.Sprintf("git clone %s", RepoURL(publicURL, name))
+}
+
+// IsFileMarkdown returns true if the file is markdown.
+// It uses chroma lexers to analyze and determine the language.
+func IsFileMarkdown(content, ext string) bool {
+	var lang string
+	lexer := lexers.Match(ext)
+	if lexer == nil {
+		lexer = lexers.Analyse(content)
+	}
+	if lexer != nil && lexer.Config() != nil {
+		lang = lexer.Config().Name
+	}
+	return lang == "markdown"
 }
