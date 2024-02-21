@@ -42,10 +42,10 @@ ssh git.charm.sh -t soft-serve
 ssh git.charm.sh repo tree soft-serve
 
 # Print a specific file
-ssh git.charm.sh repo blob soft-serve cmd/soft/root.go
+ssh git.charm.sh repo blob soft-serve cmd/soft/main.go
 
 # Print a file with syntax highlighting and line numbers
-ssh git.charm.sh repo blob soft-serve cmd/soft/root.go -c -l
+ssh git.charm.sh repo blob soft-serve cmd/soft/main.go -c -l
 ```
 
 Or you can use Soft Serve to browse local repositories using `soft browse
@@ -607,14 +607,14 @@ ssh -p 23231 localhost repo tree soft-serve main server/config
 From there, you can print individual files using the `repo blob` command:
 
 ```sh
-ssh -p 23231 localhost repo blob soft-serve cmd/soft/root.go
+ssh -p 23231 localhost repo blob soft-serve cmd/soft/main.go
 ```
 
 You can add the `-c` flag to enable syntax coloring and `-l` to print line
 numbers:
 
 ```sh
-ssh -p 23231 localhost repo blob soft-serve cmd/soft/root.go -c -l
+ssh -p 23231 localhost repo blob soft-serve cmd/soft/main.go -c -l
 
 ```
 
