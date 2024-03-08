@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -85,14 +86,19 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		),
 	}
 
-	s.srv, err = wish.NewServer(
+	opts := []ssh.Option{
 		ssh.PublicKeyAuth(s.PublicKeyHandler),
 		ssh.KeyboardInteractiveAuth(s.KeyboardInteractiveHandler),
-		ssh.AllocatePty(),
 		wish.WithAddress(cfg.SSH.ListenAddr),
 		wish.WithHostKeyPath(cfg.SSH.KeyPath),
 		wish.WithMiddleware(mw...),
-	)
+	}
+	if runtime.GOOS == "windows" {
+		opts = append(opts, ssh.EmulatePty())
+	} else {
+		opts = append(opts, ssh.AllocatePty())
+	}
+	s.srv, err = wish.NewServer(opts...)
 	if err != nil {
 		return nil, err
 	}
