@@ -77,10 +77,7 @@ func NewBranchTagEvent(ctx context.Context, user proto.User, repo proto.Reposito
 
 	payload.Repository.Owner.ID = owner.ID
 	payload.Repository.Owner.Username = owner.Username
-	payload.Repository.DefaultBranch, err = getDefaultBranch(repo)
-	if err != nil {
-		return BranchTagEvent{}, err
-	}
+	payload.Repository.DefaultBranch, _ = getDefaultBranch(repo)
 
 	return payload, nil
 }

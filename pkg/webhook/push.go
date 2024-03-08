@@ -74,10 +74,7 @@ func NewPushEvent(ctx context.Context, user proto.User, repo proto.Repository, r
 		return PushEvent{}, err
 	}
 
-	payload.Repository.DefaultBranch, err = getDefaultBranch(repo)
-	if err != nil {
-		return PushEvent{}, err
-	}
+	payload.Repository.DefaultBranch, _ = getDefaultBranch(repo)
 
 	rev := after
 	if !git.IsZeroHash(before) {

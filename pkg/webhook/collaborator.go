@@ -65,10 +65,7 @@ func NewCollaboratorEvent(ctx context.Context, user proto.User, repo proto.Repos
 
 	payload.Repository.Owner.ID = owner.ID
 	payload.Repository.Owner.Username = owner.Username
-	payload.Repository.DefaultBranch, err = getDefaultBranch(repo)
-	if err != nil {
-		return CollaboratorEvent{}, err
-	}
+	payload.Repository.DefaultBranch, _ = getDefaultBranch(repo)
 
 	collab, err := datastore.GetCollabByUsernameAndRepo(ctx, dbx, collabUsername, repo.Name())
 	if err != nil {
