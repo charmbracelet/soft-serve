@@ -40,8 +40,8 @@ github.com/charmbracelet/log v0.3.1 h1:TjuY4OBNbxmHWSwO3tosgqs5I3biyY8sQPny/eCMT
 github.com/charmbracelet/log v0.3.1/go.mod h1:OR4E1hutLsax3ZKpXbgUqPtTjQfrh1pG3zwHGWuuq8g=
 github.com/charmbracelet/ssh v0.0.0-20240301204039-e79ff702f5b3 h1:BI6Vno579jK/NKUwrvboHtMfF2On6kh6mU1cguf5+vQ=
 github.com/charmbracelet/ssh v0.0.0-20240301204039-e79ff702f5b3/go.mod h1:wUZ0VTrLI5ixIbYOSRHrqrZnfj8EXgLZOOvQYAQ2f18=
-github.com/charmbracelet/wish v1.3.1 h1:HXrHadxu6qbZOfwjEuu2OWpGWuhpKVd26Ecpv+QEc58=
-github.com/charmbracelet/wish v1.3.1/go.mod h1:4GbN5YK/Qmip0k/nT+dOuYVpdKgj3oZBnsOeEJlG9fE=
+github.com/charmbracelet/wish v1.3.2 h1:9+32OZnfebIw59Mcx0Yhsj6uke727bJVGJb6WolxsxQ=
+github.com/charmbracelet/wish v1.3.2/go.mod h1:aulqcv2nEoW14yC3tlkrmIbVN7qDjeH+pzIO239VGTA=
 github.com/charmbracelet/x/errors v0.0.0-20240117030013-d31dba354651 h1:3RXpZWGWTOeVXCTv0Dnzxdv/MhNUkBfEcbaTY0zrTQI=
 github.com/charmbracelet/x/errors v0.0.0-20240117030013-d31dba354651/go.mod h1:2P0UgXMEa6TsToMSuFqKFQR+fZTO9CNGUNokkPatT/0=
 github.com/charmbracelet/x/exp/term v0.0.0-20240229115032-4b79243a3516 h1:wL/PiybPudKHv/LDgAUqS9eoPQr3pOAmzShMPG99cXA=
