@@ -238,6 +238,10 @@ func cmdUI(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []stri
 		stdin, err := sess.StdinPipe()
 		check(ts, err, neg)
 
+		err = sess.RequestPty("dumb", 40, 80, ssh.TerminalModes{})
+		check(ts, err, neg)
+		check(ts, sess.Start(""), neg)
+
 		in, err := strconv.Unquote(args[0])
 		check(ts, err, neg)
 		reader := strings.NewReader(in)
@@ -256,9 +260,7 @@ func cmdUI(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []stri
 			}
 		}()
 
-		err = sess.RequestPty("dumb", 40, 80, ssh.TerminalModes{})
-		check(ts, err, neg)
-		check(ts, sess.Run(""), neg)
+		check(ts, sess.Wait(), neg)
 	}
 }
 

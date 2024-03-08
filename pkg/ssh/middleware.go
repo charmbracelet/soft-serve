@@ -78,67 +78,65 @@ var cliCommandCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 // This middleware must be run after the ContextMiddleware.
 func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 	return func(s ssh.Session) {
-		func() {
-			_, _, ptyReq := s.Pty()
-			if ptyReq {
-				return
-			}
+		_, _, ptyReq := s.Pty()
+		if ptyReq {
+			sh(s)
+			return
+		}
 
-			ctx := s.Context()
-			cfg := config.FromContext(ctx)
+		ctx := s.Context()
+		cfg := config.FromContext(ctx)
 
-			args := s.Command()
-			cliCommandCounter.WithLabelValues(cmd.CommandName(args)).Inc()
-			rootCmd := &cobra.Command{
-				Short:        "Soft Serve is a self-hostable Git server for the command line.",
-				SilenceUsage: true,
-			}
-			rootCmd.CompletionOptions.DisableDefaultCmd = true
+		args := s.Command()
+		cliCommandCounter.WithLabelValues(cmd.CommandName(args)).Inc()
+		rootCmd := &cobra.Command{
+			Short:        "Soft Serve is a self-hostable Git server for the command line.",
+			SilenceUsage: true,
+		}
+		rootCmd.CompletionOptions.DisableDefaultCmd = true
 
-			rootCmd.SetUsageTemplate(cmd.UsageTemplate)
-			rootCmd.SetUsageFunc(cmd.UsageFunc)
+		rootCmd.SetUsageTemplate(cmd.UsageTemplate)
+		rootCmd.SetUsageFunc(cmd.UsageFunc)
+		rootCmd.AddCommand(
+			cmd.GitUploadPackCommand(),
+			cmd.GitUploadArchiveCommand(),
+			cmd.GitReceivePackCommand(),
+			cmd.RepoCommand(),
+			cmd.SettingsCommand(),
+			cmd.UserCommand(),
+			cmd.InfoCommand(),
+			cmd.PubkeyCommand(),
+			cmd.SetUsernameCommand(),
+			cmd.JWTCommand(),
+			cmd.TokenCommand(),
+		)
+
+		if cfg.LFS.Enabled {
 			rootCmd.AddCommand(
-				cmd.GitUploadPackCommand(),
-				cmd.GitUploadArchiveCommand(),
-				cmd.GitReceivePackCommand(),
-				cmd.RepoCommand(),
-				cmd.SettingsCommand(),
-				cmd.UserCommand(),
-				cmd.InfoCommand(),
-				cmd.PubkeyCommand(),
-				cmd.SetUsernameCommand(),
-				cmd.JWTCommand(),
-				cmd.TokenCommand(),
+				cmd.GitLFSAuthenticateCommand(),
 			)
 
-			if cfg.LFS.Enabled {
+			if cfg.LFS.SSHEnabled {
 				rootCmd.AddCommand(
-					cmd.GitLFSAuthenticateCommand(),
+					cmd.GitLFSTransfer(),
 				)
-
-				if cfg.LFS.SSHEnabled {
-					rootCmd.AddCommand(
-						cmd.GitLFSTransfer(),
-					)
-				}
 			}
+		}
 
-			rootCmd.SetArgs(args)
-			if len(args) == 0 {
-				// otherwise it'll default to os.Args, which is not what we want.
-				rootCmd.SetArgs([]string{"--help"})
-			}
-			rootCmd.SetIn(s)
-			rootCmd.SetOut(s)
-			rootCmd.SetErr(s.Stderr())
-			rootCmd.SetContext(ctx)
+		rootCmd.SetArgs(args)
+		if len(args) == 0 {
+			// otherwise it'll default to os.Args, which is not what we want.
+			rootCmd.SetArgs([]string{"--help"})
+		}
+		rootCmd.SetIn(s)
+		rootCmd.SetOut(s)
+		rootCmd.SetErr(s.Stderr())
+		rootCmd.SetContext(ctx)
 
-			if err := rootCmd.ExecuteContext(ctx); err != nil {
-				s.Exit(1) // nolint: errcheck
-				return
-			}
-		}()
-		sh(s)
+		if err := rootCmd.ExecuteContext(ctx); err != nil {
+			s.Exit(1) // nolint: errcheck
+			return
+		}
 	}
 }
 

@@ -88,6 +88,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 	s.srv, err = wish.NewServer(
 		ssh.PublicKeyAuth(s.PublicKeyHandler),
 		ssh.KeyboardInteractiveAuth(s.KeyboardInteractiveHandler),
+		ssh.AllocatePty(),
 		wish.WithAddress(cfg.SSH.ListenAddr),
 		wish.WithHostKeyPath(cfg.SSH.KeyPath),
 		wish.WithMiddleware(mw...),
