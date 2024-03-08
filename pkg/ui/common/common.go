@@ -34,6 +34,7 @@ type Common struct {
 	Styles        *styles.Styles
 	KeyMap        *keymap.KeyMap
 	Zone          *zone.Manager
+	Renderer      *lipgloss.Renderer
 	Output        *termenv.Output
 	Logger        *log.Logger
 	HideCloneCmd  bool
@@ -45,14 +46,15 @@ func NewCommon(ctx context.Context, out *lipgloss.Renderer, width, height int) C
 		ctx = context.TODO()
 	}
 	return Common{
-		ctx:    ctx,
-		Width:  width,
-		Height: height,
-		Output: out.Output(),
-		Styles: styles.DefaultStyles(),
-		KeyMap: keymap.DefaultKeyMap(),
-		Zone:   zone.New(),
-		Logger: log.FromContext(ctx).WithPrefix("ui"),
+		ctx:      ctx,
+		Width:    width,
+		Height:   height,
+		Renderer: out,
+		Output:   out.Output(),
+		Styles:   styles.DefaultStyles(out),
+		KeyMap:   keymap.DefaultKeyMap(),
+		Zone:     zone.New(),
+		Logger:   log.FromContext(ctx).WithPrefix("ui"),
 	}
 }
 

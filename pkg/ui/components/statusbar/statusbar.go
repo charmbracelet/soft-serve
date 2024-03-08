@@ -80,7 +80,7 @@ func (s *Model) View() string {
 		Width(maxWidth).
 		Render(v)
 
-	return lipgloss.NewStyle().MaxWidth(s.common.Width).
+	return s.common.Renderer.NewStyle().MaxWidth(s.common.Width).
 		Render(
 			lipgloss.JoinHorizontal(lipgloss.Top,
 				key,

@@ -323,7 +323,7 @@ func (r *Repo) headerView() string {
 	if r.selectedRepo == nil {
 		return ""
 	}
-	truncate := lipgloss.NewStyle().MaxWidth(r.common.Width)
+	truncate := r.common.Renderer.NewStyle().MaxWidth(r.common.Width)
 	header := r.selectedRepo.ProjectName()
 	if header == "" {
 		header = r.selectedRepo.Name()

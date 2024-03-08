@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -14,6 +15,8 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
+	bm "github.com/charmbracelet/wish/bubbletea"
+	"github.com/muesli/termenv"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/cobra"
@@ -87,6 +90,12 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 		ctx := s.Context()
 		cfg := config.FromContext(ctx)
 
+		renderer := bm.MakeRenderer(s)
+		if testrun, ok := os.LookupEnv("SOFT_SERVE_NO_COLOR"); ok && testrun == "1" {
+			// Disable colors when running tests.
+			renderer.SetColorProfile(termenv.Ascii)
+		}
+
 		args := s.Command()
 		cliCommandCounter.WithLabelValues(cmd.CommandName(args)).Inc()
 		rootCmd := &cobra.Command{
@@ -101,7 +110,7 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 			cmd.GitUploadPackCommand(),
 			cmd.GitUploadArchiveCommand(),
 			cmd.GitReceivePackCommand(),
-			cmd.RepoCommand(),
+			cmd.RepoCommand(renderer),
 			cmd.SettingsCommand(),
 			cmd.UserCommand(),
 			cmd.InfoCommand(),

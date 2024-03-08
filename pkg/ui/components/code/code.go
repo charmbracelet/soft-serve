@@ -121,7 +121,7 @@ func (r *Code) Init() tea.Cmd {
 	// https://github.com/muesli/reflow/issues/43
 	//
 	// TODO: solve this upstream in Glamour/Reflow.
-	content = lipgloss.NewStyle().Width(w).Render(content)
+	content = r.common.Renderer.NewStyle().Width(w).Render(content)
 
 	r.Viewport.Model.SetContent(content)
 

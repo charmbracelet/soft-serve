@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -22,7 +23,11 @@ type FileItem struct {
 
 // ID returns the ID of the file item.
 func (i FileItem) ID() string {
-	return i.entry.Name()
+	name := i.entry.Name()
+	if n, err := strconv.Unquote(name); err == nil {
+		name = n
+	}
+	return name
 }
 
 // Title returns the title of the file item.
@@ -139,7 +144,7 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	name = nameStyle.Render(name)
 	size = sizeStyle.Render(size)
 	modeStr := modeStyle.Render(mode.String())
-	truncate := lipgloss.NewStyle().MaxWidth(m.Width() -
+	truncate := d.common.Renderer.NewStyle().MaxWidth(m.Width() -
 		s.Selector.GetHorizontalFrameSize() -
 		s.Selector.GetWidth())
 	fmt.Fprint(w,

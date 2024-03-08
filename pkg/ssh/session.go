@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"os"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,6 +13,7 @@ import (
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	bm "github.com/charmbracelet/wish/bubbletea"
+	"github.com/muesli/termenv"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -52,8 +54,13 @@ func SessionHandler(s ssh.Session) *tea.Program {
 		}
 	}
 
-	output := bm.MakeRenderer(s)
-	c := common.NewCommon(ctx, output, pty.Window.Width, pty.Window.Height)
+	renderer := bm.MakeRenderer(s)
+	if testrun, ok := os.LookupEnv("SOFT_SERVE_NO_COLOR"); ok && testrun == "1" {
+		// Disable colors when running tests.
+		renderer.SetColorProfile(termenv.Ascii)
+	}
+
+	c := common.NewCommon(ctx, renderer, pty.Window.Width, pty.Window.Height)
 	c.SetValue(common.ConfigKey, cfg)
 	m := NewUI(c, initialRepo)
 	opts := bm.MakeOptions(s)
