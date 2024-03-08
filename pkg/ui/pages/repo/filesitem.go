@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -23,16 +22,12 @@ type FileItem struct {
 
 // ID returns the ID of the file item.
 func (i FileItem) ID() string {
-	name := i.entry.Name()
-	if n, err := strconv.Unquote(name); err == nil {
-		name = n
-	}
-	return name
+	return i.entry.Name()
 }
 
 // Title returns the title of the file item.
 func (i FileItem) Title() string {
-	return i.entry.Name()
+	return common.UnquoteFilename(i.entry.Name())
 }
 
 // Description returns the description of the file item.

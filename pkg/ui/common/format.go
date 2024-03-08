@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/alecthomas/chroma/v2/lexers"
@@ -53,4 +54,18 @@ func FormatHighlight(p, c string) (string, error) {
 		return "", err
 	}
 	return r.String(), nil
+}
+
+// UnquoteFilename unquotes a filename.
+// When Git is with "core.quotePath" set to "true" (default), it will quote
+// the filename with double quotes if it contains control characters or unicode.
+// this function will unquote the filename.
+func UnquoteFilename(s string) string {
+	name := s
+	if n, err := strconv.Unquote(`"` + s + `"`); err == nil {
+		name = n
+	}
+
+	name = strconv.Quote(name)
+	return strings.Trim(name, `"`)
 }

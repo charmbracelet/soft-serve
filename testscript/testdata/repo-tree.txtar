@@ -1,7 +1,7 @@
 # vi: set ft=conf
 
 # convert crlf to lf on windows
-[windows] dos2unix tree1.txt tree2.txt tree3.txt
+[windows] dos2unix tree1.txt tree2.txt tree3.txt tree4.txt
 
 # start soft serve
 exec soft serve &
@@ -47,6 +47,18 @@ stderr 'file not found'
 ! stdout .
 stderr 'revision does not exist'
 
+# test unicode file name issue #457
+soft repo create repo4
+git clone ssh://localhost:$SSH_PORT/repo4 repo4
+mkfile ./repo4/🍕.md '🍕'
+git -C repo4 add -A
+git -C repo4 commit -m 'unicode'
+git -C repo4 push origin HEAD
+
+# print root tree
+soft repo tree repo4
+cmp stdout tree4.txt
+
 # stop the server
 [windows] stopserver
 
@@ -59,3 +71,5 @@ drwxrwxrwx	-	 folder
 -rw-r--r--	5 B	 aa.md
 -- tree3.txt --
 -rw-r--r--	2 B	 b.md
+-- tree4.txt --
+-rw-r--r--	4 B	 🍕.md

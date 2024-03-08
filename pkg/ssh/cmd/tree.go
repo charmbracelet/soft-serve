@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
@@ -93,7 +94,7 @@ func treeCommand() *cobra.Command {
 				} else {
 					ssize = humanize.Bytes(uint64(size))
 				}
-				cmd.Printf("%s\t%s\t %s\n", ent.Mode(), ssize, ent.Name())
+				cmd.Printf("%s\t%s\t %s\n", ent.Mode(), ssize, common.UnquoteFilename(ent.Name()))
 			}
 			return nil
 		},
