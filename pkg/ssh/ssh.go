@@ -104,7 +104,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 	}
 
 	if config.IsDebug() {
-		s.srv.ServerConfigCallback = func(ctx ssh.Context) *gossh.ServerConfig {
+		s.srv.ServerConfigCallback = func(_ ssh.Context) *gossh.ServerConfig {
 			return &gossh.ServerConfig{
 				AuthLogCallback: func(conn gossh.ConnMetadata, method string, err error) {
 					logger.Debug("authentication", "user", conn.User(), "method", method, "err", err)

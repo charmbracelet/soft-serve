@@ -64,7 +64,11 @@ func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, t.activeTabCmd)
 		}
 	case tea.MouseMsg:
-		if msg.Type == tea.MouseLeft {
+		if msg.Action != tea.MouseActionPress {
+			break
+		}
+		switch msg.Button {
+		case tea.MouseButtonLeft:
 			for i, tab := range t.tabs {
 				if t.common.Zone.Get(tab).InBounds(msg) {
 					t.activeTab = i

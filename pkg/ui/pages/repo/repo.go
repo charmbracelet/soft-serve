@@ -186,13 +186,16 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg := msg.(type) {
 		case tea.MouseMsg:
-			switch msg.Type {
-			case tea.MouseLeft:
+			if msg.Action != tea.MouseActionPress {
+				break
+			}
+			switch msg.Button {
+			case tea.MouseButtonLeft:
 				switch {
 				case r.common.Zone.Get("repo-help").InBounds(msg):
 					cmds = append(cmds, footer.ToggleFooterCmd)
 				}
-			case tea.MouseRight:
+			case tea.MouseButtonRight:
 				switch {
 				case r.common.Zone.Get("repo-main").InBounds(msg):
 					cmds = append(cmds, goBackCmd)

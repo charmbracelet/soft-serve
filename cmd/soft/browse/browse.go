@@ -167,8 +167,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case tea.MouseMsg:
-		switch msg.Type {
-		case tea.MouseLeft:
+		if msg.Action != tea.MouseActionPress {
+			break
+		}
+		switch msg.Button {
+		case tea.MouseButtonLeft:
 			switch {
 			case m.common.Zone.Get("footer").InBounds(msg):
 				cmds = append(cmds, footer.ToggleFooterCmd)

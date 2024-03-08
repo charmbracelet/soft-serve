@@ -231,12 +231,15 @@ func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.MouseMsg:
-		switch msg.Type {
-		case tea.MouseWheelUp:
+		if msg.Action != tea.MouseActionPress {
+			break
+		}
+		switch msg.Button {
+		case tea.MouseButtonWheelUp:
 			s.CursorUp()
-		case tea.MouseWheelDown:
+		case tea.MouseButtonWheelDown:
 			s.CursorDown()
-		case tea.MouseLeft:
+		case tea.MouseButtonLeft:
 			curIdx := s.Index()
 			for i, item := range s.Items() {
 				item, _ := item.(IdentifiableItem)
