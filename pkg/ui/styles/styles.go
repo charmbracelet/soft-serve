@@ -165,7 +165,7 @@ type Styles struct {
 }
 
 // DefaultStyles returns default styles for the UI.
-func DefaultStyles() *Styles {
+func DefaultStyles(r *lipgloss.Renderer) *Styles {
 	highlightColor := lipgloss.Color("210")
 	highlightColorDim := lipgloss.Color("174")
 	selectorColor := lipgloss.Color("167")
@@ -176,10 +176,10 @@ func DefaultStyles() *Styles {
 	s.ActiveBorderColor = lipgloss.Color("62")
 	s.InactiveBorderColor = lipgloss.Color("241")
 
-	s.App = lipgloss.NewStyle().
+	s.App = r.NewStyle().
 		Margin(1, 2)
 
-	s.ServerName = lipgloss.NewStyle().
+	s.ServerName = r.NewStyle().
 		Height(1).
 		MarginLeft(1).
 		MarginBottom(1).
@@ -188,29 +188,29 @@ func DefaultStyles() *Styles {
 		Foreground(lipgloss.Color("229")).
 		Bold(true)
 
-	s.TopLevelNormalTab = lipgloss.NewStyle().
+	s.TopLevelNormalTab = r.NewStyle().
 		MarginRight(2)
 
 	s.TopLevelActiveTab = s.TopLevelNormalTab.Copy().
 		Foreground(lipgloss.Color("36"))
 
-	s.TopLevelActiveTabDot = lipgloss.NewStyle().
+	s.TopLevelActiveTabDot = r.NewStyle().
 		Foreground(lipgloss.Color("36"))
 
-	s.RepoSelector.Normal.Base = lipgloss.NewStyle().
+	s.RepoSelector.Normal.Base = r.NewStyle().
 		PaddingLeft(1).
 		Border(lipgloss.Border{Left: " "}, false, false, false, true).
 		Height(3)
 
-	s.RepoSelector.Normal.Title = lipgloss.NewStyle().Bold(true)
+	s.RepoSelector.Normal.Title = r.NewStyle().Bold(true)
 
-	s.RepoSelector.Normal.Desc = lipgloss.NewStyle().
+	s.RepoSelector.Normal.Desc = r.NewStyle().
 		Foreground(lipgloss.Color("243"))
 
-	s.RepoSelector.Normal.Command = lipgloss.NewStyle().
+	s.RepoSelector.Normal.Command = r.NewStyle().
 		Foreground(lipgloss.Color("132"))
 
-	s.RepoSelector.Normal.Updated = lipgloss.NewStyle().
+	s.RepoSelector.Normal.Updated = r.NewStyle().
 		Foreground(lipgloss.Color("243"))
 
 	s.RepoSelector.Active.Base = s.RepoSelector.Normal.Base.Copy().
@@ -229,78 +229,78 @@ func DefaultStyles() *Styles {
 	s.RepoSelector.Active.Command = s.RepoSelector.Normal.Command.Copy().
 		Foreground(lipgloss.Color("204"))
 
-	s.MenuItem = lipgloss.NewStyle().
+	s.MenuItem = r.NewStyle().
 		PaddingLeft(1).
 		Border(lipgloss.Border{
 			Left: " ",
 		}, false, false, false, true).
 		Height(3)
 
-	s.MenuLastUpdate = lipgloss.NewStyle().
+	s.MenuLastUpdate = r.NewStyle().
 		Foreground(lipgloss.Color("241")).
 		Align(lipgloss.Right)
 
-	s.Repo.Base = lipgloss.NewStyle()
+	s.Repo.Base = r.NewStyle()
 
-	s.Repo.Title = lipgloss.NewStyle().
+	s.Repo.Title = r.NewStyle().
 		Padding(0, 2)
 
-	s.Repo.Command = lipgloss.NewStyle().
+	s.Repo.Command = r.NewStyle().
 		Foreground(lipgloss.Color("168"))
 
-	s.Repo.Body = lipgloss.NewStyle().
+	s.Repo.Body = r.NewStyle().
 		Margin(1, 0)
 
-	s.Repo.Header = lipgloss.NewStyle().
+	s.Repo.Header = r.NewStyle().
 		MaxHeight(2).
 		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(lipgloss.Color("236"))
 
-	s.Repo.HeaderName = lipgloss.NewStyle().
+	s.Repo.HeaderName = r.NewStyle().
 		Foreground(lipgloss.Color("212")).
 		Bold(true)
 
-	s.Repo.HeaderDesc = lipgloss.NewStyle().
+	s.Repo.HeaderDesc = r.NewStyle().
 		Foreground(lipgloss.Color("243"))
 
-	s.Footer = lipgloss.NewStyle().
+	s.Footer = r.NewStyle().
 		MarginTop(1).
 		Padding(0, 1).
 		Height(1)
 
-	s.Branch = lipgloss.NewStyle().
+	s.Branch = r.NewStyle().
 		Foreground(lipgloss.Color("203")).
 		Background(lipgloss.Color("236")).
 		Padding(0, 1)
 
-	s.HelpKey = lipgloss.NewStyle().
+	s.HelpKey = r.NewStyle().
 		Foreground(lipgloss.Color("241"))
 
-	s.HelpValue = lipgloss.NewStyle().
+	s.HelpValue = r.NewStyle().
 		Foreground(lipgloss.Color("239"))
 
-	s.HelpDivider = lipgloss.NewStyle().
+	s.HelpDivider = r.NewStyle().
 		Foreground(lipgloss.Color("237")).
 		SetString(" • ")
 
-	s.URLStyle = lipgloss.NewStyle().
+	s.URLStyle = r.NewStyle().
 		MarginLeft(1).
 		Foreground(lipgloss.Color("168"))
 
-	s.Error = lipgloss.NewStyle().
+	s.Error = r.NewStyle().
 		MarginTop(2)
 
-	s.ErrorTitle = lipgloss.NewStyle().
+	s.ErrorTitle = r.NewStyle().
 		Foreground(lipgloss.Color("230")).
 		Background(lipgloss.Color("204")).
 		Bold(true).
 		Padding(0, 1)
 
-	s.ErrorBody = lipgloss.NewStyle().
+	s.ErrorBody = r.NewStyle().
 		Foreground(lipgloss.Color("252")).
 		MarginLeft(2)
 
-	s.LogItem.Normal.Base = lipgloss.NewStyle().
+	s.LogItem.Normal.Base = r.NewStyle().
 		Border(lipgloss.Border{
 			Left: " ",
 		}, false, false, false, true).
@@ -315,113 +315,113 @@ func DefaultStyles() *Styles {
 	s.LogItem.Active.Hash = s.LogItem.Normal.Hash.Copy().
 		Foreground(hashColor)
 
-	s.LogItem.Active.Hash = lipgloss.NewStyle().
+	s.LogItem.Active.Hash = r.NewStyle().
 		Bold(true).
 		Foreground(highlightColor)
 
-	s.LogItem.Normal.Title = lipgloss.NewStyle().
+	s.LogItem.Normal.Title = r.NewStyle().
 		Foreground(lipgloss.Color("105"))
 
-	s.LogItem.Active.Title = lipgloss.NewStyle().
+	s.LogItem.Active.Title = r.NewStyle().
 		Foreground(highlightColor).
 		Bold(true)
 
-	s.LogItem.Normal.Desc = lipgloss.NewStyle().
+	s.LogItem.Normal.Desc = r.NewStyle().
 		Foreground(lipgloss.Color("246"))
 
-	s.LogItem.Active.Desc = lipgloss.NewStyle().
+	s.LogItem.Active.Desc = r.NewStyle().
 		Foreground(lipgloss.Color("95"))
 
 	s.LogItem.Active.Keyword = s.LogItem.Active.Desc.Copy().
 		Foreground(highlightColorDim)
 
-	s.LogItem.Normal.Hash = lipgloss.NewStyle().
+	s.LogItem.Normal.Hash = r.NewStyle().
 		Foreground(hashColor)
 
-	s.LogItem.Active.Hash = lipgloss.NewStyle().
+	s.LogItem.Active.Hash = r.NewStyle().
 		Foreground(highlightColor)
 
-	s.Log.Commit = lipgloss.NewStyle().
+	s.Log.Commit = r.NewStyle().
 		Margin(0, 2)
 
-	s.Log.CommitHash = lipgloss.NewStyle().
+	s.Log.CommitHash = r.NewStyle().
 		Foreground(hashColor).
 		Bold(true)
 
-	s.Log.CommitBody = lipgloss.NewStyle().
+	s.Log.CommitBody = r.NewStyle().
 		MarginTop(1).
 		MarginLeft(2)
 
-	s.Log.CommitStatsAdd = lipgloss.NewStyle().
+	s.Log.CommitStatsAdd = r.NewStyle().
 		Foreground(lipgloss.Color("42")).
 		Bold(true)
 
-	s.Log.CommitStatsDel = lipgloss.NewStyle().
+	s.Log.CommitStatsDel = r.NewStyle().
 		Foreground(lipgloss.Color("203")).
 		Bold(true)
 
-	s.Log.Paginator = lipgloss.NewStyle().
+	s.Log.Paginator = r.NewStyle().
 		Margin(0).
 		Align(lipgloss.Center)
 
-	s.Ref.Normal.Item = lipgloss.NewStyle()
+	s.Ref.Normal.Item = r.NewStyle()
 
-	s.Ref.ItemSelector = lipgloss.NewStyle().
+	s.Ref.ItemSelector = r.NewStyle().
 		Foreground(selectorColor).
 		SetString("> ")
 
-	s.Ref.Active.Item = lipgloss.NewStyle().
+	s.Ref.Active.Item = r.NewStyle().
 		Foreground(highlightColorDim)
 
-	s.Ref.Normal.Base = lipgloss.NewStyle()
+	s.Ref.Normal.Base = r.NewStyle()
 
-	s.Ref.Active.Base = lipgloss.NewStyle()
+	s.Ref.Active.Base = r.NewStyle()
 
-	s.Ref.Normal.ItemTag = lipgloss.NewStyle().
+	s.Ref.Normal.ItemTag = r.NewStyle().
 		Foreground(lipgloss.Color("39"))
 
-	s.Ref.Active.ItemTag = lipgloss.NewStyle().
+	s.Ref.Active.ItemTag = r.NewStyle().
 		Bold(true).
 		Foreground(highlightColor)
 
-	s.Ref.Active.Item = lipgloss.NewStyle().
+	s.Ref.Active.Item = r.NewStyle().
 		Bold(true).
 		Foreground(highlightColor)
 
-	s.Ref.Normal.ItemDesc = lipgloss.NewStyle().
+	s.Ref.Normal.ItemDesc = r.NewStyle().
 		Faint(true)
 
-	s.Ref.Active.ItemDesc = lipgloss.NewStyle().
+	s.Ref.Active.ItemDesc = r.NewStyle().
 		Foreground(highlightColor).
 		Faint(true)
 
-	s.Ref.Normal.ItemHash = lipgloss.NewStyle().
+	s.Ref.Normal.ItemHash = r.NewStyle().
 		Foreground(hashColor).
 		Bold(true)
 
-	s.Ref.Active.ItemHash = lipgloss.NewStyle().
+	s.Ref.Active.ItemHash = r.NewStyle().
 		Foreground(highlightColor).
 		Bold(true)
 
 	s.Ref.Paginator = s.Log.Paginator.Copy()
 
-	s.Ref.Selector = lipgloss.NewStyle()
+	s.Ref.Selector = r.NewStyle()
 
 	s.Tree.Selector = s.Tree.Normal.FileName.Copy().
 		Width(1).
 		Foreground(selectorColor)
 
-	s.Tree.Normal.FileName = lipgloss.NewStyle().
+	s.Tree.Normal.FileName = r.NewStyle().
 		MarginLeft(1)
 
 	s.Tree.Active.FileName = s.Tree.Normal.FileName.Copy().
 		Bold(true).
 		Foreground(highlightColor)
 
-	s.Tree.Normal.FileDir = lipgloss.NewStyle().
+	s.Tree.Normal.FileDir = r.NewStyle().
 		Foreground(lipgloss.Color("39"))
 
-	s.Tree.Active.FileDir = lipgloss.NewStyle().
+	s.Tree.Active.FileDir = r.NewStyle().
 		Foreground(highlightColor)
 
 	s.Tree.Normal.FileMode = s.Tree.Active.FileName.Copy().
@@ -437,87 +437,87 @@ func DefaultStyles() *Styles {
 	s.Tree.Active.FileSize = s.Tree.Normal.FileName.Copy().
 		Foreground(highlightColorDim)
 
-	s.Tree.FileContent = lipgloss.NewStyle()
+	s.Tree.FileContent = r.NewStyle()
 
 	s.Tree.Paginator = s.Log.Paginator.Copy()
 
-	s.Tree.Blame.Hash = lipgloss.NewStyle().
+	s.Tree.Blame.Hash = r.NewStyle().
 		Foreground(hashColor).
 		Bold(true)
 
-	s.Tree.Blame.Message = lipgloss.NewStyle()
+	s.Tree.Blame.Message = r.NewStyle()
 
-	s.Tree.Blame.Who = lipgloss.NewStyle().
+	s.Tree.Blame.Who = r.NewStyle().
 		Faint(true)
 
-	s.Spinner = lipgloss.NewStyle().
+	s.Spinner = r.NewStyle().
 		MarginTop(1).
 		MarginLeft(2).
 		Foreground(lipgloss.Color("205"))
 
-	s.SpinnerContainer = lipgloss.NewStyle()
+	s.SpinnerContainer = r.NewStyle()
 
-	s.NoContent = lipgloss.NewStyle().
+	s.NoContent = r.NewStyle().
 		MarginTop(1).
 		MarginLeft(2).
 		Foreground(lipgloss.Color("242"))
 
-	s.StatusBar = lipgloss.NewStyle().
+	s.StatusBar = r.NewStyle().
 		Height(1)
 
-	s.StatusBarKey = lipgloss.NewStyle().
+	s.StatusBarKey = r.NewStyle().
 		Bold(true).
 		Padding(0, 1).
 		Background(lipgloss.Color("206")).
 		Foreground(lipgloss.Color("228"))
 
-	s.StatusBarValue = lipgloss.NewStyle().
+	s.StatusBarValue = r.NewStyle().
 		Padding(0, 1).
 		Background(lipgloss.Color("235")).
 		Foreground(lipgloss.Color("243"))
 
-	s.StatusBarInfo = lipgloss.NewStyle().
+	s.StatusBarInfo = r.NewStyle().
 		Padding(0, 1).
 		Background(lipgloss.Color("212")).
 		Foreground(lipgloss.Color("230"))
 
-	s.StatusBarBranch = lipgloss.NewStyle().
+	s.StatusBarBranch = r.NewStyle().
 		Padding(0, 1).
 		Background(lipgloss.Color("62")).
 		Foreground(lipgloss.Color("230"))
 
-	s.StatusBarHelp = lipgloss.NewStyle().
+	s.StatusBarHelp = r.NewStyle().
 		Padding(0, 1).
 		Background(lipgloss.Color("237")).
 		Foreground(lipgloss.Color("243"))
 
-	s.Tabs = lipgloss.NewStyle().
+	s.Tabs = r.NewStyle().
 		Height(1)
 
-	s.TabInactive = lipgloss.NewStyle()
+	s.TabInactive = r.NewStyle()
 
-	s.TabActive = lipgloss.NewStyle().
+	s.TabActive = r.NewStyle().
 		Underline(true).
 		Foreground(lipgloss.Color("36"))
 
-	s.TabSeparator = lipgloss.NewStyle().
+	s.TabSeparator = r.NewStyle().
 		SetString("│").
 		Padding(0, 1).
 		Foreground(lipgloss.Color("238"))
 
-	s.Code.LineDigit = lipgloss.NewStyle().Foreground(lipgloss.Color("239"))
+	s.Code.LineDigit = r.NewStyle().Foreground(lipgloss.Color("239"))
 
-	s.Code.LineBar = lipgloss.NewStyle().Foreground(lipgloss.Color("236"))
+	s.Code.LineBar = r.NewStyle().Foreground(lipgloss.Color("236"))
 
-	s.Stash.Normal.Message = lipgloss.NewStyle().MarginLeft(1)
+	s.Stash.Normal.Message = r.NewStyle().MarginLeft(1)
 
 	s.Stash.Active.Message = s.Stash.Normal.Message.Copy().Foreground(selectorColor)
 
-	s.Stash.Title = lipgloss.NewStyle().
+	s.Stash.Title = r.NewStyle().
 		Foreground(hashColor).
 		Bold(true)
 
-	s.Stash.Selector = lipgloss.NewStyle().
+	s.Stash.Selector = r.NewStyle().
 		Width(1).
 		Foreground(selectorColor)
 

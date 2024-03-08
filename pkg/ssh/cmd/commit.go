@@ -6,6 +6,7 @@ import (
 	"time"
 
 	gansi "github.com/charmbracelet/glamour/ansi"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -14,7 +15,7 @@ import (
 )
 
 // commitCommand returns a command that prints the contents of a commit.
-func commitCommand() *cobra.Command {
+func commitCommand(renderer *lipgloss.Renderer) *cobra.Command {
 	var color bool
 	var patchOnly bool
 
@@ -54,7 +55,7 @@ func commitCommand() *cobra.Command {
 				return err
 			}
 
-			commonStyle := styles.DefaultStyles()
+			commonStyle := styles.DefaultStyles(renderer)
 			style := commonStyle.Log
 
 			s := strings.Builder{}

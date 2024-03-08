@@ -51,7 +51,7 @@ func New(c common.Common) *Selection {
 		ts[i] = b.String()
 	}
 	t := tabs.New(c, ts)
-	t.TabSeparator = lipgloss.NewStyle()
+	t.TabSeparator = c.Renderer.NewStyle()
 	t.TabInactive = c.Styles.TopLevelNormalTab.Copy()
 	t.TabActive = c.Styles.TopLevelActiveTab.Copy()
 	t.TabDot = c.Styles.TopLevelActiveTabDot.Copy()
@@ -289,15 +289,15 @@ func (s *Selection) View() string {
 	wm, hm := s.getMargins()
 	switch s.activePane {
 	case selectorPane:
-		ss := lipgloss.NewStyle().
+		ss := s.common.Renderer.NewStyle().
 			Width(s.common.Width - wm).
 			Height(s.common.Height - hm)
 		view = ss.Render(s.selector.View())
 	case readmePane:
-		rs := lipgloss.NewStyle().
+		rs := s.common.Renderer.NewStyle().
 			Height(s.common.Height - hm)
 		status := fmt.Sprintf("☰ %.f%%", s.readme.ScrollPercent()*100)
-		readmeStatus := lipgloss.NewStyle().
+		readmeStatus := s.common.Renderer.NewStyle().
 			Align(lipgloss.Right).
 			Width(s.common.Width - wm).
 			Foreground(s.common.Styles.InactiveBorderColor).

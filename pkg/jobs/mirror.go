@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
@@ -62,16 +63,26 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 				name := repo.Name()
 				wq.Add(name, func() {
 					repo := repo
-					cmd := git.NewCommand("remote", "update", "--prune").WithContext(ctx)
-					cmd.AddEnvs(
-						fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-							filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
-							cfg.SSH.ClientKeyPath,
-						),
-					)
 
-					if _, err := cmd.RunInDir(r.Path); err != nil {
-						logger.Error("error running git remote update", "repo", name, "err", err)
+					cmds := []string{
+						"fetch --prune",               // fetch prune before updating remote
+						"gc --aggressive --prune=now", // aggressive garbage collection
+						"remote update --prune",       // update remote and prune remote refs
+					}
+
+					for _, c := range cmds {
+						args := strings.Split(c, " ")
+						cmd := git.NewCommand(args...).WithContext(ctx)
+						cmd.AddEnvs(
+							fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+								filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
+								cfg.SSH.ClientKeyPath,
+							),
+						)
+
+						if _, err := cmd.RunInDir(r.Path); err != nil {
+							logger.Error("error running git remote update", "repo", name, "err", err)
+						}
 					}
 
 					if cfg.LFS.Enabled {
