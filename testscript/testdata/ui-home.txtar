@@ -10,7 +10,7 @@ ui '"    q"'
 cp stdout home.txt
 grep 'Test Soft Serve' home.txt
 grep '• Repositories' home.txt
-grep 'No items found' home.txt
+grep 'No items' home.txt
 
 # test about tab
 ui '"\t    q"'

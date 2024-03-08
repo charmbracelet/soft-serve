@@ -1,11 +1,9 @@
 package ssh
 
 import (
-	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -13,7 +11,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
-	"github.com/muesli/termenv"
+	bm "github.com/charmbracelet/wish/bubbletea"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -54,19 +52,18 @@ func SessionHandler(s ssh.Session) *tea.Program {
 		}
 	}
 
-	envs := &sessionEnv{s}
-	output := lipgloss.NewRenderer(s, termenv.WithColorCache(true), termenv.WithEnvironment(envs))
+	output := bm.MakeRenderer(s)
 	c := common.NewCommon(ctx, output, pty.Window.Width, pty.Window.Height)
 	c.SetValue(common.ConfigKey, cfg)
 	m := NewUI(c, initialRepo)
-	p := tea.NewProgram(m,
-		tea.WithInput(s),
-		tea.WithOutput(s),
+	opts := bm.MakeOptions(s)
+	opts = append(opts,
 		tea.WithAltScreen(),
 		tea.WithoutCatchPanics(),
 		tea.WithMouseCellMotion(),
 		tea.WithContext(ctx),
 	)
+	p := tea.NewProgram(m, opts...)
 
 	tuiSessionCounter.WithLabelValues(initialRepo, pty.Term).Inc()
 
@@ -77,24 +74,4 @@ func SessionHandler(s ssh.Session) *tea.Program {
 	}()
 
 	return p
-}
-
-var _ termenv.Environ = &sessionEnv{}
-
-type sessionEnv struct {
-	ssh.Session
-}
-
-func (s *sessionEnv) Environ() []string {
-	pty, _, _ := s.Pty()
-	return append(s.Session.Environ(), "TERM="+pty.Term)
-}
-
-func (s *sessionEnv) Getenv(key string) string {
-	for _, env := range s.Environ() {
-		if strings.HasPrefix(env, key+"=") {
-			return strings.TrimPrefix(env, key+"=")
-		}
-	}
-	return ""
 }
