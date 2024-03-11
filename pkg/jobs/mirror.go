@@ -65,9 +65,8 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 					repo := repo
 
 					cmds := []string{
-						"fetch --prune",               // fetch prune before updating remote
-						"gc --aggressive --prune=now", // aggressive garbage collection
-						"remote update --prune",       // update remote and prune remote refs
+						"fetch --prune",         // fetch prune before updating remote
+						"remote update --prune", // update remote and prune remote refs
 					}
 
 					for _, c := range cmds {
