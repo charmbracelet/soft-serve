@@ -7,7 +7,7 @@ toolchain go1.22.0
 require (
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.25.0
-	github.com/charmbracelet/glamour v0.6.1-0.20240306145211-77f8c87aa15a
+	github.com/charmbracelet/glamour v0.7.0
 	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/charmbracelet/wish v1.3.2
 	github.com/dustin/go-humanize v1.0.1
