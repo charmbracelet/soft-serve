@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -485,7 +486,7 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 	cfg := config.FromContext(ctx)
 	dir, repoName, file := mux.Vars(r)["dir"], mux.Vars(r)["repo"], mux.Vars(r)["file"]
 	service := getServiceType(r)
-	version := r.Header.Get("Git-Protocol")
+	protocol := r.Header.Get("Git-Protocol")
 
 	gitHttpUploadCounter.WithLabelValues(repoName, file).Inc()
 
@@ -510,8 +511,21 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 				"SOFT_SERVE_USERNAME=" + user.Username(),
 			}...)
 		}
-		if len(version) != 0 {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_PROTOCOL=%s", version))
+		if len(protocol) != 0 {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_PROTOCOL=%s", protocol))
+		}
+
+		var version int
+		for _, p := range strings.Split(protocol, ":") {
+			if strings.HasPrefix(p, "version=") {
+				if v, _ := strconv.Atoi(p[8:]); v > version {
+					version = v
+				}
+			}
+		}
+
+		if version < 2 {
+			git.WritePktline(w, "# service="+service.String()) // nolint: errcheck
 		}
 
 		if err := service.Handler(ctx, cmd); err != nil {
@@ -522,10 +536,6 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		hdrNocache(w)
 		w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", service))
 		w.WriteHeader(http.StatusOK)
-		if len(version) == 0 {
-			git.WritePktline(w, "# service="+service.String()) // nolint: errcheck
-		}
-
 		w.Write(refs.Bytes()) // nolint: errcheck
 	} else {
 		// Dumb HTTP
