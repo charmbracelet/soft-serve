@@ -524,10 +524,6 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if version < 2 {
-			git.WritePktline(w, "# service="+service.String()) // nolint: errcheck
-		}
-
 		if err := service.Handler(ctx, cmd); err != nil {
 			renderNotFound(w, r)
 			return
@@ -536,6 +532,9 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		hdrNocache(w)
 		w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", service))
 		w.WriteHeader(http.StatusOK)
+		if version < 2 {
+			git.WritePktline(w, "# service="+service.String()) // nolint: errcheck
+		}
 		w.Write(refs.Bytes()) // nolint: errcheck
 	} else {
 		// Dumb HTTP
