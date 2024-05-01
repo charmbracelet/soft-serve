@@ -21,7 +21,6 @@ type HTTPServer struct {
 func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx)
-
 	s := &HTTPServer{
 		ctx: ctx,
 		cfg: cfg,
