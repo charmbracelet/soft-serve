@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/pkg/config"
+	"github.com/rs/cors"
 )
 
 // HTTPServer is an http server.
@@ -26,7 +27,7 @@ func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 		cfg: cfg,
 		Server: &http.Server{
 			Addr:              cfg.HTTP.ListenAddr,
-			Handler:           NewRouter(ctx),
+			Handler:           cors.Default().Handler(NewRouter(ctx)),
 			ReadHeaderTimeout: time.Second * 10,
 			IdleTimeout:       time.Second * 10,
 			MaxHeaderBytes:    http.DefaultMaxHeaderBytes,
