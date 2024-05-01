@@ -26,5 +26,10 @@ func NewRouter(ctx context.Context) http.Handler {
 	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
 
+	CORSHeaders := handlers.AllowedHeaders([]string{"Content-Type", "X-Requested-With", "User-Agent", "Authorization"})
+	CORSOrigins := handlers.AllowedOrigins([]string{"*"})
+	CORSMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	h = handlers.CORS(CORSHeaders, CORSOrigins, CORSMethods)(h)
+
 	return h
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/pkg/config"
-	"github.com/gorilla/handlers"
 )
 
 // HTTPServer is an http server.
@@ -23,17 +22,12 @@ func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx)
 
-	CORSHeaders := handlers.AllowedHeaders([]string{"Content-Type", "X-Requested-With", "User-Agent", "Authorization"})
-	CORSOrigins := handlers.AllowedOrigins([]string{"*"})
-	CORSMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-	handlerWithCORS := handlers.CORS(CORSHeaders, CORSOrigins, CORSMethods)(NewRouter(ctx))
-
 	s := &HTTPServer{
 		ctx: ctx,
 		cfg: cfg,
 		Server: &http.Server{
 			Addr:              cfg.HTTP.ListenAddr,
-			Handler:           handlerWithCORS,
+			Handler:           NewRouter(ctx),
 			ReadHeaderTimeout: time.Second * 10,
 			IdleTimeout:       time.Second * 10,
 			MaxHeaderBytes:    http.DefaultMaxHeaderBytes,
