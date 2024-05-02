@@ -8,8 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
-	"golang.org/x/sync/errgroup"
+	"github.com/charmbracelet/log"
 )
 
 // Service is a Git daemon service.
@@ -118,34 +119,46 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		return err
 	}
 
-	errg, _ := errgroup.WithContext(ctx)
+	wg := &sync.WaitGroup{}
 
 	// stdin
 	if scmd.Stdin != nil {
-		errg.Go(func() error {
+		go func() {
 			defer stdin.Close() // nolint: errcheck
-			_, err := io.Copy(stdin, scmd.Stdin)
-			return err
-		})
+			if _, err := io.Copy(stdin, scmd.Stdin); err != nil {
+				log.Errorf("gitServiceHandler: failed to copy stdin: %v", err)
+			}
+		}()
 	}
 
 	// stdout
 	if scmd.Stdout != nil {
-		errg.Go(func() error {
-			_, err := io.Copy(scmd.Stdout, stdout)
-			return err
-		})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := io.Copy(scmd.Stdout, stdout); err != nil {
+				log.Errorf("gitServiceHandler: failed to copy stdout: %v", err)
+			}
+		}()
 	}
 
 	// stderr
 	if scmd.Stderr != nil {
-		errg.Go(func() error {
-			_, erro := io.Copy(scmd.Stderr, stderr)
-			return erro
-		})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, erro := io.Copy(scmd.Stderr, stderr); err != nil {
+				log.Errorf("gitServiceHandler: failed to copy stderr: %v", erro)
+			}
+		}()
 	}
 
-	err = errors.Join(errg.Wait(), cmd.Wait())
+	// Ensure all the output is written before waiting for the command to
+	// finish.
+	// Stdin is handled by the client side.
+	wg.Wait()
+
+	err = cmd.Wait()
 	if err != nil && errors.Is(err, os.ErrNotExist) {
 		return ErrInvalidRepo
 	} else if err != nil {
