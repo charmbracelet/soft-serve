@@ -9,13 +9,13 @@ require (
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/glamour v0.6.1-0.20240306145211-77f8c87aa15a
 	github.com/charmbracelet/lipgloss v0.10.0
-	github.com/charmbracelet/wish v1.3.2
+	github.com/charmbracelet/wish v1.4.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/go-git/go-git/v5 v5.11.0
+	github.com/go-git/go-git/v5 v5.12.0
 	github.com/matryer/is v1.4.1
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.15.2
-	github.com/sergi/go-diff v1.1.0
+	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 )
 
 require (
@@ -26,8 +26,8 @@ require (
 	github.com/caarlos0/tablewriter v0.1.0
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240308140948-6dbff1b9ed9b
 	github.com/charmbracelet/keygen v0.5.0
-	github.com/charmbracelet/log v0.3.1
-	github.com/charmbracelet/ssh v0.0.0-20240301204039-e79ff702f5b3
+	github.com/charmbracelet/log v0.4.0
+	github.com/charmbracelet/ssh v0.0.0-20240401141849-854cddfa2917
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/gobwas/glob v0.2.3
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -60,7 +60,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/charmbracelet/x/errors v0.0.0-20240117030013-d31dba354651 // indirect
-	github.com/charmbracelet/x/exp/term v0.0.0-20240229115032-4b79243a3516 // indirect
+	github.com/charmbracelet/x/exp/term v0.0.0-20240328150354-ab9afc214dfd // indirect
 	github.com/containerd/console v1.0.4 // indirect
 	github.com/creack/pty v1.1.21 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
