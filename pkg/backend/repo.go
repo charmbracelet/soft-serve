@@ -190,7 +190,8 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 
 		client := lfs.NewClient(ep)
 		if client == nil {
-			return fmt.Errorf("failed to create lfs client: unsupported endpoint %s", endpoint)
+			d.logger.Warn("failed to create lfs client: unsupported endpoint", "endpoint", endpoint)
+			return nil
 		}
 
 		if err := StoreRepoMissingLFSObjects(ctx, r, d.db, d.store, client); err != nil {
