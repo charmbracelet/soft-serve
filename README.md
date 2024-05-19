@@ -316,7 +316,7 @@ git push origin main
 Everything that needs authentication is done using SSH. Make sure you have
 added an entry for your Soft Serve instance in your `~/.ssh/config` file.
 
-By default, Soft Serve gives ready-only permission to anonymous connections to
+By default, Soft Serve gives read-only permission to anonymous connections to
 any of the above protocols. This is controlled by two settings `anon-access`
 and `allow-keyless`.
 
