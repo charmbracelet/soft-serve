@@ -116,6 +116,8 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 	repoc := make(chan proto.Repository, 1)
 	d.logger.Info("importing repository", "name", name, "remote", remote, "path", rp)
 	d.manager.Add(tid, func(ctx context.Context) (err error) {
+		ctx = proto.WithUserContext(ctx, user)
+
 		copts := git.CloneOptions{
 			Bare:   true,
 			Mirror: opts.Mirror,
