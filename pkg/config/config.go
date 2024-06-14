@@ -68,6 +68,12 @@ type HTTPConfig struct {
 
 	// PublicURL is the public URL of the HTTP server.
 	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
+
+	AllowedHeaders []string `env:"ALLOWED_HEADERS" yaml:"allowed_headers"`
+
+	AllowedOrigins []string `env:"ALLOWED_ORIGINS" yaml:"allowed_origins"`
+
+	AllowedMethods []string `env:"ALLOWED_METHODS" yaml:"allowed_methods"`
 }
 
 // StatsConfig is the configuration for the stats server.
@@ -180,6 +186,9 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_KEY_PATH=%s", c.HTTP.TLSKeyPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_CERT_PATH=%s", c.HTTP.TLSCertPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_PUBLIC_URL=%s", c.HTTP.PublicURL),
+		fmt.Sprintf("SOFT_SERVE_HTTP_ALLOWED_HEADERS=%s", strings.Join(c.HTTP.AllowedHeaders, "\n")),
+		fmt.Sprintf("SOFT_SERVE_HTTP_ALLOWED_ORIGINS=%s", strings.Join(c.HTTP.AllowedOrigins, "\n")),
+		fmt.Sprintf("SOFT_SERVE_HTTP_ALLOWED_METHODS=%s", strings.Join(c.HTTP.AllowedMethods, "\n")),
 		fmt.Sprintf("SOFT_SERVE_STATS_LISTEN_ADDR=%s", c.Stats.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_LOG_FORMAT=%s", c.Log.Format),
 		fmt.Sprintf("SOFT_SERVE_LOG_TIME_FORMAT=%s", c.Log.TimeFormat),
@@ -243,6 +252,24 @@ func parseEnv(cfg *Config) error {
 	// Merge initial admin keys from environment variables.
 	if initialAdminKeysEnv := os.Getenv("SOFT_SERVE_INITIAL_ADMIN_KEYS"); initialAdminKeysEnv != "" {
 		cfg.InitialAdminKeys = append(cfg.InitialAdminKeys, initialAdminKeys...)
+	}
+
+	// split allowed headers and append to cfg
+	if allowedHeadersEnv := os.Getenv("SOFT_SERVE_ALLOWED_HEADERS"); allowedHeadersEnv != "" {
+		allowedHeaders := strings.Split(allowedHeadersEnv, " ")
+		cfg.HTTP.AllowedHeaders = append(cfg.HTTP.AllowedHeaders, allowedHeaders...)
+	}
+
+	// split allowed origins and append to cfg
+	if allowedOriginsEnv := os.Getenv("SOFT_SERVE_ALLOWED_ORIGINS"); allowedOriginsEnv != "" {
+		allowedOrigins := strings.Split(allowedOriginsEnv, " ")
+		cfg.HTTP.AllowedOrigins = append(cfg.HTTP.AllowedOrigins, allowedOrigins...)
+	}
+
+	// split allowed methods and append to cfg
+	if allowedMethodsEnv := os.Getenv("SOFT_SERVE_ALLOWED_METHODS"); allowedMethodsEnv != "" {
+		allowedMethods := strings.Split(allowedMethodsEnv, " ")
+		cfg.HTTP.AllowedMethods = append(cfg.HTTP.AllowedMethods, allowedMethods...)
 	}
 
 	return cfg.Validate()

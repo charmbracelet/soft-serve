@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/charmbracelet/soft-serve/pkg/config"
 )
 
 // NewRouter returns a new HTTP router.
@@ -26,10 +27,27 @@ func NewRouter(ctx context.Context) http.Handler {
 	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
 
-	CORSHeaders := handlers.AllowedHeaders([]string{"Content-Type", "X-Requested-With", "User-Agent", "Authorization"})
-	CORSOrigins := handlers.AllowedOrigins([]string{"*"})
-	CORSMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-	h = handlers.CORS(CORSHeaders, CORSOrigins, CORSMethods)(h)
+	cfg := config.FromContext(ctx)
+
+	CORSHeaders := []string{"Accept", "Accept-Language", "Content-Language", "Origin"}
+
+	if len(cfg.HTTP.AllowedHeaders) != 0 {
+		CORSHeaders = cfg.HTTP.AllowedHeaders
+	}
+
+	CORSOrigins := []string{}
+
+	if len(cfg.HTTP.AllowedOrigins) != 0 {
+		CORSOrigins = cfg.HTTP.AllowedOrigins
+	}
+
+	CORSMethods := []string{http.MethodGet, http.MethodHead, http.MethodPost}
+
+	if len(cfg.HTTP.AllowedMethods) != 0 {
+		CORSMethods = cfg.HTTP.AllowedMethods
+	}
+
+	h = handlers.CORS(handlers.AllowedHeaders(CORSHeaders),handlers.AllowedOrigins(CORSOrigins),handlers.AllowedMethods(CORSMethods))(h)
 
 	return h
 }
