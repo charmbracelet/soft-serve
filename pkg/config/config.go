@@ -55,6 +55,15 @@ type GitConfig struct {
 	MaxConnections int `env:"MAX_CONNECTIONS" yaml:"max_connections"`
 }
 
+// CORSConfig is the CORS configuration for the server.
+type CORSConfig struct {
+	AllowedHeaders []string `env:"ALLOWED_HEADERS" yaml:"allowed_headers"`
+
+	AllowedOrigins []string `env:"ALLOWED_ORIGINS" yaml:"allowed_origins"`
+
+	AllowedMethods []string `env:"ALLOWED_METHODS" yaml:"allowed_methods"`
+}
+
 // HTTPConfig is the HTTP configuration for the server.
 type HTTPConfig struct {
 	// ListenAddr is the address on which the HTTP server will listen.
@@ -69,11 +78,8 @@ type HTTPConfig struct {
 	// PublicURL is the public URL of the HTTP server.
 	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
 
-	AllowedHeaders []string `env:"ALLOWED_HEADERS" yaml:"allowed_headers"`
-
-	AllowedOrigins []string `env:"ALLOWED_ORIGINS" yaml:"allowed_origins"`
-
-	AllowedMethods []string `env:"ALLOWED_METHODS" yaml:"allowed_methods"`
+	// HTTP is the configuration for the HTTP server.
+	CORS CORSConfig `envPrefix:"CORS_" yaml:"cors"`
 }
 
 // StatsConfig is the configuration for the stats server.
@@ -186,9 +192,9 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_KEY_PATH=%s", c.HTTP.TLSKeyPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_CERT_PATH=%s", c.HTTP.TLSCertPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_PUBLIC_URL=%s", c.HTTP.PublicURL),
-		fmt.Sprintf("SOFT_SERVE_HTTP_ALLOWED_HEADERS=%s", strings.Join(c.HTTP.AllowedHeaders, "\n")),
-		fmt.Sprintf("SOFT_SERVE_HTTP_ALLOWED_ORIGINS=%s", strings.Join(c.HTTP.AllowedOrigins, "\n")),
-		fmt.Sprintf("SOFT_SERVE_HTTP_ALLOWED_METHODS=%s", strings.Join(c.HTTP.AllowedMethods, "\n")),
+		fmt.Sprintf("SOFT_SERVE_HTTP_ALLOWED_HEADERS=%s", strings.Join(c.HTTP.CORS.AllowedHeaders, "\n")),
+		fmt.Sprintf("SOFT_SERVE_HTTP_ALLOWED_ORIGINS=%s", strings.Join(c.HTTP.CORS.AllowedOrigins, "\n")),
+		fmt.Sprintf("SOFT_SERVE_HTTP_ALLOWED_METHODS=%s", strings.Join(c.HTTP.CORS.AllowedMethods, "\n")),
 		fmt.Sprintf("SOFT_SERVE_STATS_LISTEN_ADDR=%s", c.Stats.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_LOG_FORMAT=%s", c.Log.Format),
 		fmt.Sprintf("SOFT_SERVE_LOG_TIME_FORMAT=%s", c.Log.TimeFormat),
@@ -255,21 +261,21 @@ func parseEnv(cfg *Config) error {
 	}
 
 	// split allowed headers and append to cfg
-	if allowedHeadersEnv := os.Getenv("SOFT_SERVE_ALLOWED_HEADERS"); allowedHeadersEnv != "" {
+	if allowedHeadersEnv := os.Getenv("SOFT_SERVE_HTTP_CORS_ALLOWED_HEADERS"); allowedHeadersEnv != "" {
 		allowedHeaders := strings.Split(allowedHeadersEnv, " ")
-		cfg.HTTP.AllowedHeaders = append(cfg.HTTP.AllowedHeaders, allowedHeaders...)
+		cfg.HTTP.CORS.AllowedHeaders = append(cfg.HTTP.CORS.AllowedHeaders, allowedHeaders...)
 	}
 
 	// split allowed origins and append to cfg
-	if allowedOriginsEnv := os.Getenv("SOFT_SERVE_ALLOWED_ORIGINS"); allowedOriginsEnv != "" {
+	if allowedOriginsEnv := os.Getenv("SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS"); allowedOriginsEnv != "" {
 		allowedOrigins := strings.Split(allowedOriginsEnv, " ")
-		cfg.HTTP.AllowedOrigins = append(cfg.HTTP.AllowedOrigins, allowedOrigins...)
+		cfg.HTTP.CORS.AllowedOrigins = append(cfg.HTTP.CORS.AllowedOrigins, allowedOrigins...)
 	}
 
 	// split allowed methods and append to cfg
-	if allowedMethodsEnv := os.Getenv("SOFT_SERVE_ALLOWED_METHODS"); allowedMethodsEnv != "" {
+	if allowedMethodsEnv := os.Getenv("SOFT_SERVE_HTTP_CORS_ALLOWED_METHODS"); allowedMethodsEnv != "" {
 		allowedMethods := strings.Split(allowedMethodsEnv, " ")
-		cfg.HTTP.AllowedMethods = append(cfg.HTTP.AllowedMethods, allowedMethods...)
+		cfg.HTTP.CORS.AllowedMethods = append(cfg.HTTP.CORS.AllowedMethods, allowedMethods...)
 	}
 
 	return cfg.Validate()

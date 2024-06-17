@@ -31,20 +31,20 @@ func NewRouter(ctx context.Context) http.Handler {
 
 	CORSHeaders := []string{"Accept", "Accept-Language", "Content-Language", "Origin"}
 
-	if len(cfg.HTTP.AllowedHeaders) != 0 {
-		CORSHeaders = cfg.HTTP.AllowedHeaders
+	if len(cfg.HTTP.CORS.AllowedHeaders) != 0 {
+		CORSHeaders = cfg.HTTP.CORS.AllowedHeaders
 	}
 
 	CORSOrigins := []string{}
 
-	if len(cfg.HTTP.AllowedOrigins) != 0 {
-		CORSOrigins = cfg.HTTP.AllowedOrigins
+	if len(cfg.HTTP.CORS.AllowedOrigins) != 0 {
+		CORSOrigins = cfg.HTTP.CORS.AllowedOrigins
 	}
 
 	CORSMethods := []string{http.MethodGet, http.MethodHead, http.MethodPost}
 
-	if len(cfg.HTTP.AllowedMethods) != 0 {
-		CORSMethods = cfg.HTTP.AllowedMethods
+	if len(cfg.HTTP.CORS.AllowedMethods) != 0 {
+		CORSMethods = cfg.HTTP.CORS.AllowedMethods
 	}
 
 	h = handlers.CORS(handlers.AllowedHeaders(CORSHeaders),handlers.AllowedOrigins(CORSOrigins),handlers.AllowedMethods(CORSMethods))(h)
