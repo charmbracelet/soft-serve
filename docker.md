@@ -18,6 +18,7 @@ docker run \
   --publish 23232:23232 \
   --publish 23233:23233 \
   --publish 9418:9418 \
+  -e SOFT_SERVE_INITIAL_ADMIN_KEYS="YOUR_ADMIN_KEY_HERE" \
   --restart unless-stopped \
   charmcli/soft-serve:latest
 ```
@@ -38,6 +39,8 @@ services:
       - 23232:23232
       - 23233:23233
       - 9418:9418
+    environment:
+      SOFT_SERVE_INITIAL_ADMIN_KEYS: "YOUR_ADMIN_KEY_HERE"
     restart: unless-stopped
 ```
 
