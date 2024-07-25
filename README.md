@@ -515,6 +515,8 @@ on the server it’ll be created.
 git push origin main
 ```
 
+### Nested Repositories
+
 Repositories can be nested too:
 
 ```sh
@@ -525,6 +527,16 @@ ssh -p 23231 localhost repo create charmbracelet/icecream
 git remote add charm ssh://localhost:23231/charmbracelet/icecream
 git push charm main
 ```
+
+### Mirrors
+
+You can also *import* repositories from any public remote. Use the `repo import` command.
+
+```sh
+ssh -p 23231 localhost repo import soft-serve https://github.com/charmbracelet/soft-serve
+```
+
+Use `--mirror` or `-m` to mark the repository as a *pull* mirror.
 
 ### Deleting Repositories
 
