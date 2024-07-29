@@ -2,7 +2,7 @@ module github.com/charmbracelet/soft-serve
 
 go 1.21
 
-toolchain go1.22.0
+toolchain go1.21.0
 
 require (
 	github.com/charmbracelet/bubbles v0.18.0
