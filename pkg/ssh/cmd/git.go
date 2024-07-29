@@ -202,9 +202,6 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		)
 	}
 
-	// Add ssh session & config environ
-	s := sshutils.SessionFromContext(ctx)
-	envs = append(envs, s.Environ()...)
 	envs = append(envs, cfg.Environ()...)
 
 	repoPath := filepath.Join(reposDir, repoDir)
