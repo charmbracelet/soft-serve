@@ -56,9 +56,6 @@ func TestMain(m *testing.M) {
 
 	// Run tests
 	os.Exit(m.Run())
-
-	// Add binPath to PATH
-	os.Setenv("PATH", fmt.Sprintf("%s%c%s", os.Getenv("PATH"), os.PathListSeparator, filepath.Dir(binPath)))
 }
 
 func TestScript(t *testing.T) {
@@ -82,8 +79,8 @@ func TestScript(t *testing.T) {
 		UpdateScripts:       *update,
 		RequireExplicitExec: true,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"soft":          cmdSoft(admin1.Signer()),
-			"usoft":         cmdSoft(user1.Signer()),
+			"soft":          cmdSoft("admin", admin1.Signer()),
+			"usoft":         cmdSoft("user1", user1.Signer()),
 			"git":           cmdGit(key),
 			"curl":          cmdCurl,
 			"mkfile":        cmdMkfile,
@@ -98,7 +95,7 @@ func TestScript(t *testing.T) {
 		},
 		Setup: func(e *testscript.Env) error {
 			// Add binPath to PATH
-			e.Setenv("PATH", fmt.Sprintf("%s%c%s", filepath.Dir(binPath), os.PathListSeparator, e.Getenv("PATH")))
+			e.Setenv("PATH", fmt.Sprintf("%s:%s", filepath.Dir(binPath), e.Getenv("PATH")))
 
 			data := t.TempDir()
 			sshPort := test.RandomPort()
@@ -179,13 +176,13 @@ func TestScript(t *testing.T) {
 	})
 }
 
-func cmdSoft(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []string) {
+func cmdSoft(user string, key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []string) {
 	return func(ts *testscript.TestScript, neg bool, args []string) {
 		cli, err := ssh.Dial(
 			"tcp",
 			net.JoinHostPort("localhost", ts.Getenv("SSH_PORT")),
 			&ssh.ClientConfig{
-				User:            "admin",
+				User:            user,
 				Auth:            []ssh.AuthMethod{ssh.PublicKeys(key)},
 				HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			},
@@ -474,10 +471,11 @@ func cmdCurl(ts *testscript.TestScript, neg bool, args []string) {
 
 func cmdWaitforserver(ts *testscript.TestScript, neg bool, args []string) {
 	// wait until the server is up
+	addr := net.JoinHostPort("localhost", ts.Getenv("SSH_PORT"))
 	for {
 		conn, _ := net.DialTimeout(
 			"tcp",
-			net.JoinHostPort("localhost", fmt.Sprintf("%s", ts.Getenv("SSH_PORT"))),
+			addr,
 			time.Second,
 		)
 		if conn != nil {
@@ -491,7 +489,7 @@ func cmdStopserver(ts *testscript.TestScript, neg bool, args []string) {
 	// stop the server
 	resp, err := http.DefaultClient.Head(fmt.Sprintf("%s/__stop", ts.Getenv("SOFT_SERVE_HTTP_PUBLIC_URL")))
 	check(ts, err, neg)
-	defer resp.Body.Close()
+	resp.Body.Close()
 	time.Sleep(time.Second * 2) // Allow some time for the server to stop
 }
 

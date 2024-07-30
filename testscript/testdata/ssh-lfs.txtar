@@ -2,6 +2,8 @@
 
 [windows] dos2unix err1.txt err2.txt err3.txt errauth.txt
 
+skip 'breaks with git-lfs 3.5.1'
+
 # enable ssh lfs transfer
 env SOFT_SERVE_LFS_SSH_ENABLED=true
 # start soft serve
