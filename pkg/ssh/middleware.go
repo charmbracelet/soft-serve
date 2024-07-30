@@ -45,7 +45,7 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 
 			// Check if the key is the same as the one we have in context
 			fp := perms.Extensions["pubkey-fp"]
-			if fp != gossh.FingerprintSHA256(pk) {
+			if fp == "" || fp != gossh.FingerprintSHA256(pk) {
 				wish.Fatalln(s, ErrPermissionDenied)
 				return
 			}
@@ -59,12 +59,13 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 func ContextMiddleware(cfg *config.Config, dbx *db.DB, datastore store.Store, be *backend.Backend, logger *log.Logger) func(ssh.Handler) ssh.Handler {
 	return func(sh ssh.Handler) ssh.Handler {
 		return func(s ssh.Session) {
-			s.Context().SetValue(sshutils.ContextKeySession, s)
-			s.Context().SetValue(config.ContextKey, cfg)
-			s.Context().SetValue(db.ContextKey, dbx)
-			s.Context().SetValue(store.ContextKey, datastore)
-			s.Context().SetValue(backend.ContextKey, be)
-			s.Context().SetValue(log.ContextKey, logger.WithPrefix("ssh"))
+			ctx := s.Context()
+			ctx.SetValue(sshutils.ContextKeySession, s)
+			ctx.SetValue(config.ContextKey, cfg)
+			ctx.SetValue(db.ContextKey, dbx)
+			ctx.SetValue(store.ContextKey, datastore)
+			ctx.SetValue(backend.ContextKey, be)
+			ctx.SetValue(log.ContextKey, logger.WithPrefix("ssh"))
 			sh(s)
 		}
 	}
