@@ -47,7 +47,6 @@ git -C repo2 push origin HEAD --tags
 curl -XGET http://localhost:$HTTP_PORT/repo2.git/info/refs
 stdout '[0-9a-z]{40}	refs/heads/master\n[0-9a-z]{40}	refs/tags/v0.1.0'
 
-
 # http errors
 curl -XGET http://localhost:$HTTP_PORT/repo2111foobar.git/foo/bar
 stdout '404.*'
