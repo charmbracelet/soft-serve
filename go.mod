@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.26.6
 	github.com/charmbracelet/glamour v0.7.0
 	github.com/charmbracelet/lipgloss v0.12.1
-	github.com/charmbracelet/wish v1.4.1-0.20240730214639-3cd0fe8dfd8d
+	github.com/charmbracelet/wish v1.4.1
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/matryer/is v1.4.1
