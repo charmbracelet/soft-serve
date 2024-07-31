@@ -177,7 +177,7 @@ func (t *lfsTransfer) Upload(oid string, size int64, r io.Reader, _ transfer.Arg
 }
 
 // Verify implements transfer.Backend.
-func (t *lfsTransfer) Verify(oid string, size int64, args transfer.Args) (transfer.Status, error) {
+func (t *lfsTransfer) Verify(oid string, size int64, _ transfer.Args) (transfer.Status, error) {
 	obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), oid)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {

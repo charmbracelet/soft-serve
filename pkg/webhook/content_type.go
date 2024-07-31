@@ -45,8 +45,10 @@ func ParseContentType(s string) (ContentType, error) {
 	return -1, ErrInvalidContentType
 }
 
-var _ encoding.TextMarshaler = ContentType(0)
-var _ encoding.TextUnmarshaler = (*ContentType)(nil)
+var (
+	_ encoding.TextMarshaler   = ContentType(0)
+	_ encoding.TextUnmarshaler = (*ContentType)(nil)
+)
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (c *ContentType) UnmarshalText(text []byte) error {

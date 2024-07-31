@@ -47,7 +47,7 @@ func New(c common.Common, content, extension string) *Code {
 		TabWidth:        defaultTabWidth,
 		SideNotePercent: defaultSideNotePercent,
 		Viewport:        vp.New(c),
-		NoContentStyle:  c.Styles.NoContent.Copy().SetString("No Content."),
+		NoContentStyle:  c.Styles.NoContent.SetString("No Content."),
 	}
 	st := common.StyleConfig()
 	r.styleConfig = st

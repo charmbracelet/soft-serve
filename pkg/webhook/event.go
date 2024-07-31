@@ -76,8 +76,10 @@ func ParseEvent(s string) (Event, error) {
 	return e, nil
 }
 
-var _ encoding.TextMarshaler = Event(0)
-var _ encoding.TextUnmarshaler = (*Event)(nil)
+var (
+	_ encoding.TextMarshaler   = Event(0)
+	_ encoding.TextUnmarshaler = (*Event)(nil)
+)
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (e *Event) UnmarshalText(text []byte) error {

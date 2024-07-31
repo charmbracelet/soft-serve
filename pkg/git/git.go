@@ -14,10 +14,8 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 )
 
-var (
-	// ErrNoBranches is returned when a repo has no branches.
-	ErrNoBranches = errors.New("no branches found")
-)
+// ErrNoBranches is returned when a repo has no branches.
+var ErrNoBranches = errors.New("no branches found")
 
 // WritePktline encodes and writes a pktline to the given writer.
 func WritePktline(w io.Writer, v ...interface{}) error {

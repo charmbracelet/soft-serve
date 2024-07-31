@@ -191,7 +191,7 @@ func DefaultStyles(r *lipgloss.Renderer) *Styles {
 	s.TopLevelNormalTab = r.NewStyle().
 		MarginRight(2)
 
-	s.TopLevelActiveTab = s.TopLevelNormalTab.Copy().
+	s.TopLevelActiveTab = s.TopLevelNormalTab.
 		Foreground(lipgloss.Color("36"))
 
 	s.TopLevelActiveTabDot = r.NewStyle().
@@ -213,20 +213,20 @@ func DefaultStyles(r *lipgloss.Renderer) *Styles {
 	s.RepoSelector.Normal.Updated = r.NewStyle().
 		Foreground(lipgloss.Color("243"))
 
-	s.RepoSelector.Active.Base = s.RepoSelector.Normal.Base.Copy().
+	s.RepoSelector.Active.Base = s.RepoSelector.Normal.Base.
 		BorderStyle(lipgloss.Border{Left: "┃"}).
 		BorderForeground(lipgloss.Color("176"))
 
-	s.RepoSelector.Active.Title = s.RepoSelector.Normal.Title.Copy().
+	s.RepoSelector.Active.Title = s.RepoSelector.Normal.Title.
 		Foreground(lipgloss.Color("212"))
 
-	s.RepoSelector.Active.Desc = s.RepoSelector.Normal.Desc.Copy().
+	s.RepoSelector.Active.Desc = s.RepoSelector.Normal.Desc.
 		Foreground(lipgloss.Color("246"))
 
-	s.RepoSelector.Active.Updated = s.RepoSelector.Normal.Updated.Copy().
+	s.RepoSelector.Active.Updated = s.RepoSelector.Normal.Updated.
 		Foreground(lipgloss.Color("212"))
 
-	s.RepoSelector.Active.Command = s.RepoSelector.Normal.Command.Copy().
+	s.RepoSelector.Active.Command = s.RepoSelector.Normal.Command.
 		Foreground(lipgloss.Color("204"))
 
 	s.MenuItem = r.NewStyle().
@@ -306,13 +306,13 @@ func DefaultStyles(r *lipgloss.Renderer) *Styles {
 		}, false, false, false, true).
 		PaddingLeft(1)
 
-	s.LogItem.Active.Base = s.LogItem.Normal.Base.Copy().
+	s.LogItem.Active.Base = s.LogItem.Normal.Base.
 		Border(lipgloss.Border{
 			Left: "┃",
 		}, false, false, false, true).
 		BorderForeground(selectorColor)
 
-	s.LogItem.Active.Hash = s.LogItem.Normal.Hash.Copy().
+	s.LogItem.Active.Hash = s.LogItem.Normal.Hash.
 		Foreground(hashColor)
 
 	s.LogItem.Active.Hash = r.NewStyle().
@@ -332,7 +332,7 @@ func DefaultStyles(r *lipgloss.Renderer) *Styles {
 	s.LogItem.Active.Desc = r.NewStyle().
 		Foreground(lipgloss.Color("95"))
 
-	s.LogItem.Active.Keyword = s.LogItem.Active.Desc.Copy().
+	s.LogItem.Active.Keyword = s.LogItem.Active.Desc.
 		Foreground(highlightColorDim)
 
 	s.LogItem.Normal.Hash = r.NewStyle().
@@ -403,18 +403,18 @@ func DefaultStyles(r *lipgloss.Renderer) *Styles {
 		Foreground(highlightColor).
 		Bold(true)
 
-	s.Ref.Paginator = s.Log.Paginator.Copy()
+	s.Ref.Paginator = s.Log.Paginator
 
 	s.Ref.Selector = r.NewStyle()
 
-	s.Tree.Selector = s.Tree.Normal.FileName.Copy().
+	s.Tree.Selector = s.Tree.Normal.FileName.
 		Width(1).
 		Foreground(selectorColor)
 
 	s.Tree.Normal.FileName = r.NewStyle().
 		MarginLeft(1)
 
-	s.Tree.Active.FileName = s.Tree.Normal.FileName.Copy().
+	s.Tree.Active.FileName = s.Tree.Normal.FileName.
 		Bold(true).
 		Foreground(highlightColor)
 
@@ -424,22 +424,22 @@ func DefaultStyles(r *lipgloss.Renderer) *Styles {
 	s.Tree.Active.FileDir = r.NewStyle().
 		Foreground(highlightColor)
 
-	s.Tree.Normal.FileMode = s.Tree.Active.FileName.Copy().
+	s.Tree.Normal.FileMode = s.Tree.Active.FileName.
 		Width(10).
 		Foreground(lipgloss.Color("243"))
 
-	s.Tree.Active.FileMode = s.Tree.Normal.FileMode.Copy().
+	s.Tree.Active.FileMode = s.Tree.Normal.FileMode.
 		Foreground(highlightColorDim)
 
-	s.Tree.Normal.FileSize = s.Tree.Normal.FileName.Copy().
+	s.Tree.Normal.FileSize = s.Tree.Normal.FileName.
 		Foreground(lipgloss.Color("243"))
 
-	s.Tree.Active.FileSize = s.Tree.Normal.FileName.Copy().
+	s.Tree.Active.FileSize = s.Tree.Normal.FileName.
 		Foreground(highlightColorDim)
 
 	s.Tree.FileContent = r.NewStyle()
 
-	s.Tree.Paginator = s.Log.Paginator.Copy()
+	s.Tree.Paginator = s.Log.Paginator
 
 	s.Tree.Blame.Hash = r.NewStyle().
 		Foreground(hashColor).
@@ -511,7 +511,7 @@ func DefaultStyles(r *lipgloss.Renderer) *Styles {
 
 	s.Stash.Normal.Message = r.NewStyle().MarginLeft(1)
 
-	s.Stash.Active.Message = s.Stash.Normal.Message.Copy().Foreground(selectorColor)
+	s.Stash.Active.Message = s.Stash.Normal.Message.Foreground(selectorColor)
 
 	s.Stash.Title = r.NewStyle().
 		Foreground(hashColor).

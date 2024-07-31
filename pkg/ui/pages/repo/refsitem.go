@@ -141,7 +141,7 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 
 		t := i.Tag
 		if t != nil {
-			msgSt := st.ItemDesc.Copy().Faint(false)
+			msgSt := st.ItemDesc.Faint(false)
 			msg := t.Message()
 			nl := strings.Index(msg, "\n")
 			if nl > 0 {
@@ -186,7 +186,7 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		lipgloss.Width(sha) -
 		1 // 1 is for the left padding
 	if hashMargin >= 0 {
-		hash = strings.Repeat(" ", hashMargin) + st.ItemHash.Copy().
+		hash = strings.Repeat(" ", hashMargin) + st.ItemHash.
 			Align(lipgloss.Right).
 			PaddingLeft(1).
 			Render(sha)

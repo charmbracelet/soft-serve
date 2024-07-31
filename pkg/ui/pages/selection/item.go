@@ -178,7 +178,7 @@ func (d *ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	if m.Width()-styles.Base.GetHorizontalFrameSize()-lipgloss.Width(updatedStr)-lipgloss.Width(title) <= 0 {
 		updatedStr = ""
 	}
-	updatedStyle := styles.Updated.Copy().
+	updatedStyle := styles.Updated.
 		Align(lipgloss.Right).
 		Width(m.Width() - styles.Base.GetHorizontalFrameSize() - lipgloss.Width(title))
 	updated := updatedStyle.Render(updatedStr)
@@ -189,8 +189,8 @@ func (d *ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	}
 
 	if isFiltered {
-		unmatched := styles.Title.Copy().Inline(true)
-		matched := unmatched.Copy().Underline(true)
+		unmatched := styles.Title.Inline(true)
+		matched := unmatched.Underline(true)
 		title = lipgloss.StyleRunes(title, matchedRunes, matched, unmatched)
 	}
 	title = styles.Title.Render(title)
