@@ -95,7 +95,7 @@ func TestScript(t *testing.T) {
 		},
 		Setup: func(e *testscript.Env) error {
 			// Add binPath to PATH
-			e.Setenv("PATH", fmt.Sprintf("%s:%s", filepath.Dir(binPath), e.Getenv("PATH")))
+			e.Setenv("PATH", fmt.Sprintf("%s%c%s", filepath.Dir(binPath), os.PathListSeparator, e.Getenv("PATH")))
 
 			data := t.TempDir()
 			sshPort := test.RandomPort()
