@@ -6,10 +6,8 @@ import (
 	"github.com/muesli/termenv"
 )
 
-var (
-	// DefaultColorProfile is the default color profile used by the SSH server.
-	DefaultColorProfile = termenv.ANSI256
-)
+// DefaultColorProfile is the default color profile used by the SSH server.
+var DefaultColorProfile = termenv.ANSI256
 
 func strptr(s string) *string {
 	return &s

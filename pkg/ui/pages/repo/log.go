@@ -346,7 +346,7 @@ func (l *Log) View() string {
 				msg += "s"
 			}
 			msg += "…"
-			return l.common.Styles.SpinnerContainer.Copy().
+			return l.common.Styles.SpinnerContainer.
 				Height(l.common.Height).
 				Render(msg)
 		}

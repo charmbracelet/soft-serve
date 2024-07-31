@@ -52,8 +52,10 @@ func migrateDown(ctx context.Context, tx *db.Tx, version int, name string) error
 	return execMigration(ctx, tx, version, name, true)
 }
 
-var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
-var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+var (
+	matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
+	matchAllCap   = regexp.MustCompile("([a-z0-9])([A-Z])")
+)
 
 func toSnakeCase(str string) string {
 	str = strings.ReplaceAll(str, "-", "_")

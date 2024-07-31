@@ -37,11 +37,8 @@ var (
 	}, []string{"repo"})
 )
 
-var (
-
-	// ErrServerClosed indicates that the server has been closed.
-	ErrServerClosed = fmt.Errorf("git: %w", net.ErrClosed)
-)
+// ErrServerClosed indicates that the server has been closed.
+var ErrServerClosed = fmt.Errorf("git: %w", net.ErrClosed)
 
 // GitDaemon represents a Git daemon.
 type GitDaemon struct {

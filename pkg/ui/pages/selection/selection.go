@@ -52,9 +52,9 @@ func New(c common.Common) *Selection {
 	}
 	t := tabs.New(c, ts)
 	t.TabSeparator = c.Renderer.NewStyle()
-	t.TabInactive = c.Styles.TopLevelNormalTab.Copy()
-	t.TabActive = c.Styles.TopLevelActiveTab.Copy()
-	t.TabDot = c.Styles.TopLevelActiveTabDot.Copy()
+	t.TabInactive = c.Styles.TopLevelNormalTab
+	t.TabActive = c.Styles.TopLevelActiveTab
+	t.TabDot = c.Styles.TopLevelActiveTabDot
 	t.UseDot = true
 	sel := &Selection{
 		common:     c,
@@ -63,7 +63,7 @@ func New(c common.Common) *Selection {
 	}
 	readme := code.New(c, "", "")
 	readme.UseGlamour = true
-	readme.NoContentStyle = c.Styles.NoContent.Copy().
+	readme.NoContentStyle = c.Styles.NoContent.
 		SetString(defaultNoContent)
 	selector := selector.New(c,
 		[]selector.IdentifiableItem{},

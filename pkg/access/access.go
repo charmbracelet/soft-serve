@@ -54,8 +54,10 @@ func ParseAccessLevel(s string) AccessLevel {
 	}
 }
 
-var _ encoding.TextMarshaler = AccessLevel(0)
-var _ encoding.TextUnmarshaler = (*AccessLevel)(nil)
+var (
+	_ encoding.TextMarshaler   = AccessLevel(0)
+	_ encoding.TextUnmarshaler = (*AccessLevel)(nil)
+)
 
 // ErrInvalidAccessLevel is returned when an invalid access level is provided.
 var ErrInvalidAccessLevel = errors.New("invalid access level")

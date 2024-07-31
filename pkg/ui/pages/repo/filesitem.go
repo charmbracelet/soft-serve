@@ -118,14 +118,14 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		nameStyle = s.Active.FileName
 		sizeStyle = s.Active.FileSize
 		modeStyle = s.Active.FileMode
-		fmt.Fprint(w, s.Selector.Render(">"))
+		fmt.Fprint(w, s.Selector.Render(">")) //nolint:errcheck
 	} else {
 		nameStyle = s.Normal.FileName
 		sizeStyle = s.Normal.FileSize
 		modeStyle = s.Normal.FileMode
-		fmt.Fprint(w, s.Selector.Render(" "))
+		fmt.Fprint(w, s.Selector.Render(" ")) //nolint:errcheck
 	}
-	sizeStyle = sizeStyle.Copy().
+	sizeStyle = sizeStyle.
 		Width(8).
 		Align(lipgloss.Right).
 		MarginLeft(1)
@@ -142,6 +142,7 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	truncate := d.common.Renderer.NewStyle().MaxWidth(m.Width() -
 		s.Selector.GetHorizontalFrameSize() -
 		s.Selector.GetWidth())
+	//nolint:errcheck
 	fmt.Fprint(w,
 		d.common.Zone.Mark(
 			i.ID(),

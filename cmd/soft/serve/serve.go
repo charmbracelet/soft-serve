@@ -109,7 +109,7 @@ var (
 
 			<-done
 
-			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 			if err := s.Shutdown(ctx); err != nil {
 				return err

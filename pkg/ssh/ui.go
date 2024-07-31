@@ -65,7 +65,7 @@ func NewUI(c common.Common, initialRepo string) *UI {
 }
 
 func (ui *UI) getMargins() (wm, hm int) {
-	style := ui.common.Styles.App.Copy()
+	style := ui.common.Styles.App
 	switch ui.activePage {
 	case selectionPage:
 		hm += ui.common.Styles.ServerName.GetHeight() +
@@ -271,7 +271,7 @@ func (ui *UI) View() string {
 	case errorState:
 		err := ui.common.Styles.ErrorTitle.Render("Bummer")
 		err += ui.common.Styles.ErrorBody.Render(ui.error.Error())
-		view = ui.common.Styles.Error.Copy().
+		view = ui.common.Styles.Error.
 			Width(ui.common.Width -
 				wm -
 				ui.common.Styles.ErrorBody.GetHorizontalFrameSize()).
