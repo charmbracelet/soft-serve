@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -203,6 +204,16 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	envs = append(envs, cfg.Environ()...)
+
+	// Add GIT_PROTOCOL from session.
+	if sess := sshutils.SessionFromContext(ctx); sess != nil {
+		for _, env := range sess.Environ() {
+			if strings.HasPrefix(env, "GIT_PROTOCOL=") {
+				envs = append(envs, env)
+				break
+			}
+		}
+	}
 
 	repoPath := filepath.Join(reposDir, repoDir)
 	service := git.Service(cmd.Name())
