@@ -44,6 +44,8 @@ github.com/charmbracelet/ssh v0.0.0-20240725163421-eb71b85b27aa h1:6rePgmsJguB6Z
 github.com/charmbracelet/ssh v0.0.0-20240725163421-eb71b85b27aa/go.mod h1:LmMZag2g7ILMmWtDmU7dIlctUopwmb73KpPzj0ip1uk=
 github.com/charmbracelet/wish v1.4.1-0.20240730214639-3cd0fe8dfd8d h1:lWffFLhbEbHWh6K6jYGYrwaOvNYAcZUlIPTUwkHXY+I=
 github.com/charmbracelet/wish v1.4.1-0.20240730214639-3cd0fe8dfd8d/go.mod h1:ekqHw/OIPSdCDZHC46KCo19ppjbBBw/kKQENoQl94bk=
+github.com/charmbracelet/wish v1.4.1 h1:SbSAnD3EInzFn5a1NYzLWaJpRRrIfG9ck5peBhPriio=
+github.com/charmbracelet/wish v1.4.1/go.mod h1:ekqHw/OIPSdCDZHC46KCo19ppjbBBw/kKQENoQl94bk=
 github.com/charmbracelet/x/ansi v0.1.4 h1:IEU3D6+dWwPSgZ6HBH+v6oUuZ/nVawMiWj5831KfiLM=
 github.com/charmbracelet/x/ansi v0.1.4/go.mod h1:dk73KoMTT5AX5BsX0KrqhsTqAnhZZoCBjs7dGWp4Ktw=
 github.com/charmbracelet/x/conpty v0.1.0 h1:4zc8KaIcbiL4mghEON8D72agYtSeIgq8FSThSPQIb+U=
