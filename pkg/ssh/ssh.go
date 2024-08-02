@@ -171,6 +171,7 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 		return false
 	}
 
+	allowed = true
 	defer func(allowed *bool) {
 		publicKeyCounter.WithLabelValues(strconv.FormatBool(*allowed)).Inc()
 	}(&allowed)
@@ -178,17 +179,16 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 	user, _ := s.be.UserByPublicKey(ctx, pk)
 	if user != nil {
 		ctx.SetValue(proto.ContextKeyUser, user)
-		allowed = true
-
-		// XXX: store the first "approved" public-key fingerprint in the
-		// permissions block to use for authentication later.
-		initializePermissions(ctx)
-		perms := ctx.Permissions()
-
-		// Set the public key fingerprint to be used for authentication.
-		perms.Extensions["pubkey-fp"] = gossh.FingerprintSHA256(pk)
-		ctx.SetValue(ssh.ContextKeyPermissions, perms)
 	}
+
+	// XXX: store the first "approved" public-key fingerprint in the
+	// permissions block to use for authentication later.
+	initializePermissions(ctx)
+	perms := ctx.Permissions()
+
+	// Set the public key fingerprint to be used for authentication.
+	perms.Extensions["pubkey-fp"] = gossh.FingerprintSHA256(pk)
+	ctx.SetValue(ssh.ContextKeyPermissions, perms)
 
 	return
 }

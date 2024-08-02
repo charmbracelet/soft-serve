@@ -84,6 +84,10 @@ func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user prot
 		}
 
 		// Otherwise, the user has read-only access.
+		if user == nil {
+			return anon
+		}
+
 		return access.ReadOnlyAccess
 	}
 

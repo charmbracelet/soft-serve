@@ -70,9 +70,9 @@ func TestScript(t *testing.T) {
 		return path, pair
 	}
 
-	key, admin1 := mkkey("admin1")
+	admin1Key, admin1 := mkkey("admin1")
 	_, admin2 := mkkey("admin2")
-	_, user1 := mkkey("user1")
+	user1Key, user1 := mkkey("user1")
 
 	testscript.Run(t, testscript.Params{
 		Dir:                 "./testdata/",
@@ -81,7 +81,8 @@ func TestScript(t *testing.T) {
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft":          cmdSoft("admin", admin1.Signer()),
 			"usoft":         cmdSoft("user1", user1.Signer()),
-			"git":           cmdGit(key),
+			"git":           cmdGit(admin1Key),
+			"ugit":          cmdGit(user1Key),
 			"curl":          cmdCurl,
 			"mkfile":        cmdMkfile,
 			"envfile":       cmdEnvfile,

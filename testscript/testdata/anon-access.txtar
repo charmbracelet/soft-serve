@@ -1,0 +1,33 @@
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for server to start
+waitforserver
+
+# set settings
+soft settings allow-keyless true
+soft settings anon-access no-access
+
+# create a repo
+soft repo create repo1
+git clone ssh://localhost:$SSH_PORT/repo1 repo1
+mkfile ./repo1/README.md '# Hello\n\nwelcome'
+git -C repo1 add -A
+git -C repo1 commit -m 'first'
+git -C repo1 push origin HEAD
+
+# access repo from anon
+! ugit clone ssh://localhost:$SSH_PORT/repo1 urepo1
+stderr 'Error: you are not authorized to do this'
+
+# list repo as anon
+usoft repo list
+stdout ''
+
+# create repo as anon
+! usoft repo create urepo2
+stderr 'Error: unauthorized'
+
+# stop the server
+[windows] stopserver
