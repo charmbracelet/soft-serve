@@ -352,7 +352,7 @@ func (r *Repo) headerView() string {
 		urlStyle.Render(url),
 	)
 
-	header = lipgloss.JoinHorizontal(lipgloss.Left, header, url)
+	header = lipgloss.JoinHorizontal(lipgloss.Top, header, url)
 
 	style := r.common.Styles.Repo.Header.Width(r.common.Width)
 	return style.Render(
