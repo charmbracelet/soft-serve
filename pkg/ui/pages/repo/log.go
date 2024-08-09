@@ -276,7 +276,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case LogDiffMsg:
 		l.currentDiff = msg
 		l.vp.SetContent(
-			lipgloss.JoinVertical(lipgloss.Top,
+			lipgloss.JoinVertical(lipgloss.Left,
 				l.renderCommit(l.selectedCommit),
 				renderSummary(msg, l.common.Styles, l.common.Width),
 				renderDiff(msg, l.common.Width),
@@ -290,7 +290,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		l.SetSize(msg.Width, msg.Height)
 		if l.selectedCommit != nil && l.currentDiff != nil {
 			l.vp.SetContent(
-				lipgloss.JoinVertical(lipgloss.Top,
+				lipgloss.JoinVertical(lipgloss.Left,
 					l.renderCommit(l.selectedCommit),
 					renderSummary(l.currentDiff, l.common.Styles, l.common.Width),
 					renderDiff(l.currentDiff, l.common.Width),

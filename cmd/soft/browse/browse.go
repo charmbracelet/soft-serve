@@ -230,7 +230,7 @@ func (m *model) View() string {
 	}
 
 	if m.showFooter {
-		view = lipgloss.JoinVertical(lipgloss.Top, view, m.footer.View())
+		view = lipgloss.JoinVertical(lipgloss.Left, view, m.footer.View())
 	}
 
 	return m.common.Zone.Scan(style.Render(view))

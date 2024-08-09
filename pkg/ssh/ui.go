@@ -285,10 +285,10 @@ func (ui *UI) View() string {
 		view = "Unknown state :/ this is a bug!"
 	}
 	if ui.activePage == selectionPage {
-		view = lipgloss.JoinVertical(lipgloss.Top, ui.header.View(), view)
+		view = lipgloss.JoinVertical(lipgloss.Left, ui.header.View(), view)
 	}
 	if ui.showFooter {
-		view = lipgloss.JoinVertical(lipgloss.Top, view, ui.footer.View())
+		view = lipgloss.JoinVertical(lipgloss.Left, view, ui.footer.View())
 	}
 	return ui.common.Zone.Scan(
 		ui.common.Styles.App.Render(view),

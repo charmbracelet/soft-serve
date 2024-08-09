@@ -114,7 +114,7 @@ func (r *Code) Init() tea.Cmd {
 		for i, l := range lines {
 			lines[i] = common.TruncateString(l, sideNoteWidth)
 		}
-		content = lipgloss.JoinHorizontal(lipgloss.Left, strings.Join(lines, "\n"), content)
+		content = lipgloss.JoinHorizontal(lipgloss.Top, strings.Join(lines, "\n"), content)
 	}
 
 	// Fix styles after hard wrapping
