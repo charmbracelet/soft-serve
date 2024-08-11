@@ -108,6 +108,11 @@ Make sure `git` is installed, then run `soft serve`. That’s it.
 This will create a `data` directory that will store all the repos, ssh keys,
 and database.
 
+By default, program configuration is stored within the `data` directory. But,
+this can be overridden by setting a custom path to a config file with `SOFT_SERVE_CONFIG_LOCATION`
+that is pre-created. If a config file pointed to by `SOFT_SERVE_CONFIG_LOCATION`, 
+the default location within the `data` dir is used for generating a default config.
+
 To change the default data path use `SOFT_SERVE_DATA_PATH` environment variable.
 
 ```sh
