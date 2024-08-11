@@ -291,6 +291,12 @@ func DefaultDataPath() string {
 
 // ConfigPath returns the path to the config file.
 func (c *Config) ConfigPath() string { // nolint:revive
+	// If we have a custom config location set, then use that.
+	if path := os.Getenv("SOFT_SERVE_CONFIG_LOCATION"); exist(path) {
+		return path
+	}
+
+	// Otherwise, look in the data path.
 	return filepath.Join(c.DataPath, "config.yaml")
 }
 
@@ -301,7 +307,7 @@ func exist(path string) bool {
 
 // Exist returns true if the config file exists.
 func (c *Config) Exist() bool {
-	return exist(filepath.Join(c.DataPath, "config.yaml"))
+	return exist(c.ConfigPath())
 }
 
 // DefaultConfig returns the default Config. All the path values are relative
