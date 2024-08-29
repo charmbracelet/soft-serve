@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.0.0
 	github.com/charmbracelet/glamour v0.7.0
 	github.com/charmbracelet/lipgloss v0.13.0
-	github.com/charmbracelet/wish v1.4.1
+	github.com/charmbracelet/wish v1.4.2
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/matryer/is v1.4.1
@@ -25,7 +25,7 @@ require (
 	github.com/caarlos0/env/v11 v11.2.2
 	github.com/caarlos0/tablewriter v0.1.0
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92
-	github.com/charmbracelet/keygen v0.5.0
+	github.com/charmbracelet/keygen v0.5.1
 	github.com/charmbracelet/log v0.4.0
 	github.com/charmbracelet/ssh v0.0.0-20240725163421-eb71b85b27aa
 	github.com/go-jose/go-jose/v3 v3.0.3
@@ -62,7 +62,6 @@ require (
 	github.com/charmbracelet/x/ansi v0.1.4 // indirect
 	github.com/charmbracelet/x/conpty v0.1.0 // indirect
 	github.com/charmbracelet/x/errors v0.0.0-20240725160154-f9f6568126ec // indirect
-	github.com/charmbracelet/x/exp/term v0.0.0-20240503143715-36ea203beff4 // indirect
 	github.com/charmbracelet/x/input v0.1.3 // indirect
 	github.com/charmbracelet/x/term v0.1.1 // indirect
 	github.com/charmbracelet/x/termios v0.1.0 // indirect
