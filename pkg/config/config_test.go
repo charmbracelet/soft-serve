@@ -56,3 +56,26 @@ func TestValidateInitAdminKeys(t *testing.T) {
 		"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINMwLvyV3ouVrTysUYGoJdl5Vgn5BACKov+n9PlzfPwH",
 	})
 }
+
+func TestCustomConfigLocation(t *testing.T) {
+	is := is.New(t)
+	td := t.TempDir()
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_CONFIG_LOCATION"))
+	})
+
+	// Test that we get data from the custom file location, and not from the data dir.
+	is.NoErr(os.Setenv("SOFT_SERVE_CONFIG_LOCATION", "testdata/config.yaml"))
+	is.NoErr(os.Setenv("SOFT_SERVE_DATA_PATH", td))
+	cfg := DefaultConfig()
+	is.NoErr(cfg.Parse())
+	is.Equal(cfg.Name, "Test server name")
+	// If we unset the custom location, then use the default location.
+	is.NoErr(os.Unsetenv("SOFT_SERVE_CONFIG_LOCATION"))
+	cfg = DefaultConfig()
+	is.Equal(cfg.Name, "Soft Serve")
+	// Test that if the custom config location doesn't exist, default to datapath config.
+	is.NoErr(os.Setenv("SOFT_SERVE_CONFIG_LOCATION", "testdata/config_nonexistent.yaml"))
+	cfg = DefaultConfig()
+	is.Equal(cfg.Name, "Soft Serve")
+}
