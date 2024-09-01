@@ -148,6 +148,7 @@ func branchDeleteCommand() *cobra.Command {
 		Use:               "delete REPOSITORY BRANCH",
 		Aliases:           []string{"remove", "rm", "del"},
 		Short:             "Delete a branch",
+		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
