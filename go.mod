@@ -25,7 +25,7 @@ require (
 	github.com/caarlos0/env/v11 v11.2.2
 	github.com/caarlos0/tablewriter v0.1.0
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92
-	github.com/charmbracelet/keygen v0.5.0
+	github.com/charmbracelet/keygen v0.5.1
 	github.com/charmbracelet/log v0.4.0
 	github.com/charmbracelet/ssh v0.0.0-20240725163421-eb71b85b27aa
 	github.com/go-jose/go-jose/v3 v3.0.3
