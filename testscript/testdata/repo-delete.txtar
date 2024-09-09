@@ -10,6 +10,11 @@ soft repo create repo-to-delete
 soft repo delete repo-to-delete
 ! soft repo delete nope
 stderr '.*not found.*'
+
+# missing argument should fail
+! soft repo branch delete repo1
+stderr 'Error.*accepts 2 arg.*'
+
 soft repo list
 stdout 'repo1'
 
