@@ -313,7 +313,7 @@ func (r *Repo) View() string {
 		"repo-main",
 		mainStyle.Render(main),
 	)
-	view := lipgloss.JoinVertical(lipgloss.Top,
+	view := lipgloss.JoinVertical(lipgloss.Left,
 		r.headerView(),
 		r.tabs.View(),
 		main,
@@ -334,7 +334,7 @@ func (r *Repo) headerView() string {
 	header = r.common.Styles.Repo.HeaderName.Render(header)
 	desc := strings.TrimSpace(r.selectedRepo.Description())
 	if desc != "" {
-		header = lipgloss.JoinVertical(lipgloss.Top,
+		header = lipgloss.JoinVertical(lipgloss.Left,
 			header,
 			r.common.Styles.Repo.HeaderDesc.Render(desc),
 		)
@@ -352,7 +352,7 @@ func (r *Repo) headerView() string {
 		urlStyle.Render(url),
 	)
 
-	header = lipgloss.JoinHorizontal(lipgloss.Left, header, url)
+	header = lipgloss.JoinHorizontal(lipgloss.Top, header, url)
 
 	style := r.common.Styles.Repo.Header.Width(r.common.Width)
 	return style.Render(

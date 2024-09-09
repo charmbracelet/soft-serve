@@ -197,7 +197,7 @@ func (s *Stash) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.currentPatch = msg
 		if msg.Diff != nil {
 			title := s.common.Styles.Stash.Title.Render(s.list.SelectedItem().(StashItem).Title())
-			content := lipgloss.JoinVertical(lipgloss.Top,
+			content := lipgloss.JoinVertical(lipgloss.Left,
 				title,
 				"",
 				renderSummary(msg.Diff, s.common.Styles, s.common.Width),
