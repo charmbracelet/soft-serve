@@ -1,8 +1,7 @@
 module github.com/charmbracelet/soft-serve
 
 go 1.21
-
-toolchain go1.22.0
+toolchain go1.22.5
 
 require (
 	github.com/charmbracelet/bubbles v0.20.0
@@ -43,7 +42,7 @@ require (
 	github.com/muesli/roff v0.1.0
 	github.com/prometheus/client_golang v1.20.4
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rogpeppe/go-internal v1.12.0
+	github.com/rogpeppe/go-internal v1.13.1
 	github.com/spf13/cobra v1.8.1
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/crypto v0.27.0
