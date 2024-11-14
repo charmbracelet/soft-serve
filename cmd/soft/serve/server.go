@@ -93,34 +93,51 @@ func NewServer(ctx context.Context) (*Server, error) {
 // Start starts the SSH server.
 func (s *Server) Start() error {
 	errg, _ := errgroup.WithContext(s.ctx)
-	errg.Go(func() error {
-		s.logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
-		if err := s.GitDaemon.Start(); !errors.Is(err, daemon.ErrServerClosed) {
-			return err
-		}
-		return nil
-	})
-	errg.Go(func() error {
-		s.logger.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
-		if err := s.HTTPServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			return err
-		}
-		return nil
-	})
-	errg.Go(func() error {
-		s.logger.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
-		if err := s.SSHServer.ListenAndServe(); !errors.Is(err, ssh.ErrServerClosed) {
-			return err
-		}
-		return nil
-	})
-	errg.Go(func() error {
-		s.logger.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
-		if err := s.StatsServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			return err
-		}
-		return nil
-	})
+
+	// optionally start the SSH server
+	if s.Config.SSH.Enabled {
+		errg.Go(func() error {
+			s.logger.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
+			if err := s.SSHServer.ListenAndServe(); !errors.Is(err, ssh.ErrServerClosed) {
+				return err
+			}
+			return nil
+		})
+	}
+
+	// optionally start the git daemon
+	if s.Config.Git.Enabled {
+		errg.Go(func() error {
+			s.logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
+			if err := s.GitDaemon.Start(); !errors.Is(err, daemon.ErrServerClosed) {
+				return err
+			}
+			return nil
+		})
+	}
+
+	// optionally start the HTTP server
+	if s.Config.HTTP.Enabled {
+		errg.Go(func() error {
+			s.logger.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
+			if err := s.HTTPServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+				return err
+			}
+			return nil
+		})
+	}
+
+	// optionally start the Stats server
+	if s.Config.Stats.Enabled {
+		errg.Go(func() error {
+			s.logger.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
+			if err := s.StatsServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+				return err
+			}
+			return nil
+		})
+	}
+
 	errg.Go(func() error {
 		s.Cron.Start()
 		return nil

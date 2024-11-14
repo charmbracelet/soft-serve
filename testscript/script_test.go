@@ -88,20 +88,21 @@ func TestScript(t *testing.T) {
 		UpdateScripts:       *update,
 		RequireExplicitExec: true,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"soft":                cmdSoft("admin", admin1.Signer()),
-			"usoft":               cmdSoft("user1", user1.Signer()),
-			"git":                 cmdGit(admin1Key),
-			"ugit":                cmdGit(user1Key),
-			"curl":                cmdCurl,
-			"mkfile":              cmdMkfile,
-			"envfile":             cmdEnvfile,
-			"readfile":            cmdReadfile,
-			"dos2unix":            cmdDos2Unix,
-			"new-webhook":         cmdNewWebhook,
-			"ensureserverrunning": cmdEnsureServerRunning,
-			"stopserver":          cmdStopserver,
-			"ui":                  cmdUI(admin1.Signer()),
-			"uui":                 cmdUI(user1.Signer()),
+			"soft":                   cmdSoft("admin", admin1.Signer()),
+			"usoft":                  cmdSoft("user1", user1.Signer()),
+			"git":                    cmdGit(admin1Key),
+			"ugit":                   cmdGit(user1Key),
+			"curl":                   cmdCurl,
+			"mkfile":                 cmdMkfile,
+			"envfile":                cmdEnvfile,
+			"readfile":               cmdReadfile,
+			"dos2unix":               cmdDos2Unix,
+			"new-webhook":            cmdNewWebhook,
+			"ensureserverrunning":    cmdEnsureServerRunning,
+			"ensureservernotrunning": cmdEnsureServerNotRunning,
+			"stopserver":             cmdStopserver,
+			"ui":                     cmdUI(admin1.Signer()),
+			"uui":                    cmdUI(user1.Signer()),
 		},
 		Setup: func(e *testscript.Env) error {
 			// Add binPath to PATH
@@ -121,6 +122,8 @@ func TestScript(t *testing.T) {
 			e.Setenv("DATA_PATH", data)
 			e.Setenv("SSH_PORT", fmt.Sprintf("%d", sshPort))
 			e.Setenv("HTTP_PORT", fmt.Sprintf("%d", httpPort))
+			e.Setenv("STATS_PORT", fmt.Sprintf("%d", statsPort))
+			e.Setenv("GIT_PORT", fmt.Sprintf("%d", gitPort))
 			e.Setenv("ADMIN1_AUTHORIZED_KEY", admin1.AuthorizedKey())
 			e.Setenv("ADMIN2_AUTHORIZED_KEY", admin2.AuthorizedKey())
 			e.Setenv("USER1_AUTHORIZED_KEY", user1.AuthorizedKey())
@@ -502,6 +505,32 @@ func cmdEnsureServerRunning(ts *testscript.TestScript, neg bool, args []string) 
 			conn.Close()
 			break
 		}
+	}
+}
+
+func cmdEnsureServerNotRunning(ts *testscript.TestScript, neg bool, args []string) {
+	if len(args) < 1 {
+		ts.Fatalf("Must supply a TCP port of one of the services to connect to. " +
+			"These are set as env vars as they are randomized. " +
+			"Example usage: \"cmdensureservernotrunning SSH_PORT\"\n" +
+			"Valid values for the env var: SSH_PORT|HTTP_PORT|GIT_PORT|STATS_PORT")
+	}
+
+	port := ts.Getenv(args[0])
+
+	// verify that the server is not up
+	addr := net.JoinHostPort("localhost", port)
+	for {
+		conn, _ := net.DialTimeout(
+			"tcp",
+			addr,
+			time.Second,
+		)
+		if conn != nil {
+			ts.Fatalf("server is running on port %s while it should not be running", port)
+			conn.Close()
+		}
+		break
 	}
 }
 

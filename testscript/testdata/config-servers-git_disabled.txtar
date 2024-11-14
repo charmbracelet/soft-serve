@@ -1,0 +1,18 @@
+# vi: set ft=conf
+
+# disable git listening
+env SOFT_SERVE_SSH_ENABLED=true
+env SOFT_SERVE_GIT_ENABLED=false
+env SOFT_SERVE_HTTP_ENABLED=true
+env SOFT_SERVE_STATS_ENABLED=true
+
+# start soft serve
+exec soft serve --sync-hooks &
+
+# wait for the ssh + other servers to come up
+ensureserverrunning SSH_PORT
+ensureserverrunning HTTP_PORT
+ensureserverrunning STATS_PORT
+
+# ensure that the disabled server is not running
+ensureservernotrunning GIT_PORT
