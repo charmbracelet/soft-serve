@@ -29,7 +29,7 @@ var tuiSessionDuration = promauto.NewCounterVec(prometheus.CounterOpts{
 	Namespace: "soft_serve",
 	Subsystem: "ssh",
 	Name:      "tui_session_seconds_total",
-	Help:      "The total number of TUI sessions",
+	Help:      "The total time spent in TUI sessions",
 }, []string{"repo", "term"})
 
 // SessionHandler is the soft-serve bubbletea ssh session handler.
