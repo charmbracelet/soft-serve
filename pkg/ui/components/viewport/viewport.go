@@ -1,9 +1,9 @@
 package viewport
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/viewport"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 )
 
@@ -15,7 +15,9 @@ type Viewport struct {
 
 // New returns a new Viewport.
 func New(c common.Common) *Viewport {
-	vp := viewport.New(c.Width, c.Height)
+	vp := viewport.New()
+	vp.SetWidth(c.Width)
+	vp.SetHeight(c.Height)
 	vp.MouseWheelEnabled = true
 	return &Viewport{
 		common: c,
@@ -26,8 +28,8 @@ func New(c common.Common) *Viewport {
 // SetSize implements common.Component.
 func (v *Viewport) SetSize(width, height int) {
 	v.common.SetSize(width, height)
-	v.Model.Width = width
-	v.Model.Height = height
+	v.Model.SetWidth(width)
+	v.Model.SetHeight(height)
 }
 
 // Init implements tea.Model.
@@ -79,26 +81,6 @@ func (v *Viewport) HalfViewDown() {
 // HalfViewUp moves the viewport up by half the viewport height.
 func (v *Viewport) HalfViewUp() {
 	v.Model.HalfViewUp()
-}
-
-// ViewUp moves the viewport up by a page.
-func (v *Viewport) ViewUp() []string {
-	return v.Model.ViewUp()
-}
-
-// ViewDown moves the viewport down by a page.
-func (v *Viewport) ViewDown() []string {
-	return v.Model.ViewDown()
-}
-
-// LineUp moves the viewport up by the given number of lines.
-func (v *Viewport) LineUp(n int) []string {
-	return v.Model.LineUp(n)
-}
-
-// LineDown moves the viewport down by the given number of lines.
-func (v *Viewport) LineDown(n int) []string {
-	return v.Model.LineDown(n)
 }
 
 // ScrollPercent returns the viewport's scroll percentage.

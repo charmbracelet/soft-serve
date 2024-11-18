@@ -3,7 +3,7 @@ package header
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 )
 

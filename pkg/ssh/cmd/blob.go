@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -12,12 +11,12 @@ import (
 )
 
 // blobCommand returns a command that prints the contents of a file.
-func blobCommand(renderer *lipgloss.Renderer) *cobra.Command {
+func blobCommand() *cobra.Command {
 	var linenumber bool
 	var color bool
 	var raw bool
 
-	styles := styles.DefaultStyles(renderer)
+	styles := styles.DefaultStyles()
 	cmd := &cobra.Command{
 		Use:               "blob REPOSITORY [REFERENCE] [PATH]",
 		Aliases:           []string{"cat", "show"},

@@ -6,10 +6,10 @@ import (
 	"sync"
 
 	"github.com/alecthomas/chroma/v2/lexers"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/glamour"
 	gansi "github.com/charmbracelet/glamour/ansi"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	vp "github.com/charmbracelet/soft-serve/pkg/ui/components/viewport"
 	"github.com/muesli/termenv"
@@ -110,7 +110,7 @@ func (r *Code) Init() tea.Cmd {
 
 	if r.sidenote != "" {
 		lines := strings.Split(r.sidenote, "\n")
-		sideNoteWidth := int(math.Ceil(float64(r.Model.Width) * r.SideNotePercent))
+		sideNoteWidth := int(math.Ceil(float64(r.Model.Width()) * r.SideNotePercent))
 		for i, l := range lines {
 			lines[i] = common.TruncateString(l, sideNoteWidth)
 		}
@@ -121,7 +121,7 @@ func (r *Code) Init() tea.Cmd {
 	// https://github.com/muesli/reflow/issues/43
 	//
 	// TODO: solve this upstream in Glamour/Reflow.
-	content = r.common.Renderer.NewStyle().Width(w).Render(content)
+	content = lipgloss.NewStyle().Width(w).Render(content)
 
 	r.Viewport.Model.SetContent(content)
 
@@ -167,26 +167,6 @@ func (r *Code) HalfViewDown() {
 // HalfViewUp moves the viewport up by half the viewport height.
 func (r *Code) HalfViewUp() {
 	r.Viewport.HalfViewUp()
-}
-
-// ViewUp moves the viewport up by a page.
-func (r *Code) ViewUp() []string {
-	return r.Viewport.ViewUp()
-}
-
-// ViewDown moves the viewport down by a page.
-func (r *Code) ViewDown() []string {
-	return r.Viewport.ViewDown()
-}
-
-// LineUp moves the viewport up by the given number of lines.
-func (r *Code) LineUp(n int) []string {
-	return r.Viewport.LineUp(n)
-}
-
-// LineDown moves the viewport down by the given number of lines.
-func (r *Code) LineDown(n int) []string {
-	return r.Viewport.LineDown(n)
 }
 
 // ScrollPercent returns the viewport's scroll percentage.

@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/help"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
-	"github.com/charmbracelet/soft-serve/pkg/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/statusbar"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/tabs"
@@ -177,29 +176,26 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-		if r.selectedRepo != nil {
-			urlID := fmt.Sprintf("%s-url", r.selectedRepo.Name())
-			cmd := r.common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
-			if msg, ok := msg.(tea.MouseMsg); ok && r.common.Zone.Get(urlID).InBounds(msg) {
-				cmds = append(cmds, copyCmd(cmd, "Command copied to clipboard"))
-			}
-		}
+		// if r.selectedRepo != nil {
+		// 	urlID := fmt.Sprintf("%s-url", r.selectedRepo.Name())
+		// 	cmd := r.common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
+		// 	if msg, ok := msg.(tea.MouseMsg); ok && r.common.Zone.Get(urlID).InBounds(msg) {
+		// 		cmds = append(cmds, copyCmd(cmd, "Command copied to clipboard"))
+		// 	}
+		// }
 		switch msg := msg.(type) {
-		case tea.MouseMsg:
-			if msg.Action != tea.MouseActionPress {
-				break
-			}
+		case tea.MouseClickMsg:
 			switch msg.Button {
-			case tea.MouseButtonLeft:
-				switch {
-				case r.common.Zone.Get("repo-help").InBounds(msg):
-					cmds = append(cmds, footer.ToggleFooterCmd)
-				}
-			case tea.MouseButtonRight:
-				switch {
-				case r.common.Zone.Get("repo-main").InBounds(msg):
-					cmds = append(cmds, goBackCmd)
-				}
+			case tea.MouseLeft:
+				// switch {
+				// case r.common.Zone.Get("repo-help").InBounds(msg):
+				// 	cmds = append(cmds, footer.ToggleFooterCmd)
+				// }
+			case tea.MouseRight:
+				// switch {
+				// case r.common.Zone.Get("repo-main").InBounds(msg):
+				// 	cmds = append(cmds, goBackCmd)
+				// }
 			}
 		}
 		switch msg := msg.(type) {
@@ -212,7 +208,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CopyMsg:
 		txt := msg.Text
 		if cfg := r.common.Config(); cfg != nil {
-			r.common.Output.Copy(txt)
+			cmds = append(cmds, tea.SetClipboard(txt))
 		}
 		r.statusbar.SetStatus("", msg.Message, "", "")
 	case ReadmeMsg:
@@ -326,7 +322,7 @@ func (r *Repo) headerView() string {
 	if r.selectedRepo == nil {
 		return ""
 	}
-	truncate := r.common.Renderer.NewStyle().MaxWidth(r.common.Width)
+	truncate := lipgloss.NewStyle().MaxWidth(r.common.Width)
 	header := r.selectedRepo.ProjectName()
 	if header == "" {
 		header = r.selectedRepo.Name()

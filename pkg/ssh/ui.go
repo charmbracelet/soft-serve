@@ -3,10 +3,10 @@ package ssh
 import (
 	"errors"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -203,16 +203,13 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Always show the footer on selection page.
 				ui.showFooter = true
 			}
-		case tea.MouseMsg:
-			if msg.Action != tea.MouseActionPress {
-				break
-			}
-			switch msg.Button {
-			case tea.MouseButtonLeft:
-				switch {
-				case ui.common.Zone.Get("footer").InBounds(msg):
-					cmds = append(cmds, footer.ToggleFooterCmd)
-				}
+		case tea.MouseClickMsg:
+			switch msg.Mouse().Button {
+			case tea.MouseLeft:
+				// switch {
+				// case ui.common.Zone.Get("footer").InBounds(msg):
+				// 	cmds = append(cmds, footer.ToggleFooterCmd)
+				// }
 			}
 		}
 	case footer.ToggleFooterMsg:
