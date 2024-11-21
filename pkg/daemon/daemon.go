@@ -67,16 +67,21 @@ func NewGitDaemon(ctx context.Context) (*GitDaemon, error) {
 		conns:    connections{m: make(map[net.Conn]struct{})},
 		logger:   log.FromContext(ctx).WithPrefix("gitdaemon"),
 	}
-	listener, err := net.Listen("tcp", d.addr)
-	if err != nil {
-		return nil, err
-	}
-	d.listener = listener
 	return d, nil
 }
 
 // Start starts the Git TCP daemon.
 func (d *GitDaemon) Start() error {
+	// listen on the socket
+	{
+		listener, err := net.Listen("tcp", d.addr)
+		if err != nil {
+			return err
+		}
+		d.listener = listener
+	}
+
+	// close eventual connections to the socket
 	defer d.listener.Close() // nolint: errcheck
 
 	d.wg.Add(1)
@@ -308,6 +313,11 @@ func (d *GitDaemon) Close() error {
 
 // Shutdown gracefully shuts down the daemon.
 func (d *GitDaemon) Shutdown(ctx context.Context) error {
+	// in the case when git daemon was never started
+	if d.listener == nil {
+		return nil
+	}
+
 	d.once.Do(func() { close(d.finished) })
 	err := d.listener.Close()
 	finished := make(chan struct{}, 1)
