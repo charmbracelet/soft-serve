@@ -5,8 +5,8 @@
 
 # start soft serve
 exec soft serve &
-# wait for server to start
-waitforserver
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
 
 # create a repo
 soft repo create repo1 -d 'description' -H -p -n 'repo11'
