@@ -2,8 +2,8 @@
 
 # start soft serve
 exec soft serve &
-# wait for server to start
-waitforserver
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
 
 # create user
 soft user create user1 --key "$USER1_AUTHORIZED_KEY"

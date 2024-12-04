@@ -5,8 +5,8 @@
 
 # start soft serve
 exec soft serve &
-# wait for server to start
-waitforserver
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
 
 # import a repo
 soft repo import --mirror charmbracelet/catwalk https://github.com/charmbracelet/catwalk.git
