@@ -95,7 +95,7 @@ func (s *Server) Start() error {
 	errg, _ := errgroup.WithContext(s.ctx)
 	errg.Go(func() error {
 		s.logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
-		if err := s.GitDaemon.Start(); !errors.Is(err, daemon.ErrServerClosed) {
+		if err := s.GitDaemon.ListenAndServe(); !errors.Is(err, daemon.ErrServerClosed) {
 			return err
 		}
 		return nil
