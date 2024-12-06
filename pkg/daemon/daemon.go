@@ -305,10 +305,18 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 
 // Close closes the underlying listener.
 func (d *GitDaemon) Close() error {
-	d.once.Do(func() { close(d.finished) })
-	err := d.listener.Close()
+	err := d.closeListener()
 	d.conns.CloseAll() // nolint: errcheck
 	return err
+}
+
+// closeListener closes the listener and the finished channel.
+func (d *GitDaemon) closeListener() (err error) {
+	d.once.Do(func() {
+		close(d.finished)
+		err = d.listener.Close()
+	})
+	return
 }
 
 // Shutdown gracefully shuts down the daemon.
@@ -318,8 +326,7 @@ func (d *GitDaemon) Shutdown(ctx context.Context) error {
 		return nil
 	}
 
-	d.once.Do(func() { close(d.finished) })
-	err := d.listener.Close()
+	err := d.closeListener()
 	finished := make(chan struct{}, 1)
 	go func() {
 		d.wg.Wait()
