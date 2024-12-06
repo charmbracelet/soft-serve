@@ -59,7 +59,7 @@ func TestMain(m *testing.M) {
 	}
 	testDaemon = d
 	go func() {
-		if err := d.Start(); err != ErrServerClosed {
+		if err := d.ListenAndServe(); err != ErrServerClosed {
 			log.Fatal(err)
 		}
 	}()
