@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -51,7 +52,7 @@ type GitDaemon struct {
 	wg       sync.WaitGroup
 	once     sync.Once
 	logger   *log.Logger
-	done     bool // indicates if the server has been closed
+	done     atomic.Bool // indicates if the server has been closed
 }
 
 // NewDaemon returns a new Git daemon.
@@ -72,7 +73,7 @@ func NewGitDaemon(ctx context.Context) (*GitDaemon, error) {
 
 // ListenAndServe starts the Git TCP daemon.
 func (d *GitDaemon) ListenAndServe() error {
-	if d.done {
+	if d.done.Load() {
 		return ErrServerClosed
 	}
 	listener, err := net.Listen("tcp", d.addr)
@@ -84,7 +85,7 @@ func (d *GitDaemon) ListenAndServe() error {
 
 // Serve listens on the TCP network address and serves Git requests.
 func (d *GitDaemon) Serve(listener net.Listener) error {
-	if d.done {
+	if d.done.Load() {
 		return ErrServerClosed
 	}
 
@@ -317,19 +318,19 @@ func (d *GitDaemon) Close() error {
 
 // closeListener closes the listener and the finished channel.
 func (d *GitDaemon) closeListener() error {
-	if d.done {
+	if d.done.Load() {
 		return ErrServerClosed
 	}
 	d.once.Do(func() {
 		close(d.finished)
-		d.done = true
+		d.done.Store(true)
 	})
 	return nil
 }
 
 // Shutdown gracefully shuts down the daemon.
 func (d *GitDaemon) Shutdown(ctx context.Context) error {
-	if d.done {
+	if d.done.Load() {
 		return ErrServerClosed
 	}
 
