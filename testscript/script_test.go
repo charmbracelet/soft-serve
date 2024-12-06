@@ -34,6 +34,15 @@ var (
 	binPath string
 )
 
+func PrepareBuildCommand(binPath string) *exec.Cmd {
+	_, disableRaceSet := os.LookupEnv("SOFT_SERVE_DISABLE_RACE_CHECKS")
+	if disableRaceSet {
+		// don't add the -race flag
+		return exec.Command("go", "build", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
+	}
+	return exec.Command("go", "build", "-race", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
+}
+
 func TestMain(m *testing.M) {
 	tmp, err := os.MkdirTemp("", "soft-serve*")
 	if err != nil {
@@ -48,7 +57,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Build the soft binary with -cover flag.
-	cmd := exec.Command("go", "build", "-race", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
+	cmd := PrepareBuildCommand(binPath)
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to build soft-serve binary: %s", err)
 		os.Exit(1)
