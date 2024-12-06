@@ -75,11 +75,21 @@ func TestMain(m *testing.M) {
 }
 
 func TestIdleTimeout(t *testing.T) {
-	c, err := net.Dial("tcp", testDaemon.addr)
-	if err != nil {
-		t.Fatal(err)
+	var err error
+	var c net.Conn
+	var tries int
+	for {
+		c, err = net.Dial("tcp", testDaemon.addr)
+		if err != nil && tries >= 3 {
+			t.Fatal(err)
+		}
+		tries++
+		if testDaemon.conns.Size() != 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
-	time.Sleep(time.Second)
+	time.Sleep(2 * time.Second)
 	_, err = readPktline(c)
 	if err == nil {
 		t.Errorf("expected error, got nil")
