@@ -18,6 +18,9 @@ var binPath = "soft"
 
 // SSHConfig is the configuration for the SSH server.
 type SSHConfig struct {
+	// Enabled toggles the SSH server on/off
+	Enabled bool `env:"ENABLED" yaml:"enabled"`
+
 	// ListenAddr is the address on which the SSH server will listen.
 	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 
@@ -39,6 +42,9 @@ type SSHConfig struct {
 
 // GitConfig is the Git daemon configuration for the server.
 type GitConfig struct {
+	// Enabled toggles the Git daemon on/off
+	Enabled bool `env:"ENABLED" yaml:"enabled"`
+
 	// ListenAddr is the address on which the Git daemon will listen.
 	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 
@@ -57,6 +63,9 @@ type GitConfig struct {
 
 // HTTPConfig is the HTTP configuration for the server.
 type HTTPConfig struct {
+	// Enabled toggles the HTTP server on/off
+	Enabled bool `env:"ENABLED" yaml:"enabled"`
+
 	// ListenAddr is the address on which the HTTP server will listen.
 	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 
@@ -72,6 +81,9 @@ type HTTPConfig struct {
 
 // StatsConfig is the configuration for the stats server.
 type StatsConfig struct {
+	// Enabled toggles the Stats server on/off
+	Enabled bool `env:"ENABLED" yaml:"enabled"`
+
 	// ListenAddr is the address on which the stats server will listen.
 	ListenAddr string `env:"LISTEN_ADDR" yaml:"listen_addr"`
 }
@@ -165,21 +177,25 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_DATA_PATH=%s", c.DataPath),
 		fmt.Sprintf("SOFT_SERVE_NAME=%s", c.Name),
 		fmt.Sprintf("SOFT_SERVE_INITIAL_ADMIN_KEYS=%s", strings.Join(c.InitialAdminKeys, "\n")),
+		fmt.Sprintf("SOFT_SERVE_SSH_ENABLED=%t", c.SSH.Enabled),
 		fmt.Sprintf("SOFT_SERVE_SSH_LISTEN_ADDR=%s", c.SSH.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_SSH_PUBLIC_URL=%s", c.SSH.PublicURL),
 		fmt.Sprintf("SOFT_SERVE_SSH_KEY_PATH=%s", c.SSH.KeyPath),
 		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_KEY_PATH=%s", c.SSH.ClientKeyPath),
 		fmt.Sprintf("SOFT_SERVE_SSH_MAX_TIMEOUT=%d", c.SSH.MaxTimeout),
 		fmt.Sprintf("SOFT_SERVE_SSH_IDLE_TIMEOUT=%d", c.SSH.IdleTimeout),
+		fmt.Sprintf("SOFT_SERVE_GIT_ENABLED=%t", c.Git.Enabled),
 		fmt.Sprintf("SOFT_SERVE_GIT_LISTEN_ADDR=%s", c.Git.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_GIT_PUBLIC_URL=%s", c.Git.PublicURL),
 		fmt.Sprintf("SOFT_SERVE_GIT_MAX_TIMEOUT=%d", c.Git.MaxTimeout),
 		fmt.Sprintf("SOFT_SERVE_GIT_IDLE_TIMEOUT=%d", c.Git.IdleTimeout),
 		fmt.Sprintf("SOFT_SERVE_GIT_MAX_CONNECTIONS=%d", c.Git.MaxConnections),
+		fmt.Sprintf("SOFT_SERVE_HTTP_ENABLED=%t", c.HTTP.Enabled),
 		fmt.Sprintf("SOFT_SERVE_HTTP_LISTEN_ADDR=%s", c.HTTP.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_KEY_PATH=%s", c.HTTP.TLSKeyPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_CERT_PATH=%s", c.HTTP.TLSCertPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_PUBLIC_URL=%s", c.HTTP.PublicURL),
+		fmt.Sprintf("SOFT_SERVE_STATS_ENABLED=%t", c.Stats.Enabled),
 		fmt.Sprintf("SOFT_SERVE_STATS_LISTEN_ADDR=%s", c.Stats.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_LOG_FORMAT=%s", c.Log.Format),
 		fmt.Sprintf("SOFT_SERVE_LOG_TIME_FORMAT=%s", c.Log.TimeFormat),
@@ -318,6 +334,7 @@ func DefaultConfig() *Config {
 		Name:     "Soft Serve",
 		DataPath: DefaultDataPath(),
 		SSH: SSHConfig{
+			Enabled:       true,
 			ListenAddr:    ":23231",
 			PublicURL:     "ssh://localhost:23231",
 			KeyPath:       filepath.Join("ssh", "soft_serve_host_ed25519"),
@@ -326,6 +343,7 @@ func DefaultConfig() *Config {
 			IdleTimeout:   10 * 60, // 10 minutes
 		},
 		Git: GitConfig{
+			Enabled:        true,
 			ListenAddr:     ":9418",
 			PublicURL:      "git://localhost",
 			MaxTimeout:     0,
@@ -333,10 +351,12 @@ func DefaultConfig() *Config {
 			MaxConnections: 32,
 		},
 		HTTP: HTTPConfig{
+			Enabled:    true,
 			ListenAddr: ":23232",
 			PublicURL:  "http://localhost:23232",
 		},
 		Stats: StatsConfig{
+			Enabled:    true,
 			ListenAddr: "localhost:23233",
 		},
 		Log: LogConfig{
