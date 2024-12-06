@@ -64,7 +64,7 @@ func tagDeleteCommand() *cobra.Command {
 		Aliases:           []string{"remove", "rm", "del"},
 		Short:             "Delete a tag",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfCollab,
+		PersistentPreRunE: checkIfReadableAndCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
