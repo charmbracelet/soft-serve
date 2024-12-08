@@ -36,33 +36,33 @@ soft repo collab list repo1
 
 # regular user can't access it
 ! usoft repo info repo1
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo tree repo1
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo tag list repo1
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo tag delete repo1 v1.0.0
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo blob repo1 README.md
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo description repo1
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo description repo1 'new desc'
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo project-name repo1
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo private repo1 true
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo private repo1
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo rename repo1 repo11
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo branch default repo1
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo branch default repo1 main
-stderr 'unauthorized'
+stderr 'repository not found'
 ! usoft repo delete repo1
-stderr 'unauthorized'
+stderr 'repository not found'
 
 # add user1 as collab
 ! soft repo collab add repo1 user1 foobar

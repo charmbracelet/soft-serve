@@ -121,7 +121,7 @@ func checkIfReadable(cmd *cobra.Command, args []string) error {
 	user := proto.UserFromContext(ctx)
 	auth := be.AccessLevelForUser(cmd.Context(), rn, user)
 	if auth < access.ReadOnlyAccess {
-		return proto.ErrUnauthorized
+		return proto.ErrRepoNotFound
 	}
 	return nil
 }
@@ -182,6 +182,16 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 	auth := be.AccessLevelForUser(cmd.Context(), rn, user)
 	if auth < access.ReadWriteAccess {
 		return proto.ErrUnauthorized
+	}
+	return nil
+}
+
+func checkIfReadableAndCollab(cmd *cobra.Command, args []string) error {
+	if err := checkIfReadable(cmd, args); err != nil {
+		return err
+	}
+	if err := checkIfCollab(cmd, args); err != nil {
+		return err
 	}
 	return nil
 }

@@ -11,7 +11,7 @@ func deleteCommand() *cobra.Command {
 		Aliases:           []string{"del", "remove", "rm"},
 		Short:             "Delete a repository",
 		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfCollab,
+		PersistentPreRunE: checkIfReadableAndCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
