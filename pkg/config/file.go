@@ -23,6 +23,9 @@ log:
 
 # The SSH server configuration.
 ssh:
+  # Enable SSH.
+  enabled: {{ .SSH.Enabled }}
+
   # The address on which the SSH server will listen.
   listen_addr: "{{ .SSH.ListenAddr }}"
 
@@ -47,6 +50,9 @@ ssh:
 
 # The Git daemon configuration.
 git:
+  # Enable the Git daemon.
+  enabled: {{ .Git.Enabled }}
+
   # The address on which the Git daemon will listen.
   listen_addr: "{{ .Git.ListenAddr }}"
 
@@ -66,6 +72,9 @@ git:
 
 # The HTTP server configuration.
 http:
+  # Enable the HTTP server.
+  enabled: {{ .HTTP.Enabled }}
+
   # The address on which the HTTP server will listen.
   listen_addr: "{{ .HTTP.ListenAddr }}"
 
@@ -82,6 +91,9 @@ http:
 
 # The stats server configuration.
 stats:
+  # Enable the stats server.
+  enabled: {{ .Stats.Enabled }}
+
   # The address on which the stats server will listen.
   listen_addr: "{{ .Stats.ListenAddr }}"
 
