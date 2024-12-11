@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.2.4
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/lipgloss v1.0.0
-	github.com/charmbracelet/wish v1.4.3
+	github.com/charmbracelet/wish v1.4.4
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/matryer/is v1.4.1
@@ -27,7 +27,7 @@ require (
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92
 	github.com/charmbracelet/keygen v0.5.1
 	github.com/charmbracelet/log v0.4.0
-	github.com/charmbracelet/ssh v0.0.0-20240725163421-eb71b85b27aa
+	github.com/charmbracelet/ssh v0.0.0-20241211182756-4fe22b0f1b7c
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/gobwas/glob v0.2.3
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -46,7 +46,7 @@ require (
 	github.com/rogpeppe/go-internal v1.13.1
 	github.com/spf13/cobra v1.8.1
 	go.uber.org/automaxprocs v1.6.0
-	golang.org/x/crypto v0.30.0
+	golang.org/x/crypto v0.31.0
 	golang.org/x/sync v0.10.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.34.2
