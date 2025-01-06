@@ -11,7 +11,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/charmbracelet/wish v1.4.4
 	github.com/dustin/go-humanize v1.0.1
-	github.com/go-git/go-git/v5 v5.12.0
+	github.com/go-git/go-git/v5 v5.13.1
 	github.com/matryer/is v1.4.1
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.15.3-0.20240618155329-98d742f6907a
@@ -19,10 +19,10 @@ require (
 )
 
 require (
-	github.com/alecthomas/chroma/v2 v2.14.0
+	github.com/alecthomas/chroma/v2 v2.15.0
 	github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2
 	github.com/caarlos0/duration v0.0.0-20240108180406-5d492514f3c7
-	github.com/caarlos0/env/v11 v11.2.2
+	github.com/caarlos0/env/v11 v11.3.1
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92
 	github.com/charmbracelet/keygen v0.5.1
 	github.com/charmbracelet/log v0.4.0
@@ -48,7 +48,7 @@ require (
 	golang.org/x/crypto v0.31.0
 	golang.org/x/sync v0.10.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.34.2
+	modernc.org/sqlite v1.34.4
 )
 
 require (
@@ -65,7 +65,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/charmbracelet/x/termios v0.1.0 // indirect
 	github.com/creack/pty v1.1.21 // indirect
-	github.com/dlclark/regexp2 v1.11.2 // indirect
+	github.com/dlclark/regexp2 v1.11.4 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/git-lfs/pktline v0.0.0-20230103162542-ca444d533ef1 // indirect
@@ -97,7 +97,7 @@ require (
 	github.com/yuin/goldmark v1.7.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
