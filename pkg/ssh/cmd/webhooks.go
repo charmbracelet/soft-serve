@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/caarlos0/tablewriter"
+	"github.com/charmbracelet/lipgloss/table"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 	"github.com/dustin/go-humanize"
@@ -60,28 +60,24 @@ func webhookListCommand() *cobra.Command {
 				return err
 			}
 
-			return tablewriter.Render(
-				cmd.OutOrStdout(),
-				webhooks,
-				[]string{"ID", "URL", "Events", "Active", "Created At", "Updated At"},
-				func(h webhook.Hook) ([]string, error) {
-					events := make([]string, len(h.Events))
-					for i, e := range h.Events {
-						events[i] = e.String()
-					}
+			table := table.New().Headers("ID", "URL", "Events", "Active", "Created At", "Updated At")
+			for _, h := range webhooks {
+				events := make([]string, len(h.Events))
+				for i, e := range h.Events {
+					events[i] = e.String()
+				}
 
-					row := []string{
-						strconv.FormatInt(h.ID, 10),
-						h.URL,
-						strings.Join(events, ","),
-						strconv.FormatBool(h.Active),
-						humanize.Time(h.CreatedAt),
-						humanize.Time(h.UpdatedAt),
-					}
-
-					return row, nil
-				},
-			)
+				table = table.Row(
+					strconv.FormatInt(h.ID, 10),
+					h.URL,
+					strings.Join(events, ","),
+					strconv.FormatBool(h.Active),
+					humanize.Time(h.CreatedAt),
+					humanize.Time(h.UpdatedAt),
+				)
+			}
+			cmd.Println(table)
+			return nil
 		},
 	}
 
@@ -290,24 +286,21 @@ func webhookDeliveriesListCommand() *cobra.Command {
 				return err
 			}
 
-			return tablewriter.Render(
-				cmd.OutOrStdout(),
-				dels,
-				[]string{"Status", "ID", "Event", "Created At"},
-				func(d webhook.Delivery) ([]string, error) {
-					status := "❌"
-					if d.ResponseStatus >= 200 && d.ResponseStatus < 300 {
-						status = "✅"
-					}
-
-					return []string{
-						status,
-						d.ID.String(),
-						d.Event.String(),
-						humanize.Time(d.CreatedAt),
-					}, nil
-				},
-			)
+			table := table.New().Headers("Status", "ID", "Event", "Created At")
+			for _, d := range dels {
+				status := "❌"
+				if d.ResponseStatus >= 200 && d.ResponseStatus < 300 {
+					status = "✅"
+				}
+				table = table.Row(
+					status,
+					d.ID.String(),
+					d.Event.String(),
+					humanize.Time(d.CreatedAt),
+				)
+			}
+			cmd.Println(table)
+			return nil
 		},
 	}
 

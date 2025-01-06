@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/duration"
-	"github.com/caarlos0/tablewriter"
+	"github.com/charmbracelet/lipgloss/table"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/dustin/go-humanize"
@@ -92,28 +92,25 @@ func TokenCommand() *cobra.Command {
 			}
 
 			now := time.Now()
-			return tablewriter.Render(
-				cmd.OutOrStdout(),
-				tokens,
-				[]string{"ID", "Name", "Created At", "Expires In"},
-				func(t proto.AccessToken) ([]string, error) {
-					expiresAt := "-"
-					if !t.ExpiresAt.IsZero() {
-						if now.After(t.ExpiresAt) {
-							expiresAt = "expired"
-						} else {
-							expiresAt = humanize.Time(t.ExpiresAt)
-						}
+			table := table.New().Headers("ID", "Name", "Created At", "Expires In")
+			for _, token := range tokens {
+				expiresAt := "-"
+				if !token.ExpiresAt.IsZero() {
+					if now.After(token.ExpiresAt) {
+						expiresAt = "expired"
+					} else {
+						expiresAt = humanize.Time(token.ExpiresAt)
 					}
+				}
 
-					return []string{
-						strconv.FormatInt(t.ID, 10),
-						t.Name,
-						humanize.Time(t.CreatedAt),
-						expiresAt,
-					}, nil
-				},
-			)
+				table = table.Row(strconv.FormatInt(token.ID, 10),
+					token.Name,
+					humanize.Time(token.CreatedAt),
+					expiresAt,
+				)
+			}
+			cmd.Println(table)
+			return nil
 		},
 	}
 
