@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/soft-serve/git"
@@ -24,10 +25,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 )
 
-func (d *Backend) reposPath() string {
-	return filepath.Join(d.cfg.DataPath, "repos")
-}
-
 // CreateRepository creates a new repository.
 //
 // It implements backend.Backend.
@@ -37,8 +34,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 		return nil, err
 	}
 
-	repo := name + ".git"
-	rp := filepath.Join(d.reposPath(), repo)
+	rp := filepath.Join(d.repoPath(name))
 
 	var userID int64
 	if user != nil {
@@ -78,7 +74,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 			}
 		}
 
-		return hooks.GenerateHooks(ctx, d.cfg, repo)
+		return hooks.GenerateHooks(ctx, d.cfg, name)
 	}); err != nil {
 		d.logger.Debug("failed to create repository in database", "err", err)
 		err = db.WrapError(err)
@@ -100,8 +96,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		return nil, err
 	}
 
-	repo := name + ".git"
-	rp := filepath.Join(d.reposPath(), repo)
+	rp := filepath.Join(d.repoPath(name))
 
 	tid := "import:" + name
 	if d.manager.Exists(tid) {
@@ -217,8 +212,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 // It implements backend.Backend.
 func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	name = utils.SanitizeRepo(name)
-	repo := name + ".git"
-	rp := filepath.Join(d.reposPath(), repo)
+	rp := filepath.Join(d.repoPath(name))
 
 	user := proto.UserFromContext(ctx)
 	r, err := d.Repository(ctx, name)
@@ -330,10 +324,8 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 		return nil
 	}
 
-	oldRepo := oldName + ".git"
-	newRepo := newName + ".git"
-	op := filepath.Join(d.reposPath(), oldRepo)
-	np := filepath.Join(d.reposPath(), newRepo)
+	op := filepath.Join(d.repoPath(oldName))
+	np := filepath.Join(d.repoPath(newName))
 	if _, err := os.Stat(op); err != nil {
 		return proto.ErrRepoNotFound
 	}
@@ -389,7 +381,7 @@ func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) 
 		for _, m := range ms {
 			r := &repo{
 				name: m.Name,
-				path: filepath.Join(d.reposPath(), m.Name+".git"),
+				path: filepath.Join(d.repoPath(m.Name)),
 				repo: m,
 			}
 
@@ -418,7 +410,7 @@ func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository
 		return r, nil
 	}
 
-	rp := filepath.Join(d.reposPath(), name+".git")
+	rp := filepath.Join(d.repoPath(name))
 	if _, err := os.Stat(rp); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			d.logger.Errorf("failed to stat repository path: %v", err)
@@ -552,7 +544,7 @@ func (d *Backend) SetHidden(ctx context.Context, name string, hidden bool) error
 // It implements backend.Backend.
 func (d *Backend) SetDescription(ctx context.Context, name string, desc string) error {
 	name = utils.SanitizeRepo(name)
-	rp := filepath.Join(d.reposPath(), name+".git")
+	rp := filepath.Join(d.repoPath(name))
 
 	// Delete cache
 	d.cache.Delete(name)
@@ -572,7 +564,7 @@ func (d *Backend) SetDescription(ctx context.Context, name string, desc string) 
 // It implements backend.Backend.
 func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) error {
 	name = utils.SanitizeRepo(name)
-	rp := filepath.Join(d.reposPath(), name+".git")
+	rp := filepath.Join(d.repoPath(name))
 
 	// Delete cache
 	d.cache.Delete(name)
@@ -634,6 +626,13 @@ func (d *Backend) SetProjectName(ctx context.Context, repo string, name string) 
 			return d.store.SetRepoProjectNameByName(ctx, tx, repo, name)
 		}),
 	)
+}
+
+// repoPath returns the path to a repository.
+func (d *Backend) repoPath(name string) string {
+	name = utils.SanitizeRepo(name)
+	rn := strings.ReplaceAll(name, "/", string(os.PathSeparator))
+	return filepath.Join(filepath.Join(d.cfg.DataPath, "repos"), rn+".git")
 }
 
 var _ proto.Repository = (*repo)(nil)
