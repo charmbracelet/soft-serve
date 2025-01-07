@@ -172,7 +172,7 @@ func checkIfAdmin(cmd *cobra.Command, args []string) error {
 func checkIfCollab(cmd *cobra.Command, args []string) error {
 	var repo string
 	if len(args) > 0 {
-		repo = utils.SanitizeRepo(args[0])
+		repo = args[0]
 	}
 
 	ctx := cmd.Context()
