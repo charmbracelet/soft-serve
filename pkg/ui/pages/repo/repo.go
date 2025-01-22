@@ -340,13 +340,13 @@ func (r *Repo) headerView() string {
 		)
 	}
 	urlStyle := r.common.Styles.URLStyle.
-		Width(r.common.Width - lipgloss.Width(desc) - 1).
+		Width(r.common.Width - lipgloss.Width(header) - 1).
 		Align(lipgloss.Right)
 	var url string
 	if cfg := r.common.Config(); cfg != nil {
 		url = r.common.CloneCmd(cfg.SSH.PublicURL, r.selectedRepo.Name())
 	}
-	url = common.TruncateString(url, r.common.Width-lipgloss.Width(desc)-1)
+	url = common.TruncateString(url, r.common.Width-lipgloss.Width(header)-1)
 	url = r.common.Zone.Mark(
 		fmt.Sprintf("%s-url", r.selectedRepo.Name()),
 		urlStyle.Render(url),
