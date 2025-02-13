@@ -274,7 +274,6 @@ func cmdUI(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []stri
 	}
 }
 
-// P.S. Windows sucks!
 func cmdDos2Unix(ts *testscript.TestScript, neg bool, args []string) {
 	if neg {
 		ts.Fatalf("unsupported: ! dos2unix")
