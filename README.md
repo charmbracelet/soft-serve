@@ -158,6 +158,32 @@ ssh:
   # This is the address that will be used to clone repositories.
   public_url: "ssh://localhost:23231"
 
+  # The cross-origin request security options
+  cors:
+    # The allowed cross-origin headers
+    allowed_headers:
+      - Accept
+      - Accept-Language
+      - Content-Language
+      - Origin
+    #  - Content-Type
+    #  - X-Requested-With
+    #  - User-Agent
+    #  - Authorization
+    #  - Access-Control-Request-Method
+
+    # The allowed cross-origin URLs
+    # allowed_origins:
+    #    - *
+
+    # The allowed cross-origin methods
+    allowed_methods:
+       - GET
+       - HEAD
+       - POST
+    #   - PUT
+    #   - OPTIONS
+
   # The path to the SSH server's private key.
   key_path: "ssh/soft_serve_host"
 
