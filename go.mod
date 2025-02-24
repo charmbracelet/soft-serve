@@ -14,7 +14,7 @@ require (
 	github.com/go-git/go-git/v5 v5.13.2
 	github.com/matryer/is v1.4.1
 	github.com/muesli/reflow v0.3.0
-	github.com/muesli/termenv v0.15.3-0.20240618155329-98d742f6907a
+	github.com/muesli/termenv v0.16.0
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 )
 
