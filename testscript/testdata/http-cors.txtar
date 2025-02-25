@@ -40,24 +40,23 @@ git -C repo2 tag v0.1.0
 git -C repo2 push origin HEAD
 git -C repo2 push origin HEAD --tags
 
-curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2.git/info/refs -H 'Origin: https://foo.example' -H 'Access-Control-Request-Method: GET'
-stderr '.*Method Not Allowed.*'
+curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2/git-upload-pack -H 'Origin: https://foo.example' -H 'Access-Control-Request-Method: POST'
+! stderr '.*Access-Control-Allow-Origin.*'
 
 # stop the server
 stopserver
 
-# allow cross-origin OPTIONS requests
-env SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS="https://foo.example"
-env SOFT_SERVE_HTTP_CORS_ALLOWED_METHODS="GET,OPTIONS"
-env SOFT_SERVE_HTTP_CORS_ALLOWED_HEADERS="Origin,Access-Control-Request-Method"
+# allow cross-origin request
+env SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS=https://foo.example
 
 # restart soft serve
 exec soft serve &
 # wait for SSH server to start
 ensureserverrunning SSH_PORT
 
-curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2.git/info/refs -H 'Origin: https://foo.example' -H 'Access-Control-Request-Method: GET'
-stderr '.*200 OK.*'
+# response with allow-origin header
+curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2/git-upload-pack -H 'Origin: https://foo.example' -H 'Access-Control-Request-Method: POST'
+stderr '.*Access-Control-Allow-Origin.*'
 
 # stop the server
 [windows] stopserver
