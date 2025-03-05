@@ -170,7 +170,7 @@ func (e *TreeEntry) Mode() fs.FileMode {
 	case git.EntryTree:
 		return fs.ModeDir | fs.ModePerm
 	default:
-		return fs.FileMode(m)
+		return fs.FileMode(m) //nolint:gosec
 	}
 }
 

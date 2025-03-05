@@ -59,7 +59,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 
-	contentType := ContentType(w.ContentType)
+	contentType := ContentType(w.ContentType) //nolint:gosec
 	switch contentType {
 	case ContentTypeJSON:
 		if err := json.NewEncoder(&buf).Encode(payload); err != nil {

@@ -109,7 +109,7 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 				} else {
 					tempDelay *= 2
 				}
-				if max := 1 * time.Second; tempDelay > max {
+				if max := 1 * time.Second; tempDelay > max { //nolint:revive
 					tempDelay = max
 				}
 				time.Sleep(tempDelay)

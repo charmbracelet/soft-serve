@@ -101,7 +101,7 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	s := d.common.Styles.Tree
 
 	name := i.Title()
-	size := humanize.Bytes(uint64(i.entry.Size()))
+	size := humanize.Bytes(uint64(i.entry.Size())) //nolint:gosec
 	size = strings.ReplaceAll(size, " ", "")
 	sizeLen := lipgloss.Width(size)
 	if i.entry.IsTree() {

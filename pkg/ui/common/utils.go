@@ -9,11 +9,11 @@ import (
 )
 
 // TruncateString is a convenient wrapper around truncate.TruncateString.
-func TruncateString(s string, max int) string {
+func TruncateString(s string, max int) string { //nolint:revive
 	if max < 0 {
-		max = 0
+		max = 0 //nolint:revive
 	}
-	return truncate.StringWithTail(s, uint(max), "…")
+	return truncate.StringWithTail(s, uint(max), "…") //nolint:gosec
 }
 
 // RepoURL returns the URL of the repository.

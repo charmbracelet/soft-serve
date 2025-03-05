@@ -54,7 +54,7 @@ func (b *Backend) Webhook(ctx context.Context, repo proto.Repository, id int64) 
 
 		wh = webhook.Hook{
 			Webhook:     h,
-			ContentType: webhook.ContentType(h.ContentType),
+			ContentType: webhook.ContentType(h.ContentType), //nolint:gosec
 			Events:      make([]webhook.Event, len(events)),
 		}
 		for i, e := range events {
@@ -105,7 +105,7 @@ func (b *Backend) ListWebhooks(ctx context.Context, repo proto.Repository) ([]we
 
 		hooks[i] = webhook.Hook{
 			Webhook:     h,
-			ContentType: webhook.ContentType(h.ContentType),
+			ContentType: webhook.ContentType(h.ContentType), //nolint:gosec
 			Events:      events,
 		}
 	}

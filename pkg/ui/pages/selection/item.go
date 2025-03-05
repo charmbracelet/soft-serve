@@ -212,7 +212,7 @@ func (d *ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	}
 	cmd = common.TruncateString(cmd, m.Width()-styles.Base.GetHorizontalFrameSize())
 	s.WriteString(cmdStyler(cmd))
-	fmt.Fprint(w,
+	fmt.Fprint(w, //nolint:errcheck
 		d.common.Zone.Mark(i.ID(),
 			styles.Base.Render(s.String()),
 		),

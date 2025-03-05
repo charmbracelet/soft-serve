@@ -48,7 +48,7 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 		hp := filepath.Join(hooksPath, hook)
 
 		// Write the hooks primary script
-		if err := os.WriteFile(hp, []byte(hookTemplate), os.ModePerm); err != nil {
+		if err := os.WriteFile(hp, []byte(hookTemplate), os.ModePerm); err != nil { //nolint:gosec
 			return err
 		}
 

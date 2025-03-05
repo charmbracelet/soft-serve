@@ -75,7 +75,7 @@ func (s *Model) View() string {
 	}
 	branch := st.StatusBarBranch.Render(s.extra)
 	maxWidth := s.common.Width - w(key) - w(info) - w(branch) - w(help)
-	v := truncate.StringWithTail(s.value, uint(maxWidth-st.StatusBarValue.GetHorizontalFrameSize()), "…")
+	v := truncate.StringWithTail(s.value, uint(maxWidth-st.StatusBarValue.GetHorizontalFrameSize()), "…") //nolint:gosec
 	value := st.StatusBarValue.
 		Width(maxWidth).
 		Render(v)

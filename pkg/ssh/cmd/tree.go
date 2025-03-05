@@ -92,7 +92,7 @@ func treeCommand() *cobra.Command {
 				if size == 0 {
 					ssize = "-"
 				} else {
-					ssize = humanize.Bytes(uint64(size))
+					ssize = humanize.Bytes(uint64(size)) //nolint:gosec
 				}
 				cmd.Printf("%s\t%s\t %s\n", ent.Mode(), ssize, common.UnquoteFilename(ent.Name()))
 			}

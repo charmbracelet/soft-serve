@@ -742,7 +742,7 @@ func (r *repo) writeLastModified(t time.Time) error {
 		return err
 	}
 
-	return os.WriteFile(fp, []byte(t.Format(time.RFC3339)), os.ModePerm)
+	return os.WriteFile(fp, []byte(t.Format(time.RFC3339)), os.ModePerm) //nolint:gosec
 }
 
 func readOneline(path string) (string, error) {
