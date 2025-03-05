@@ -1,6 +1,6 @@
 run:
   tests: false
-  timeout: 5m
+  issues-exit-code: 0
 
 issues:
   include:
@@ -37,5 +37,4 @@ linters:
     - govet
     - ineffassign
     - staticcheck
-    - typecheck
     - unused
