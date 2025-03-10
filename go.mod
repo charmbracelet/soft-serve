@@ -24,7 +24,7 @@ require (
 	github.com/caarlos0/duration v0.0.0-20240108180406-5d492514f3c7
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92
-	github.com/charmbracelet/keygen v0.5.1
+	github.com/charmbracelet/keygen v0.5.3
 	github.com/charmbracelet/log v0.4.0
 	github.com/charmbracelet/ssh v0.0.0-20250213143314-8712ec3ff3ef
 	github.com/go-jose/go-jose/v3 v3.0.4
