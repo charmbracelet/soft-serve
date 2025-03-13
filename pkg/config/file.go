@@ -89,6 +89,30 @@ http:
   # Make sure to use https:// if you are using TLS.
   public_url: "{{ .HTTP.PublicURL }}"
 
+  # The cross-origin request security options
+  cors:
+    # The allowed cross-origin headers
+    allowed_headers:
+       - "Accept"
+       - "Accept-Language"
+       - "Content-Language"
+       - "Origin"
+       - "X-Requested-With"
+       - "User-Agent"
+       - "Authorization"
+       - "Access-Control-Request-Method"
+    # The allowed cross-origin URLs
+    allowed_origins:
+       - "{{ .HTTP.PublicURL }}" # always allowed
+       # - "https://example.com"
+    # The allowed cross-origin methods
+    allowed_methods:
+       - "GET"
+       - "HEAD"
+       - "POST"
+       - "PUT"
+       - "OPTIONS"
+
 # The stats server configuration.
 stats:
   # Enable the stats server.

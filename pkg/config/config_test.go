@@ -97,15 +97,16 @@ func TestParseMultipleHeaders(t *testing.T) {
 
 func TestParseMultipleOrigins(t *testing.T) {
 	is := is.New(t)
-	is.NoErr(os.Setenv("SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS", "https://foo.example,https://foo.example2"))
+	is.NoErr(os.Setenv("SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS", "http://example.com,https://example.com"))
 	t.Cleanup(func() {
 		is.NoErr(os.Unsetenv("SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS"))
 	})
 	cfg := DefaultConfig()
 	is.NoErr(cfg.ParseEnv())
 	is.Equal(cfg.HTTP.CORS.AllowedOrigins, []string{
-		"https://foo.example",
-		"https://foo.example2",
+		"http://localhost:23232",
+		"http://example.com",
+		"https://example.com",
 	})
 }
 

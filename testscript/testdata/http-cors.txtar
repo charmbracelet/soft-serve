@@ -40,14 +40,31 @@ git -C repo2 tag v0.1.0
 git -C repo2 push origin HEAD
 git -C repo2 push origin HEAD --tags
 
-curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2.git/info/refs -H 'Origin: https://foo.example' -H 'Access-Control-Request-Method: GET'
-stderr '.*Method Not Allowed.*'
+-- test 1 --
+# default public url is always allowed
+curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2/git-upload-pack -H 'Origin: http://localhost:23232' -H 'Access-Control-Request-Method: POST'
+stderr '.*200 OK.*'
 
 # stop the server
 stopserver
 
-# allow cross-origin OPTIONS requests
-env SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS="https://foo.example"
+-- test 2 --
+# by default the server does not allow example.com, so the response does not have the "Access-Control-Allow-Origin" header and cors will fail.
+
+# restart soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2/git-upload-pack -H 'Origin: https://example.com' -H 'Access-Control-Request-Method: POST'
+! stderr '.*Access-Control-Allow-Origin.*'
+
+# stop the server
+stopserver
+
+-- test 3 --
+# allow cross-origin OPTIONS requests for example.com
+env SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS="https://example.com"
 env SOFT_SERVE_HTTP_CORS_ALLOWED_METHODS="GET,OPTIONS"
 env SOFT_SERVE_HTTP_CORS_ALLOWED_HEADERS="Origin,Access-Control-Request-Method"
 
@@ -56,7 +73,7 @@ exec soft serve &
 # wait for SSH server to start
 ensureserverrunning SSH_PORT
 
-curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2.git/info/refs -H 'Origin: https://foo.example' -H 'Access-Control-Request-Method: GET'
+curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2.git/info/refs -H 'Origin: https://example.com' -H 'Access-Control-Request-Method: GET'
 stderr '.*200 OK.*'
 
 # stop the server

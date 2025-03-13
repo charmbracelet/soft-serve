@@ -370,6 +370,11 @@ func DefaultConfig() *Config {
 			Enabled:    true,
 			ListenAddr: ":23232",
 			PublicURL:  "http://localhost:23232",
+			CORS: CORSConfig{
+				AllowedHeaders: []string{"Accept", "Accept-Language", "Content-Language", "Origin", "X-Requested-With", "User-Agent", "Authorization", "Access-Control-Request-Method"},
+				AllowedMethods: []string{"GET", "HEAD", "POST", "PUT", "OPTIONS"},
+				AllowedOrigins: []string{"http://localhost:23232"},
+			},
 		},
 		Stats: StatsConfig{
 			Enabled:    true,
@@ -437,6 +442,8 @@ func (c *Config) Validate() error {
 	}
 
 	c.InitialAdminKeys = pks
+
+	c.HTTP.CORS.AllowedOrigins = append([]string{c.HTTP.PublicURL}, c.HTTP.CORS.AllowedOrigins...)
 
 	return nil
 }
