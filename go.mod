@@ -2,7 +2,7 @@ module github.com/charmbracelet/soft-serve
 
 go 1.23.0
 
-toolchain go1.23.5
+toolchain go1.24.1
 
 require (
 	github.com/charmbracelet/bubbles v0.20.0
@@ -48,7 +48,7 @@ require (
 	golang.org/x/crypto v0.36.0
 	golang.org/x/sync v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.36.0
+	modernc.org/sqlite v1.36.1
 )
 
 require (
