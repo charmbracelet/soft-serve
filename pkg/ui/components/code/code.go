@@ -77,7 +77,11 @@ func (r *Code) SetSideNote(s string) tea.Cmd {
 
 // Init implements tea.Model.
 func (r *Code) Init() tea.Cmd {
-	w := r.common.Width
+	// XXX: We probably won't need the GetHorizontalFrameSize margin
+	// subtraction if we get the new viewport soft wrapping to play nicely with
+	// Glamour. This also introduces a bug where when it soft wraps, the
+	// viewport scrolls left/right for 2 columns on each side of the screen.
+	w := r.common.Width - r.common.Styles.App.GetHorizontalFrameSize()
 	content := r.content
 	if content == "" {
 		r.Viewport.Model.SetContent(r.NoContentStyle.String())
