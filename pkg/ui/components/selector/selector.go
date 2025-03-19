@@ -238,19 +238,19 @@ func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.MouseWheelDown:
 			s.CursorDown()
 		case tea.MouseLeft:
-			// curIdx := s.Index()
-			// for i, item := range s.Items() {
-			// 	item, _ := item.(IdentifiableItem)
-			// 	// Check each item to see if it's in bounds.
-			// 	if item != nil && s.common.Zone.Get(item.ID()).InBounds(msg) {
-			// 		if i == curIdx {
-			// 			cmds = append(cmds, s.SelectItemCmd)
-			// 		} else {
-			// 			s.Select(i)
-			// 		}
-			// 		break
-			// 	}
-			// }
+			curIdx := s.Index()
+			for i, item := range s.Items() {
+				item, _ := item.(IdentifiableItem)
+				// Check each item to see if it's in bounds.
+				if item != nil && s.common.Zone.Get(item.ID()).InBounds(msg) {
+					if i == curIdx {
+						cmds = append(cmds, s.SelectItemCmd)
+					} else {
+						s.Select(i)
+					}
+					break
+				}
+			}
 		}
 	case tea.KeyMsg:
 		filterState := s.FilterState()

@@ -206,10 +206,10 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.MouseClickMsg:
 			switch msg.Mouse().Button {
 			case tea.MouseLeft:
-				// switch {
-				// case ui.common.Zone.Get("footer").InBounds(msg):
-				// 	cmds = append(cmds, footer.ToggleFooterCmd)
-				// }
+				switch {
+				case ui.common.Zone.Get("footer").InBounds(msg):
+					cmds = append(cmds, footer.ToggleFooterCmd)
+				}
 			}
 		}
 	case footer.ToggleFooterMsg:

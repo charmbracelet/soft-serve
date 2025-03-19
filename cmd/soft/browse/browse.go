@@ -169,10 +169,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		mouse := msg.Mouse()
 		switch mouse.Button {
 		case tea.MouseLeft:
-			// switch {
-			// case m.common.Zone.Get("footer").InBounds(msg):
-			// 	cmds = append(cmds, footer.ToggleFooterCmd)
-			// }
+			switch {
+			case m.common.Zone.Get("footer").InBounds(msg):
+				cmds = append(cmds, footer.ToggleFooterCmd)
+			}
 		}
 	case footer.ToggleFooterMsg:
 		m.footer.SetShowAll(!m.footer.ShowAll())

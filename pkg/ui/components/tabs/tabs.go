@@ -66,12 +66,12 @@ func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseClickMsg:
 		switch msg.Button {
 		case tea.MouseLeft:
-			// for i, tab := range t.tabs {
-			// 	if t.common.Zone.Get(tab).InBounds(msg) {
-			// 		t.activeTab = i
-			// 		cmds = append(cmds, t.activeTabCmd)
-			// 	}
-			// }
+			for i, tab := range t.tabs {
+				if t.common.Zone.Get(tab).InBounds(msg) {
+					t.activeTab = i
+					cmds = append(cmds, t.activeTabCmd)
+				}
+			}
 		}
 	case SelectTabMsg:
 		tab := int(msg)

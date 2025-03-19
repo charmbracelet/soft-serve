@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
+	"github.com/charmbracelet/soft-serve/pkg/ui/components/footer"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/selector"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/statusbar"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/tabs"
@@ -176,26 +177,26 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-		// if r.selectedRepo != nil {
-		// 	urlID := fmt.Sprintf("%s-url", r.selectedRepo.Name())
-		// 	cmd := r.common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
-		// 	if msg, ok := msg.(tea.MouseMsg); ok && r.common.Zone.Get(urlID).InBounds(msg) {
-		// 		cmds = append(cmds, copyCmd(cmd, "Command copied to clipboard"))
-		// 	}
-		// }
+		if r.selectedRepo != nil {
+			urlID := fmt.Sprintf("%s-url", r.selectedRepo.Name())
+			cmd := r.common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
+			if msg, ok := msg.(tea.MouseMsg); ok && r.common.Zone.Get(urlID).InBounds(msg) {
+				cmds = append(cmds, copyCmd(cmd, "Command copied to clipboard"))
+			}
+		}
 		switch msg := msg.(type) {
 		case tea.MouseClickMsg:
 			switch msg.Button {
 			case tea.MouseLeft:
-				// switch {
-				// case r.common.Zone.Get("repo-help").InBounds(msg):
-				// 	cmds = append(cmds, footer.ToggleFooterCmd)
-				// }
+				switch {
+				case r.common.Zone.Get("repo-help").InBounds(msg):
+					cmds = append(cmds, footer.ToggleFooterCmd)
+				}
 			case tea.MouseRight:
-				// switch {
-				// case r.common.Zone.Get("repo-main").InBounds(msg):
-				// 	cmds = append(cmds, goBackCmd)
-				// }
+				switch {
+				case r.common.Zone.Get("repo-main").InBounds(msg):
+					cmds = append(cmds, goBackCmd)
+				}
 			}
 		}
 		switch msg := msg.(type) {

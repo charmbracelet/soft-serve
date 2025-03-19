@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/chroma/v2/lexers"
+	zone "github.com/aymanbagabas/bubblezone/v2"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
@@ -12,7 +13,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/ui/keymap"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
 	"github.com/charmbracelet/ssh"
-	zone "github.com/lrstanley/bubblezone"
 )
 
 type contextKey struct {
