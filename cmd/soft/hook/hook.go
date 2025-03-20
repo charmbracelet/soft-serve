@@ -65,6 +65,8 @@ var (
 		// This is set in the server before invoking git-receive-pack/git-upload-pack
 		repoName := os.Getenv("SOFT_SERVE_REPO_NAME")
 
+		logger := log.FromContext(ctx).With("repo", repoName)
+
 		stdin := cmd.InOrStdin()
 		stdout := cmd.OutOrStdout()
 		stderr := cmd.ErrOrStderr()
@@ -83,7 +85,8 @@ var (
 				buf.WriteByte('\n')
 				fields := strings.Fields(scanner.Text())
 				if len(fields) != 3 {
-					return fmt.Errorf("invalid hook input: %s", scanner.Text())
+					logger.Error(fmt.Sprintf("invalid %s hook input", cmdName), "input", scanner.Text())
+					continue
 				}
 				opts = append(opts, hooks.HookArg{
 					OldSha:  fields[0],
@@ -100,7 +103,8 @@ var (
 			}
 		case hooks.UpdateHook:
 			if len(args) != 3 {
-				return fmt.Errorf("invalid update hook input: %s", args)
+				logger.Error("invalid update hook input", "input", args)
+				break
 			}
 
 			hks.Update(ctx, stdout, stderr, repoName, hooks.HookArg{
@@ -116,7 +120,7 @@ var (
 		if stat, err := os.Stat(customHookPath); err == nil && !stat.IsDir() && stat.Mode()&0o111 != 0 {
 			// If the custom hook is executable, run it
 			if err := runCommand(ctx, &buf, stdout, stderr, customHookPath, args...); err != nil {
-				return fmt.Errorf("failed to run custom hook: %w", err)
+				logger.Error("failed to run custom hook", "err", err)
 			}
 		}
 
