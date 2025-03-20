@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/charmbracelet/log"
-	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
@@ -26,13 +25,6 @@ func NewRouter(ctx context.Context) http.Handler {
 	h = NewContextHandler(ctx)(h)
 	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
-
-	cfg := config.FromContext(ctx)
-
-	h = handlers.CORS(handlers.AllowedHeaders(cfg.HTTP.CORS.AllowedHeaders),
-		handlers.AllowedOrigins(cfg.HTTP.CORS.AllowedOrigins),
-		handlers.AllowedMethods(cfg.HTTP.CORS.AllowedMethods),
-	)(h)
 
 	return h
 }

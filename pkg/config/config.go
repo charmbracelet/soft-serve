@@ -61,15 +61,6 @@ type GitConfig struct {
 	MaxConnections int `env:"MAX_CONNECTIONS" yaml:"max_connections"`
 }
 
-// CORSConfig is the CORS configuration for the server.
-type CORSConfig struct {
-	AllowedHeaders []string `env:"ALLOWED_HEADERS" yaml:"allowed_headers"`
-
-	AllowedOrigins []string `env:"ALLOWED_ORIGINS" yaml:"allowed_origins"`
-
-	AllowedMethods []string `env:"ALLOWED_METHODS" yaml:"allowed_methods"`
-}
-
 // HTTPConfig is the HTTP configuration for the server.
 type HTTPConfig struct {
 	// Enabled toggles the HTTP server on/off
@@ -86,9 +77,6 @@ type HTTPConfig struct {
 
 	// PublicURL is the public URL of the HTTP server.
 	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
-
-	// HTTP is the configuration for the HTTP server.
-	CORS CORSConfig `envPrefix:"CORS_" yaml:"cors"`
 }
 
 // StatsConfig is the configuration for the stats server.
@@ -208,9 +196,6 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_KEY_PATH=%s", c.HTTP.TLSKeyPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_CERT_PATH=%s", c.HTTP.TLSCertPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_PUBLIC_URL=%s", c.HTTP.PublicURL),
-		fmt.Sprintf("SOFT_SERVE_HTTP_CORS_ALLOWED_HEADERS=%s", strings.Join(c.HTTP.CORS.AllowedHeaders, ",")),
-		fmt.Sprintf("SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS=%s", strings.Join(c.HTTP.CORS.AllowedOrigins, ",")),
-		fmt.Sprintf("SOFT_SERVE_HTTP_CORS_ALLOWED_METHODS=%s", strings.Join(c.HTTP.CORS.AllowedMethods, ",")),
 		fmt.Sprintf("SOFT_SERVE_STATS_ENABLED=%t", c.Stats.Enabled),
 		fmt.Sprintf("SOFT_SERVE_STATS_LISTEN_ADDR=%s", c.Stats.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_LOG_FORMAT=%s", c.Log.Format),
