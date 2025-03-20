@@ -80,6 +80,7 @@ var (
 			scanner := bufio.NewScanner(stdin)
 			for scanner.Scan() {
 				buf.Write(scanner.Bytes())
+				buf.WriteByte('\n')
 				fields := strings.Fields(scanner.Text())
 				if len(fields) != 3 {
 					return fmt.Errorf("invalid hook input: %s", scanner.Text())
