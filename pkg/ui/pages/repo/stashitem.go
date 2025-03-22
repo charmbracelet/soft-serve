@@ -5,9 +5,9 @@ import (
 	"io"
 
 	gitm "github.com/aymanbagabas/git-module"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 )
 

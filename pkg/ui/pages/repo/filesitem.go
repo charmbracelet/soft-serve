@@ -6,10 +6,10 @@ import (
 	"io/fs"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/dustin/go-humanize"
@@ -139,7 +139,7 @@ func (d FileItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	name = nameStyle.Render(name)
 	size = sizeStyle.Render(size)
 	modeStr := modeStyle.Render(mode.String())
-	truncate := d.common.Renderer.NewStyle().MaxWidth(m.Width() -
+	truncate := lipgloss.NewStyle().MaxWidth(m.Width() -
 		s.Selector.GetHorizontalFrameSize() -
 		s.Selector.GetWidth())
 	//nolint:errcheck
