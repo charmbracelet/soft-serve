@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/glamour v0.9.1
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/charmbracelet/wish v1.4.6
+	github.com/charmbracelet/wish v1.4.7
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-git/go-git/v5 v5.14.0
 	github.com/matryer/is v1.4.1
@@ -63,7 +63,7 @@ require (
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
 	github.com/charmbracelet/x/conpty v0.1.0 // indirect
 	github.com/charmbracelet/x/errors v0.0.0-20240725160154-f9f6568126ec // indirect
-	github.com/charmbracelet/x/input v0.3.1 // indirect
+	github.com/charmbracelet/x/input v0.3.4 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/charmbracelet/x/termios v0.1.0 // indirect
 	github.com/charmbracelet/x/windows v0.2.0 // indirect
