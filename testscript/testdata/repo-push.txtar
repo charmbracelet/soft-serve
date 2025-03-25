@@ -11,8 +11,14 @@ soft repo create repo-empty -d 'description' -H -p -n 'repo-empty'
 # clone repo
 git clone ssh://localhost:$SSH_PORT/repo-empty repo-empty
 
-# push repo
+# push repo without any commits
 ! git -C repo-empty push origin HEAD
+
+# push repo with a commit
+mkfile ./repo-empty/README.md '# Hello\n\nwelcome'
+git -C repo-empty add README.md
+git -C repo-empty commit -m 'first'
+git -C repo-empty push origin HEAD
 
 # stop the server
 [windows] stopserver
