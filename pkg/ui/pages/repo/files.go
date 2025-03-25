@@ -3,7 +3,7 @@ package repo
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
+	"path"
 	"strings"
 
 	gitm "github.com/aymanbagabas/git-module"
@@ -252,7 +252,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch sel := msg.IdentifiableItem.(type) {
 		case FileItem:
 			f.currentItem = &sel
-			f.path = filepath.Join(f.path, sel.entry.Name())
+			f.path = path.Join(f.path, sel.entry.Name())
 			if sel.entry.IsTree() {
 				cmds = append(cmds, f.selectTreeCmd)
 			} else {
@@ -457,19 +457,19 @@ func (f *Files) selectFileCmd() tea.Msg {
 		if !bin {
 			bin, err = fi.IsBinary()
 			if err != nil {
-				f.path = filepath.Dir(f.path)
+				f.path = path.Dir(f.path)
 				return common.ErrorMsg(err)
 			}
 		}
 
 		if bin {
-			f.path = filepath.Dir(f.path)
+			f.path = path.Dir(f.path)
 			return common.ErrorMsg(errBinaryFile)
 		}
 
 		c, err := fi.Bytes()
 		if err != nil {
-			f.path = filepath.Dir(f.path)
+			f.path = path.Dir(f.path)
 			return common.ErrorMsg(err)
 		}
 
@@ -526,7 +526,7 @@ func renderBlame(c common.Common, f *FileItem, b *gitm.Blame) string {
 }
 
 func (f *Files) deselectItemCmd() tea.Cmd {
-	f.path = filepath.Dir(f.path)
+	f.path = path.Dir(f.path)
 	index := 0
 	if len(f.lastSelected) > 0 {
 		index = f.lastSelected[len(f.lastSelected)-1]
