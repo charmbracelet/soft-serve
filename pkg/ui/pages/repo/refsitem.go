@@ -83,7 +83,7 @@ func (d RefItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 		return nil
 	}
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
 			return copyCmd(item.ID(), fmt.Sprintf("Reference %q copied to clipboard", item.ID()))

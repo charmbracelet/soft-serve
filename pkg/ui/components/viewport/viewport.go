@@ -40,7 +40,7 @@ func (v *Viewport) Init() tea.Cmd {
 // Update implements tea.Model.
 func (v *Viewport) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, v.common.KeyMap.GotoTop):
 			v.GotoTop()

@@ -152,7 +152,7 @@ func (r *Refs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switchTabCmd(&Files{}),
 			)
 		}
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, r.common.KeyMap.SelectItem):
 			cmds = append(cmds, r.selector.SelectItemCmd)

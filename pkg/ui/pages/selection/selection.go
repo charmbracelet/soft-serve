@@ -250,9 +250,9 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-	case tea.KeyMsg, tea.MouseMsg:
+	case tea.KeyPressMsg, tea.MouseMsg:
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch {
 			case key.Matches(msg, s.common.KeyMap.Back):
 				cmds = append(cmds, s.selector.Init())

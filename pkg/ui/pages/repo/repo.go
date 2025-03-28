@@ -171,7 +171,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tabs.ActiveTabMsg:
 		r.activeTab = int(msg)
-	case tea.KeyMsg, tea.MouseMsg:
+	case tea.KeyPressMsg, tea.MouseClickMsg:
 		t, cmd := r.tabs.Update(msg)
 		r.tabs = t.(*tabs.Tabs)
 		if cmd != nil {
@@ -200,7 +200,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch {
 			case key.Matches(msg, r.common.KeyMap.Back):
 				cmds = append(cmds, goBackCmd)
@@ -271,7 +271,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update the status bar on these events
 	// Must come after we've updated the active tab
 	switch msg.(type) {
-	case RepoMsg, RefMsg, tabs.ActiveTabMsg, tea.KeyMsg, tea.MouseMsg,
+	case RepoMsg, RefMsg, tabs.ActiveTabMsg, tea.KeyPressMsg, tea.MouseClickMsg,
 		FileItemsMsg, FileContentMsg, FileBlameMsg, selector.ActiveMsg,
 		LogItemsMsg, GoBackMsg, LogDiffMsg, EmptyRepoMsg,
 		StashListMsg, StashPatchMsg:

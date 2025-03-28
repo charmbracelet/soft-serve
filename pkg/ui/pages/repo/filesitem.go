@@ -82,7 +82,7 @@ func (d FileItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 		return nil
 	}
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
 			return copyCmd(item.entry.Name(), fmt.Sprintf("File name %q copied to clipboard", item.entry.Name()))

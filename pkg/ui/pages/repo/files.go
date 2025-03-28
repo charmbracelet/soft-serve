@@ -264,7 +264,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case filesViewFiles, filesViewContent:
 			cmds = append(cmds, f.deselectItemCmd())
 		}
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch f.activeView {
 		case filesViewFiles:
 			switch {

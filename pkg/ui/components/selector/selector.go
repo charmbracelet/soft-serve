@@ -252,7 +252,7 @@ func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		filterState := s.FilterState()
 		switch {
 		case key.Matches(msg, s.common.KeyMap.Help):

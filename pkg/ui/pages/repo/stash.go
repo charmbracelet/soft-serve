@@ -165,7 +165,7 @@ func (s *Stash) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 		}
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch s.state {
 		case stashStateList:
 			switch {

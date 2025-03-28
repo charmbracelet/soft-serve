@@ -54,7 +54,7 @@ func (t *Tabs) Init() tea.Cmd {
 func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "tab":
 			t.activeTab = (t.activeTab + 1) % len(t.tabs)
