@@ -7,12 +7,11 @@ import (
 
 	"github.com/alecthomas/chroma/v2/lexers"
 	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/glamour"
-	gansi "github.com/charmbracelet/glamour/ansi"
+	"github.com/charmbracelet/glamour/v2"
+	gansi "github.com/charmbracelet/glamour/v2/ansi"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	vp "github.com/charmbracelet/soft-serve/pkg/ui/components/viewport"
-	"github.com/muesli/termenv"
 )
 
 const (
@@ -228,8 +227,7 @@ func (r *Code) renderFile(path, content string) (string, error) {
 		var m uint
 		st.CodeBlock.Margin = &m
 		rc = gansi.NewRenderContext(gansi.Options{
-			ColorProfile: termenv.TrueColor,
-			Styles:       st,
+			Styles: st,
 		})
 	}
 	err := formatter.Render(&s, rc)

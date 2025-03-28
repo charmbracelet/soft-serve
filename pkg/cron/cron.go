@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/log/v2"
 	"github.com/robfig/cron/v3"
 )
 

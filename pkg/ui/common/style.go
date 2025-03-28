@@ -2,9 +2,8 @@ package common
 
 import (
 	"github.com/charmbracelet/colorprofile"
-	gansi "github.com/charmbracelet/glamour/ansi"
-	"github.com/charmbracelet/glamour/styles"
-	"github.com/muesli/termenv"
+	gansi "github.com/charmbracelet/glamour/v2/ansi"
+	"github.com/charmbracelet/glamour/v2/styles"
 )
 
 // DefaultColorProfile is the default color profile used by the SSH server.
@@ -40,7 +39,6 @@ func StyleRenderer() gansi.RenderContext {
 // DefaultColorProfile and styles.
 func StyleRendererWithStyles(styles gansi.StyleConfig) gansi.RenderContext {
 	return gansi.NewRenderContext(gansi.Options{
-		ColorProfile: termenv.ANSI256,
-		Styles:       styles,
+		Styles: styles,
 	})
 }

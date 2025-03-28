@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	gansi "github.com/charmbracelet/glamour/ansi"
+	gansi "github.com/charmbracelet/glamour/v2/ansi"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"

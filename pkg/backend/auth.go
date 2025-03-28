@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/log/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 

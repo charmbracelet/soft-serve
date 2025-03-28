@@ -3,13 +3,10 @@ module github.com/charmbracelet/soft-serve
 go 1.23.0
 
 require (
-	github.com/charmbracelet/glamour v0.9.1
-	github.com/charmbracelet/lipgloss v1.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-git/go-git/v5 v5.14.0
 	github.com/matryer/is v1.4.1
 	github.com/muesli/reflow v0.3.0
-	github.com/muesli/termenv v0.16.0
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 )
 
@@ -19,15 +16,16 @@ require (
 	github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2
 	github.com/caarlos0/duration v0.0.0-20240108180406-5d492514f3c7
 	github.com/caarlos0/env/v11 v11.2.2
-	github.com/charmbracelet/bubbles/v2 v2.0.0-alpha.2.0.20250318132216-bd20b89a3e80
-	github.com/charmbracelet/bubbletea/v2 v2.0.0-alpha.2.0.20250318133619-2ce107c85fed
-	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc
+	github.com/charmbracelet/bubbles/v2 v2.0.0-beta.1
+	github.com/charmbracelet/bubbletea/v2 v2.0.0-beta.1
+	github.com/charmbracelet/colorprofile v0.3.0
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92
+	github.com/charmbracelet/glamour/v2 v2.0.0-20250327182525-cd9a02a87169
 	github.com/charmbracelet/keygen v0.5.3
-	github.com/charmbracelet/lipgloss/v2 v2.0.0-alpha.2.0.20250313133401-58331b1fff40
-	github.com/charmbracelet/log v0.4.1
+	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.1
+	github.com/charmbracelet/log/v2 v2.0.0-20250226163916-c379e29ff706
 	github.com/charmbracelet/ssh v0.0.0-20250128164007-98fd5ae11894
-	github.com/charmbracelet/wish/v2 v2.0.0-20250319172925-3ae4bfe9c24e
+	github.com/charmbracelet/wish/v2 v2.0.0-20250328000358-93bac50f7f6a
 	github.com/charmbracelet/x/ansi v0.8.0
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/gobwas/glob v0.2.3
@@ -55,12 +53,10 @@ require (
 require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/charmbracelet/log/v2 v2.0.0-20250226163916-c379e29ff706 // indirect
-	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
+	github.com/charmbracelet/x/cellbuf v0.0.14-0.20250326144200-0875329e71da // indirect
 	github.com/charmbracelet/x/conpty v0.1.0 // indirect
 	github.com/charmbracelet/x/errors v0.0.0-20240725160154-f9f6568126ec // indirect
 	github.com/charmbracelet/x/input v0.3.4 // indirect
@@ -99,7 +95,6 @@ require (
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/tools v0.26.0 // indirect
 	google.golang.org/protobuf v1.36.1 // indirect
