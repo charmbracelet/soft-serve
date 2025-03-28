@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/charmbracelet/glamour v0.9.1
+	github.com/charmbracelet/lipgloss v1.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-git/go-git/v5 v5.14.0
 	github.com/matryer/is v1.4.1
@@ -22,15 +23,15 @@ require (
 	github.com/charmbracelet/bubbletea/v2 v2.0.0-alpha.2.0.20250318133619-2ce107c85fed
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92
-	github.com/charmbracelet/keygen v0.5.1
+	github.com/charmbracelet/keygen v0.5.3
 	github.com/charmbracelet/lipgloss/v2 v2.0.0-alpha.2.0.20250313133401-58331b1fff40
-	github.com/charmbracelet/log v0.4.1-0.20241101171137-e66b83d34ed9
+	github.com/charmbracelet/log v0.4.1
 	github.com/charmbracelet/ssh v0.0.0-20250128164007-98fd5ae11894
 	github.com/charmbracelet/wish/v2 v2.0.0-20250319172925-3ae4bfe9c24e
 	github.com/charmbracelet/x/ansi v0.8.0
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/gobwas/glob v0.2.3
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/go-querystring v1.1.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
@@ -45,7 +46,7 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1
 	github.com/spf13/cobra v1.9.1
 	go.uber.org/automaxprocs v1.6.0
-	golang.org/x/crypto v0.35.0
+	golang.org/x/crypto v0.36.0
 	golang.org/x/sync v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.36.1
@@ -58,7 +59,6 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/charmbracelet/lipgloss v1.1.0 // indirect
 	github.com/charmbracelet/log/v2 v2.0.0-20250226163916-c379e29ff706 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
 	github.com/charmbracelet/x/conpty v0.1.0 // indirect
@@ -97,7 +97,7 @@ require (
 	github.com/yuin/goldmark v1.7.8 // indirect
 	github.com/yuin/goldmark-emoji v1.0.5 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
