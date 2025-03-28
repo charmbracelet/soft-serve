@@ -3,10 +3,10 @@ package ssh
 import (
 	"errors"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -179,40 +179,34 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 		}
-	case tea.KeyMsg, tea.MouseMsg:
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
+	case tea.KeyPressMsg:
+		switch {
+		case key.Matches(msg, ui.common.KeyMap.Back) && ui.error != nil:
+			ui.error = nil
+			ui.state = readyState
+			// Always show the footer on error.
+			ui.showFooter = ui.footer.ShowAll()
+		case key.Matches(msg, ui.common.KeyMap.Help):
+			cmds = append(cmds, footer.ToggleFooterCmd)
+		case key.Matches(msg, ui.common.KeyMap.Quit):
+			if !ui.IsFiltering() {
+				// Stop bubblezone background workers.
+				ui.common.Zone.Close()
+				return ui, tea.Quit
+			}
+		case ui.activePage == repoPage &&
+			ui.pages[ui.activePage].(*repo.Repo).Path() == "" &&
+			key.Matches(msg, ui.common.KeyMap.Back):
+			ui.activePage = selectionPage
+			// Always show the footer on selection page.
+			ui.showFooter = true
+		}
+	case tea.MouseClickMsg:
+		switch msg.Mouse().Button {
+		case tea.MouseLeft:
 			switch {
-			case key.Matches(msg, ui.common.KeyMap.Back) && ui.error != nil:
-				ui.error = nil
-				ui.state = readyState
-				// Always show the footer on error.
-				ui.showFooter = ui.footer.ShowAll()
-			case key.Matches(msg, ui.common.KeyMap.Help):
+			case ui.common.Zone.Get("footer").InBounds(msg):
 				cmds = append(cmds, footer.ToggleFooterCmd)
-			case key.Matches(msg, ui.common.KeyMap.Quit):
-				if !ui.IsFiltering() {
-					// Stop bubblezone background workers.
-					ui.common.Zone.Close()
-					return ui, tea.Quit
-				}
-			case ui.activePage == repoPage &&
-				ui.pages[ui.activePage].(*repo.Repo).Path() == "" &&
-				key.Matches(msg, ui.common.KeyMap.Back):
-				ui.activePage = selectionPage
-				// Always show the footer on selection page.
-				ui.showFooter = true
-			}
-		case tea.MouseMsg:
-			if msg.Action != tea.MouseActionPress {
-				break
-			}
-			switch msg.Button {
-			case tea.MouseButtonLeft:
-				switch {
-				case ui.common.Zone.Get("footer").InBounds(msg):
-					cmds = append(cmds, footer.ToggleFooterCmd)
-				}
 			}
 		}
 	case footer.ToggleFooterMsg:

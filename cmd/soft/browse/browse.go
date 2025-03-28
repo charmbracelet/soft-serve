@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -39,9 +39,8 @@ var Command = &cobra.Command{
 
 		// Bubble Tea uses Termenv default output so we have to use the same
 		// thing here.
-		output := lipgloss.DefaultRenderer()
 		ctx := cmd.Context()
-		c := common.NewCommon(ctx, output, 0, 0)
+		c := common.NewCommon(ctx, 0, 0)
 		c.HideCloneCmd = true
 		comps := []common.TabComponent{
 			repo.NewReadme(c),
@@ -152,7 +151,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.common.KeyMap.Back) && m.error != nil:
 			m.error = nil
@@ -166,12 +165,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.common.Zone.Close()
 			return m, tea.Quit
 		}
-	case tea.MouseMsg:
-		if msg.Action != tea.MouseActionPress {
-			break
-		}
-		switch msg.Button {
-		case tea.MouseButtonLeft:
+	case tea.MouseClickMsg:
+		mouse := msg.Mouse()
+		switch mouse.Button {
+		case tea.MouseLeft:
 			switch {
 			case m.common.Zone.Get("footer").InBounds(msg):
 				cmds = append(cmds, footer.ToggleFooterCmd)

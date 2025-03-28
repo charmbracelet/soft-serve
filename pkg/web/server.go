@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/log/v2"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )

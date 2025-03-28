@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/help"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -171,7 +171,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tabs.ActiveTabMsg:
 		r.activeTab = int(msg)
-	case tea.KeyMsg, tea.MouseMsg:
+	case tea.KeyPressMsg, tea.MouseClickMsg:
 		t, cmd := r.tabs.Update(msg)
 		r.tabs = t.(*tabs.Tabs)
 		if cmd != nil {
@@ -185,17 +185,14 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		switch msg := msg.(type) {
-		case tea.MouseMsg:
-			if msg.Action != tea.MouseActionPress {
-				break
-			}
+		case tea.MouseClickMsg:
 			switch msg.Button {
-			case tea.MouseButtonLeft:
+			case tea.MouseLeft:
 				switch {
 				case r.common.Zone.Get("repo-help").InBounds(msg):
 					cmds = append(cmds, footer.ToggleFooterCmd)
 				}
-			case tea.MouseButtonRight:
+			case tea.MouseRight:
 				switch {
 				case r.common.Zone.Get("repo-main").InBounds(msg):
 					cmds = append(cmds, goBackCmd)
@@ -203,7 +200,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch {
 			case key.Matches(msg, r.common.KeyMap.Back):
 				cmds = append(cmds, goBackCmd)
@@ -212,7 +209,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CopyMsg:
 		txt := msg.Text
 		if cfg := r.common.Config(); cfg != nil {
-			r.common.Output.Copy(txt)
+			cmds = append(cmds, tea.SetClipboard(txt))
 		}
 		r.statusbar.SetStatus("", msg.Message, "", "")
 	case ReadmeMsg:
@@ -274,7 +271,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update the status bar on these events
 	// Must come after we've updated the active tab
 	switch msg.(type) {
-	case RepoMsg, RefMsg, tabs.ActiveTabMsg, tea.KeyMsg, tea.MouseMsg,
+	case RepoMsg, RefMsg, tabs.ActiveTabMsg, tea.KeyPressMsg, tea.MouseClickMsg,
 		FileItemsMsg, FileContentMsg, FileBlameMsg, selector.ActiveMsg,
 		LogItemsMsg, GoBackMsg, LogDiffMsg, EmptyRepoMsg,
 		StashListMsg, StashPatchMsg:
@@ -326,7 +323,7 @@ func (r *Repo) headerView() string {
 	if r.selectedRepo == nil {
 		return ""
 	}
-	truncate := r.common.Renderer.NewStyle().MaxWidth(r.common.Width)
+	truncate := lipgloss.NewStyle().MaxWidth(r.common.Width)
 	header := r.selectedRepo.ProjectName()
 	if header == "" {
 		header = r.selectedRepo.Name()
