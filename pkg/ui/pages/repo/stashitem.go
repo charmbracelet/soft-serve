@@ -5,9 +5,9 @@ import (
 	"io"
 
 	gitm "github.com/aymanbagabas/git-module"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 )
 
@@ -65,7 +65,7 @@ func (d StashItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
 			return copyCmd(item.Title(), fmt.Sprintf("Stash message %q copied to clipboard", item.Title()))

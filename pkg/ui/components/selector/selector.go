@@ -3,9 +3,9 @@ package selector
 import (
 	"sync"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 )
 
@@ -230,16 +230,14 @@ func (s *Selector) Init() tea.Cmd {
 func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
-	case tea.MouseMsg:
-		if msg.Action != tea.MouseActionPress {
-			break
-		}
-		switch msg.Button {
-		case tea.MouseButtonWheelUp:
+	case tea.MouseClickMsg:
+		m := msg.Mouse()
+		switch m.Button {
+		case tea.MouseWheelUp:
 			s.CursorUp()
-		case tea.MouseButtonWheelDown:
+		case tea.MouseWheelDown:
 			s.CursorDown()
-		case tea.MouseButtonLeft:
+		case tea.MouseLeft:
 			curIdx := s.Index()
 			for i, item := range s.Items() {
 				item, _ := item.(IdentifiableItem)
@@ -254,7 +252,7 @@ func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		filterState := s.FilterState()
 		switch {
 		case key.Matches(msg, s.common.KeyMap.Help):

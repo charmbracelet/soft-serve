@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/log/v2"
 )
 
 // BasicTransferAdapter implements the "basic" adapter

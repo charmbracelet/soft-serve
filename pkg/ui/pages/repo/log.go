@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	gansi "github.com/charmbracelet/glamour/ansi"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	gansi "github.com/charmbracelet/glamour/v2/ansi"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -221,11 +221,11 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if i != nil {
 			l.activeCommit = i.(LogItem).Commit
 		}
-	case tea.KeyMsg, tea.MouseMsg:
+	case tea.KeyPressMsg, tea.MouseClickMsg:
 		switch l.activeView {
 		case logViewCommits:
 			switch kmsg := msg.(type) {
-			case tea.KeyMsg:
+			case tea.KeyPressMsg:
 				switch {
 				case key.Matches(kmsg, l.common.KeyMap.SelectItem):
 					cmds = append(cmds, l.selector.SelectItemCmd)
@@ -248,7 +248,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		case logViewDiff:
 			switch kmsg := msg.(type) {
-			case tea.KeyMsg:
+			case tea.KeyPressMsg:
 				switch {
 				case key.Matches(kmsg, l.common.KeyMap.BackItem):
 					l.goBack()

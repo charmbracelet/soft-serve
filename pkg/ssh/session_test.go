@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -17,10 +17,9 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/store/database"
 	"github.com/charmbracelet/soft-serve/pkg/test"
 	"github.com/charmbracelet/ssh"
-	bm "github.com/charmbracelet/wish/bubbletea"
-	"github.com/charmbracelet/wish/testsession"
+	bm "github.com/charmbracelet/wish/v2/bubbletea"
+	"github.com/charmbracelet/wish/v2/testsession"
 	"github.com/matryer/is"
-	"github.com/muesli/termenv"
 	gossh "golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite" // sqlite driver
 )
@@ -79,7 +78,7 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 	be := backend.New(ctx, cfg, dbx, dbstore)
 	ctx = backend.WithContext(ctx, be)
 	return testsession.New(tb, &ssh.Server{
-		Handler: ContextMiddleware(cfg, dbx, dbstore, be, log.Default())(bm.MiddlewareWithProgramHandler(SessionHandler, termenv.ANSI256)(func(s ssh.Session) {
+		Handler: ContextMiddleware(cfg, dbx, dbstore, be, log.Default())(bm.MiddlewareWithProgramHandler(SessionHandler)(func(s ssh.Session) {
 			_, _, active := s.Pty()
 			if !active {
 				os.Exit(1)
