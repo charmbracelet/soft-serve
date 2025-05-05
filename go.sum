@@ -30,8 +30,8 @@ github.com/charmbracelet/bubbles v0.21.0 h1:9TdC97SdRVg/1aaXNVWfFH3nnLAwOXr8Fn6u
 github.com/charmbracelet/bubbles v0.21.0/go.mod h1:HF+v6QUR4HkEpz62dx7ym2xc71/KBHg+zKwJtMw+qtg=
 github.com/charmbracelet/bubbletea v1.3.4 h1:kCg7B+jSCFPLYRA52SDZjr51kG/fMUEoPoZrkaDHyoI=
 github.com/charmbracelet/bubbletea v1.3.4/go.mod h1:dtcUCyCGEX3g9tosuYiut3MXgY/Jsv9nKVdibKKRRXo=
-github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc h1:4pZI35227imm7yK2bGPcfpFEmuY1gc2YSTShr4iJBfs=
-github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc/go.mod h1:X4/0JoqgTIPSFcRA/P6INZzIuyqdFY5rm8tb41s9okk=
+github.com/charmbracelet/colorprofile v0.3.1 h1:k8dTHMd7fgw4bnFd7jXTLZrSU/CQrKnL3m+AxCzDz40=
+github.com/charmbracelet/colorprofile v0.3.1/go.mod h1:/GkGusxNs8VB/RSOh3fu0TJmQ4ICMMPApIIVn0KszZ0=
 github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92 h1:KtQlsiHfY3K4AoIEh0yUE/wCLHteZ9EzV1hKmx+p7U8=
 github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92/go.mod h1:UrXUCm3xLQkq15fu7qlXHUMlrhdlXHoi13KH2Dfiits=
 github.com/charmbracelet/glamour v0.10.0 h1:MtZvfwsYCx8jEPFJm3rIBFIMZUfUJ765oX8V6kXldcY=
@@ -133,8 +133,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
 github.com/lib/pq v1.10.9/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
-github.com/lrstanley/bubblezone v0.0.0-20240723130623-7fd58a7b1f91 h1:NIU7JKWRT1sQcopTxZJ6h5zNAaTy1WE1i6phrMKj8mw=
-github.com/lrstanley/bubblezone v0.0.0-20240723130623-7fd58a7b1f91/go.mod h1:fMHACHXouhQO+NLAFvHEeKdVSzG7L/O1khqsvswCTmk=
+github.com/lrstanley/bubblezone v1.0.0 h1:bIpUaBilD42rAQwlg/4u5aTqVAt6DSRKYZuSdmkr8UA=
+github.com/lrstanley/bubblezone v1.0.0/go.mod h1:kcTekA8HE/0Ll2bWzqHlhA2c513KDNLW7uDfDP4Mly8=
 github.com/lucasb-eyer/go-colorful v1.2.0 h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69Aj6K7nkY=
 github.com/lucasb-eyer/go-colorful v1.2.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/matryer/is v1.4.1 h1:55ehd8zaGABKLXQUe2awZ99BD/PTc2ls+KV/dXphgEQ=
