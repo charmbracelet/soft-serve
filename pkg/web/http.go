@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 type HTTPServer struct {
 	ctx context.Context
 	cfg *config.Config
+	cr  *CertReloader
 
 	Server *http.Server
 }
@@ -34,6 +36,18 @@ func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 		},
 	}
 
+	if cfg.HTTP.TLSKeyPath != "" && cfg.HTTP.TLSCertPath != "" {
+		cr, err := NewCertReloader(cfg.HTTP.TLSCertPath, cfg.HTTP.TLSKeyPath, logger)
+		if err != nil {
+			return nil, err
+		}
+		s.cr = cr
+
+		s.Server.TLSConfig = &tls.Config{
+			GetCertificate: cr.GetCertificateFunc(),
+		}
+	}
+
 	return s, nil
 }
 
@@ -44,8 +58,8 @@ func (s *HTTPServer) Close() error {
 
 // ListenAndServe starts the HTTP server.
 func (s *HTTPServer) ListenAndServe() error {
-	if s.cfg.HTTP.TLSKeyPath != "" && s.cfg.HTTP.TLSCertPath != "" {
-		return s.Server.ListenAndServeTLS(s.cfg.HTTP.TLSCertPath, s.cfg.HTTP.TLSKeyPath)
+	if s.Server.TLSConfig != nil {
+		return s.Server.ListenAndServeTLS("", "")
 	}
 	return s.Server.ListenAndServe()
 }
