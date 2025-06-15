@@ -110,7 +110,7 @@ and database.
 
 By default, program configuration is stored within the `data` directory. But,
 this can be overridden by setting a custom path to a config file with `SOFT_SERVE_CONFIG_LOCATION`
-that is pre-created. If a config file pointed to by `SOFT_SERVE_CONFIG_LOCATION`, 
+that is pre-created. If a config file pointed to by `SOFT_SERVE_CONFIG_LOCATION`,
 the default location within the `data` dir is used for generating a default config.
 
 To change the default data path use `SOFT_SERVE_DATA_PATH` environment variable.
@@ -287,13 +287,17 @@ Soft Serve at its core manages your server authentication and authorization. Aut
 
 To manage the server users, access, and repos, you can use the SSH command line interface.
 
-Try `ssh localhost -i ~/.ssh/id_ed25519 -p 23231 help` for more info. Make sure
+Try `ssh localhost -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p 23231 help` for more info. Make sure
 you use your key here.
+
+> **Note** The `IdentitiesOnly` option is used to prevent SSH from using any
+> other keys in your `~/.ssh` directory. This is useful when you have multiple
+> keys, and you want to use a specific key for Soft Serve.
 
 For ease of use, instead of specifying the key, port, and hostname every time
 you SSH into Soft Serve, add your own Soft Serve instance entry to your SSH
 config. For instance, to use `ssh soft` instead of typing `ssh localhost -i
-~/.ssh/id_ed25519 -p 23231`, we can define a `soft` entry in our SSH config
+~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p 23231`, we can define a `soft` entry in our SSH config
 file `~/.ssh/config`.
 
 ```conf
@@ -301,6 +305,7 @@ Host soft
   HostName localhost
   Port 23231
   IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
 ```
 
 Now, we can do `ssh soft` to SSH into Soft Serve. Since `git` is also aware of
@@ -313,7 +318,7 @@ git clone ssh://soft/dotfiles
 git push origin main
 ```
 
-> **Note** The `-i` part will be omitted in the examples below for brevity. You
+> **Note** The `-i` and `-o` parts will be omitted in the examples below for brevity. You
 > can add your server settings to your sshconfig for quicker access.
 
 ### Authentication
