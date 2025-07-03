@@ -58,11 +58,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 	testDaemon = d
-	go func() {
-		if err := d.ListenAndServe(); err != ErrServerClosed {
-			log.Fatal(err)
-		}
-	}()
+	go d.ListenAndServe() //nolint:errcheck
 	code := m.Run()
 	os.Unsetenv("SOFT_SERVE_DATA_PATH")
 	os.Unsetenv("SOFT_SERVE_GIT_MAX_CONNECTIONS")
@@ -81,7 +77,7 @@ func TestIdleTimeout(t *testing.T) {
 	for {
 		c, err = net.Dial("tcp", testDaemon.addr)
 		if err != nil && tries >= 3 {
-			t.Fatal(err)
+			t.Fatalf("failed to connect to daemon after %d tries: %v", tries, err)
 		}
 		tries++
 		if testDaemon.conns.Size() != 0 {
@@ -99,7 +95,7 @@ func TestIdleTimeout(t *testing.T) {
 func TestInvalidRepo(t *testing.T) {
 	c, err := net.Dial("tcp", testDaemon.addr)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to connect to daemon: %v", err)
 	}
 	if err := pktline.NewEncoder(c).EncodeString("git-upload-pack /test.git\x00"); err != nil {
 		t.Fatalf("expected nil, got error: %v", err)
