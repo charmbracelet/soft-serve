@@ -321,11 +321,18 @@ func (d *GitDaemon) closeListener() error {
 	if d.done.Load() {
 		return ErrServerClosed
 	}
+	var err error
+	for _, l := range d.listeners {
+		if err = l.Close(); err != nil {
+			err = errors.Join(err, fmt.Errorf("close listener %s: %w", l.Addr(), err))
+		}
+	}
+	d.listeners = d.listeners[:0]
 	d.once.Do(func() {
-		close(d.finished)
 		d.done.Store(true)
+		close(d.finished)
 	})
-	return nil
+	return err
 }
 
 // Shutdown gracefully shuts down the daemon.
@@ -337,8 +344,8 @@ func (d *GitDaemon) Shutdown(ctx context.Context) error {
 	err := d.closeListener()
 	finished := make(chan struct{}, 1)
 	go func() {
+		defer close(finished)
 		d.wg.Wait()
-		finished <- struct{}{}
 	}()
 	select {
 	case <-ctx.Done():
