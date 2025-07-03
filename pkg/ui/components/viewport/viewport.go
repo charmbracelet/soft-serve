@@ -75,12 +75,12 @@ func (v *Viewport) GotoBottom() {
 
 // HalfViewDown moves the viewport down by half the viewport height.
 func (v *Viewport) HalfViewDown() {
-	v.Model.HalfViewDown()
+	v.Model.HalfPageDown()
 }
 
 // HalfViewUp moves the viewport up by half the viewport height.
 func (v *Viewport) HalfViewUp() {
-	v.Model.HalfViewUp()
+	v.Model.HalfPageUp()
 }
 
 // ScrollPercent returns the viewport's scroll percentage.
