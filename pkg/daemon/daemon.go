@@ -3,6 +3,7 @@ package daemon
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -43,16 +44,17 @@ var ErrServerClosed = fmt.Errorf("git: %w", net.ErrClosed)
 
 // GitDaemon represents a Git daemon.
 type GitDaemon struct {
-	ctx      context.Context
-	addr     string
-	finished chan struct{}
-	conns    connections
-	cfg      *config.Config
-	be       *backend.Backend
-	wg       sync.WaitGroup
-	once     sync.Once
-	logger   *log.Logger
-	done     atomic.Bool // indicates if the server has been closed
+	ctx       context.Context
+	addr      string
+	finished  chan struct{}
+	conns     connections
+	cfg       *config.Config
+	be        *backend.Backend
+	wg        sync.WaitGroup
+	once      sync.Once
+	logger    *log.Logger
+	done      atomic.Bool // indicates if the server has been closed
+	listeners []net.Listener
 }
 
 // NewDaemon returns a new Git daemon.
@@ -91,7 +93,7 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 
 	d.wg.Add(1)
 	defer d.wg.Done()
-	defer listener.Close() //nolint:errcheck
+	d.listeners = append(d.listeners, listener)
 
 	var tempDelay time.Duration
 	for {

@@ -771,6 +771,12 @@ If you’re curious about the inner workings of this problem have a look at:
 - https://go-review.googlesource.com/c/crypto/+/220037
 - https://github.com/golang/crypto/pull/197
 
+## Contributing
+
+See [contributing][contribute].
+
+[contribute]: https://github.com/charmbracelet/soft-serve/contribute
+
 ## Feedback
 
 We’d love to hear your thoughts on this project. Feel free to drop us a note!

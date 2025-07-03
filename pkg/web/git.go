@@ -124,7 +124,7 @@ var gitRoutes = []GitRoute{
 	{
 		method:  []string{http.MethodPost},
 		handler: serviceRpc,
-		path:    "/{service:(?:git-upload-pack|git-receive-pack)$}",
+		path:    "/{service:(?:git-upload-archive|git-upload-pack|git-receive-pack)$}",
 	},
 	{
 		method:  []string{http.MethodGet},
@@ -274,7 +274,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 			}
 
 			fallthrough
-		case service == git.UploadPackService:
+		case service == git.UploadPackService || service == git.UploadArchiveService:
 			if repo == nil {
 				// If the repo doesn't exist, return 404
 				renderNotFound(w, r)
@@ -394,7 +394,11 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	cmd := git.ServiceCommand{
 		Stdout: &stdout,
 		Dir:    dir,
-		Args:   []string{"--stateless-rpc"},
+	}
+
+	switch service {
+	case git.UploadPackService, git.ReceivePackService:
+		cmd.Args = append(cmd.Args, "--stateless-rpc")
 	}
 
 	user := proto.UserFromContext(ctx)
