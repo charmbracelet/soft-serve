@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	gitm "github.com/aymanbagabas/git-module"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -264,7 +264,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case filesViewFiles, filesViewContent:
 			cmds = append(cmds, f.deselectItemCmd())
 		}
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch f.activeView {
 		case filesViewFiles:
 			switch {

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -51,7 +51,7 @@ func New(c common.Common) *Selection {
 		ts[i] = b.String()
 	}
 	t := tabs.New(c, ts)
-	t.TabSeparator = c.Renderer.NewStyle()
+	t.TabSeparator = lipgloss.NewStyle()
 	t.TabInactive = c.Styles.TopLevelNormalTab
 	t.TabActive = c.Styles.TopLevelActiveTab
 	t.TabDot = c.Styles.TopLevelActiveTabDot
@@ -250,9 +250,9 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-	case tea.KeyMsg, tea.MouseMsg:
+	case tea.KeyPressMsg, tea.MouseMsg:
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch {
 			case key.Matches(msg, s.common.KeyMap.Back):
 				cmds = append(cmds, s.selector.Init())
@@ -289,15 +289,15 @@ func (s *Selection) View() string {
 	wm, hm := s.getMargins()
 	switch s.activePane {
 	case selectorPane:
-		ss := s.common.Renderer.NewStyle().
+		ss := lipgloss.NewStyle().
 			Width(s.common.Width - wm).
 			Height(s.common.Height - hm)
 		view = ss.Render(s.selector.View())
 	case readmePane:
-		rs := s.common.Renderer.NewStyle().
+		rs := lipgloss.NewStyle().
 			Height(s.common.Height - hm)
 		status := fmt.Sprintf("☰ %.f%%", s.readme.ScrollPercent()*100)
-		readmeStatus := s.common.Renderer.NewStyle().
+		readmeStatus := lipgloss.NewStyle().
 			Align(lipgloss.Right).
 			Width(s.common.Width - wm).
 			Foreground(s.common.Styles.InactiveBorderColor).

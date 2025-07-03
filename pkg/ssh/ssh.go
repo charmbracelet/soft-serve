@@ -5,22 +5,20 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"runtime"
 	"strconv"
 	"time"
 
 	"github.com/charmbracelet/keygen"
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/store"
-	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish"
-	bm "github.com/charmbracelet/wish/bubbletea"
-	rm "github.com/charmbracelet/wish/recover"
+	"github.com/charmbracelet/wish/v2"
+	bm "github.com/charmbracelet/wish/v2/bubbletea"
+	rm "github.com/charmbracelet/wish/v2/recover"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gossh "golang.org/x/crypto/ssh"
@@ -71,7 +69,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		rm.MiddlewareWithLogger(
 			logger,
 			// BubbleTea middleware.
-			bm.MiddlewareWithProgramHandler(SessionHandler, common.DefaultColorProfile),
+			bm.MiddlewareWithProgramHandler(SessionHandler),
 			// CLI middleware.
 			CommandMiddleware,
 			// Logging middleware.
@@ -93,11 +91,10 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		wish.WithHostKeyPath(cfg.SSH.KeyPath),
 		wish.WithMiddleware(mw...),
 	}
-	if runtime.GOOS == "windows" {
-		opts = append(opts, ssh.EmulatePty())
-	} else {
-		opts = append(opts, ssh.AllocatePty())
-	}
+
+	// TODO: Support a real PTY in future version.
+	opts = append(opts, ssh.EmulatePty())
+
 	s.srv, err = wish.NewServer(opts...)
 	if err != nil {
 		return nil, err

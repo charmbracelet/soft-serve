@@ -5,16 +5,14 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
+	zone "github.com/aymanbagabas/bubblezone/v2"
+	"github.com/charmbracelet/log/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/ui/keymap"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
 	"github.com/charmbracelet/ssh"
-	zone "github.com/lrstanley/bubblezone"
-	"github.com/muesli/termenv"
 )
 
 type contextKey struct {
@@ -34,27 +32,23 @@ type Common struct {
 	Styles        *styles.Styles
 	KeyMap        *keymap.KeyMap
 	Zone          *zone.Manager
-	Renderer      *lipgloss.Renderer
-	Output        *termenv.Output
 	Logger        *log.Logger
 	HideCloneCmd  bool
 }
 
 // NewCommon returns a new Common struct.
-func NewCommon(ctx context.Context, out *lipgloss.Renderer, width, height int) Common {
+func NewCommon(ctx context.Context, width, height int) Common {
 	if ctx == nil {
 		ctx = context.TODO()
 	}
 	return Common{
-		ctx:      ctx,
-		Width:    width,
-		Height:   height,
-		Renderer: out,
-		Output:   out.Output(),
-		Styles:   styles.DefaultStyles(out),
-		KeyMap:   keymap.DefaultKeyMap(),
-		Zone:     zone.New(),
-		Logger:   log.FromContext(ctx).WithPrefix("ui"),
+		ctx:    ctx,
+		Width:  width,
+		Height: height,
+		Styles: styles.DefaultStyles(),
+		KeyMap: keymap.DefaultKeyMap(),
+		Zone:   zone.New(),
+		Logger: log.FromContext(ctx).WithPrefix("ui"),
 	}
 }
 
