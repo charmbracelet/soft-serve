@@ -107,7 +107,13 @@ var (
 				doneOnce()
 			}()
 
-			<-done
+			select {
+			case err := <-lch:
+				if err != nil {
+					return fmt.Errorf("server error: %w", err)
+				}
+			case <-done:
+			}
 
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
@@ -115,8 +121,7 @@ var (
 				return err
 			}
 
-			// wait for serve to finish
-			return <-lch
+			return nil
 		},
 	}
 )
