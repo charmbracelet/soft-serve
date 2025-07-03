@@ -128,7 +128,7 @@ func (s *Stash) StatusBarInfo() string {
 		}
 		return fmt.Sprintf("p. %d/%d", s.list.Page()+1, totalPages)
 	case stashStatePatch:
-		return fmt.Sprintf("☰ %d%%", s.code.ScrollPosition())
+		return common.ScrollPercent(s.code.ScrollPosition())
 	default:
 		return ""
 	}

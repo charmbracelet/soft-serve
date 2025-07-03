@@ -383,7 +383,7 @@ func (f *Files) StatusBarInfo() string {
 	case filesViewFiles:
 		return fmt.Sprintf("# %d/%d", f.selector.Index()+1, len(f.selector.VisibleItems()))
 	case filesViewContent:
-		return fmt.Sprintf("☰ %d%%", f.code.ScrollPosition())
+		return common.ScrollPercent(f.code.ScrollPosition())
 	default:
 		return ""
 	}

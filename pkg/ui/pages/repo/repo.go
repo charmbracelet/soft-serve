@@ -271,10 +271,10 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update the status bar on these events
 	// Must come after we've updated the active tab
 	switch msg.(type) {
-	case RepoMsg, RefMsg, tabs.ActiveTabMsg, tea.KeyPressMsg, tea.MouseClickMsg,
-		FileItemsMsg, FileContentMsg, FileBlameMsg, selector.ActiveMsg,
-		LogItemsMsg, GoBackMsg, LogDiffMsg, EmptyRepoMsg,
-		StashListMsg, StashPatchMsg:
+	case RepoMsg, RefMsg, tabs.ActiveTabMsg, tea.KeyPressMsg,
+		tea.MouseClickMsg, tea.MouseWheelMsg, FileItemsMsg, FileContentMsg,
+		FileBlameMsg, selector.ActiveMsg, LogItemsMsg, GoBackMsg, LogDiffMsg,
+		EmptyRepoMsg, StashListMsg, StashPatchMsg:
 		r.setStatusBarInfo()
 	}
 

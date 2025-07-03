@@ -117,3 +117,9 @@ func IsFileMarkdown(content, ext string) bool {
 	}
 	return lang == "markdown"
 }
+
+// ScrollPercent returns a string representing the scroll percentage of the
+// viewport.
+func ScrollPercent(position int) string {
+	return fmt.Sprintf("≡ %d%%", position)
+}

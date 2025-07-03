@@ -202,7 +202,7 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ui.showFooter = true
 		}
 	case tea.MouseClickMsg:
-		switch msg.Mouse().Button {
+		switch msg.Button {
 		case tea.MouseLeft:
 			switch {
 			case ui.common.Zone.Get("footer").InBounds(msg):
