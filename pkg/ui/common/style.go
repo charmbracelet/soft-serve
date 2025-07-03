@@ -30,13 +30,12 @@ func StyleConfig() gansi.StyleConfig {
 	return s
 }
 
-// StyleRenderer returns a new Glamour renderer with the DefaultColorProfile.
+// StyleRenderer returns a new Glamour renderer.
 func StyleRenderer() gansi.RenderContext {
 	return StyleRendererWithStyles(StyleConfig())
 }
 
-// StyleRendererWithStyles returns a new Glamour renderer with the
-// DefaultColorProfile and styles.
+// StyleRendererWithStyles returns a new Glamour renderer.
 func StyleRendererWithStyles(styles gansi.StyleConfig) gansi.RenderContext {
 	return gansi.NewRenderContext(gansi.Options{
 		Styles: styles,
