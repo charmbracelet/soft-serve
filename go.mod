@@ -25,7 +25,7 @@ require (
 	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.2
 	github.com/charmbracelet/log/v2 v2.0.0-20250226163916-c379e29ff706
 	github.com/charmbracelet/ssh v0.0.0-20250128164007-98fd5ae11894
-	github.com/charmbracelet/wish/v2 v2.0.0-20250328000358-93bac50f7f6a
+	github.com/charmbracelet/wish/v2 v2.0.0-20250505151211-5996fc7c1f33
 	github.com/charmbracelet/x/ansi v0.9.3
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/gobwas/glob v0.2.3

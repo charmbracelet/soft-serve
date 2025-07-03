@@ -46,6 +46,8 @@ github.com/charmbracelet/ssh v0.0.0-20250128164007-98fd5ae11894 h1:Ffon9TbltLGBs
 github.com/charmbracelet/ssh v0.0.0-20250128164007-98fd5ae11894/go.mod h1:hg+I6gvlMl16nS9ZzQNgBIrrCasGwEw0QiLsDcP01Ko=
 github.com/charmbracelet/wish/v2 v2.0.0-20250328000358-93bac50f7f6a h1:K+X0iNqDhVbjbPsXIh/HFfa5rBbhaH0aQQGzfMhGh8Q=
 github.com/charmbracelet/wish/v2 v2.0.0-20250328000358-93bac50f7f6a/go.mod h1:sa+xyPJGyNn2g9WTIMGVhwHniS92FWjcfPPYROIq80c=
+github.com/charmbracelet/wish/v2 v2.0.0-20250505151211-5996fc7c1f33 h1:/TlxP6Lw9Z7NJCQ7TSbuvfO3/AL0UXGDPwH1zO9pV8U=
+github.com/charmbracelet/wish/v2 v2.0.0-20250505151211-5996fc7c1f33/go.mod h1:Tssk2d4IKqV3tNiPgwrYSvJMQu+nN9J4JlGmYaXpiR4=
 github.com/charmbracelet/x/ansi v0.9.3 h1:BXt5DHS/MKF+LjuK4huWrC6NCvHtexww7dMayh6GXd0=
 github.com/charmbracelet/x/ansi v0.9.3/go.mod h1:3RQDQ6lDnROptfpWuUVIUG64bD2g2BgntdxH0Ya5TeE=
 github.com/charmbracelet/x/cellbuf v0.0.14-0.20250516160309-24eee56f89fa h1:lphz0Z3rsiOtMYiz8axkT24i9yFiueDhJbzyNUADmME=
