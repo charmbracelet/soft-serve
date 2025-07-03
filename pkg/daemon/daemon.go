@@ -55,6 +55,7 @@ type GitDaemon struct {
 	logger    *log.Logger
 	done      atomic.Bool // indicates if the server has been closed
 	listeners []net.Listener
+	liMu      sync.Mutex
 }
 
 // NewDaemon returns a new Git daemon.
@@ -93,7 +94,9 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 
 	d.wg.Add(1)
 	defer d.wg.Done()
+	d.liMu.Lock()
 	d.listeners = append(d.listeners, listener)
+	d.liMu.Unlock()
 
 	var tempDelay time.Duration
 	for {
@@ -324,12 +327,14 @@ func (d *GitDaemon) closeListener() error {
 		return ErrServerClosed
 	}
 	var err error
+	d.liMu.Lock()
 	for _, l := range d.listeners {
 		if err = l.Close(); err != nil {
 			err = errors.Join(err, fmt.Errorf("close listener %s: %w", l.Addr(), err))
 		}
 	}
 	d.listeners = d.listeners[:0]
+	d.liMu.Unlock()
 	d.once.Do(func() {
 		d.done.Store(true)
 		close(d.finished)
