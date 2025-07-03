@@ -1,11 +1,9 @@
 package ssh
 
 import (
-	"os"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -60,12 +58,8 @@ func SessionHandler(s ssh.Session) *tea.Program {
 		tea.WithoutCatchPanics(),
 		tea.WithMouseCellMotion(),
 		tea.WithContext(ctx),
+		tea.WithColorProfile(common.DefaultColorProfile),
 	)
-
-	if testrun, ok := os.LookupEnv("SOFT_SERVE_NO_COLOR"); ok && testrun == "1" {
-		// Disable colors when running tests.
-		opts = append(opts, tea.WithColorProfile(colorprofile.NoTTY))
-	}
 
 	c := common.NewCommon(ctx, pty.Window.Width, pty.Window.Height)
 	c.SetValue(common.ConfigKey, cfg)

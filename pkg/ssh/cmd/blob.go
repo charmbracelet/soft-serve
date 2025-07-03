@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
@@ -15,6 +16,10 @@ func blobCommand() *cobra.Command {
 	var linenumber bool
 	var color bool
 	var raw bool
+	var noColor bool
+	if testrun, ok := os.LookupEnv("SOFT_SERVE_NO_COLOR"); ok && testrun == "1" {
+		noColor = true
+	}
 
 	styles := styles.DefaultStyles()
 	cmd := &cobra.Command{
@@ -83,7 +88,7 @@ func blobCommand() *cobra.Command {
 					return fmt.Errorf("binary file: use --raw to print")
 				}
 			} else {
-				if color {
+				if color && !noColor {
 					c, err = common.FormatHighlight(fp, c)
 					if err != nil {
 						return err
@@ -91,7 +96,7 @@ func blobCommand() *cobra.Command {
 				}
 
 				if linenumber {
-					c, _ = common.FormatLineNumber(styles, c, color)
+					c, _ = common.FormatLineNumber(styles, c, color && !noColor)
 				}
 
 				cmd.Println(c)
