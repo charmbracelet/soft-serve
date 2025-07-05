@@ -198,7 +198,7 @@ func DefaultKeyMap() *KeyMap {
 			"right",
 		),
 		key.WithHelp(
-			"→",
+			"→/l",
 			"select",
 		),
 	)
@@ -210,7 +210,7 @@ func DefaultKeyMap() *KeyMap {
 			"backspace",
 		),
 		key.WithHelp(
-			"←",
+			"←/h",
 			"back",
 		),
 	)
