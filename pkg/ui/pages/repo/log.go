@@ -117,9 +117,12 @@ func (l *Log) ShortHelp() []key.Binding {
 			copyKey,
 		}
 	case logViewDiff:
+		copyKey := l.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy diff")
 		return []key.Binding{
 			l.common.KeyMap.UpDown,
 			l.common.KeyMap.BackItem,
+			copyKey,
 			l.common.KeyMap.GotoTop,
 			l.common.KeyMap.GotoBottom,
 		}
@@ -154,9 +157,12 @@ func (l *Log) FullHelp() [][]key.Binding {
 			},
 		}...)
 	case logViewDiff:
+		copyKey := l.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy diff")
 		k := l.vp.KeyMap
 		b = append(b, []key.Binding{
 			l.common.KeyMap.BackItem,
+			copyKey,
 		})
 		b = append(b, [][]key.Binding{
 			{
@@ -252,6 +258,10 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch {
 				case key.Matches(kmsg, l.common.KeyMap.BackItem):
 					l.goBack()
+				case key.Matches(kmsg, l.common.KeyMap.Copy):
+					if l.currentDiff != nil {
+						cmds = append(cmds, copyCmd(l.currentDiff.Patch(), "Commit diff copied to clipboard"))
+					}
 				}
 			}
 		}
