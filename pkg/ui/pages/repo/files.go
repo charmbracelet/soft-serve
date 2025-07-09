@@ -151,17 +151,7 @@ func (f *Files) ShortHelp() []key.Binding {
 func (f *Files) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
 	copyKey := f.common.KeyMap.Copy
-	actionKeys := []key.Binding{
-		copyKey,
-	}
-	if !f.code.UseGlamour {
-		actionKeys = append(actionKeys, lineNo)
-	}
-	actionKeys = append(actionKeys, blameView)
-	if common.IsFileMarkdown(f.currentContent.content, f.currentContent.ext) &&
-		!f.blameView {
-		actionKeys = append(actionKeys, preview)
-	}
+	actionKeys := []key.Binding{}
 	switch f.activeView {
 	case filesViewFiles:
 		copyKey.SetHelp("c", "copy name")
@@ -183,6 +173,14 @@ func (f *Files) FullHelp() [][]key.Binding {
 			},
 		}...)
 	case filesViewContent:
+		if !f.code.UseGlamour {
+			actionKeys = append(actionKeys, lineNo)
+		}
+		actionKeys = append(actionKeys, blameView)
+		if common.IsFileMarkdown(f.currentContent.content, f.currentContent.ext) &&
+			!f.blameView {
+			actionKeys = append(actionKeys, preview)
+		}
 		copyKey.SetHelp("c", "copy content")
 		k := f.code.KeyMap
 		b = append(b, []key.Binding{
@@ -203,6 +201,9 @@ func (f *Files) FullHelp() [][]key.Binding {
 			},
 		}...)
 	}
+	actionKeys = append([]key.Binding{
+		copyKey,
+	}, actionKeys...)
 	return append(b, actionKeys)
 }
 
