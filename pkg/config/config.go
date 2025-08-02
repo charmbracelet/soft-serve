@@ -371,7 +371,7 @@ func DefaultConfig() *Config {
 			ListenAddr: ":23232",
 			PublicURL:  "http://localhost:23232",
 			CORS: CORSConfig{
-				AllowedHeaders: []string{"Accept", "Accept-Language", "Content-Language", "Origin", "X-Requested-With", "User-Agent", "Authorization", "Access-Control-Request-Method"},
+				AllowedHeaders: []string{"Accept", "Accept-Language", "Content-Language", "Content-Type", "Origin", "X-Requested-With", "User-Agent", "Authorization", "Access-Control-Request-Method"},
 				AllowedMethods: []string{"GET", "HEAD", "POST", "PUT", "OPTIONS"},
 				AllowedOrigins: []string{"http://localhost:23232"},
 			},

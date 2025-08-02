@@ -211,6 +211,7 @@ http:
       - "Accept"
       - "Accept-Language"
       - "Content-Language"
+      - "Content-Type"
       - "Origin"
       - "X-Requested-With"
       - "User-Agent"
