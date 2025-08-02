@@ -1,6 +1,6 @@
 package keymap
 
-import "github.com/charmbracelet/bubbles/key"
+import "github.com/charmbracelet/bubbles/v2/key"
 
 // KeyMap is a map of key bindings for the UI.
 type KeyMap struct {
@@ -198,7 +198,7 @@ func DefaultKeyMap() *KeyMap {
 			"right",
 		),
 		key.WithHelp(
-			"→",
+			"→/l",
 			"select",
 		),
 	)
@@ -210,7 +210,7 @@ func DefaultKeyMap() *KeyMap {
 			"backspace",
 		),
 		key.WithHelp(
-			"←",
+			"←/h",
 			"back",
 		),
 	)

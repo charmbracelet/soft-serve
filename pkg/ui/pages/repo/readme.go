@@ -1,12 +1,11 @@
 package repo
 
 import (
-	"fmt"
 	"path/filepath"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -157,7 +156,7 @@ func (r *Readme) StatusBarValue() string {
 
 // StatusBarInfo implements statusbar.StatusBar.
 func (r *Readme) StatusBarInfo() string {
-	return fmt.Sprintf("☰ %d%%", r.code.ScrollPosition())
+	return common.ScrollPercent(r.code.ScrollPosition())
 }
 
 func (r *Readme) updateReadmeCmd() tea.Msg {

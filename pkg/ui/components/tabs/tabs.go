@@ -3,8 +3,8 @@ package tabs
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 )
 
@@ -54,7 +54,7 @@ func (t *Tabs) Init() tea.Cmd {
 func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "tab":
 			t.activeTab = (t.activeTab + 1) % len(t.tabs)
@@ -63,12 +63,9 @@ func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			t.activeTab = (t.activeTab - 1 + len(t.tabs)) % len(t.tabs)
 			cmds = append(cmds, t.activeTabCmd)
 		}
-	case tea.MouseMsg:
-		if msg.Action != tea.MouseActionPress {
-			break
-		}
+	case tea.MouseClickMsg:
 		switch msg.Button {
-		case tea.MouseButtonLeft:
+		case tea.MouseLeft:
 			for i, tab := range t.tabs {
 				if t.common.Zone.Get(tab).InBounds(msg) {
 					t.activeTab = i
@@ -109,7 +106,7 @@ func (t *Tabs) View() string {
 			s.WriteString(sep.String())
 		}
 	}
-	return t.common.Renderer.NewStyle().
+	return lipgloss.NewStyle().
 		MaxWidth(t.common.Width).
 		Render(s.String())
 }

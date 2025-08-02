@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	gitm "github.com/aymanbagabas/git-module"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -151,17 +151,7 @@ func (f *Files) ShortHelp() []key.Binding {
 func (f *Files) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
 	copyKey := f.common.KeyMap.Copy
-	actionKeys := []key.Binding{
-		copyKey,
-	}
-	if !f.code.UseGlamour {
-		actionKeys = append(actionKeys, lineNo)
-	}
-	actionKeys = append(actionKeys, blameView)
-	if common.IsFileMarkdown(f.currentContent.content, f.currentContent.ext) &&
-		!f.blameView {
-		actionKeys = append(actionKeys, preview)
-	}
+	actionKeys := []key.Binding{}
 	switch f.activeView {
 	case filesViewFiles:
 		copyKey.SetHelp("c", "copy name")
@@ -183,6 +173,14 @@ func (f *Files) FullHelp() [][]key.Binding {
 			},
 		}...)
 	case filesViewContent:
+		if !f.code.UseGlamour {
+			actionKeys = append(actionKeys, lineNo)
+		}
+		actionKeys = append(actionKeys, blameView)
+		if common.IsFileMarkdown(f.currentContent.content, f.currentContent.ext) &&
+			!f.blameView {
+			actionKeys = append(actionKeys, preview)
+		}
 		copyKey.SetHelp("c", "copy content")
 		k := f.code.KeyMap
 		b = append(b, []key.Binding{
@@ -203,6 +201,9 @@ func (f *Files) FullHelp() [][]key.Binding {
 			},
 		}...)
 	}
+	actionKeys = append([]key.Binding{
+		copyKey,
+	}, actionKeys...)
 	return append(b, actionKeys)
 }
 
@@ -264,7 +265,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case filesViewFiles, filesViewContent:
 			cmds = append(cmds, f.deselectItemCmd())
 		}
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch f.activeView {
 		case filesViewFiles:
 			switch {
@@ -383,7 +384,7 @@ func (f *Files) StatusBarInfo() string {
 	case filesViewFiles:
 		return fmt.Sprintf("# %d/%d", f.selector.Index()+1, len(f.selector.VisibleItems()))
 	case filesViewContent:
-		return fmt.Sprintf("☰ %d%%", f.code.ScrollPosition())
+		return common.ScrollPercent(f.code.ScrollPosition())
 	default:
 		return ""
 	}

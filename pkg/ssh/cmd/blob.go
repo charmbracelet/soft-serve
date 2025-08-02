@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -12,12 +12,16 @@ import (
 )
 
 // blobCommand returns a command that prints the contents of a file.
-func blobCommand(renderer *lipgloss.Renderer) *cobra.Command {
+func blobCommand() *cobra.Command {
 	var linenumber bool
 	var color bool
 	var raw bool
+	var noColor bool
+	if testrun, ok := os.LookupEnv("SOFT_SERVE_NO_COLOR"); ok && testrun == "1" {
+		noColor = true
+	}
 
-	styles := styles.DefaultStyles(renderer)
+	styles := styles.DefaultStyles()
 	cmd := &cobra.Command{
 		Use:               "blob REPOSITORY [REFERENCE] [PATH]",
 		Aliases:           []string{"cat", "show"},
@@ -84,7 +88,7 @@ func blobCommand(renderer *lipgloss.Renderer) *cobra.Command {
 					return fmt.Errorf("binary file: use --raw to print")
 				}
 			} else {
-				if color {
+				if color && !noColor {
 					c, err = common.FormatHighlight(fp, c)
 					if err != nil {
 						return err
@@ -92,7 +96,7 @@ func blobCommand(renderer *lipgloss.Renderer) *cobra.Command {
 				}
 
 				if linenumber {
-					c, _ = common.FormatLineNumber(styles, c, color)
+					c, _ = common.FormatLineNumber(styles, c, color && !noColor)
 				}
 
 				cmd.Println(c)

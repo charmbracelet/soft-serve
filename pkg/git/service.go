@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/log/v2"
 )
 
 // Service is a Git daemon service.

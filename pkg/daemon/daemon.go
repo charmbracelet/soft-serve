@@ -3,6 +3,7 @@ package daemon
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -43,16 +44,18 @@ var ErrServerClosed = fmt.Errorf("git: %w", net.ErrClosed)
 
 // GitDaemon represents a Git daemon.
 type GitDaemon struct {
-	ctx      context.Context
-	addr     string
-	finished chan struct{}
-	conns    connections
-	cfg      *config.Config
-	be       *backend.Backend
-	wg       sync.WaitGroup
-	once     sync.Once
-	logger   *log.Logger
-	done     atomic.Bool // indicates if the server has been closed
+	ctx       context.Context
+	addr      string
+	finished  chan struct{}
+	conns     connections
+	cfg       *config.Config
+	be        *backend.Backend
+	wg        sync.WaitGroup
+	once      sync.Once
+	logger    *log.Logger
+	done      atomic.Bool // indicates if the server has been closed
+	listeners []net.Listener
+	liMu      sync.Mutex
 }
 
 // NewDaemon returns a new Git daemon.
@@ -91,7 +94,9 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 
 	d.wg.Add(1)
 	defer d.wg.Done()
-	defer listener.Close() //nolint:errcheck
+	d.liMu.Lock()
+	d.listeners = append(d.listeners, listener)
+	d.liMu.Unlock()
 
 	var tempDelay time.Duration
 	for {
@@ -321,11 +326,20 @@ func (d *GitDaemon) closeListener() error {
 	if d.done.Load() {
 		return ErrServerClosed
 	}
+	var err error
+	d.liMu.Lock()
+	for _, l := range d.listeners {
+		if err = l.Close(); err != nil {
+			err = errors.Join(err, fmt.Errorf("close listener %s: %w", l.Addr(), err))
+		}
+	}
+	d.listeners = d.listeners[:0]
+	d.liMu.Unlock()
 	d.once.Do(func() {
-		close(d.finished)
 		d.done.Store(true)
+		close(d.finished)
 	})
-	return nil
+	return err
 }
 
 // Shutdown gracefully shuts down the daemon.
@@ -337,8 +351,8 @@ func (d *GitDaemon) Shutdown(ctx context.Context) error {
 	err := d.closeListener()
 	finished := make(chan struct{}, 1)
 	go func() {
+		defer close(finished)
 		d.wg.Wait()
-		finished <- struct{}{}
 	}()
 	select {
 	case <-ctx.Done():

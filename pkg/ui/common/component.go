@@ -1,13 +1,14 @@
 package common
 
 import (
-	"github.com/charmbracelet/bubbles/help"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/help"
+	tea "github.com/charmbracelet/bubbletea/v2"
 )
 
 // Component represents a Bubble Tea model that implements a SetSize function.
 type Component interface {
 	tea.Model
+	tea.ViewModel
 	help.KeyMap
 	SetSize(width, height int)
 }

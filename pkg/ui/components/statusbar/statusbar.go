@@ -1,10 +1,10 @@
 package statusbar
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
-	"github.com/muesli/reflow/truncate"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // Model is a status bar model.
@@ -75,12 +75,12 @@ func (s *Model) View() string {
 	}
 	branch := st.StatusBarBranch.Render(s.extra)
 	maxWidth := s.common.Width - w(key) - w(info) - w(branch) - w(help)
-	v := truncate.StringWithTail(s.value, uint(maxWidth-st.StatusBarValue.GetHorizontalFrameSize()), "…") //nolint:gosec
+	v := ansi.Truncate(s.value, maxWidth-st.StatusBarValue.GetHorizontalFrameSize(), "…")
 	value := st.StatusBarValue.
 		Width(maxWidth).
 		Render(v)
 
-	return s.common.Renderer.NewStyle().MaxWidth(s.common.Width).
+	return lipgloss.NewStyle().MaxWidth(s.common.Width).
 		Render(
 			lipgloss.JoinHorizontal(lipgloss.Top,
 				key,

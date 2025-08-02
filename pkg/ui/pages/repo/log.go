@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	gansi "github.com/charmbracelet/glamour/ansi"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	gansi "github.com/charmbracelet/glamour/v2/ansi"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -117,9 +117,12 @@ func (l *Log) ShortHelp() []key.Binding {
 			copyKey,
 		}
 	case logViewDiff:
+		copyKey := l.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy diff")
 		return []key.Binding{
 			l.common.KeyMap.UpDown,
 			l.common.KeyMap.BackItem,
+			copyKey,
 			l.common.KeyMap.GotoTop,
 			l.common.KeyMap.GotoBottom,
 		}
@@ -154,9 +157,12 @@ func (l *Log) FullHelp() [][]key.Binding {
 			},
 		}...)
 	case logViewDiff:
+		copyKey := l.common.KeyMap.Copy
+		copyKey.SetHelp("c", "copy diff")
 		k := l.vp.KeyMap
 		b = append(b, []key.Binding{
 			l.common.KeyMap.BackItem,
+			copyKey,
 		})
 		b = append(b, [][]key.Binding{
 			{
@@ -221,11 +227,11 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if i != nil {
 			l.activeCommit = i.(LogItem).Commit
 		}
-	case tea.KeyMsg, tea.MouseMsg:
+	case tea.KeyPressMsg, tea.MouseClickMsg:
 		switch l.activeView {
 		case logViewCommits:
 			switch kmsg := msg.(type) {
-			case tea.KeyMsg:
+			case tea.KeyPressMsg:
 				switch {
 				case key.Matches(kmsg, l.common.KeyMap.SelectItem):
 					cmds = append(cmds, l.selector.SelectItemCmd)
@@ -248,10 +254,14 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		case logViewDiff:
 			switch kmsg := msg.(type) {
-			case tea.KeyMsg:
+			case tea.KeyPressMsg:
 				switch {
 				case key.Matches(kmsg, l.common.KeyMap.BackItem):
 					l.goBack()
+				case key.Matches(kmsg, l.common.KeyMap.Copy):
+					if l.currentDiff != nil {
+						cmds = append(cmds, copyCmd(l.currentDiff.Patch(), "Commit diff copied to clipboard"))
+					}
 				}
 			}
 		}

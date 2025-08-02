@@ -1,19 +1,17 @@
 package ssh
 
 import (
-	"os"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish"
-	bm "github.com/charmbracelet/wish/bubbletea"
-	"github.com/muesli/termenv"
+	"github.com/charmbracelet/wish/v2"
+	bm "github.com/charmbracelet/wish/v2/bubbletea"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -54,22 +52,18 @@ func SessionHandler(s ssh.Session) *tea.Program {
 		}
 	}
 
-	renderer := bm.MakeRenderer(s)
-	if testrun, ok := os.LookupEnv("SOFT_SERVE_NO_COLOR"); ok && testrun == "1" {
-		// Disable colors when running tests.
-		renderer.SetColorProfile(termenv.Ascii)
-	}
-
-	c := common.NewCommon(ctx, renderer, pty.Window.Width, pty.Window.Height)
-	c.SetValue(common.ConfigKey, cfg)
-	m := NewUI(c, initialRepo)
 	opts := bm.MakeOptions(s)
 	opts = append(opts,
 		tea.WithAltScreen(),
 		tea.WithoutCatchPanics(),
 		tea.WithMouseCellMotion(),
 		tea.WithContext(ctx),
+		tea.WithColorProfile(common.DefaultColorProfile),
 	)
+
+	c := common.NewCommon(ctx, pty.Window.Width, pty.Window.Height)
+	c.SetValue(common.ConfigKey, cfg)
+	m := NewUI(c, initialRepo)
 	p := tea.NewProgram(m, opts...)
 
 	tuiSessionCounter.WithLabelValues(initialRepo, pty.Term).Inc()

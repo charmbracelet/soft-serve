@@ -7,7 +7,8 @@ import (
 	"runtime/debug"
 	"strconv"
 
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/colorprofile"
+	"github.com/charmbracelet/log/v2"
 	"github.com/charmbracelet/soft-serve/cmd/soft/admin"
 	"github.com/charmbracelet/soft-serve/cmd/soft/browse"
 	"github.com/charmbracelet/soft-serve/cmd/soft/hook"
@@ -18,7 +19,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/version"
 	mcobra "github.com/muesli/mango-cobra"
 	"github.com/muesli/roff"
-	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
 )
@@ -67,7 +67,7 @@ var (
 
 func init() {
 	if noColor, _ := strconv.ParseBool(os.Getenv("SOFT_SERVE_NO_COLOR")); noColor {
-		common.DefaultColorProfile = termenv.Ascii
+		common.DefaultColorProfile = colorprofile.NoTTY
 	}
 
 	rootCmd.AddCommand(
