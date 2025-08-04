@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	github.com/alecthomas/chroma/v2 v2.19.0
+	github.com/alecthomas/chroma/v2 v2.20.0
 	github.com/aymanbagabas/bubblezone/v2 v2.0.0-20250319214444-bb232f16d5e3
 )
 
