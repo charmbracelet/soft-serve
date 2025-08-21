@@ -19,7 +19,7 @@ func commitCommand() *cobra.Command {
 	var patchOnly bool
 
 	cmd := &cobra.Command{
-		Use:               "commit SHA",
+		Use:               "commit repo SHA",
 		Short:             "Print out the contents of a diff",
 		Args:              cobra.ExactArgs(2),
 		PersistentPreRunE: checkIfReadable,
