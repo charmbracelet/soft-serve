@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/charmbracelet/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/gorilla/mux"
 )
@@ -21,15 +22,11 @@ func getLiveness(w http.ResponseWriter, _ *http.Request) {
 
 func getReadiness(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	logger := log.FromContext(ctx)
 	db := db.FromContext(ctx)
 
-	errs := make([]error, 0)
-	err := db.PingContext(ctx)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("readiness check failed: %w", err))
-	}
-
-	if len(errs) > 0 {
+	if err := db.PingContext(ctx); err != nil {
+		logger.Error("error getting db readiness", "err", err)
 		renderStatus(http.StatusServiceUnavailable)(w, nil)
 		return
 	}
