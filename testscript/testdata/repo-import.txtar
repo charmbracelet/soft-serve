@@ -9,17 +9,17 @@ exec soft serve &
 ensureserverrunning SSH_PORT
 
 # import private
-soft repo import --private repo1 https://github.com/charmbracelet/catwalk.git
+soft repo import --private repo1 https://github.com/charmbracelet/wizard-tutorial.git
 soft repo private repo1
 stdout 'true'
 
 # import hidden
-soft repo import --hidden repo2 https://github.com/charmbracelet/catwalk.git
+soft repo import --hidden repo2 https://github.com/charmbracelet/wizard-tutorial.git
 soft repo hidden repo2
 stdout 'true'
 
 # import with name and description
-soft repo import --name 'repo33' --description 'descriptive' repo3 https://github.com/charmbracelet/catwalk.git
+soft repo import --name 'repo33' --description 'descriptive' repo3 https://github.com/charmbracelet/wizard-tutorial.git
 soft repo info repo3
 cmp stdout repo3.txt
 
@@ -38,27 +38,3 @@ Owner: admin
 Default Branch: main
 Branches:
   - main
-  - openrouter-update
-Tags:
-  - v0.4.12
-  - v0.4.11
-  - v0.4.10
-  - v0.4.9
-  - v0.4.8
-  - v0.4.7
-  - v0.4.6
-  - v0.4.5
-  - v0.4.4
-  - v0.4.3
-  - v0.4.2
-  - v0.4.1
-  - v0.4.0
-  - v0.3.6
-  - v0.3.5
-  - v0.3.4
-  - v0.3.3
-  - v0.3.2
-  - v0.3.1
-  - v0.3.0
-  - v0.2.0
-  - v0.1.0
