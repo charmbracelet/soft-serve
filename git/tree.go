@@ -30,10 +30,10 @@ type Entries []*TreeEntry
 
 var sorters = []func(t1, t2 *TreeEntry) bool{
 	func(t1, t2 *TreeEntry) bool {
-		return (t1.IsTree() || t1.IsCommit()) && !t2.IsTree() && !t2.IsCommit()
+		return (t1.TreeEntry.IsTree() || t1.TreeEntry.IsCommit()) && !t2.TreeEntry.IsTree() && !t2.TreeEntry.IsCommit()
 	},
 	func(t1, t2 *TreeEntry) bool {
-		return t1.Name() < t2.Name()
+		return t1.TreeEntry.Name() < t2.TreeEntry.Name()
 	},
 }
 
@@ -72,7 +72,7 @@ type File struct {
 
 // Name returns the name of the file.
 func (f *File) Name() string {
-	return f.Entry.Name()
+	return f.Entry.TreeEntry.Name()
 }
 
 // Path returns the full path of the file.
@@ -82,7 +82,7 @@ func (f *File) Path() string {
 
 // SubTree returns the sub-tree at the given path.
 func (t *Tree) SubTree(path string) (*Tree, error) {
-	tree, err := t.Subtree(path)
+	tree, err := t.Tree.Subtree(path)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func IsBinary(r io.Reader) (bool, error) {
 func (f *File) IsBinary() (bool, error) {
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
-	err := f.Pipeline(stdout, stderr)
+	err := f.Blob.Pipeline(stdout, stderr)
 	if err != nil {
 		return false, err
 	}
@@ -165,7 +165,7 @@ func (f *File) IsBinary() (bool, error) {
 
 // Mode returns the mode of the file in fs.FileMode format.
 func (e *TreeEntry) Mode() fs.FileMode {
-	m := e.Blob().Mode()
+	m := e.TreeEntry.Blob().Mode()
 	switch m {
 	case git.EntryTree:
 		return fs.ModeDir | fs.ModePerm
@@ -176,7 +176,7 @@ func (e *TreeEntry) Mode() fs.FileMode {
 
 // File returns the file for the TreeEntry.
 func (e *TreeEntry) File() *File {
-	b := e.Blob()
+	b := e.TreeEntry.Blob()
 	return &File{
 		Blob:  b,
 		Entry: e,

@@ -28,7 +28,7 @@ func (s *DiffSection) diffFor(line *git.DiffLine) string {
 	var diff1, diff2 string
 	switch line.Type {
 	case git.DiffLineAdd:
-		compareLine := s.Line(git.DiffLineDelete, line.RightLine)
+		compareLine := s.DiffSection.Line(git.DiffLineDelete, line.RightLine)
 		if compareLine == nil {
 			return fallback
 		}
@@ -37,7 +37,7 @@ func (s *DiffSection) diffFor(line *git.DiffLine) string {
 		diff2 = line.Content
 
 	case git.DiffLineDelete:
-		compareLine := s.Line(git.DiffLineAdd, line.LeftLine)
+		compareLine := s.DiffSection.Line(git.DiffLineAdd, line.LeftLine)
 		if compareLine == nil {
 			return fallback
 		}
@@ -115,18 +115,18 @@ func (f *DiffFileChange) Mode() git.EntryMode {
 
 // Files returns the diff files.
 func (f *DiffFile) Files() (from *DiffFileChange, to *DiffFileChange) {
-	if f.OldIndex != ZeroID {
+	if f.DiffFile.OldIndex != git.EmptyID {
 		from = &DiffFileChange{
-			hash: f.OldIndex,
-			name: f.OldName(),
-			mode: f.OldMode(),
+			hash: f.DiffFile.OldIndex,
+			name: f.DiffFile.OldName(),
+			mode: f.DiffFile.OldMode(),
 		}
 	}
-	if f.Index != ZeroID {
+	if f.DiffFile.Index != git.EmptyID {
 		to = &DiffFileChange{
-			hash: f.Index,
-			name: f.Name,
-			mode: f.Mode(),
+			hash: f.DiffFile.Index,
+			name: f.DiffFile.Name,
+			mode: f.DiffFile.Mode(),
 		}
 	}
 	return
@@ -153,10 +153,10 @@ func printStats(stats FileStats) string {
 	var longestLength float64
 	var longestTotalChange float64
 	for _, fs := range stats {
-		if int(longestLength) < len(fs.Name) {
-			longestLength = float64(len(fs.Name))
+		if int(longestLength) < len(fs.DiffFile.Name) {
+			longestLength = float64(len(fs.DiffFile.Name))
 		}
-		totalChange := fs.NumAdditions() + fs.NumDeletions()
+		totalChange := fs.DiffFile.NumAdditions() + fs.DiffFile.NumDeletions()
 		if int(longestTotalChange) < totalChange {
 			longestTotalChange = float64(totalChange)
 		}
@@ -189,10 +189,10 @@ func printStats(stats FileStats) string {
 	tdelc := 0
 	output := strings.Builder{}
 	for _, fs := range stats {
-		taddc += fs.NumAdditions()
-		tdelc += fs.NumDeletions()
-		addn := float64(fs.NumAdditions())
-		deln := float64(fs.NumDeletions())
+		taddc += fs.DiffFile.NumAdditions()
+		tdelc += fs.DiffFile.NumDeletions()
+		addn := float64(fs.DiffFile.NumAdditions())
+		deln := float64(fs.DiffFile.NumDeletions())
 		addc := int(math.Floor(addn / scaleFactor))
 		delc := int(math.Floor(deln / scaleFactor))
 		if addc < 0 {
@@ -203,10 +203,10 @@ func printStats(stats FileStats) string {
 		}
 		adds := strings.Repeat("+", addc)
 		dels := strings.Repeat("-", delc)
-		diffLines := fmt.Sprint(fs.NumAdditions() + fs.NumDeletions())
+		diffLines := fmt.Sprint(fs.DiffFile.NumAdditions() + fs.DiffFile.NumDeletions())
 		totalDiffLines := fmt.Sprint(int(longestTotalChange))
 		fmt.Fprintf(&output, "%s | %s %s%s\n",
-			fs.Name+strings.Repeat(" ", int(longestLength)-len(fs.Name)),
+			fs.DiffFile.Name+strings.Repeat(" ", int(longestLength)-len(fs.DiffFile.Name)),
 			strings.Repeat(" ", len(totalDiffLines)-len(diffLines))+diffLines,
 			adds,
 			dels)
@@ -260,7 +260,7 @@ func writeFilePatchHeader(sb *strings.Builder, filePatch *DiffFile) {
 	if from == nil && to == nil {
 		return
 	}
-	isBinary := filePatch.IsBinary()
+	isBinary := filePatch.DiffFile.IsBinary()
 
 	var lines []string
 	switch {
@@ -298,14 +298,14 @@ func writeFilePatchHeader(sb *strings.Builder, filePatch *DiffFile) {
 		lines = append(lines,
 			fmt.Sprintf("diff --git %s %s", srcPrefix+to.Name(), dstPrefix+to.Name()),
 			fmt.Sprintf("new file mode %o", to.Mode()),
-			fmt.Sprintf("index %s..%s", ZeroID, to.Hash()),
+			fmt.Sprintf("index %s..%s", git.EmptyID, to.Hash()),
 		)
 		lines = appendPathLines(lines, "/dev/null", dstPrefix+to.Name(), isBinary)
 	case to == nil:
 		lines = append(lines,
 			fmt.Sprintf("diff --git %s %s", srcPrefix+from.Name(), dstPrefix+from.Name()),
 			fmt.Sprintf("deleted file mode %o", from.Mode()),
-			fmt.Sprintf("index %s..%s", from.Hash(), ZeroID),
+			fmt.Sprintf("index %s..%s", from.Hash(), git.EmptyID),
 		)
 		lines = appendPathLines(lines, srcPrefix+from.Name(), "/dev/null", isBinary)
 	}
@@ -324,7 +324,7 @@ func (d *Diff) Patch() string {
 	for _, f := range d.Files {
 		writeFilePatchHeader(&p, f)
 		for _, s := range f.Sections {
-			for _, l := range s.Lines {
+			for _, l := range s.DiffSection.Lines {
 				p.WriteString(s.diffFor(l))
 				p.WriteString("\n")
 			}

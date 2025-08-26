@@ -68,7 +68,7 @@ func (r *Repository) HEAD() (*Reference, error) {
 	if err != nil {
 		return nil, err
 	}
-	hash, err := r.ShowRefVerify(rn)
+	hash, err := r.Repository.ShowRefVerify(rn)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (r *Repository) HEAD() (*Reference, error) {
 
 // References returns the references for a repository.
 func (r *Repository) References() ([]*Reference, error) {
-	refs, err := r.ShowRef()
+	refs, err := r.Repository.ShowRef()
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,15 @@ func (r *Repository) Tree(ref *Reference) (*Tree, error) {
 		}
 		ref = rref
 	}
-	return r.LsTree(ref.ID)
+	tree, err := r.Repository.LsTree(ref.Reference.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &Tree{
+		Tree:       tree,
+		Path:       "",
+		Repository: r,
+	}, nil
 }
 
 // TreePath returns the tree for the given path.
@@ -162,7 +170,7 @@ func (r *Repository) Patch(commit *Commit) (string, error) {
 
 // CountCommits returns the number of commits in the repository.
 func (r *Repository) CountCommits(ref *Reference) (int64, error) {
-	return r.RevListCount([]string{ref.Name().String()})
+	return r.Repository.RevListCount([]string{ref.Name().String()})
 }
 
 // CommitsByPage returns the commits for a given page and size.

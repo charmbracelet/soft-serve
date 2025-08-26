@@ -36,15 +36,15 @@ func (r ReferenceName) Short() string {
 
 // Name returns the reference name i.e. refs/heads/master.
 func (r *Reference) Name() ReferenceName {
-	return ReferenceName(r.Refspec)
+	return ReferenceName(r.Reference.Refspec)
 }
 
 // IsBranch returns true if the reference is a branch.
 func (r *Reference) IsBranch() bool {
-	return strings.HasPrefix(r.Refspec, git.RefsHeads)
+	return strings.HasPrefix(r.Reference.Refspec, git.RefsHeads)
 }
 
 // IsTag returns true if the reference is a tag.
 func (r *Reference) IsTag() bool {
-	return strings.HasPrefix(r.Refspec, git.RefsTags)
+	return strings.HasPrefix(r.Reference.Refspec, git.RefsTags)
 }
