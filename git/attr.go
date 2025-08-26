@@ -21,7 +21,7 @@ func (r *Repository) CheckAttributes(ref *Reference, path string) ([]Attribute, 
 	fn := "soft-serve-index-" + strconv.Itoa(rand.New(rnd).Int()) //nolint: gosec
 	tmpindex := filepath.Join(os.TempDir(), fn)
 
-	defer os.Remove(tmpindex) //nolint: errcheck
+	defer os.Remove(tmpindex)
 
 	readTree := NewCommand("read-tree", "--reset", "-i", ref.Name().String()).
 		AddEnvs("GIT_INDEX_FILE=" + tmpindex)
