@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/charmbracelet/colorprofile"
-	"github.com/charmbracelet/log/v2"
+	log "github.com/charmbracelet/log/v2"
 	"github.com/charmbracelet/soft-serve/cmd/soft/admin"
 	"github.com/charmbracelet/soft-serve/cmd/soft/browse"
 	"github.com/charmbracelet/soft-serve/cmd/soft/hook"
