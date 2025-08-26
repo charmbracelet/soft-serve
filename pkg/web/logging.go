@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/charmbracelet/log/v2"
-	"github.com/dustin/go-humanize"
+	log "github.com/charmbracelet/log/v2"
+	humanize "github.com/dustin/go-humanize"
 )
 
 // logWriter is a wrapper around http.ResponseWriter that allows us to capture

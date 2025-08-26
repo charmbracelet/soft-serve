@@ -3,7 +3,7 @@ package git
 import (
 	"regexp"
 
-	"github.com/aymanbagabas/git-module"
+	git "github.com/aymanbagabas/git-module"
 )
 
 // ZeroID is the zero hash.
