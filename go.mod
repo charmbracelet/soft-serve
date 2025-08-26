@@ -3,19 +3,9 @@ module github.com/charmbracelet/soft-serve
 go 1.23.0
 
 require (
-	github.com/dustin/go-humanize v1.0.1
-	github.com/go-git/go-git/v5 v5.16.2
-	github.com/matryer/is v1.4.1
-	github.com/muesli/reflow v0.3.0
-)
-
-require (
 	github.com/alecthomas/chroma/v2 v2.20.0
 	github.com/aymanbagabas/bubblezone/v2 v2.0.0-20250319214444-bb232f16d5e3
-)
-
-require (
-	github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2
+	github.com/aymanbagabas/git-module v1.8.4-0.20250826192401-1f81c5471e53
 	github.com/caarlos0/duration v0.0.0-20240108180406-5d492514f3c7
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/charmbracelet/bubbles/v2 v2.0.0-beta.1.0.20250603123720-56bbc4a1ba66
@@ -29,6 +19,8 @@ require (
 	github.com/charmbracelet/ssh v0.0.0-20250128164007-98fd5ae11894
 	github.com/charmbracelet/wish/v2 v2.0.0-20250505151211-5996fc7c1f33
 	github.com/charmbracelet/x/ansi v0.9.3
+	github.com/dustin/go-humanize v1.0.1
+	github.com/go-git/go-git/v5 v5.16.2
 	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/gobwas/glob v0.2.3
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -39,7 +31,9 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.10.9
+	github.com/matryer/is v1.4.1
 	github.com/muesli/mango-cobra v1.2.0
+	github.com/muesli/reflow v0.3.0
 	github.com/muesli/roff v0.1.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/robfig/cron/v3 v3.0.1

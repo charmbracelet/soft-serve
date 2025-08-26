@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -13,8 +12,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
 	"github.com/spf13/cobra"
 )
-
-var shaRE = regexp.MustCompile(`^[a-fA-F0-9]{5,40}$`)
 
 // commitCommand returns a command that prints the contents of a commit.
 func commitCommand() *cobra.Command {
@@ -31,10 +28,6 @@ func commitCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			repoName := args[0]
 			commitSHA := args[1]
-
-			if !shaRE.MatchString(commitSHA) {
-				return fmt.Errorf("invalid commit SHA: %s", commitSHA)
-			}
 
 			rr, err := be.Repository(ctx, repoName)
 			if err != nil {

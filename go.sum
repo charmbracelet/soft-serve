@@ -12,8 +12,8 @@ github.com/atotto/clipboard v0.1.4 h1:EH0zSVneZPSuFR11BlR9YppQTVDbh5+16AmcJi4g1z
 github.com/atotto/clipboard v0.1.4/go.mod h1:ZY9tmq7sm5xIbd9bOK4onWV4S6X0u6GY7Vn0Yu86PYI=
 github.com/aymanbagabas/bubblezone/v2 v2.0.0-20250319214444-bb232f16d5e3 h1:1z2ihw0YUYUhNmRaavyXvG9ZU/9Tj0vj6sA3z5DFIJ8=
 github.com/aymanbagabas/bubblezone/v2 v2.0.0-20250319214444-bb232f16d5e3/go.mod h1:sJwqZoo/BSKSizmr0pSJ758RuRsnjlkrOaxPtwlWtOs=
-github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2 h1:3w5KT+shE3hzWhORGiu2liVjEoaCEXm9uZP47+Gw4So=
-github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2/go.mod h1:d4gQ7/3/S2sPq4NnKdtAgUOVr6XtLpWFtxyVV5/+76U=
+github.com/aymanbagabas/git-module v1.8.4-0.20250826192401-1f81c5471e53 h1:KfKp+gVsQtuM9qb8Putvkx1jjAWqlvI1vdv5x9hdFoQ=
+github.com/aymanbagabas/git-module v1.8.4-0.20250826192401-1f81c5471e53/go.mod h1:d4gQ7/3/S2sPq4NnKdtAgUOVr6XtLpWFtxyVV5/+76U=
 github.com/aymanbagabas/go-udiff v0.2.0 h1:TK0fH4MteXUDspT88n8CKzvK0X9O2xu9yQjWpi6yML8=
 github.com/aymanbagabas/go-udiff v0.2.0/go.mod h1:RE4Ex0qsGkTAJoQdQQCA0uG+nAzJO/pI/QwceO5fgrA=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
