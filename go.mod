@@ -38,7 +38,7 @@ require (
 	github.com/prometheus/client_golang v1.23.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rogpeppe/go-internal v1.14.1
-	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
+	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.9.1
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/crypto v0.40.0
