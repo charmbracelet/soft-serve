@@ -142,6 +142,8 @@ func (f *Files) ShortHelp() []key.Binding {
 			f.common.KeyMap.BackItem,
 		}
 		return b
+	case filesViewLoading:
+		return []key.Binding{}
 	default:
 		return []key.Binding{}
 	}
@@ -200,6 +202,8 @@ func (f *Files) FullHelp() [][]key.Binding {
 				f.common.KeyMap.GotoBottom,
 			},
 		}...)
+	case filesViewLoading:
+		// No help keys when loading
 	}
 	actionKeys = append([]key.Binding{
 		copyKey,

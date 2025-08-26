@@ -280,6 +280,11 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 			defer func() {
 				uploadArchiveSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
 			}()
+		case git.UploadPackService, git.ReceivePackService, git.LFSTransferService:
+			uploadPackCounter.WithLabelValues(name).Inc()
+			defer func() {
+				uploadPackSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
+			}()
 		default:
 			uploadPackCounter.WithLabelValues(name).Inc()
 			defer func() {
@@ -325,6 +330,11 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 			lfsTransferCounter.WithLabelValues(name, operation).Inc()
 			defer func() {
 				lfsTransferSeconds.WithLabelValues(name, operation).Add(time.Since(start).Seconds())
+			}()
+		case git.UploadPackService, git.UploadArchiveService, git.ReceivePackService:
+			lfsAuthenticateCounter.WithLabelValues(name, operation).Inc()
+			defer func() {
+				lfsAuthenticateSeconds.WithLabelValues(name, operation).Add(time.Since(start).Seconds())
 			}()
 		default:
 			lfsAuthenticateCounter.WithLabelValues(name, operation).Inc()

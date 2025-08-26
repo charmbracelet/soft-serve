@@ -206,6 +206,10 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			counter = uploadPackGitCounter
 		case git.UploadArchiveService:
 			counter = uploadArchiveGitCounter
+		case git.ReceivePackService, git.LFSTransferService:
+			// These services don't have counters in this context
+			d.fatal(c, git.ErrInvalidRequest)
+			return
 		default:
 			d.fatal(c, git.ErrInvalidRequest)
 			return

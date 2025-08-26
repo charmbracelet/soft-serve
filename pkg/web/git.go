@@ -399,6 +399,8 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	switch service {
 	case git.UploadPackService, git.ReceivePackService:
 		cmd.Args = append(cmd.Args, "--stateless-rpc")
+	case git.UploadArchiveService, git.LFSTransferService:
+		// No additional arguments needed for these services
 	}
 
 	user := proto.UserFromContext(ctx)
