@@ -434,7 +434,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 			renderInternalServerError(w, r)
 			return
 		}
-		defer reader.Close() // nolint: errcheck
+		defer reader.Close() //nolint: errcheck
 	}
 
 	cmd.Stdin = reader
@@ -459,7 +459,7 @@ type flushResponseWriter struct {
 }
 
 func (f *flushResponseWriter) ReadFrom(r io.Reader) (int64, error) {
-	flusher := http.NewResponseController(f.ResponseWriter) // nolint: bodyclose
+	flusher := http.NewResponseController(f.ResponseWriter) //nolint: bodyclose
 
 	var n int64
 	p := make([]byte, 1024)
@@ -537,12 +537,12 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", service))
 		w.WriteHeader(http.StatusOK)
 		if version < 2 {
-			git.WritePktline(w, "# service="+service.String()) // nolint: errcheck
+			git.WritePktline(w, "# service="+service.String()) //nolint: errcheck
 		}
-		w.Write(refs.Bytes()) // nolint: errcheck
+		w.Write(refs.Bytes()) //nolint: errcheck
 	} else {
 		// Dumb HTTP
-		updateServerInfo(ctx, dir) // nolint: errcheck
+		updateServerInfo(ctx, dir) //nolint: errcheck
 		hdrNocache(w)
 		sendFile("text/plain; charset=utf-8", w, r)
 	}

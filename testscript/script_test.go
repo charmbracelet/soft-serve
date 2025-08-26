@@ -263,7 +263,7 @@ func cmdUI(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []stri
 					break
 				}
 				check(ts, err, neg)
-				stdin.Write([]byte(string(r))) // nolint: errcheck
+				stdin.Write([]byte(string(r))) //nolint: errcheck
 
 				// Wait for the UI to process the input
 				time.Sleep(100 * time.Millisecond)

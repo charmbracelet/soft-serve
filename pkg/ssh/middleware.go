@@ -135,7 +135,7 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 		rootCmd.SetContext(ctx)
 
 		if err := rootCmd.ExecuteContext(ctx); err != nil {
-			s.Exit(1) // nolint: errcheck
+			s.Exit(1) //nolint:errcheck
 			return
 		}
 	}

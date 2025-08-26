@@ -191,7 +191,7 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 			PaddingLeft(1).
 			Render(sha)
 	}
-	fmt.Fprint(w, //nolint:errcheck
+	fmt.Fprint(w,
 		d.common.Zone.Mark(
 			i.ID(),
 			st.Base.Render(

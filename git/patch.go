@@ -45,6 +45,8 @@ func (s *DiffSection) diffFor(line *git.DiffLine) string {
 		diff1 = line.Content
 		diff2 = compareLine.Content
 
+	case git.DiffLinePlain, git.DiffLineSection:
+		return fallback
 	default:
 		return fallback
 	}
@@ -69,6 +71,8 @@ func diffsToString(diffs []diffmatchpatch.Diff, lineType git.DiffLineType) strin
 		buf.WriteByte('+')
 	case git.DiffLineDelete:
 		buf.WriteByte('-')
+	case git.DiffLinePlain, git.DiffLineSection:
+		// No prefix for these line types
 	}
 
 	for i := range diffs {

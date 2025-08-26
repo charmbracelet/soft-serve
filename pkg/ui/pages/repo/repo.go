@@ -32,7 +32,7 @@ type EmptyRepoMsg struct{}
 type CopyURLMsg struct{}
 
 // RepoMsg is a message that contains a git.Repository.
-type RepoMsg proto.Repository // nolint:revive
+type RepoMsg proto.Repository //nolint:revive
 
 // GoBackMsg is a message to go back to the previous view.
 type GoBackMsg struct{}

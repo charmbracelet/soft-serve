@@ -70,7 +70,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 		if err != nil {
 			return err
 		}
-		buf.WriteString(v.Encode()) // nolint: errcheck
+		buf.WriteString(v.Encode()) //nolint: errcheck
 	default:
 		return ErrInvalidContentType
 	}
@@ -90,7 +90,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 	reqBody := buf.String()
 	if w.Secret != "" {
 		sig := hmac.New(sha256.New, []byte(w.Secret))
-		sig.Write([]byte(reqBody)) // nolint: errcheck
+		sig.Write([]byte(reqBody)) //nolint: errcheck
 		headers.Add("X-SoftServe-Signature", "sha256="+hex.EncodeToString(sig.Sum(nil)))
 	}
 
@@ -111,7 +111,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 		}
 
 		if res.Body != nil {
-			defer res.Body.Close() // nolint: errcheck
+			defer res.Body.Close() //nolint: errcheck
 			b, err := io.ReadAll(res.Body)
 			if err != nil {
 				return err

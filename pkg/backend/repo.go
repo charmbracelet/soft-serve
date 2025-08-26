@@ -751,7 +751,7 @@ func readOneline(path string) (string, error) {
 		return "", err
 	}
 
-	defer f.Close() // nolint: errcheck
+	defer f.Close() //nolint: errcheck
 	s := bufio.NewScanner(f)
 	s.Scan()
 	return s.Text(), s.Err()

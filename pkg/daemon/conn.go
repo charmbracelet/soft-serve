@@ -91,15 +91,15 @@ func (c *serverConn) updateDeadline() {
 		initTimeout := time.Now().Add(c.initTimeout)
 		c.initTimeout = 0
 		if initTimeout.Unix() < c.maxDeadline.Unix() || c.maxDeadline.IsZero() {
-			c.Conn.SetDeadline(initTimeout) // nolint: errcheck
+			c.Conn.SetDeadline(initTimeout) //nolint: errcheck
 			return
 		}
 	case c.idleTimeout > 0:
 		idleDeadline := time.Now().Add(c.idleTimeout)
 		if idleDeadline.Unix() < c.maxDeadline.Unix() || c.maxDeadline.IsZero() {
-			c.Conn.SetDeadline(idleDeadline) // nolint: errcheck
+			c.Conn.SetDeadline(idleDeadline) //nolint: errcheck
 			return
 		}
 	}
-	c.Conn.SetDeadline(c.maxDeadline) // nolint: errcheck
+	c.Conn.SetDeadline(c.maxDeadline) //nolint: errcheck
 }

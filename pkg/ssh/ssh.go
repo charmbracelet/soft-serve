@@ -41,7 +41,7 @@ var (
 )
 
 // SSHServer is a SSH server that implements the git protocol.
-type SSHServer struct { // nolint: revive
+type SSHServer struct { //nolint:revive
 	srv    *ssh.Server
 	cfg    *config.Config
 	be     *backend.Backend

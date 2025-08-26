@@ -169,6 +169,8 @@ func (e *TreeEntry) Mode() fs.FileMode {
 	switch m {
 	case git.EntryTree:
 		return fs.ModeDir | fs.ModePerm
+	case git.EntryBlob, git.EntryExec, git.EntrySymlink, git.EntryCommit:
+		return fs.FileMode(m) //nolint:gosec
 	default:
 		return fs.FileMode(m) //nolint:gosec
 	}

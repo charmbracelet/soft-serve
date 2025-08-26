@@ -15,6 +15,11 @@ import (
 const (
 	createTablesName    = "create tables"
 	createTablesVersion = 1
+	
+	// Database driver names
+	driverSQLite3 = "sqlite3"
+	driverSQLite = "sqlite"
+	driverPostgres = "postgres"
 )
 
 var createTables = Migration{
@@ -28,7 +33,7 @@ var createTables = Migration{
 		// Alter old tables (if exist)
 		// This is to support prior versions of Soft Serve v0.6
 		switch tx.DriverName() {
-		case "sqlite3", "sqlite":
+		case driverSQLite3, driverSQLite:
 			insert += "OR IGNORE "
 
 			hasUserTable := hasTable(tx, "user")
@@ -62,7 +67,7 @@ var createTables = Migration{
 		}
 
 		switch tx.DriverName() {
-		case "sqlite3", "sqlite":
+		case driverSQLite3, driverSQLite:
 
 			if _, err := tx.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
 				return err
@@ -140,7 +145,7 @@ var createTables = Migration{
 
 		for _, k := range cfg.AdminKeys() {
 			query := insert + "INTO public_keys (user_id, public_key, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)"
-			if tx.DriverName() == "postgres" {
+			if tx.DriverName() == driverPostgres {
 				query += " ON CONFLICT DO NOTHING"
 			}
 

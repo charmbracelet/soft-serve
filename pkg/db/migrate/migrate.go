@@ -11,7 +11,7 @@ import (
 )
 
 // MigrateFunc is a function that executes a migration.
-type MigrateFunc func(ctx context.Context, tx *db.Tx) error // nolint:revive
+type MigrateFunc func(ctx context.Context, tx *db.Tx) error //nolint:revive
 
 // Migration is a struct that contains the name of the migration and the
 // function to execute it.
@@ -31,7 +31,7 @@ type Migrations struct {
 
 func (Migrations) schema(driverName string) string {
 	switch driverName {
-	case "sqlite3", "sqlite":
+	case driverSQLite3, driverSQLite:
 		return `CREATE TABLE IF NOT EXISTS migrations (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				name TEXT NOT NULL,
@@ -127,9 +127,9 @@ func Rollback(ctx context.Context, dbx *db.DB) error {
 func hasTable(tx *db.Tx, tableName string) bool {
 	var query string
 	switch tx.DriverName() {
-	case "sqlite3", "sqlite":
+	case driverSQLite3, driverSQLite:
 		query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
-	case "postgres":
+	case driverPostgres:
 		fallthrough
 	case "mysql":
 		query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?"

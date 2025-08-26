@@ -167,7 +167,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		s.Cron.Stop()
 		return nil
 	})
-	// defer s.DB.Close() // nolint: errcheck
+	// defer s.DB.Close() //nolint: errcheck
 	return errg.Wait()
 }
 
@@ -182,6 +182,6 @@ func (s *Server) Close() error {
 		s.Cron.Stop()
 		return nil
 	})
-	// defer s.DB.Close() // nolint: errcheck
+	// defer s.DB.Close() //nolint: errcheck
 	return errg.Wait()
 }

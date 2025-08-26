@@ -93,7 +93,7 @@ func (d StashItemDelegate) Render(w io.Writer, m list.Model, index int, listItem
 
 	selector = s.Selector.Render(selector)
 	title := st.Render(item.Title())
-	fmt.Fprint(w, d.common.Zone.Mark( //nolint:errcheck
+	fmt.Fprint(w, d.common.Zone.Mark(
 		item.ID(),
 		common.TruncateString(fmt.Sprintf("%s%s",
 			selector,

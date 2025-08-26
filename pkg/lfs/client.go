@@ -5,6 +5,13 @@ import (
 	"io"
 )
 
+const (
+	// SchemeHTTP represents the HTTP protocol scheme
+	SchemeHTTP = "http"
+	// SchemeHTTPS represents the HTTPS protocol scheme
+	SchemeHTTPS = "https"
+)
+
 // DownloadCallback gets called for every requested LFS object to process its content
 type DownloadCallback func(p Pointer, content io.ReadCloser, objectError error) error
 
@@ -19,7 +26,7 @@ type Client interface {
 
 // NewClient returns a new Git LFS client.
 func NewClient(e Endpoint) Client {
-	if e.Scheme == "http" || e.Scheme == "https" {
+	if e.Scheme == SchemeHTTP || e.Scheme == SchemeHTTPS {
 		return newHTTPClient(e)
 	}
 	// TODO: support ssh client

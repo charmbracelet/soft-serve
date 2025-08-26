@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer dbx.Close() // nolint: errcheck
+	defer dbx.Close() //nolint: errcheck
 	if err := migrate.Migrate(ctx, dbx); err != nil {
 		log.Fatal(err)
 	}

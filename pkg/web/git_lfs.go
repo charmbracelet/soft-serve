@@ -41,7 +41,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var batchRequest lfs.BatchRequest
-	defer r.Body.Close() // nolint: errcheck
+	defer r.Body.Close() //nolint: errcheck
 	if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
 		logger.Errorf("error decoding json: %s", err)
 		renderJSON(w, http.StatusUnprocessableEntity, lfs.ErrorResponse{
@@ -282,7 +282,7 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", strconv.FormatInt(obj.Size, 10))
-	defer f.Close() // nolint: errcheck
+	defer f.Close() //nolint: errcheck
 	if _, err := io.Copy(w, f); err != nil {
 		logger.Error("error copying object to response", "oid", oid, "err", err)
 		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
@@ -313,7 +313,7 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
 	name := mux.Vars(r)["repo"]
 
-	defer r.Body.Close() // nolint: errcheck
+	defer r.Body.Close() //nolint: errcheck
 	repo, err := be.Repository(ctx, name)
 	if err != nil {
 		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
@@ -326,7 +326,7 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	// partial error, so we need to skip existing objects.
 	if _, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), oid); err == nil {
 		// Object exists, skip request
-		io.Copy(io.Discard, r.Body) // nolint: errcheck
+		io.Copy(io.Discard, r.Body) //nolint: errcheck
 		renderStatus(http.StatusOK)(w, nil)
 		return
 	} else if !errors.Is(err, db.ErrRecordNotFound) {
@@ -385,7 +385,7 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close() // nolint: errcheck
+	defer r.Body.Close() //nolint: errcheck
 	if err := json.NewDecoder(r.Body).Decode(&pointer); err != nil {
 		logger.Error("error decoding json", "err", err)
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{

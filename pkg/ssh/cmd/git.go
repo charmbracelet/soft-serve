@@ -250,7 +250,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 			defer func() {
 				if repo == nil {
 					// If the repo was created, but the request failed, delete it.
-					be.DeleteRepository(ctx, name) // nolint: errcheck
+					be.DeleteRepository(ctx, name) //nolint: errcheck
 				}
 			}()
 

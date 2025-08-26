@@ -36,7 +36,7 @@ func TestSession(t *testing.T) {
 		go func() {
 			time.Sleep(1 * time.Second)
 			// s.Signal(gossh.SIGTERM)
-			s.Close() // nolint: errcheck
+			s.Close() //nolint: errcheck
 		}()
 		t.Log("waiting for session to exit")
 		_, err = s.Output("test")

@@ -361,34 +361,34 @@ func webhookDeliveriesGetCommand() *cobra.Command {
 			}
 
 			out := cmd.OutOrStdout()
-			fmt.Fprintf(out, "ID: %s\n", del.ID)                             //nolint:errcheck
-			fmt.Fprintf(out, "Event: %s\n", del.Event)                       //nolint:errcheck
-			fmt.Fprintf(out, "Request URL: %s\n", del.RequestURL)            //nolint:errcheck
-			fmt.Fprintf(out, "Request Method: %s\n", del.RequestMethod)      //nolint:errcheck
-			fmt.Fprintf(out, "Request Error: %s\n", del.RequestError.String) //nolint:errcheck
-			fmt.Fprintf(out, "Request Headers:\n")                           //nolint:errcheck
+			fmt.Fprintf(out, "ID: %s\n", del.ID)
+			fmt.Fprintf(out, "Event: %s\n", del.Event)
+			fmt.Fprintf(out, "Request URL: %s\n", del.RequestURL)
+			fmt.Fprintf(out, "Request Method: %s\n", del.RequestMethod)
+			fmt.Fprintf(out, "Request Error: %s\n", del.RequestError.String)
+			fmt.Fprintf(out, "Request Headers:\n")
 			reqHeaders := strings.Split(del.RequestHeaders, "\n")
 			for _, h := range reqHeaders {
-				fmt.Fprintf(out, "  %s\n", h) //nolint:errcheck
+				fmt.Fprintf(out, "  %s\n", h)
 			}
 
-			fmt.Fprintf(out, "Request Body:\n") //nolint:errcheck
+			fmt.Fprintf(out, "Request Body:\n")
 			reqBody := strings.Split(del.RequestBody, "\n")
 			for _, b := range reqBody {
-				fmt.Fprintf(out, "  %s\n", b) //nolint:errcheck
+				fmt.Fprintf(out, "  %s\n", b)
 			}
 
-			fmt.Fprintf(out, "Response Status: %d\n", del.ResponseStatus) //nolint:errcheck
-			fmt.Fprintf(out, "Response Headers:\n")                       //nolint:errcheck
+			fmt.Fprintf(out, "Response Status: %d\n", del.ResponseStatus)
+			fmt.Fprintf(out, "Response Headers:\n")
 			resHeaders := strings.Split(del.ResponseHeaders, "\n")
 			for _, h := range resHeaders {
-				fmt.Fprintf(out, "  %s\n", h) //nolint:errcheck
+				fmt.Fprintf(out, "  %s\n", h)
 			}
 
-			fmt.Fprintf(out, "Response Body:\n") //nolint:errcheck
+			fmt.Fprintf(out, "Response Body:\n")
 			resBody := strings.Split(del.ResponseBody, "\n")
 			for _, b := range resBody {
-				fmt.Fprintf(out, "  %s\n", b) //nolint:errcheck
+				fmt.Fprintf(out, "  %s\n", b)
 			}
 
 			return nil

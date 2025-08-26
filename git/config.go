@@ -15,7 +15,7 @@ func (r *Repository) Config() (*gcfg.Config, error) {
 		return nil, err
 	}
 
-	defer f.Close() // nolint: errcheck
+	defer f.Close() //nolint: errcheck
 	d := gcfg.NewDecoder(f)
 	cfg := gcfg.New()
 	if err := d.Decode(cfg); err != nil {
@@ -33,7 +33,7 @@ func (r *Repository) SetConfig(cfg *gcfg.Config) error {
 		return err
 	}
 
-	defer f.Close() // nolint: errcheck
+	defer f.Close() //nolint: errcheck
 	e := gcfg.NewEncoder(f)
 	return e.Encode(cfg)
 }

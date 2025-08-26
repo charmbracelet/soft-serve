@@ -18,10 +18,10 @@ type Attribute struct {
 // CheckAttributes checks the attributes of the given ref and path.
 func (r *Repository) CheckAttributes(ref *Reference, path string) ([]Attribute, error) {
 	rnd := rand.NewSource(time.Now().UnixNano())
-	fn := "soft-serve-index-" + strconv.Itoa(rand.New(rnd).Int()) // nolint: gosec
+	fn := "soft-serve-index-" + strconv.Itoa(rand.New(rnd).Int()) //nolint: gosec
 	tmpindex := filepath.Join(os.TempDir(), fn)
 
-	defer os.Remove(tmpindex) // nolint: errcheck
+	defer os.Remove(tmpindex) //nolint: errcheck
 
 	readTree := NewCommand("read-tree", "--reset", "-i", ref.Name().String()).
 		AddEnvs("GIT_INDEX_FILE=" + tmpindex)
