@@ -9,43 +9,41 @@ exec soft serve &
 ensureserverrunning SSH_PORT
 
 # import a repo
-# TODO: this repo changes all the time, which will also break the tests.
-# Should probably use something else.
-soft repo import --mirror charmbracelet/catwalk https://github.com/charmbracelet/catwalk.git
+soft repo import --mirror charmbracelet/wizard-tutorial https://github.com/charmbracelet/wizard-tutorial.git
 
 # check empty description file
-readfile $DATA_PATH/repos/charmbracelet/catwalk.git/description ''
+readfile $DATA_PATH/repos/charmbracelet/wizard-tutorial.git/description ''
 
 # check repo info
-soft repo info charmbracelet/catwalk
+soft repo info charmbracelet/wizard-tutorial
 cmp stdout info1.txt
 
 # check repo list
 soft repo list
-stdout charmbracelet/catwalk
+stdout charmbracelet/wizard-tutorial
 
 # is-mirror?
-soft repo is-mirror charmbracelet/catwalk
+soft repo is-mirror charmbracelet/wizard-tutorial
 stdout true
 
 # set project name
-soft repo project-name charmbracelet/catwalk catwalk
+soft repo project-name charmbracelet/wizard-tutorial wizard-tutorial
 soft repo list
-stdout catwalk
+stdout wizard-tutorial
 
 
 # check description
-soft repo description charmbracelet/catwalk
+soft repo description charmbracelet/wizard-tutorial
 ! stdout .
 
 # set description
-soft repo description charmbracelet/catwalk "testing repo"
-soft repo description charmbracelet/catwalk
+soft repo description charmbracelet/wizard-tutorial "testing repo"
+soft repo description charmbracelet/wizard-tutorial
 stdout 'testing repo'
-readfile $DATA_PATH/repos/charmbracelet/catwalk.git/description 'testing repo'
+readfile $DATA_PATH/repos/charmbracelet/wizard-tutorial.git/description 'testing repo'
 
 # rename
-soft repo rename charmbracelet/catwalk charmbracelet/test
+soft repo rename charmbracelet/wizard-tutorial charmbracelet/test
 soft repo list
 stdout charmbracelet/test # TODO: shouldn't this still show the project-name?
 
@@ -78,8 +76,8 @@ soft repo info charmbracelet/test
 cmp stdout info2.txt
 
 # get a file
-soft repo blob charmbracelet/test LICENSE
-stdout '.*MIT.*'
+soft repo blob charmbracelet/test README.md
+stdout '.*Wizard.*'
 
 # stop the server
 [windows] stopserver
@@ -88,7 +86,7 @@ stdout '.*MIT.*'
 
 -- info1.txt --
 Project Name:
-Repository: charmbracelet/catwalk
+Repository: charmbracelet/wizard-tutorial
 Description:
 Private: false
 Hidden: false
@@ -97,32 +95,8 @@ Owner: admin
 Default Branch: main
 Branches:
   - main
-  - openrouter-update
-Tags:
-  - v0.4.12
-  - v0.4.11
-  - v0.4.10
-  - v0.4.9
-  - v0.4.8
-  - v0.4.7
-  - v0.4.6
-  - v0.4.5
-  - v0.4.4
-  - v0.4.3
-  - v0.4.2
-  - v0.4.1
-  - v0.4.0
-  - v0.3.6
-  - v0.3.5
-  - v0.3.4
-  - v0.3.3
-  - v0.3.2
-  - v0.3.1
-  - v0.3.0
-  - v0.2.0
-  - v0.1.0
 -- info2.txt --
-Project Name: catwalk
+Project Name: wizard-tutorial
 Repository: charmbracelet/test
 Description: testing repo
 Private: true
@@ -132,42 +106,10 @@ Owner: admin
 Default Branch: main
 Branches:
   - main
-  - openrouter-update
-Tags:
-  - v0.4.12
-  - v0.4.11
-  - v0.4.10
-  - v0.4.9
-  - v0.4.8
-  - v0.4.7
-  - v0.4.6
-  - v0.4.5
-  - v0.4.4
-  - v0.4.3
-  - v0.4.2
-  - v0.4.1
-  - v0.4.0
-  - v0.3.6
-  - v0.3.5
-  - v0.3.4
-  - v0.3.3
-  - v0.3.2
-  - v0.3.1
-  - v0.3.0
-  - v0.2.0
-  - v0.1.0
 -- tree.txt --
-drwxrwxrwx	-	 .github
-drwxrwxrwx	-	 cmd
-drwxrwxrwx	-	 internal
-drwxrwxrwx	-	 pkg
--rw-r--r--	577 B	 .gitignore
--rw-r--r--	695 B	 .golangci.yml
--rw-r--r--	3.3 kB	 .goreleaser.yaml
--rw-r--r--	1.1 kB	 CRUSH.md
--rw-r--r--	1.1 kB	 LICENSE
--rw-r--r--	1.0 kB	 README.md
--rw-r--r--	528 B	 go.mod
--rw-r--r--	3.0 kB	 go.sum
--rw-r--r--	79 B	 goreleaser.dockerfile
--rw-r--r--	1.7 kB	 main.go
+-rw-r--r--	10 B	 .gitignore
+-rw-r--r--	1.3 kB	 README.md
+-rw-r--r--	970 B	 go.mod
+-rw-r--r--	5.3 kB	 go.sum
+-rw-r--r--	2.2 kB	 input.go
+-rw-r--r--	2.9 kB	 main.go

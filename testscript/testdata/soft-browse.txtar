@@ -3,16 +3,16 @@
 [windows] skip
 
 # clone repo
-#git clone https://github.com/charmbracelet/catwalk.git catwalk
+#git clone https://github.com/charmbracelet/wizard-tutorial.git wizard-tutorial
 
 # run soft browse
 # disable this temporarily
 #ttyin input.txt
-#exec soft browse ./catwalk
+#exec soft browse ./wizard-tutorial
 
 # cd and run soft
 # disable this temporarily
-#cd catwalk
+#cd wizard-tutorial
 #ttyin ../input.txt
 #exec soft
 
@@ -28,4 +28,3 @@ jjkkdduu
 jjkkdduu
 
 qqq
-
