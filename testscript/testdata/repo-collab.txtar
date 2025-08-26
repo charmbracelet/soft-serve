@@ -6,7 +6,7 @@ exec soft serve &
 ensureserverrunning SSH_PORT
 
 # setup
-soft repo import test https://github.com/charmbracelet/catwalk.git
+soft repo import test https://github.com/charmbracelet/wizard-tutorial.git
 soft user create foo --key "$USER1_AUTHORIZED_KEY"
 
 # list collabs
