@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss/v2/table"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
-	"github.com/dustin/go-humanize"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
 

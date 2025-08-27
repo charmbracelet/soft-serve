@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish/v2"
+	wish "github.com/charmbracelet/wish/v2"
 	bm "github.com/charmbracelet/wish/v2/bubbletea"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"

@@ -16,7 +16,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/ssh"
-	wish "github.com/charmbracelet/wish/v2"
+		wish "github.com/charmbracelet/wish/v2"
 	bm "github.com/charmbracelet/wish/v2/bubbletea"
 	rm "github.com/charmbracelet/wish/v2/recover"
 	"github.com/prometheus/client_golang/prometheus"

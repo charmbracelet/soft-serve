@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/glamour/v2"
 	gansi "github.com/charmbracelet/glamour/v2/ansi"
-	"github.com/charmbracelet/lipgloss/v2"
+	lipgloss "github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	vp "github.com/charmbracelet/soft-serve/pkg/ui/components/viewport"
 )

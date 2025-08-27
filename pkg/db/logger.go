@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/charmbracelet/log/v2"
+		log "github.com/charmbracelet/log/v2"
 	"github.com/jmoiron/sqlx"
 )
 

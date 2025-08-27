@@ -2,7 +2,7 @@ package statusbar
 
 import (
 	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
+	lipgloss "github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/x/ansi"
 )

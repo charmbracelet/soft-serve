@@ -2,7 +2,7 @@ package git
 
 import (
 	"github.com/charmbracelet/git-lfs-transfer/transfer"
-	"github.com/charmbracelet/log/v2"
+	log "github.com/charmbracelet/log/v2"
 )
 
 type lfsLogger struct {

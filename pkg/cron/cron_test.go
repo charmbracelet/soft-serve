@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/charmbracelet/log/v2"
+	log "github.com/charmbracelet/log/v2"
 )
 
 func TestCronLogger(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/go-jose/go-jose/v3"
-	"github.com/golang-jwt/jwt/v5"
+	jwt "github.com/golang-jwt/jwt/v5"
 )
 
 // SigningMethod is a JSON Web Token signing method. It uses Ed25519 keys to
