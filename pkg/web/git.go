@@ -455,7 +455,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handle buffered output
-// Useful when using proxies
+// Useful when using proxies.
 type flushResponseWriter struct {
 	http.ResponseWriter
 }

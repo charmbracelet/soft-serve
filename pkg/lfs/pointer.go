@@ -111,7 +111,7 @@ func (p Pointer) RelativePath() string {
 	return path.Join(p.Oid[0:2], p.Oid[2:4], p.Oid)
 }
 
-// GeneratePointer generates a pointer for arbitrary content
+// GeneratePointer generates a pointer for arbitrary content.
 func GeneratePointer(content io.Reader) (Pointer, error) {
 	h := sha256.New()
 	c, err := io.Copy(h, content)

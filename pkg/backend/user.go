@@ -42,7 +42,7 @@ func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ss
 }
 
 // AccessLevelForUser returns the access level of a user for a repository.
-// TODO: user repository ownership
+// TODO: user repository ownership.
 func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user proto.User) access.AccessLevel {
 	var username string
 	anon := d.AnonAccess(ctx)
@@ -399,17 +399,17 @@ type user struct {
 
 var _ proto.User = (*user)(nil)
 
-// IsAdmin implements proto.User
+// IsAdmin implements proto.User.
 func (u *user) IsAdmin() bool {
 	return u.user.Admin
 }
 
-// PublicKeys implements proto.User
+// PublicKeys implements proto.User.
 func (u *user) PublicKeys() []ssh.PublicKey {
 	return u.publicKeys
 }
 
-// Username implements proto.User
+// Username implements proto.User.
 func (u *user) Username() string {
 	return u.user.Username
 }

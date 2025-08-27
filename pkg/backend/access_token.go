@@ -58,7 +58,7 @@ func (b *Backend) ListAccessTokens(ctx context.Context, user proto.User) ([]prot
 		return nil, db.WrapError(err)
 	}
 
-	var tokens []proto.AccessToken
+		tokens := make([]proto.AccessToken, 0, len(accessTokens))
 	for _, t := range accessTokens {
 		token := proto.AccessToken{
 			ID:        t.ID,

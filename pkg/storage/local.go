@@ -79,7 +79,7 @@ func (l *LocalStorage) Rename(oldName, newName string) error {
 	return os.Rename(oldName, newName)
 }
 
-// Replace all slashes with the OS-specific separator
+// Replace all slashes with the OS-specific separator.
 func (l LocalStorage) fixPath(path string) string {
 	path = strings.ReplaceAll(path, "/", string(os.PathSeparator))
 	if !filepath.IsAbs(path) {

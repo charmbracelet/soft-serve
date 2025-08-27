@@ -16,7 +16,7 @@ const (
 	createTablesName    = "create tables"
 	createTablesVersion = 1
 	
-	// Database driver names
+	// Database driver names.
 	driverSQLite3 = "sqlite3"
 	driverSQLite = "sqlite"
 	driverPostgres = "postgres"

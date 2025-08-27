@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// InfoCommand returns a command that shows the user's info
+// InfoCommand returns a command that shows the user's info.
 func InfoCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "info",

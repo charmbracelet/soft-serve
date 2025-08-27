@@ -14,7 +14,7 @@ import (
 	"github.com/charmbracelet/soft-serve/git"
 )
 
-// SearchPointerBlobs scans the whole repository for LFS pointer files
+// SearchPointerBlobs scans the whole repository for LFS pointer files.
 func SearchPointerBlobs(ctx context.Context, repo *git.Repository, pointerChan chan<- PointerBlob, errChan chan<- error) {
 	basePath := repo.Path
 

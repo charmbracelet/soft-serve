@@ -62,7 +62,7 @@ func (d *Backend) Collaborators(ctx context.Context, repo string) ([]string, err
 		return nil, db.WrapError(err)
 	}
 
-	var usernames []string
+		usernames := make([]string, 0, len(users))
 	for _, u := range users {
 		usernames = append(usernames, u.Username)
 	}

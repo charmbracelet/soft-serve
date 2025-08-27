@@ -14,7 +14,7 @@ type Component interface {
 }
 
 // TabComponenet represents a model that is mounted to a tab.
-// TODO: find a better name
+// TODO: find a better name.
 type TabComponent interface {
 	Component
 
