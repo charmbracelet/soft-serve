@@ -14,6 +14,9 @@ func NewRouter(ctx context.Context) http.Handler {
 	logger := log.FromContext(ctx).WithPrefix("http")
 	router := mux.NewRouter()
 
+	// Health routes
+	HealthController(ctx, router)
+
 	// Git routes
 	GitController(ctx, router)
 
