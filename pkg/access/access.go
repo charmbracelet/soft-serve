@@ -1,3 +1,4 @@
+// Package access defines access control levels and permissions for repositories and users.
 package access
 
 import (

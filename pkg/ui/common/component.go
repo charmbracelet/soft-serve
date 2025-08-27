@@ -13,7 +13,7 @@ type Component interface {
 	SetSize(width, height int)
 }
 
-// TabComponenet represents a model that is mounted to a tab.
+// TabComponent represents a model that is mounted to a tab.
 // TODO: find a better name.
 type TabComponent interface {
 	Component

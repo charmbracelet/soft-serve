@@ -351,11 +351,11 @@ func check(ts *testscript.TestScript, err error, neg bool) {
 	}
 }
 
-func cmdReadfile(ts *testscript.TestScript, neg bool, args []string) {
+func cmdReadfile(ts *testscript.TestScript, neg bool, args []string) { //nolint:unparam
 	ts.Stdout().Write([]byte(ts.ReadFile(args[0])))
 }
 
-func cmdEnvfile(ts *testscript.TestScript, neg bool, args []string) {
+func cmdEnvfile(ts *testscript.TestScript, neg bool, args []string) { //nolint:unparam
 	if len(args) < 1 {
 		ts.Fatalf("usage: envfile key=file...")
 	}
@@ -481,7 +481,7 @@ func cmdCurl(ts *testscript.TestScript, neg bool, args []string) {
 	check(ts, cmd.Execute(), neg)
 }
 
-func cmdEnsureServerRunning(ts *testscript.TestScript, neg bool, args []string) {
+func cmdEnsureServerRunning(ts *testscript.TestScript, neg bool, args []string) { //nolint:unparam
 	if len(args) < 1 {
 		ts.Fatalf("Must supply a TCP port of one of the services to connect to. " +
 			"These are set as env vars as they are randomized. " +
@@ -507,7 +507,7 @@ func cmdEnsureServerRunning(ts *testscript.TestScript, neg bool, args []string) 
 	}
 }
 
-func cmdEnsureServerNotRunning(ts *testscript.TestScript, neg bool, args []string) {
+func cmdEnsureServerNotRunning(ts *testscript.TestScript, neg bool, args []string) { //nolint:unparam
 	if len(args) < 1 {
 		ts.Fatalf("Must supply a TCP port of one of the services to connect to. " +
 			"These are set as env vars as they are randomized. " +
@@ -533,7 +533,7 @@ func cmdEnsureServerNotRunning(ts *testscript.TestScript, neg bool, args []strin
 	}
 }
 
-func cmdStopserver(ts *testscript.TestScript, neg bool, args []string) {
+func cmdStopserver(ts *testscript.TestScript, neg bool, args []string) { //nolint:unparam
 	// stop the server
 	resp, err := http.DefaultClient.Head(fmt.Sprintf("%s/__stop", ts.Getenv("SOFT_SERVE_HTTP_PUBLIC_URL")))
 	check(ts, err, neg)

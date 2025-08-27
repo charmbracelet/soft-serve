@@ -52,7 +52,7 @@ type Item struct {
 	cmd        string
 }
 
-// New creates a new Item.
+// NewItem creates a new Item.
 func NewItem(c common.Common, repo proto.Repository) (Item, error) {
 	var lastUpdate *time.Time
 	lu := repo.UpdatedAt()

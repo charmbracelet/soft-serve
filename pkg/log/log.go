@@ -1,3 +1,4 @@
+// Package log provides logging functionality and context-aware logging utilities.
 package log
 
 import (

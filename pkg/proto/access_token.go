@@ -1,3 +1,4 @@
+// Package proto defines protocol buffer-like interfaces and data structures for the Soft Serve API.
 package proto
 
 import "time"

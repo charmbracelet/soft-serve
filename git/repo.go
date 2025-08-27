@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	// DiffMaxFile is the maximum number of files to show in a diff.
+	// DiffMaxFiles is the maximum number of files to show in a diff.
 	DiffMaxFiles = 1000
 	// DiffMaxFileLines is the maximum number of lines to show in a file diff.
 	DiffMaxFileLines = 1000

@@ -28,7 +28,7 @@ func TestSession(t *testing.T) {
 	is := is.New(t)
 	t.Run("authorized repo access", func(t *testing.T) {
 		t.Log("setting up")
-		s, close := setup(t)
+		s, cleanup := setup(t)
 		s.Stderr = os.Stderr
 		t.Log("requesting pty")
 		err := s.RequestPty("xterm", 80, 40, nil)
@@ -43,7 +43,7 @@ func TestSession(t *testing.T) {
 		var ee *gossh.ExitMissingError
 		is.True(errors.As(err, &ee))
 		t.Log("session exited")
-		is.NoErr(close())
+		is.NoErr(cleanup())
 	})
 }
 

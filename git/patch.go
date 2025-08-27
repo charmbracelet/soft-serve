@@ -136,7 +136,7 @@ func (f *DiffFile) Files() (from *DiffFileChange, to *DiffFileChange) {
 	return
 }
 
-// FileStats.
+// FileStats represents statistics for changed files in a diff.
 type FileStats []*DiffFile
 
 // String returns a string representation of file stats.
@@ -237,7 +237,7 @@ type Diff struct {
 	Files []*DiffFile
 }
 
-// FileStats returns the diff file stats.
+// Stats returns the diff file stats.
 func (d *Diff) Stats() FileStats {
 	return d.Files
 }

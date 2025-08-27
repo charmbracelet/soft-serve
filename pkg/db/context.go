@@ -1,3 +1,4 @@
+// Package db provides database interface and connection management for Soft Serve.
 package db
 
 import "context"

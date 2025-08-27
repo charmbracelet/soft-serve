@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -86,7 +85,7 @@ func TestIdleTimeout(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	time.Sleep(2 * time.Second)
-	_, err = readPktline(c)
+	err = readPktline(c)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
@@ -100,16 +99,16 @@ func TestInvalidRepo(t *testing.T) {
 	if err := pktline.NewEncoder(c).EncodeString("git-upload-pack /test.git\x00"); err != nil {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	_, err = readPktline(c)
+	err = readPktline(c)
 	if err != nil && err.Error() != git.ErrInvalidRepo.Error() {
 		t.Errorf("expected %q error, got %q", git.ErrInvalidRepo, err)
 	}
 }
 
-func readPktline(c net.Conn) (string, error) {
+func readPktline(c net.Conn) error {
 	pktout := pktline.NewScanner(c)
 	if !pktout.Scan() {
-		return "", pktout.Err()
+		return pktout.Err()
 	}
-	return strings.TrimSpace(string(pktout.Bytes())), nil
+	return nil
 }

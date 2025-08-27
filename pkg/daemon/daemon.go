@@ -58,7 +58,7 @@ type GitDaemon struct {
 	liMu      sync.Mutex
 }
 
-// NewDaemon returns a new Git daemon.
+// NewGitDaemon returns a new Git daemon.
 func NewGitDaemon(ctx context.Context) (*GitDaemon, error) {
 	cfg := config.FromContext(ctx)
 	addr := cfg.Git.ListenAddr

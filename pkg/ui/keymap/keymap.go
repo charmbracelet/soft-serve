@@ -1,3 +1,4 @@
+// Package keymap defines key bindings and keyboard shortcuts for the TUI.
 package keymap
 
 import "github.com/charmbracelet/bubbles/v2/key"
