@@ -113,7 +113,7 @@ func (r *Code) Init() tea.Cmd {
 
 	if r.sidenote != "" {
 		lines := strings.Split(r.sidenote, "\n")
-		sideNoteWidth := int(math.Ceil(float64(r.Model.Width()) * r.SideNotePercent))
+		sideNoteWidth := int(math.Ceil(float64(r.Viewport.Width()) * r.SideNotePercent))
 		for i, l := range lines {
 			lines[i] = common.TruncateString(l, sideNoteWidth)
 		}

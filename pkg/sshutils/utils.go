@@ -3,6 +3,7 @@ package sshutils
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/ssh"
 	gossh "golang.org/x/crypto/ssh"
@@ -11,7 +12,10 @@ import (
 // ParseAuthorizedKey parses an authorized key string into a public key.
 func ParseAuthorizedKey(ak string) (gossh.PublicKey, string, error) {
 	pk, c, _, _, err := gossh.ParseAuthorizedKey([]byte(ak))
-	return pk, c, err
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to parse authorized key: %w", err)
+	}
+	return pk, c, nil
 }
 
 // MarshalAuthorizedKey marshals a public key into an authorized key string.
