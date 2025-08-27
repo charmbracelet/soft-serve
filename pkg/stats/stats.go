@@ -1,3 +1,4 @@
+// Package stats provides statistics functionality.
 package stats
 
 import (
@@ -37,15 +38,15 @@ func NewStatsServer(ctx context.Context) (*StatsServer, error) {
 
 // ListenAndServe starts the StatsServer.
 func (s *StatsServer) ListenAndServe() error {
-	return s.server.ListenAndServe()
+	return s.server.ListenAndServe() //nolint:wrapcheck
 }
 
 // Shutdown gracefully shuts down the StatsServer.
 func (s *StatsServer) Shutdown(ctx context.Context) error {
-	return s.server.Shutdown(ctx)
+	return s.server.Shutdown(ctx) //nolint:wrapcheck
 }
 
 // Close closes the StatsServer.
 func (s *StatsServer) Close() error {
-	return s.server.Close()
+	return s.server.Close() //nolint:wrapcheck
 }

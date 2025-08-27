@@ -60,7 +60,7 @@ func NewCollaboratorEvent(ctx context.Context, user proto.User, repo proto.Repos
 	datastore := store.FromContext(ctx)
 	owner, err := datastore.GetUserByID(ctx, dbx, repo.UserID())
 	if err != nil {
-		return CollaboratorEvent{}, db.WrapError(err)
+		return CollaboratorEvent{}, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	payload.Repository.Owner.ID = owner.ID
@@ -69,7 +69,7 @@ func NewCollaboratorEvent(ctx context.Context, user proto.User, repo proto.Repos
 
 	collab, err := datastore.GetCollabByUsernameAndRepo(ctx, dbx, collabUsername, repo.Name())
 	if err != nil {
-		return CollaboratorEvent{}, err
+		return CollaboratorEvent{}, err //nolint:wrapcheck
 	}
 
 	payload.AccessLevel = collab.AccessLevel

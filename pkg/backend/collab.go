@@ -19,7 +19,7 @@ import (
 func (d *Backend) AddCollaborator(ctx context.Context, repo string, username string, level access.AccessLevel) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	repo = utils.SanitizeRepo(repo)
@@ -37,15 +37,15 @@ func (d *Backend) AddCollaborator(ctx context.Context, repo string, username str
 			return proto.ErrCollaboratorExist
 		}
 
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	wh, err := webhook.NewCollaboratorEvent(ctx, proto.UserFromContext(ctx), r, username, webhook.CollaboratorEventAdded)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
-	return webhook.SendEvent(ctx, wh)
+	return webhook.SendEvent(ctx, wh) //nolint:wrapcheck
 }
 
 // Collaborators returns a list of collaborators for a repository.
@@ -57,12 +57,12 @@ func (d *Backend) Collaborators(ctx context.Context, repo string) ([]string, err
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		users, err = d.store.ListCollabsByRepoAsUsers(ctx, tx, repo)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
-		return nil, db.WrapError(err)
+		return nil, db.WrapError(err) //nolint:wrapcheck
 	}
 
-	var usernames []string
+	usernames := make([]string, 0, len(users))
 	for _, u := range users {
 		usernames = append(usernames, u.Username)
 	}
@@ -83,9 +83,9 @@ func (d *Backend) IsCollaborator(ctx context.Context, repo string, username stri
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		m, err = d.store.GetCollabByUsernameAndRepo(ctx, tx, username, repo)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
-		return -1, false, db.WrapError(err)
+		return -1, false, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return m.AccessLevel, m.ID > 0, nil
@@ -103,7 +103,7 @@ func (d *Backend) RemoveCollaborator(ctx context.Context, repo string, username 
 
 	wh, err := webhook.NewCollaboratorEvent(ctx, proto.UserFromContext(ctx), r, username, webhook.CollaboratorEventRemoved)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	if err := db.WrapError(
@@ -115,8 +115,8 @@ func (d *Backend) RemoveCollaborator(ctx context.Context, repo string, username 
 			return proto.ErrCollaboratorNotFound
 		}
 
-		return err
+		return err //nolint:wrapcheck
 	}
 
-	return webhook.SendEvent(ctx, wh)
+	return webhook.SendEvent(ctx, wh) //nolint:wrapcheck
 }

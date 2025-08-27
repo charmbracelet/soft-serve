@@ -14,5 +14,5 @@ func UpdateServerInfo(ctx context.Context, path string) error {
 
 	cmd := git.NewCommand("update-server-info").WithContext(ctx).WithTimeout(-1)
 	_, err := cmd.RunInDir(path)
-	return err
+	return err //nolint:wrapcheck
 }

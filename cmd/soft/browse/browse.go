@@ -1,3 +1,4 @@
+// Package browse provides the browse command for soft-serve.
 package browse
 
 import (
@@ -29,7 +30,7 @@ var Command = &cobra.Command{
 
 		abs, err := filepath.Abs(rp)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get absolute path for %s: %w", rp, err)
 		}
 
 		r, err := git.Open(abs)
@@ -64,7 +65,7 @@ var Command = &cobra.Command{
 		)
 
 		_, err = p.Run()
-		return err
+		return err //nolint:wrapcheck
 	},
 }
 
@@ -102,7 +103,7 @@ func (m *model) SetSize(w, h int) {
 
 // ShortHelp implements help.KeyMap.
 func (m model) ShortHelp() []key.Binding {
-	switch m.state {
+	switch m.state { //nolint:exhaustive
 	case errorState:
 		return []key.Binding{
 			m.common.KeyMap.Back,
@@ -116,7 +117,7 @@ func (m model) ShortHelp() []key.Binding {
 
 // FullHelp implements help.KeyMap.
 func (m model) FullHelp() [][]key.Binding {
-	switch m.state {
+	switch m.state { //nolint:exhaustive
 	case errorState:
 		return [][]key.Binding{
 			{

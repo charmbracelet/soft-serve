@@ -84,7 +84,7 @@ func (f *File) Path() string {
 func (t *Tree) SubTree(path string) (*Tree, error) {
 	tree, err := t.Subtree(path)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	return &Tree{
 		Tree:       tree,
@@ -97,7 +97,7 @@ func (t *Tree) SubTree(path string) (*Tree, error) {
 func (t *Tree) Entries() (Entries, error) {
 	entries, err := t.Tree.Entries()
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	ret := make(Entries, len(entries))
 	for i, e := range entries {
@@ -113,7 +113,7 @@ func (t *Tree) Entries() (Entries, error) {
 func (t *Tree) TreeEntry(path string) (*TreeEntry, error) {
 	entry, err := t.Tree.TreeEntry(path)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	return &TreeEntry{
 		TreeEntry: entry,
@@ -128,17 +128,13 @@ const sniffLen = 8000
 func IsBinary(r io.Reader) (bool, error) {
 	reader := bufio.NewReader(r)
 	c := 0
-	for {
-		if c == sniffLen {
-			break
-		}
-
+	for c != sniffLen {
 		b, err := reader.ReadByte()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return false, err
+			return false, err //nolint:wrapcheck
 		}
 
 		if b == byte(0) {
@@ -157,7 +153,7 @@ func (f *File) IsBinary() (bool, error) {
 	stderr := new(bytes.Buffer)
 	err := f.Pipeline(stdout, stderr)
 	if err != nil {
-		return false, err
+		return false, err //nolint:wrapcheck
 	}
 	r := bufio.NewReader(stdout)
 	return IsBinary(r)
@@ -166,7 +162,7 @@ func (f *File) IsBinary() (bool, error) {
 // Mode returns the mode of the file in fs.FileMode format.
 func (e *TreeEntry) Mode() fs.FileMode {
 	m := e.Blob().Mode()
-	switch m {
+	switch m { //nolint:exhaustive
 	case git.EntryTree:
 		return fs.ModeDir | fs.ModePerm
 	default:
@@ -190,5 +186,5 @@ func (e *TreeEntry) Contents() ([]byte, error) {
 
 // Contents returns the contents of the file.
 func (f *File) Contents() ([]byte, error) {
-	return f.Blob.Bytes()
+	return f.Bytes() //nolint:wrapcheck
 }

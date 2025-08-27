@@ -1,3 +1,4 @@
+// Package web provides web server functionality.
 package web
 
 import (
@@ -90,7 +91,7 @@ func parseAuthHdr(r *http.Request) (proto.User, error) {
 		user, err := be.UserByAccessToken(ctx, parts[1])
 		if err != nil {
 			logger.Error("failed to get user", "err", err)
-			return nil, err
+			return nil, err //nolint:wrapcheck
 		}
 
 		return user, nil
@@ -110,7 +111,7 @@ func parseAuthHdr(r *http.Request) (proto.User, error) {
 		user, err := be.User(ctx, parts[0])
 		if err != nil {
 			logger.Error("failed to get user", "err", err)
-			return nil, err
+			return nil, err //nolint:wrapcheck
 		}
 
 		expectedSubject := fmt.Sprintf("%s#%d", user.Username(), user.ID())
@@ -138,7 +139,7 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 	logger := log.FromContext(ctx).WithPrefix("http.auth")
 	kp, err := config.KeyPair(cfg)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	repo := proto.RepositoryFromContext(ctx)

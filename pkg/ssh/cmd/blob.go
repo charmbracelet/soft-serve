@@ -1,3 +1,4 @@
+// Package cmd provides SSH command implementations.
 package cmd
 
 import (
@@ -44,30 +45,30 @@ func blobCommand() *cobra.Command {
 
 			repo, err := be.Repository(ctx, rn)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			r, err := repo.Open()
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			if ref == "" {
 				head, err := r.HEAD()
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 				ref = head.ID
 			}
 
 			tree, err := r.LsTree(ref)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			te, err := tree.TreeEntry(fp)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			if te.Type() != "blob" {
@@ -76,12 +77,12 @@ func blobCommand() *cobra.Command {
 
 			bts, err := te.Contents()
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			c := string(bts)
 			isBin, _ := te.File().IsBinary()
-			if isBin {
+			if isBin { //nolint:nestif
 				if raw {
 					cmd.Println(c)
 				} else {
@@ -91,7 +92,7 @@ func blobCommand() *cobra.Command {
 				if color && !noColor {
 					c, err = common.FormatHighlight(fp, c)
 					if err != nil {
-						return err
+						return err //nolint:wrapcheck
 					}
 				}
 

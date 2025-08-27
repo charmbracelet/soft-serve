@@ -1,3 +1,4 @@
+// Package git provides Git service operations and utilities.
 package git
 
 import "errors"

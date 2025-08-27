@@ -1,3 +1,4 @@
+// Package selector provides selector UI components.
 package selector
 
 import (
@@ -61,35 +62,35 @@ func New(common common.Common, items []IdentifiableItem, delegate ItemDelegate) 
 func (s *Selector) PerPage() int {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
-	return s.Model.Paginator.PerPage
+	return s.Paginator.PerPage
 }
 
 // SetPage sets the current page.
 func (s *Selector) SetPage(page int) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	s.Model.Paginator.Page = page
+	s.Paginator.Page = page
 }
 
 // Page returns the current page.
 func (s *Selector) Page() int {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
-	return s.Model.Paginator.Page
+	return s.Paginator.Page
 }
 
 // TotalPages returns the total number of pages.
 func (s *Selector) TotalPages() int {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
-	return s.Model.Paginator.TotalPages
+	return s.Paginator.TotalPages
 }
 
 // SetTotalPages sets the total number of pages given the number of items.
 func (s *Selector) SetTotalPages(items int) int {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	return s.Model.Paginator.SetTotalPages(items)
+	return s.Paginator.SetTotalPages(items)
 }
 
 // SelectedItem returns the currently selected item.

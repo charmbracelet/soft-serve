@@ -64,14 +64,14 @@ func EnsureWithin(reposDir string, repo string) error {
 func EnsureDefaultBranch(ctx context.Context, repoPath string) error {
 	r, err := git.Open(repoPath)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	brs, err := r.Branches()
 	if len(brs) == 0 {
 		return ErrNoBranches
 	}
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	// Rename the default branch to the first branch available
 	_, err = r.HEAD()
@@ -90,11 +90,11 @@ func EnsureDefaultBranch(ctx context.Context, repoPath string) error {
 				Context: ctx,
 			},
 		}); err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 	}
 	if err != nil && err != git.ErrReferenceNotExist {
-		return err
+		return err //nolint:wrapcheck
 	}
 	return nil
 }

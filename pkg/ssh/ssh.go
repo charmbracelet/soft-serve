@@ -41,7 +41,7 @@ var (
 )
 
 // SSHServer is a SSH server that implements the git protocol.
-type SSHServer struct { // nolint: revive
+type SSHServer struct { //nolint: revive
 	srv    *ssh.Server
 	cfg    *config.Config
 	be     *backend.Backend
@@ -97,7 +97,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 
 	s.srv, err = wish.NewServer(opts...)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	if config.IsDebug() {
@@ -131,22 +131,22 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 
 // ListenAndServe starts the SSH server.
 func (s *SSHServer) ListenAndServe() error {
-	return s.srv.ListenAndServe()
+	return s.srv.ListenAndServe() //nolint:wrapcheck
 }
 
 // Serve starts the SSH server on the given net.Listener.
 func (s *SSHServer) Serve(l net.Listener) error {
-	return s.srv.Serve(l)
+	return s.srv.Serve(l) //nolint:wrapcheck
 }
 
 // Close closes the SSH server.
 func (s *SSHServer) Close() error {
-	return s.srv.Close()
+	return s.srv.Close() //nolint:wrapcheck
 }
 
 // Shutdown gracefully shuts down the SSH server.
 func (s *SSHServer) Shutdown(ctx context.Context) error {
-	return s.srv.Shutdown(ctx)
+	return s.srv.Shutdown(ctx) //nolint:wrapcheck
 }
 
 func initializePermissions(ctx ssh.Context) {
@@ -157,12 +157,12 @@ func initializePermissions(ctx ssh.Context) {
 	if perms.Extensions == nil {
 		perms.Extensions = make(map[string]string)
 	}
-	if perms.Permissions.Extensions == nil {
-		perms.Permissions.Extensions = make(map[string]string)
+	if perms.Extensions == nil {
+		perms.Extensions = make(map[string]string)
 	}
 }
 
-// PublicKeyAuthHandler handles public key authentication.
+// PublicKeyHandler handles public key authentication.
 func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed bool) {
 	if pk == nil {
 		return false

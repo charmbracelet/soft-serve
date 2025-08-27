@@ -27,18 +27,18 @@ func execMigration(ctx context.Context, tx *db.Tx, version int, name string, dow
 	}
 
 	driverName := tx.DriverName()
-	if driverName == "sqlite3" {
-		driverName = "sqlite"
+	if driverName == sqlite3Driver {
+		driverName = sqliteDriver
 	}
 
 	fn := fmt.Sprintf("%04d_%s_%s.%s.sql", version, toSnakeCase(name), driverName, direction)
 	sqlstr, err := sqls.ReadFile(fn)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	if _, err := tx.ExecContext(ctx, string(sqlstr)); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	return nil

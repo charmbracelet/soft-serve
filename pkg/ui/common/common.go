@@ -1,3 +1,4 @@
+// Package common provides common UI utilities and components.
 package common
 
 import (

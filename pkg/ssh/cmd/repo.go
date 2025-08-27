@@ -49,24 +49,24 @@ func RepoCommand() *cobra.Command {
 				rn := args[0]
 				rr, err := be.Repository(ctx, rn)
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				r, err := rr.Open()
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				head, err := r.HEAD()
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				var owner proto.User
 				if rr.UserID() > 0 {
 					owner, err = be.UserByID(ctx, rr.UserID())
 					if err != nil {
-						return err
+						return err //nolint:wrapcheck
 					}
 				}
 

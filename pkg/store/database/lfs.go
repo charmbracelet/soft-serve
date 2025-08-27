@@ -32,7 +32,7 @@ func (*lfsStore) CreateLFSLockForUser(ctx context.Context, tx db.Handler, repoID
 		);
 	`)
 	_, err := tx.ExecContext(ctx, query, repoID, userID, path, refname)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetLFSLocks implements store.LFSStore.
@@ -50,7 +50,7 @@ func (*lfsStore) GetLFSLocks(ctx context.Context, tx db.Handler, repoID int64, p
 		LIMIT ? OFFSET ?;
 	`)
 	err := tx.SelectContext(ctx, &locks, query, repoID, limit, (page-1)*limit)
-	return locks, db.WrapError(err)
+	return locks, db.WrapError(err) //nolint:wrapcheck
 }
 
 func (s *lfsStore) GetLFSLocksWithCount(ctx context.Context, tx db.Handler, repoID int64, page int, limit int) ([]models.LFSLock, int64, error) {
@@ -67,7 +67,7 @@ func (s *lfsStore) GetLFSLocksWithCount(ctx context.Context, tx db.Handler, repo
 	`)
 	err = tx.GetContext(ctx, &count, query, repoID)
 	if err != nil {
-		return nil, 0, db.WrapError(err)
+		return nil, 0, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return locks, count, nil
@@ -82,7 +82,7 @@ func (*lfsStore) GetLFSLocksForUser(ctx context.Context, tx db.Handler, repoID i
 		WHERE repo_id = ? AND user_id = ?;
 	`)
 	err := tx.SelectContext(ctx, &locks, query, repoID, userID)
-	return locks, db.WrapError(err)
+	return locks, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetLFSLocksForPath implements store.LFSStore.
@@ -95,7 +95,7 @@ func (*lfsStore) GetLFSLockForPath(ctx context.Context, tx db.Handler, repoID in
 		WHERE repo_id = ? AND path = ?;
 	`)
 	err := tx.GetContext(ctx, &lock, query, repoID, path)
-	return lock, db.WrapError(err)
+	return lock, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetLFSLockForUserPath implements store.LFSStore.
@@ -108,7 +108,7 @@ func (*lfsStore) GetLFSLockForUserPath(ctx context.Context, tx db.Handler, repoI
 		WHERE repo_id = ? AND user_id = ? AND path = ?;
 	`)
 	err := tx.GetContext(ctx, &lock, query, repoID, userID, path)
-	return lock, db.WrapError(err)
+	return lock, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetLFSLockByID implements store.LFSStore.
@@ -120,7 +120,7 @@ func (*lfsStore) GetLFSLockByID(ctx context.Context, tx db.Handler, id int64) (m
 		WHERE lfs_locks.id = ?;
 	`)
 	err := tx.GetContext(ctx, &lock, query, id)
-	return lock, db.WrapError(err)
+	return lock, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetLFSLockForUserByID implements store.LFSStore.
@@ -132,7 +132,7 @@ func (*lfsStore) GetLFSLockForUserByID(ctx context.Context, tx db.Handler, repoI
 		WHERE id = ? AND user_id = ? AND repo_id = ?;
 	`)
 	err := tx.GetContext(ctx, &lock, query, id, userID, repoID)
-	return lock, db.WrapError(err)
+	return lock, db.WrapError(err) //nolint:wrapcheck
 }
 
 // DeleteLFSLockForUserByID implements store.LFSStore.
@@ -142,7 +142,7 @@ func (*lfsStore) DeleteLFSLockForUserByID(ctx context.Context, tx db.Handler, re
 		WHERE repo_id = ? AND user_id = ? AND id = ?;
 	`)
 	_, err := tx.ExecContext(ctx, query, repoID, userID, id)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // DeleteLFSLock implements store.LFSStore.
@@ -152,21 +152,21 @@ func (*lfsStore) DeleteLFSLock(ctx context.Context, tx db.Handler, repoID int64,
 		WHERE repo_id = ? AND id = ?;
 	`)
 	_, err := tx.ExecContext(ctx, query, repoID, id)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // CreateLFSObject implements store.LFSStore.
 func (*lfsStore) CreateLFSObject(ctx context.Context, tx db.Handler, repoID int64, oid string, size int64) error {
 	query := tx.Rebind(`INSERT INTO lfs_objects (repo_id, oid, size, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP);`)
 	_, err := tx.ExecContext(ctx, query, repoID, oid, size)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // DeleteLFSObjectByOid implements store.LFSStore.
 func (*lfsStore) DeleteLFSObjectByOid(ctx context.Context, tx db.Handler, repoID int64, oid string) error {
 	query := tx.Rebind(`DELETE FROM lfs_objects WHERE repo_id = ? AND oid = ?;`)
 	_, err := tx.ExecContext(ctx, query, repoID, oid)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetLFSObjectByOid implements store.LFSStore.
@@ -174,7 +174,7 @@ func (*lfsStore) GetLFSObjectByOid(ctx context.Context, tx db.Handler, repoID in
 	var obj models.LFSObject
 	query := tx.Rebind(`SELECT * FROM lfs_objects WHERE repo_id = ? AND oid = ?;`)
 	err := tx.GetContext(ctx, &obj, query, repoID, oid)
-	return obj, db.WrapError(err)
+	return obj, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetLFSObjects implements store.LFSStore.
@@ -182,7 +182,7 @@ func (*lfsStore) GetLFSObjects(ctx context.Context, tx db.Handler, repoID int64)
 	var objs []models.LFSObject
 	query := tx.Rebind(`SELECT * FROM lfs_objects WHERE repo_id = ?;`)
 	err := tx.SelectContext(ctx, &objs, query, repoID)
-	return objs, db.WrapError(err)
+	return objs, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetLFSObjectsByName implements store.LFSStore.
@@ -195,5 +195,5 @@ func (*lfsStore) GetLFSObjectsByName(ctx context.Context, tx db.Handler, name st
 		WHERE repos.name = ?;
 	`)
 	err := tx.SelectContext(ctx, &objs, query, name)
-	return objs, db.WrapError(err)
+	return objs, db.WrapError(err) //nolint:wrapcheck
 }

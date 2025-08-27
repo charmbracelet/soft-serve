@@ -22,7 +22,7 @@ func listCommand() *cobra.Command {
 			pk := sshutils.PublicKeyFromContext(ctx)
 			repos, err := be.Repositories(ctx)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 			for _, r := range repos {
 				if be.AccessLevelByPublicKey(ctx, r.Name(), pk) >= access.ReadOnlyAccess {

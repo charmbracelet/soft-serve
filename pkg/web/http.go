@@ -39,18 +39,18 @@ func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 
 // Close closes the HTTP server.
 func (s *HTTPServer) Close() error {
-	return s.Server.Close()
+	return s.Server.Close() //nolint:wrapcheck
 }
 
 // ListenAndServe starts the HTTP server.
 func (s *HTTPServer) ListenAndServe() error {
 	if s.cfg.HTTP.TLSKeyPath != "" && s.cfg.HTTP.TLSCertPath != "" {
-		return s.Server.ListenAndServeTLS(s.cfg.HTTP.TLSCertPath, s.cfg.HTTP.TLSKeyPath)
+		return s.Server.ListenAndServeTLS(s.cfg.HTTP.TLSCertPath, s.cfg.HTTP.TLSKeyPath) //nolint:wrapcheck
 	}
-	return s.Server.ListenAndServe()
+	return s.Server.ListenAndServe() //nolint:wrapcheck
 }
 
 // Shutdown gracefully shuts down the HTTP server.
 func (s *HTTPServer) Shutdown(ctx context.Context) error {
-	return s.Server.Shutdown(ctx)
+	return s.Server.Shutdown(ctx) //nolint:wrapcheck
 }

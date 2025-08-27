@@ -10,9 +10,9 @@ import (
 func LatestFile(r proto.Repository, ref *git.Reference, pattern string) (string, string, error) {
 	repo, err := r.Open()
 	if err != nil {
-		return "", "", err
+		return "", "", err //nolint:wrapcheck
 	}
-	return git.LatestFile(repo, ref, pattern)
+	return git.LatestFile(repo, ref, pattern) //nolint:wrapcheck
 }
 
 // Readme returns the repository's README.

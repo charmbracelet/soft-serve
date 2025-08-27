@@ -1,3 +1,4 @@
+// Package header provides header UI components.
 package header
 
 import (

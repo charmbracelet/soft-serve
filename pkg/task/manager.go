@@ -1,3 +1,4 @@
+// Package task provides task management functionality.
 package task
 
 import (

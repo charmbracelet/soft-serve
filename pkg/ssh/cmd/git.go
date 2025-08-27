@@ -182,7 +182,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 	repoDir := name + ".git"
 	reposDir := filepath.Join(cfg.DataPath, "repos")
 	if err := git.EnsureWithin(reposDir, repoDir); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	// Set repo in context
@@ -240,7 +240,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		if repo == nil {
 			if _, err := be.CreateRepository(ctx, name, user, proto.RepositoryOptions{Private: false}); err != nil {
 				log.Errorf("failed to create repo: %s", err)
-				return err
+				return err //nolint:wrapcheck
 			}
 			createRepoCounter.WithLabelValues(name).Inc()
 		}
@@ -250,7 +250,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 			defer func() {
 				if repo == nil {
 					// If the repo was created, but the request failed, delete it.
-					be.DeleteRepository(ctx, name) // nolint: errcheck
+					be.DeleteRepository(ctx, name) //nolint:errcheck,gosec
 				}
 			}()
 
@@ -274,7 +274,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 			return git.ErrInvalidRepo
 		}
 
-		switch service {
+		switch service { //nolint:exhaustive
 		case git.UploadArchiveService:
 			uploadArchiveCounter.WithLabelValues(name).Inc()
 			defer func() {
@@ -320,7 +320,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 			args[1],
 		}
 
-		switch service {
+		switch service { //nolint:exhaustive
 		case git.LFSTransferService:
 			lfsTransferCounter.WithLabelValues(name, operation).Inc()
 			defer func() {

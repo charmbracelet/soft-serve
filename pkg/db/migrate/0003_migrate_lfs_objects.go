@@ -29,12 +29,12 @@ var migrateLfsObjects = Migration{
 
 		var repoIDs []int64
 		if err := tx.Select(&repoIDs, "SELECT id FROM repos"); err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 		for _, r := range repoIDs {
 			var objs []models.LFSObject
 			if err := tx.Select(&objs, "SELECT * FROM lfs_objects WHERE repo_id = ?", r); err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 			objsp := filepath.Join(cfg.DataPath, "lfs", strconv.FormatInt(r, 10), "objects")
 			for _, obj := range objs {

@@ -1,3 +1,4 @@
+// Package backend provides backend functionality for soft-serve.
 package backend
 
 import (
@@ -22,7 +23,7 @@ func (b *Backend) CreateAccessToken(ctx context.Context, user proto.User, name s
 
 		return nil
 	}); err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
 	return token, nil
@@ -45,7 +46,7 @@ func (b *Backend) DeleteAccessToken(ctx context.Context, user proto.User, id int
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return proto.ErrTokenNotFound
 		}
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	return nil
@@ -55,10 +56,10 @@ func (b *Backend) DeleteAccessToken(ctx context.Context, user proto.User, id int
 func (b *Backend) ListAccessTokens(ctx context.Context, user proto.User) ([]proto.AccessToken, error) {
 	accessTokens, err := b.store.GetAccessTokensByUserID(ctx, b.db, user.ID())
 	if err != nil {
-		return nil, db.WrapError(err)
+		return nil, db.WrapError(err) //nolint:wrapcheck
 	}
 
-	var tokens []proto.AccessToken
+	tokens := make([]proto.AccessToken, 0, len(accessTokens))
 	for _, t := range accessTokens {
 		token := proto.AccessToken{
 			ID:        t.ID,

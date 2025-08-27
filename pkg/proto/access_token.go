@@ -1,3 +1,4 @@
+// Package proto provides protocol buffer definitions and utilities.
 package proto
 
 import "time"

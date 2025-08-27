@@ -31,27 +31,27 @@ func commitCommand() *cobra.Command {
 
 			rr, err := be.Repository(ctx, repoName)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			r, err := rr.Open()
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			commit, err := r.CommitByRevision(commitSHA)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			patch, err := r.Patch(commit)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			diff, err := r.Diff(commit)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			commonStyle := styles.DefaultStyles()

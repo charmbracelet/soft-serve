@@ -80,7 +80,7 @@ func collabListCommand() *cobra.Command {
 			repo := args[0]
 			collabs, err := be.Collaborators(ctx, repo)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			for _, c := range collabs {

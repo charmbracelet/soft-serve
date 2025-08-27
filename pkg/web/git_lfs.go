@@ -29,7 +29,7 @@ import (
 // serviceLfsBatch handles a Git LFS batch requests.
 // https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md
 // TODO: support refname
-// POST: /<repo>.git/info/lfs/objects/batch
+// POST: /<repo>.git/info/lfs/objects/batch.
 func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := log.FromContext(ctx).WithPrefix("http.lfs")
@@ -41,7 +41,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var batchRequest lfs.BatchRequest
-	defer r.Body.Close() // nolint: errcheck
+	defer r.Body.Close() //nolint: errcheck
 	if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
 		logger.Errorf("error decoding json: %s", err)
 		renderJSON(w, http.StatusUnprocessableEntity, lfs.ErrorResponse{
@@ -122,7 +122,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if !exist {
+			if !exist { //nolint:nestif
 				objects = append(objects, &lfs.ObjectResponse{
 					Pointer: o,
 					Error: &lfs.ObjectError{
@@ -249,7 +249,7 @@ func serviceLfsBasic(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET: /<repo>.git/info/lfs/objects/basic/<oid>
+// GET: /<repo>.git/info/lfs/objects/basic/<oid>.
 func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	oid := mux.Vars(r)["oid"]
@@ -282,7 +282,7 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", strconv.FormatInt(obj.Size, 10))
-	defer f.Close() // nolint: errcheck
+	defer f.Close() //nolint: errcheck
 	if _, err := io.Copy(w, f); err != nil {
 		logger.Error("error copying object to response", "oid", oid, "err", err)
 		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
@@ -292,7 +292,7 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// PUT: /<repo>.git/info/lfs/objects/basic/<oid>
+// PUT: /<repo>.git/info/lfs/objects/basic/<oid>.
 func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	if !isBinary(r) {
 		renderJSON(w, http.StatusUnsupportedMediaType, lfs.ErrorResponse{
@@ -313,7 +313,7 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
 	name := mux.Vars(r)["repo"]
 
-	defer r.Body.Close() // nolint: errcheck
+	defer r.Body.Close() //nolint: errcheck
 	repo, err := be.Repository(ctx, name)
 	if err != nil {
 		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
@@ -326,7 +326,7 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	// partial error, so we need to skip existing objects.
 	if _, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), oid); err == nil {
 		// Object exists, skip request
-		io.Copy(io.Discard, r.Body) // nolint: errcheck
+		io.Copy(io.Discard, r.Body) //nolint:errcheck,gosec
 		renderStatus(http.StatusOK)(w, nil)
 		return
 	} else if !errors.Is(err, db.ErrRecordNotFound) {
@@ -366,7 +366,7 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	renderStatus(http.StatusOK)(w, nil)
 }
 
-// POST: /<repo>.git/info/lfs/objects/basic/verify
+// POST: /<repo>.git/info/lfs/objects/basic/verify.
 func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 	if !isLfs(r) {
 		renderNotAcceptable(w)
@@ -385,7 +385,7 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close() // nolint: errcheck
+	defer r.Body.Close() //nolint: errcheck
 	if err := json.NewDecoder(r.Body).Decode(&pointer); err != nil {
 		logger.Error("error decoding json", "err", err)
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
@@ -399,7 +399,7 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 	datastore := store.FromContext(ctx)
 	repoID := strconv.FormatInt(repo.ID(), 10)
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
-	if stat, err := strg.Stat(path.Join("objects", pointer.RelativePath())); err == nil {
+	if stat, err := strg.Stat(path.Join("objects", pointer.RelativePath())); err == nil { //nolint:nestif
 		// Verify object is in the database.
 		obj, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), pointer.Oid)
 		if err != nil {
@@ -454,7 +454,7 @@ func serviceLfsLocks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// POST: /<repo>.git/info/lfs/objects/locks
+// POST: /<repo>.git/info/lfs/objects/locks.
 func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 	if !isLfs(r) {
 		renderNotAcceptable(w)
@@ -493,7 +493,7 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
-	if err := datastore.CreateLFSLockForUser(ctx, dbx, repo.ID(), user.ID(), req.Path, req.Ref.Name); err != nil {
+	if err := datastore.CreateLFSLockForUser(ctx, dbx, repo.ID(), user.ID(), req.Path, req.Ref.Name); err != nil { //nolint:nestif
 		err = db.WrapError(err)
 		if errors.Is(err, db.ErrDuplicateKey) {
 			errResp := lfs.LockResponse{
@@ -555,7 +555,7 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET: /<repo>.git/info/lfs/objects/locks
+// GET: /<repo>.git/info/lfs/objects/locks.
 func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 	accept := r.Header.Get("Accept")
 	if !strings.HasPrefix(accept, lfs.MediaType) {
@@ -607,6 +607,7 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//nolint:nestif // Complex LFS lock handling requires nested conditions
 	if id > 0 {
 		lock, err := datastore.GetLFSLockByID(ctx, dbx, id)
 		if err != nil {
@@ -730,7 +731,7 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 	renderJSON(w, http.StatusOK, resp)
 }
 
-// POST: /<repo>.git/info/lfs/objects/locks/verify
+// POST: /<repo>.git/info/lfs/objects/locks/verify.
 func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 	if !isLfs(r) {
 		renderNotAcceptable(w)
@@ -827,7 +828,7 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 	renderJSON(w, http.StatusOK, resp)
 }
 
-// POST: /<repo>.git/info/lfs/objects/locks/:lockID/unlock
+// POST: /<repo>.git/info/lfs/objects/locks/:lockID/unlock.
 func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 	if !isLfs(r) {
 		renderNotAcceptable(w)

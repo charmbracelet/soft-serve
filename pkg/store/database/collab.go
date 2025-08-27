@@ -19,7 +19,7 @@ var _ store.CollaboratorStore = (*collabStore)(nil)
 func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx db.Handler, username string, repo string, level access.AccessLevel) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	repo = utils.SanitizeRepo(repo)
@@ -36,7 +36,7 @@ func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx db.Handle
 				CURRENT_TIMESTAMP
 			);`)
 	_, err := tx.ExecContext(ctx, query, level, username, repo)
-	return err
+	return err //nolint:wrapcheck
 }
 
 // GetCollabByUsernameAndRepo implements store.CollaboratorStore.
@@ -45,7 +45,7 @@ func (*collabStore) GetCollabByUsernameAndRepo(ctx context.Context, tx db.Handle
 
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return models.Collab{}, err
+		return models.Collab{}, err //nolint:wrapcheck
 	}
 
 	repo = utils.SanitizeRepo(repo)
@@ -61,7 +61,7 @@ func (*collabStore) GetCollabByUsernameAndRepo(ctx context.Context, tx db.Handle
 			users.username = ? AND repos.name = ?
 	`), username, repo)
 
-	return m, err
+	return m, err //nolint:wrapcheck
 }
 
 // ListCollabsByRepo implements store.CollaboratorStore.
@@ -80,7 +80,7 @@ func (*collabStore) ListCollabsByRepo(ctx context.Context, tx db.Handler, repo s
 	`)
 
 	err := tx.SelectContext(ctx, &m, query, repo)
-	return m, err
+	return m, err //nolint:wrapcheck
 }
 
 // ListCollabsByRepoAsUsers implements store.CollaboratorStore.
@@ -100,14 +100,14 @@ func (*collabStore) ListCollabsByRepoAsUsers(ctx context.Context, tx db.Handler,
 	`)
 
 	err := tx.SelectContext(ctx, &m, query, repo)
-	return m, err
+	return m, err //nolint:wrapcheck
 }
 
 // RemoveCollabByUsernameAndRepo implements store.CollaboratorStore.
 func (*collabStore) RemoveCollabByUsernameAndRepo(ctx context.Context, tx db.Handler, username string, repo string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	repo = utils.SanitizeRepo(repo)
@@ -122,5 +122,5 @@ func (*collabStore) RemoveCollabByUsernameAndRepo(ctx context.Context, tx db.Han
 			)
 	`)
 	_, err := tx.ExecContext(ctx, query, username, repo)
-	return err
+	return err //nolint:wrapcheck
 }

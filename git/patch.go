@@ -26,7 +26,7 @@ func (s *DiffSection) diffFor(line *git.DiffLine) string {
 
 	// Find equivalent diff line, ignore when not found.
 	var diff1, diff2 string
-	switch line.Type {
+	switch line.Type { //nolint:exhaustive
 	case git.DiffLineAdd:
 		compareLine := s.Line(git.DiffLineDelete, line.RightLine)
 		if compareLine == nil {
@@ -64,7 +64,7 @@ func diffsToString(diffs []diffmatchpatch.Diff, lineType git.DiffLineType) strin
 	buf := bytes.NewBuffer(nil)
 
 	// Reproduce signs which are cutted for inline diff before.
-	switch lineType {
+	switch lineType { //nolint:exhaustive
 	case git.DiffLineAdd:
 		buf.WriteByte('+')
 	case git.DiffLineDelete:
@@ -132,7 +132,7 @@ func (f *DiffFile) Files() (from *DiffFileChange, to *DiffFileChange) {
 	return
 }
 
-// FileStats
+// FileStats represents a collection of diff files.
 type FileStats []*DiffFile
 
 // String returns a string representation of file stats.
@@ -233,7 +233,7 @@ type Diff struct {
 	Files []*DiffFile
 }
 
-// FileStats returns the diff file stats.
+// Stats returns the diff file stats.
 func (d *Diff) Stats() FileStats {
 	return d.Files
 }

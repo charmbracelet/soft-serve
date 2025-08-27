@@ -396,7 +396,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		Dir:    dir,
 	}
 
-	switch service {
+	switch service { //nolint:exhaustive
 	case git.UploadPackService, git.ReceivePackService:
 		cmd.Args = append(cmd.Args, "--stateless-rpc")
 	}
@@ -434,7 +434,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 			renderInternalServerError(w, r)
 			return
 		}
-		defer reader.Close() // nolint: errcheck
+		defer reader.Close() //nolint:errcheck
 	}
 
 	cmd.Stdin = reader
@@ -453,13 +453,13 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handle buffered output
-// Useful when using proxies
+// Useful when using proxies.
 type flushResponseWriter struct {
 	http.ResponseWriter
 }
 
 func (f *flushResponseWriter) ReadFrom(r io.Reader) (int64, error) {
-	flusher := http.NewResponseController(f.ResponseWriter) // nolint: bodyclose
+	flusher := http.NewResponseController(f.ResponseWriter)
 
 	var n int64
 	p := make([]byte, 1024)
@@ -468,12 +468,12 @@ func (f *flushResponseWriter) ReadFrom(r io.Reader) (int64, error) {
 		if err == io.EOF {
 			break
 		}
-		nWrite, err := f.ResponseWriter.Write(p[:nRead])
+		nWrite, err := f.Write(p[:nRead])
 		if err != nil {
-			return n, err
+			return n, err //nolint:wrapcheck
 		}
 		if nRead != nWrite {
-			return n, err
+			return n, err //nolint:wrapcheck
 		}
 		n += int64(nRead)
 		// ResponseWriter must support http.Flusher to handle buffered output.
@@ -494,7 +494,7 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 
 	gitHttpUploadCounter.WithLabelValues(repoName, file).Inc()
 
-	if service != "" && (service == git.UploadPackService || service == git.ReceivePackService) {
+	if service != "" && (service == git.UploadPackService || service == git.ReceivePackService) { //nolint:nestif
 		// Smart HTTP
 		var refs bytes.Buffer
 		cmd := git.ServiceCommand{
@@ -537,12 +537,12 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", service))
 		w.WriteHeader(http.StatusOK)
 		if version < 2 {
-			git.WritePktline(w, "# service="+service.String()) // nolint: errcheck
+			git.WritePktline(w, "# service="+service.String()) //nolint:errcheck,gosec
 		}
-		w.Write(refs.Bytes()) // nolint: errcheck
+		w.Write(refs.Bytes()) //nolint:errcheck,gosec
 	} else {
 		// Dumb HTTP
-		updateServerInfo(ctx, dir) // nolint: errcheck
+		updateServerInfo(ctx, dir) //nolint:errcheck,gosec
 		hdrNocache(w)
 		sendFile("text/plain; charset=utf-8", w, r)
 	}
@@ -604,7 +604,7 @@ func isSmart(r *http.Request, service git.Service) bool {
 }
 
 func updateServerInfo(ctx context.Context, dir string) error {
-	return gitb.UpdateServerInfo(ctx, dir)
+	return gitb.UpdateServerInfo(ctx, dir) //nolint:wrapcheck
 }
 
 // HTTP error response handling functions

@@ -167,7 +167,7 @@ func TestScript(t *testing.T) {
 			// Override the database data source if we're using postgres
 			// so we can create a temporary database for the tests.
 			if cfg.DB.Driver == "postgres" {
-				err, cleanup := setupPostgres(e.T(), cfg)
+				cleanup, err := setupPostgres(e.T(), cfg)
 				if err != nil {
 					return err
 				}
@@ -310,7 +310,7 @@ func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string)
 	return func(ts *testscript.TestScript, neg bool, args []string) {
 		ts.Check(os.WriteFile(
 			ts.Getenv("SSH_KNOWN_CONFIG_FILE"),
-			[]byte(fmt.Sprintf(sshConfig, ts.Getenv("SSH_KNOWN_HOSTS_FILE"))),
+			fmt.Appendf(nil, sshConfig, ts.Getenv("SSH_KNOWN_HOSTS_FILE")),
 			0o600,
 		))
 		sshArgs := []string{
@@ -519,17 +519,14 @@ func cmdEnsureServerNotRunning(ts *testscript.TestScript, neg bool, args []strin
 
 	// verify that the server is not up
 	addr := net.JoinHostPort("localhost", port)
-	for {
-		conn, _ := net.DialTimeout(
-			"tcp",
-			addr,
-			time.Second,
-		)
-		if conn != nil {
-			ts.Fatalf("server is running on port %s while it should not be running", port)
-			conn.Close()
-		}
-		break
+	conn, _ := net.DialTimeout(
+		"tcp",
+		addr,
+		time.Second,
+	)
+	if conn != nil {
+		ts.Fatalf("server is running on port %s while it should not be running", port)
+		conn.Close()
 	}
 }
 
@@ -541,7 +538,7 @@ func cmdStopserver(ts *testscript.TestScript, neg bool, args []string) {
 	time.Sleep(time.Second * 2) // Allow some time for the server to stop
 }
 
-func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
+func setupPostgres(t testscript.T, cfg *config.Config) (func(), error) {
 	// Indicates postgres
 	// Create a disposable database
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -551,26 +548,26 @@ func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
 		cfg.DB.DataSource = "postgres://postgres@localhost:5432/postgres?sslmode=disable"
 	}
 
-	dbUrl, err := url.Parse(cfg.DB.DataSource)
+	dbURL, err := url.Parse(cfg.DB.DataSource)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	scheme := dbUrl.Scheme
+	scheme := dbURL.Scheme
 	if scheme == "" {
 		scheme = "postgres"
 	}
 
-	host := dbUrl.Hostname()
+	host := dbURL.Hostname()
 	if host == "" {
 		host = "localhost"
 	}
 
 	connInfo := fmt.Sprintf("host=%s sslmode=disable", host)
-	username := dbUrl.User.Username()
+	username := dbURL.User.Username()
 	if username != "" {
 		connInfo += fmt.Sprintf(" user=%s", username)
-		password, ok := dbUrl.User.Password()
+		password, ok := dbURL.User.Password()
 		if ok {
 			username = fmt.Sprintf("%s:%s", username, password)
 			connInfo += fmt.Sprintf(" password=%s", password)
@@ -581,7 +578,7 @@ func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
 		username = "postgres@"
 	}
 
-	port := dbUrl.Port()
+	port := dbURL.Port()
 	if port != "" {
 		connInfo += fmt.Sprintf(" port=%s", port)
 		port = fmt.Sprintf(":%s", port)
@@ -598,14 +595,14 @@ func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
 	// Create the database
 	dbx, err := db.Open(context.TODO(), cfg.DB.Driver, connInfo)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	if _, err := dbx.Exec("CREATE DATABASE " + dbName); err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, func() {
+	return func() {
 		dbx, err := db.Open(context.TODO(), cfg.DB.Driver, connInfo)
 		if err != nil {
 			t.Fatal("failed to open database", dbName, err)
@@ -614,5 +611,5 @@ func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
 		if _, err := dbx.Exec("DROP DATABASE " + dbName); err != nil {
 			t.Fatal("failed to drop database", dbName, err)
 		}
-	}
+	}, nil
 }

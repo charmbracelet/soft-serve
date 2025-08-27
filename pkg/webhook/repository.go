@@ -34,7 +34,7 @@ const (
 // NewRepositoryEvent sends a repository event.
 func NewRepositoryEvent(ctx context.Context, user proto.User, repo proto.Repository, action RepositoryEventAction) (RepositoryEvent, error) {
 	var event Event
-	switch action {
+	switch action { //nolint:exhaustive
 	case RepositoryEventActionVisibilityChange:
 		event = EventRepositoryVisibilityChange
 	default:
@@ -71,7 +71,7 @@ func NewRepositoryEvent(ctx context.Context, user proto.User, repo proto.Reposit
 	datastore := store.FromContext(ctx)
 	owner, err := datastore.GetUserByID(ctx, dbx, repo.UserID())
 	if err != nil {
-		return RepositoryEvent{}, db.WrapError(err)
+		return RepositoryEvent{}, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	payload.Repository.Owner.ID = owner.ID

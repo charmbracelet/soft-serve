@@ -17,7 +17,7 @@ func mirrorCommand() *cobra.Command {
 			rn := args[0]
 			rr, err := be.Repository(ctx, rn)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			isMirror := rr.IsMirror()

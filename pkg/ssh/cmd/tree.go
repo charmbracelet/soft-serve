@@ -33,12 +33,12 @@ func treeCommand() *cobra.Command {
 			}
 			rr, err := be.Repository(ctx, rn)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			r, err := rr.Open()
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			if ref == "" {
@@ -47,7 +47,7 @@ func treeCommand() *cobra.Command {
 					if bs, err := r.Branches(); err != nil && len(bs) == 0 {
 						return fmt.Errorf("repository is empty")
 					}
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				ref = head.ID
@@ -55,26 +55,26 @@ func treeCommand() *cobra.Command {
 
 			tree, err := r.LsTree(ref)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			ents := git.Entries{}
-			if path != "" && path != "/" {
+			if path != "" && path != "/" { //nolint:nestif
 				te, err := tree.TreeEntry(path)
 				if err == git.ErrRevisionNotExist {
 					return proto.ErrFileNotFound
 				}
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 				if te.Type() == "tree" {
 					tree, err = tree.SubTree(path)
 					if err != nil {
-						return err
+						return err //nolint:wrapcheck
 					}
 					ents, err = tree.Entries()
 					if err != nil {
-						return err
+						return err //nolint:wrapcheck
 					}
 				} else {
 					ents = append(ents, te)
@@ -82,7 +82,7 @@ func treeCommand() *cobra.Command {
 			} else {
 				ents, err = tree.Entries()
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 			ents.Sort()

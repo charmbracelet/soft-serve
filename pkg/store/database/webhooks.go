@@ -21,7 +21,7 @@ func (*webhookStore) CreateWebhook(ctx context.Context, h db.Handler, repoID int
 			VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) RETURNING id;`)
 	err := h.GetContext(ctx, &id, query, repoID, url, secret, contentType, active)
 	if err != nil {
-		return 0, err
+		return 0, err //nolint:wrapcheck
 	}
 
 	return id, nil
@@ -36,7 +36,7 @@ func (*webhookStore) CreateWebhookDelivery(ctx context.Context, h db.Handler, id
 		reqErr = requestError.Error()
 	}
 	_, err := h.ExecContext(ctx, query, id, webhookID, event, url, method, reqErr, requestHeaders, requestBody, responseStatus, responseHeaders, responseBody)
-	return err
+	return err //nolint:wrapcheck
 }
 
 // CreateWebhookEvents implements store.WebhookStore.
@@ -46,7 +46,7 @@ func (*webhookStore) CreateWebhookEvents(ctx context.Context, h db.Handler, webh
 	for _, event := range events {
 		_, err := h.ExecContext(ctx, query, webhookID, event)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 	}
 	return nil
@@ -56,33 +56,33 @@ func (*webhookStore) CreateWebhookEvents(ctx context.Context, h db.Handler, webh
 func (*webhookStore) DeleteWebhookByID(ctx context.Context, h db.Handler, id int64) error {
 	query := h.Rebind(`DELETE FROM webhooks WHERE id = ?;`)
 	_, err := h.ExecContext(ctx, query, id)
-	return err
+	return err //nolint:wrapcheck
 }
 
 // DeleteWebhookForRepoByID implements store.WebhookStore.
 func (*webhookStore) DeleteWebhookForRepoByID(ctx context.Context, h db.Handler, repoID int64, id int64) error {
 	query := h.Rebind(`DELETE FROM webhooks WHERE repo_id = ? AND id = ?;`)
 	_, err := h.ExecContext(ctx, query, repoID, id)
-	return err
+	return err //nolint:wrapcheck
 }
 
 // DeleteWebhookDeliveryByID implements store.WebhookStore.
 func (*webhookStore) DeleteWebhookDeliveryByID(ctx context.Context, h db.Handler, webhookID int64, id uuid.UUID) error {
 	query := h.Rebind(`DELETE FROM webhook_deliveries WHERE webhook_id = ? AND id = ?;`)
 	_, err := h.ExecContext(ctx, query, webhookID, id)
-	return err
+	return err //nolint:wrapcheck
 }
 
 // DeleteWebhookEventsByWebhookID implements store.WebhookStore.
 func (*webhookStore) DeleteWebhookEventsByID(ctx context.Context, h db.Handler, ids []int64) error {
 	query, args, err := sqlx.In(`DELETE FROM webhook_events WHERE id IN (?);`, ids)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	query = h.Rebind(query)
 	_, err = h.ExecContext(ctx, query, args...)
-	return err
+	return err //nolint:wrapcheck
 }
 
 // GetWebhookByID implements store.WebhookStore.
@@ -90,7 +90,7 @@ func (*webhookStore) GetWebhookByID(ctx context.Context, h db.Handler, repoID in
 	query := h.Rebind(`SELECT * FROM webhooks WHERE repo_id = ? AND id = ?;`)
 	var wh models.Webhook
 	err := h.GetContext(ctx, &wh, query, repoID, id)
-	return wh, err
+	return wh, err //nolint:wrapcheck
 }
 
 // GetWebhookDeliveriesByWebhookID implements store.WebhookStore.
@@ -98,7 +98,7 @@ func (*webhookStore) GetWebhookDeliveriesByWebhookID(ctx context.Context, h db.H
 	query := h.Rebind(`SELECT * FROM webhook_deliveries WHERE webhook_id = ?;`)
 	var whds []models.WebhookDelivery
 	err := h.SelectContext(ctx, &whds, query, webhookID)
-	return whds, err
+	return whds, err //nolint:wrapcheck
 }
 
 // GetWebhookDeliveryByID implements store.WebhookStore.
@@ -106,7 +106,7 @@ func (*webhookStore) GetWebhookDeliveryByID(ctx context.Context, h db.Handler, w
 	query := h.Rebind(`SELECT * FROM webhook_deliveries WHERE webhook_id = ? AND id = ?;`)
 	var whd models.WebhookDelivery
 	err := h.GetContext(ctx, &whd, query, webhookID, id)
-	return whd, err
+	return whd, err //nolint:wrapcheck
 }
 
 // GetWebhookEventByID implements store.WebhookStore.
@@ -114,7 +114,7 @@ func (*webhookStore) GetWebhookEventByID(ctx context.Context, h db.Handler, id i
 	query := h.Rebind(`SELECT * FROM webhook_events WHERE id = ?;`)
 	var whe models.WebhookEvent
 	err := h.GetContext(ctx, &whe, query, id)
-	return whe, err
+	return whe, err //nolint:wrapcheck
 }
 
 // GetWebhookEventsByWebhookID implements store.WebhookStore.
@@ -122,7 +122,7 @@ func (*webhookStore) GetWebhookEventsByWebhookID(ctx context.Context, h db.Handl
 	query := h.Rebind(`SELECT * FROM webhook_events WHERE webhook_id = ?;`)
 	var whes []models.WebhookEvent
 	err := h.SelectContext(ctx, &whes, query, webhookID)
-	return whes, err
+	return whes, err //nolint:wrapcheck
 }
 
 // GetWebhooksByRepoID implements store.WebhookStore.
@@ -130,7 +130,7 @@ func (*webhookStore) GetWebhooksByRepoID(ctx context.Context, h db.Handler, repo
 	query := h.Rebind(`SELECT * FROM webhooks WHERE repo_id = ?;`)
 	var whs []models.Webhook
 	err := h.SelectContext(ctx, &whs, query, repoID)
-	return whs, err
+	return whs, err //nolint:wrapcheck
 }
 
 // GetWebhooksByRepoIDWhereEvent implements store.WebhookStore.
@@ -140,13 +140,13 @@ func (*webhookStore) GetWebhooksByRepoIDWhereEvent(ctx context.Context, h db.Han
 			INNER JOIN webhook_events ON webhooks.id = webhook_events.webhook_id
 			WHERE webhooks.repo_id = ? AND webhook_events.event IN (?);`, repoID, events)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	query = h.Rebind(query)
 	var whs []models.Webhook
 	err = h.SelectContext(ctx, &whs, query, args...)
-	return whs, err
+	return whs, err //nolint:wrapcheck
 }
 
 // ListWebhookDeliveriesByWebhookID implements store.WebhookStore.
@@ -154,12 +154,12 @@ func (*webhookStore) ListWebhookDeliveriesByWebhookID(ctx context.Context, h db.
 	query := h.Rebind(`SELECT id, response_status, event FROM webhook_deliveries WHERE webhook_id = ?;`)
 	var whds []models.WebhookDelivery
 	err := h.SelectContext(ctx, &whds, query, webhookID)
-	return whds, err
+	return whds, err //nolint:wrapcheck
 }
 
 // UpdateWebhookByID implements store.WebhookStore.
 func (*webhookStore) UpdateWebhookByID(ctx context.Context, h db.Handler, repoID int64, id int64, url string, secret string, contentType int, active bool) error {
 	query := h.Rebind(`UPDATE webhooks SET url = ?, secret = ?, content_type = ?, active = ?, updated_at = CURRENT_TIMESTAMP WHERE repo_id = ? AND id = ?;`)
 	_, err := h.ExecContext(ctx, query, url, secret, contentType, active, repoID, id)
-	return err
+	return err //nolint:wrapcheck
 }

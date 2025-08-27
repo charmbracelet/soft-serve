@@ -1,3 +1,4 @@
+// Package cron provides scheduled task management functionality.
 package cron
 
 import (
@@ -37,9 +38,9 @@ func NewScheduler(ctx context.Context) *Scheduler {
 	}
 }
 
-// Shutdonw gracefully shuts down the Scheduler.
+// Shutdown gracefully shuts down the Scheduler.
 func (s *Scheduler) Shutdown() {
-	ctx, cancel := context.WithTimeout(s.Cron.Stop(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(s.Stop(), 30*time.Second)
 	defer func() { cancel() }()
 	<-ctx.Done()
 }

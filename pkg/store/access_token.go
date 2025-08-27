@@ -1,3 +1,4 @@
+// Package store provides data store functionality.
 package store
 
 import (

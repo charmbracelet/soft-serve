@@ -23,20 +23,20 @@ func privateCommand() *cobra.Command {
 			case 1:
 				isPrivate, err := be.IsPrivate(ctx, rn)
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				cmd.Println(isPrivate)
 			case 2:
 				isPrivate, err := strconv.ParseBool(args[1])
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 				if err := checkIfCollab(cmd, args); err != nil {
 					return err
 				}
 				if err := be.SetPrivate(ctx, rn, isPrivate); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 			return nil

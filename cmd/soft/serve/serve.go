@@ -1,3 +1,4 @@
+// Package serve provides the serve command for soft-serve.
 package serve
 
 import (
@@ -50,10 +51,10 @@ var (
 			// Create custom hooks directory if it doesn't exist
 			customHooksPath := filepath.Join(cfg.DataPath, "hooks")
 			if _, err := os.Stat(customHooksPath); err != nil && os.IsNotExist(err) {
-				os.MkdirAll(customHooksPath, os.ModePerm) // nolint: errcheck
+				os.MkdirAll(customHooksPath, os.ModePerm) //nolint:errcheck,gosec
 				// Generate update hook example without executable permissions
 				hookPath := filepath.Join(customHooksPath, "update.sample")
-				// nolint: gosec
+				//nolint: gosec
 				if err := os.WriteFile(hookPath, []byte(updateHookExample), 0o744); err != nil {
 					return fmt.Errorf("failed to generate update hook example: %w", err)
 				}
@@ -62,7 +63,7 @@ var (
 			// Create log directory if it doesn't exist
 			logPath := filepath.Join(cfg.DataPath, "log")
 			if _, err := os.Stat(logPath); err != nil && os.IsNotExist(err) {
-				os.MkdirAll(logPath, os.ModePerm) // nolint: errcheck
+				os.MkdirAll(logPath, os.ModePerm) //nolint:errcheck,gosec
 			}
 
 			db := db.FromContext(ctx)

@@ -1,3 +1,4 @@
+// Package tabs provides tab UI components.
 package tabs
 
 import (

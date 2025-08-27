@@ -85,7 +85,7 @@ func NewLog(common common.Common) *Log {
 
 // Path implements common.TabComponent.
 func (l *Log) Path() string {
-	switch l.activeView {
+	switch l.activeView { //nolint:exhaustive
 	case logViewCommits:
 		return ""
 	default:
@@ -107,7 +107,7 @@ func (l *Log) SetSize(width, height int) {
 
 // ShortHelp implements help.KeyMap.
 func (l *Log) ShortHelp() []key.Binding {
-	switch l.activeView {
+	switch l.activeView { //nolint:exhaustive
 	case logViewCommits:
 		copyKey := l.common.KeyMap.Copy
 		copyKey.SetHelp("c", "copy hash")
@@ -135,7 +135,7 @@ func (l *Log) ShortHelp() []key.Binding {
 func (l *Log) FullHelp() [][]key.Binding {
 	k := l.selector.KeyMap
 	b := make([][]key.Binding, 0)
-	switch l.activeView {
+	switch l.activeView { //nolint:exhaustive
 	case logViewCommits:
 		copyKey := l.common.KeyMap.Copy
 		copyKey.SetHelp("c", "copy hash")
@@ -228,7 +228,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			l.activeCommit = i.(LogItem).Commit
 		}
 	case tea.KeyPressMsg, tea.MouseClickMsg:
-		switch l.activeView {
+		switch l.activeView { //nolint:exhaustive
 		case logViewCommits:
 			switch kmsg := msg.(type) {
 			case tea.KeyPressMsg:
@@ -335,7 +335,7 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			l.spinner = s
 		}
 	}
-	switch l.activeView {
+	switch l.activeView { //nolint:exhaustive
 	case logViewDiff:
 		vp, cmd := l.vp.Update(msg)
 		l.vp = vp.(*viewport.Viewport)

@@ -99,7 +99,7 @@ func (s *Server) Start() error {
 		errg.Go(func() error {
 			s.logger.Print("Starting SSH server", "addr", s.Config.SSH.ListenAddr)
 			if err := s.SSHServer.ListenAndServe(); !errors.Is(err, ssh.ErrServerClosed) {
-				return err
+				return err //nolint:wrapcheck
 			}
 			return nil
 		})
@@ -110,7 +110,7 @@ func (s *Server) Start() error {
 		errg.Go(func() error {
 			s.logger.Print("Starting Git daemon", "addr", s.Config.Git.ListenAddr)
 			if err := s.GitDaemon.ListenAndServe(); !errors.Is(err, daemon.ErrServerClosed) {
-				return err
+				return err //nolint:wrapcheck
 			}
 			return nil
 		})
@@ -121,7 +121,7 @@ func (s *Server) Start() error {
 		errg.Go(func() error {
 			s.logger.Print("Starting HTTP server", "addr", s.Config.HTTP.ListenAddr)
 			if err := s.HTTPServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-				return err
+				return err //nolint:wrapcheck
 			}
 			return nil
 		})
@@ -132,7 +132,7 @@ func (s *Server) Start() error {
 		errg.Go(func() error {
 			s.logger.Print("Starting Stats server", "addr", s.Config.Stats.ListenAddr)
 			if err := s.StatsServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-				return err
+				return err //nolint:wrapcheck
 			}
 			return nil
 		})
@@ -142,7 +142,7 @@ func (s *Server) Start() error {
 		s.Cron.Start()
 		return nil
 	})
-	return errg.Wait()
+	return errg.Wait() //nolint:wrapcheck
 }
 
 // Shutdown lets the server gracefully shutdown.
@@ -168,7 +168,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		return nil
 	})
 	// defer s.DB.Close() // nolint: errcheck
-	return errg.Wait()
+	return errg.Wait() //nolint:wrapcheck
 }
 
 // Close closes the SSH server.
@@ -183,5 +183,5 @@ func (s *Server) Close() error {
 		return nil
 	})
 	// defer s.DB.Close() // nolint: errcheck
-	return errg.Wait()
+	return errg.Wait() //nolint:wrapcheck
 }

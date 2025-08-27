@@ -49,12 +49,12 @@ type RepositoryOptions struct {
 func RepositoryDefaultBranch(repo Repository) (string, error) {
 	r, err := repo.Open()
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
 	ref, err := r.HEAD()
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
 	return ref.Name().Short(), nil

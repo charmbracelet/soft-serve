@@ -1,3 +1,4 @@
+// Package repo provides repository UI pages.
 package repo
 
 import (

@@ -20,7 +20,7 @@ func hiddenCommand() *cobra.Command {
 			case 1:
 				hidden, err := be.IsHidden(ctx, repo)
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				cmd.Println(hidden)
@@ -31,7 +31,7 @@ func hiddenCommand() *cobra.Command {
 
 				hidden := args[1] == "true"
 				if err := be.SetHidden(ctx, repo, hidden); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 

@@ -34,7 +34,7 @@ func createCommand() *cobra.Command {
 				Hidden:      hidden,
 			})
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			cloneurl := fmt.Sprintf("%s/%s.git", cfg.SSH.PublicURL, r.Name())

@@ -1,3 +1,4 @@
+// Package statusbar provides status bar UI components.
 package statusbar
 
 import (

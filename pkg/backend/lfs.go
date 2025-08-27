@@ -28,7 +28,7 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 	errChan := make(chan error, 1)
 	r, err := repo.Open()
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	go lfs.SearchPointerBlobs(ctx, r, pointerChan, errChan)
@@ -39,14 +39,14 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 				return objectError
 			}
 
-			defer content.Close() // nolint: errcheck
+			defer content.Close() //nolint: errcheck
 			return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 				if err := store.CreateLFSObject(ctx, tx, repo.ID(), p.Oid, p.Size); err != nil {
 					return db.WrapError(err)
 				}
 
 				_, err := strg.Put(path.Join("objects", p.RelativePath()), content)
-				return err
+				return err //nolint:wrapcheck
 			})
 		})
 	}
@@ -55,17 +55,17 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 	for pointer := range pointerChan {
 		obj, err := store.GetLFSObjectByOid(ctx, dbx, repo.ID(), pointer.Oid)
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-			return db.WrapError(err)
+			return db.WrapError(err) //nolint:wrapcheck
 		}
 
 		exist, err := strg.Exists(path.Join("objects", pointer.RelativePath()))
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
-		if exist && obj.ID == 0 {
+		if exist && obj.ID == 0 { //nolint:nestif
 			if err := store.CreateLFSObject(ctx, dbx, repo.ID(), pointer.Oid, pointer.Size); err != nil {
-				return db.WrapError(err)
+				return db.WrapError(err) //nolint:wrapcheck
 			}
 		} else {
 			batch = append(batch, pointer.Pointer)

@@ -120,7 +120,7 @@ func (s *Stash) StatusBarValue() string {
 
 // StatusBarInfo implements common.Component.
 func (s *Stash) StatusBarInfo() string {
-	switch s.state {
+	switch s.state { //nolint:exhaustive
 	case stashStateList:
 		totalPages := s.list.TotalPages()
 		if totalPages <= 1 {
@@ -166,7 +166,7 @@ func (s *Stash) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case tea.KeyPressMsg:
-		switch s.state {
+		switch s.state { //nolint:exhaustive
 		case stashStateList:
 			switch {
 			case key.Matches(msg, s.common.KeyMap.BackItem):
@@ -217,7 +217,7 @@ func (s *Stash) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		s.state = stashStateList
 	}
-	switch s.state {
+	switch s.state { //nolint:exhaustive
 	case stashStateList:
 		l, cmd := s.list.Update(msg)
 		s.list = l.(*selector.Selector)

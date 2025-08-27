@@ -1,3 +1,4 @@
+// Package styles provides UI styling definitions.
 package styles
 
 import (

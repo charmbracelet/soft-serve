@@ -18,7 +18,7 @@ func SetUsernameCommand() *cobra.Command {
 			pk := sshutils.PublicKeyFromContext(ctx)
 			user, err := be.UserByPublicKey(ctx, pk)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			return be.SetUsername(ctx, user.Username(), args[0])

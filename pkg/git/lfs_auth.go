@@ -15,7 +15,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// LFSAuthenticate implements teh Git LFS SSH authentication command.
+// LFSAuthenticate implements the Git LFS SSH authentication command.
 // Context must have *config.Config, *log.Logger, proto.User.
 // cmd.Args should have the repo path and operation as arguments.
 func LFSAuthenticate(ctx context.Context, cmd ServiceCommand) error {
@@ -46,7 +46,7 @@ func LFSAuthenticate(ctx context.Context, cmd ServiceCommand) error {
 	kp, err := jwk.NewPair(cfg)
 	if err != nil {
 		logger.Error("failed to get JWK pair", "err", err)
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	now := time.Now()
@@ -68,13 +68,13 @@ func LFSAuthenticate(ctx context.Context, cmd ServiceCommand) error {
 	j, err := token.SignedString(kp.PrivateKey())
 	if err != nil {
 		logger.Error("failed to sign token", "err", err)
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	href := fmt.Sprintf("%s/%s.git/info/lfs", cfg.HTTP.PublicURL, repo.Name())
 	logger.Debug("generated token", "token", j, "href", href, "expires_at", expiresAt)
 
-	return json.NewEncoder(cmd.Stdout).Encode(lfs.AuthenticateResponse{
+	return json.NewEncoder(cmd.Stdout).Encode(lfs.AuthenticateResponse{ //nolint:wrapcheck
 		Header: map[string]string{
 			"Authorization": fmt.Sprintf("Bearer %s", j),
 		},

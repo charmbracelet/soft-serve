@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	// DiffMaxFile is the maximum number of files to show in a diff.
+	// DiffMaxFiles is the maximum number of files to show in a diff.
 	DiffMaxFiles = 1000
 	// DiffMaxFileLines is the maximum number of lines to show in a file diff.
 	DiffMaxFileLines = 1000
@@ -25,7 +25,7 @@ type Repository struct {
 
 // Clone clones a repository.
 func Clone(src, dst string, opts ...git.CloneOptions) error {
-	return git.Clone(src, dst, opts...)
+	return git.Clone(src, dst, opts...) //nolint:wrapcheck
 }
 
 // Init initializes and opens a new git repository.
@@ -36,20 +36,20 @@ func Init(path string, bare bool) (*Repository, error) {
 
 	err := git.Init(path, git.InitOptions{Bare: bare})
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	return Open(path)
 }
 
 func gitDir(r *git.Repository) (string, error) {
-	return r.RevParse("--git-dir")
+	return r.RevParse("--git-dir") //nolint:wrapcheck
 }
 
 // Open opens a git repository at the given path.
 func Open(path string) (*Repository, error) {
 	repo, err := git.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	gp, err := gitDir(repo)
 	if err != nil || (gp != "." && gp != ".git") {
@@ -66,11 +66,11 @@ func Open(path string) (*Repository, error) {
 func (r *Repository) HEAD() (*Reference, error) {
 	rn, err := r.Repository.SymbolicRef(git.SymbolicRefOptions{Name: "HEAD"})
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	hash, err := r.ShowRefVerify(rn)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	return &Reference{
 		Reference: &git.Reference{
@@ -85,7 +85,7 @@ func (r *Repository) HEAD() (*Reference, error) {
 func (r *Repository) References() ([]*Reference, error) {
 	refs, err := r.ShowRef()
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	rrefs := make([]*Reference, 0, len(refs))
 	for _, ref := range refs {
@@ -101,7 +101,7 @@ func (r *Repository) References() ([]*Reference, error) {
 func (r *Repository) LsTree(ref string) (*Tree, error) {
 	tree, err := r.Repository.LsTree(ref)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	return &Tree{
 		Tree:       tree,
@@ -146,7 +146,7 @@ func (r *Repository) Diff(commit *Commit) (*Diff, error) {
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	return toDiff(diff), nil
 }
@@ -162,14 +162,14 @@ func (r *Repository) Patch(commit *Commit) (string, error) {
 
 // CountCommits returns the number of commits in the repository.
 func (r *Repository) CountCommits(ref *Reference) (int64, error) {
-	return r.RevListCount([]string{ref.Name().String()})
+	return r.RevListCount([]string{ref.Name().String()}) //nolint:wrapcheck
 }
 
 // CommitsByPage returns the commits for a given page and size.
 func (r *Repository) CommitsByPage(ref *Reference, page, size int) (Commits, error) {
 	cs, err := r.Repository.CommitsByPage(ref.Name().String(), page, size)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	commits := make(Commits, len(cs))
 	copy(commits, cs)
@@ -186,5 +186,5 @@ func (r *Repository) SymbolicRef(name string, ref string, opts ...git.SymbolicRe
 
 	opt.Name = name
 	opt.Ref = ref
-	return r.Repository.SymbolicRef(opt)
+	return r.Repository.SymbolicRef(opt) //nolint:wrapcheck
 }

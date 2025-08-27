@@ -58,7 +58,7 @@ type GitDaemon struct {
 	liMu      sync.Mutex
 }
 
-// NewDaemon returns a new Git daemon.
+// NewGitDaemon returns a new Git daemon.
 func NewGitDaemon(ctx context.Context) (*GitDaemon, error) {
 	cfg := config.FromContext(ctx)
 	addr := cfg.Git.ListenAddr
@@ -79,9 +79,9 @@ func (d *GitDaemon) ListenAndServe() error {
 	if d.done.Load() {
 		return ErrServerClosed
 	}
-	listener, err := net.Listen("tcp", d.addr)
+	listener, err := net.Listen("tcp", d.addr) //nolint:noctx
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	return d.Serve(listener)
 }
@@ -101,14 +101,14 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 	var tempDelay time.Duration
 	for {
 		conn, err := listener.Accept()
-		if err != nil {
+		if err != nil { //nolint:nestif
 			select {
 			case <-d.finished:
 				return ErrServerClosed
 			default:
 				d.logger.Debugf("git: error accepting connection: %v", err)
 			}
-			if ne, ok := err.(net.Error); ok && ne.Temporary() { // nolint: staticcheck
+			if ne, ok := err.(net.Error); ok && ne.Temporary() { //nolint:staticcheck
 				if tempDelay == 0 {
 					tempDelay = 5 * time.Millisecond
 				} else {
@@ -120,7 +120,7 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 				time.Sleep(tempDelay)
 				continue
 			}
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		// Close connection if there are too many open connections.
@@ -139,7 +139,7 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 }
 
 func (d *GitDaemon) fatal(c net.Conn, err error) {
-	git.WritePktlineErr(c, err) // nolint: errcheck
+	git.WritePktlineErr(c, err) //nolint:errcheck,gosec
 	if err := c.Close(); err != nil {
 		d.logger.Debugf("git: error closing connection: %v", err)
 	}
@@ -160,7 +160,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 	}
 	d.conns.Add(c)
 	defer func() {
-		d.conns.Close(c) // nolint: errcheck
+		d.conns.Close(c) //nolint:errcheck,gosec
 	}()
 
 	errc := make(chan error, 1)
@@ -201,7 +201,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 
 		var counter *prometheus.CounterVec
 		service := git.Service(split[0])
-		switch service {
+		switch service { //nolint:exhaustive
 		case git.UploadPackService:
 			counter = uploadPackGitCounter
 		case git.UploadArchiveService:
@@ -213,7 +213,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 
 		opts := bytes.SplitN(split[1], []byte{0}, 3)
 		if len(opts) < 2 {
-			d.fatal(c, git.ErrInvalidRequest) // nolint: errcheck
+			d.fatal(c, git.ErrInvalidRequest)
 			return
 		}
 
@@ -317,7 +317,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 // Close closes the underlying listener.
 func (d *GitDaemon) Close() error {
 	err := d.closeListener()
-	d.conns.CloseAll() // nolint: errcheck
+	d.conns.CloseAll() //nolint:errcheck,gosec
 	return err
 }
 
@@ -356,7 +356,7 @@ func (d *GitDaemon) Shutdown(ctx context.Context) error {
 	}()
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return ctx.Err() //nolint:wrapcheck
 	case <-finished:
 		return err
 	}

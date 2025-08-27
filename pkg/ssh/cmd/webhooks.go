@@ -52,12 +52,12 @@ func webhookListCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			repo, err := be.Repository(ctx, args[0])
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			webhooks, err := be.ListWebhooks(ctx, repo)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			table := table.New().Headers("ID", "URL", "Events", "Active", "Created At", "Updated At")
@@ -99,7 +99,7 @@ func webhookCreateCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			repo, err := be.Repository(ctx, args[0])
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			var evs []webhook.Event
@@ -145,7 +145,7 @@ func webhookDeleteCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			repo, err := be.Repository(ctx, args[0])
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			id, err := strconv.ParseInt(args[1], 10, 64)
@@ -176,7 +176,7 @@ func webhookUpdateCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			repo, err := be.Repository(ctx, args[0])
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			id, err := strconv.ParseInt(args[1], 10, 64)
@@ -186,7 +186,7 @@ func webhookUpdateCommand() *cobra.Command {
 
 			wh, err := be.Webhook(ctx, repo, id)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			newURL := wh.URL
@@ -283,7 +283,7 @@ func webhookDeliveriesListCommand() *cobra.Command {
 
 			dels, err := be.ListWebhookDeliveries(ctx, id)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			table := table.New().Headers("Status", "ID", "Event", "Created At")
@@ -317,7 +317,7 @@ func webhookDeliveriesRedeliverCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			repo, err := be.Repository(ctx, args[0])
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			id, err := strconv.ParseInt(args[1], 10, 64)
@@ -357,7 +357,7 @@ func webhookDeliveriesGetCommand() *cobra.Command {
 
 			del, err := be.WebhookDelivery(ctx, id, delID)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			out := cmd.OutOrStdout()

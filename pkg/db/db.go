@@ -23,7 +23,7 @@ type DB struct {
 func Open(ctx context.Context, driverName string, dsn string) (*DB, error) {
 	db, err := sqlx.ConnectContext(ctx, driverName, dsn)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	d := &DB{
@@ -40,7 +40,7 @@ func Open(ctx context.Context, driverName string, dsn string) (*DB, error) {
 
 // Close implements db.DB.
 func (d *DB) Close() error {
-	return d.DB.Close()
+	return d.DB.Close() //nolint:wrapcheck
 }
 
 // Tx is a database transaction.
@@ -56,7 +56,7 @@ func (d *DB) Transaction(fn func(tx *Tx) error) error {
 
 // TransactionContext implements db.DB.
 func (d *DB) TransactionContext(ctx context.Context, fn func(tx *Tx) error) error {
-	txx, err := d.DB.BeginTxx(ctx, nil)
+	txx, err := d.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}

@@ -10,7 +10,7 @@ func (r *Repository) StashDiff(index int) (*Diff, error) {
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	return toDiff(diff), nil
 }

@@ -1,3 +1,4 @@
+// Package db provides database operations and context management.
 package db
 
 import "context"

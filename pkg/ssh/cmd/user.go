@@ -34,7 +34,7 @@ func UserCommand() *cobra.Command {
 			if key != "" {
 				pk, _, err := sshutils.ParseAuthorizedKey(key)
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				pubkeys = []ssh.PublicKey{pk}
@@ -46,7 +46,7 @@ func UserCommand() *cobra.Command {
 			}
 
 			_, err := be.CreateUser(ctx, username, opts)
-			return err
+			return err //nolint:wrapcheck
 		},
 	}
 
@@ -78,7 +78,7 @@ func UserCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			users, err := be.Users(ctx)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			sort.Strings(users)
@@ -102,7 +102,7 @@ func UserCommand() *cobra.Command {
 			pubkey := strings.Join(args[1:], " ")
 			pk, _, err := sshutils.ParseAuthorizedKey(pubkey)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			return be.AddPublicKey(ctx, username, pk)
@@ -121,7 +121,7 @@ func UserCommand() *cobra.Command {
 			pubkey := strings.Join(args[1:], " ")
 			pk, _, err := sshutils.ParseAuthorizedKey(pubkey)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			return be.RemovePublicKey(ctx, username, pk)
@@ -154,7 +154,7 @@ func UserCommand() *cobra.Command {
 
 			user, err := be.User(ctx, username)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			isAdmin := user.IsAdmin()

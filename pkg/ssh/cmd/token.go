@@ -41,7 +41,7 @@ func TokenCommand() *cobra.Command {
 			if createExpiresIn != "" {
 				d, err := duration.Parse(createExpiresIn)
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				expiresIn = d
@@ -50,7 +50,7 @@ func TokenCommand() *cobra.Command {
 
 			token, err := be.CreateAccessToken(ctx, user, name, expiresAt)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			notice := "Access token created"
@@ -83,7 +83,7 @@ func TokenCommand() *cobra.Command {
 
 			tokens, err := be.ListAccessTokens(ctx, user)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			if len(tokens) == 0 {
@@ -130,11 +130,11 @@ func TokenCommand() *cobra.Command {
 
 			id, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			if err := be.DeleteAccessToken(ctx, user, id); err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			cmd.PrintErrln("Access token deleted")

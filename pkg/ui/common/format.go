@@ -51,7 +51,7 @@ func FormatHighlight(p, c string) (string, error) {
 	rctx := StyleRendererWithStyles(styles)
 	err := formatter.Render(&r, rctx)
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 	return r.String(), nil
 }

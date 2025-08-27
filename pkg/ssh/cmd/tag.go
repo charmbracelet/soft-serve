@@ -38,12 +38,12 @@ func tagListCommand() *cobra.Command {
 			rn := strings.TrimSuffix(args[0], ".git")
 			rr, err := be.Repository(ctx, rn)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			r, err := rr.Open()
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			tags, _ := r.Tags()
@@ -71,13 +71,13 @@ func tagDeleteCommand() *cobra.Command {
 			rn := strings.TrimSuffix(args[0], ".git")
 			rr, err := be.Repository(ctx, rn)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			r, err := rr.Open()
 			if err != nil {
 				log.Errorf("failed to open repo: %s", err)
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			tag := args[1]
@@ -98,18 +98,18 @@ func tagDeleteCommand() *cobra.Command {
 			tagCommit, err := r.TagCommit(tag)
 			if err != nil {
 				log.Errorf("failed to get tag commit: %s", err)
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			if err := r.DeleteTag(tag); err != nil {
 				log.Errorf("failed to delete tag: %s", err)
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			wh, err := webhook.NewBranchTagEvent(ctx, proto.UserFromContext(ctx), rr, git.RefsTags+tag, tagCommit.ID.String(), git.ZeroID)
 			if err != nil {
 				log.Error("failed to create branch_tag webhook", "err", err)
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			return webhook.SendEvent(ctx, wh)

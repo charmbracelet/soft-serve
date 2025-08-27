@@ -53,7 +53,7 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 
 		logger.Debug("updating mirror repos")
 		for _, repo := range repos {
-			if repo.IsMirror() {
+			if repo.IsMirror() { //nolint:nestif
 				r, err := repo.Open()
 				if err != nil {
 					logger.Error("error opening repository", "repo", repo.Name(), "err", err)

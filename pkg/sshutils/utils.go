@@ -1,3 +1,4 @@
+// Package sshutils provides SSH utility functions.
 package sshutils
 
 import (
@@ -11,7 +12,7 @@ import (
 // ParseAuthorizedKey parses an authorized key string into a public key.
 func ParseAuthorizedKey(ak string) (gossh.PublicKey, string, error) {
 	pk, c, _, _, err := gossh.ParseAuthorizedKey([]byte(ak))
-	return pk, c, err
+	return pk, c, err //nolint:wrapcheck
 }
 
 // MarshalAuthorizedKey marshals a public key into an authorized key string.

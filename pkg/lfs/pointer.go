@@ -27,22 +27,22 @@ const (
 )
 
 var (
-	// ErrMissingPrefix occurs if the content lacks the LFS prefix
-	ErrMissingPrefix = errors.New("Content lacks the LFS prefix")
+	// ErrMissingPrefix occurs if the content lacks the LFS prefix.
+	ErrMissingPrefix = errors.New("content lacks the LFS prefix")
 
-	// ErrInvalidStructure occurs if the content has an invalid structure
-	ErrInvalidStructure = errors.New("Content has an invalid structure")
+	// ErrInvalidStructure occurs if the content has an invalid structure.
+	ErrInvalidStructure = errors.New("content has an invalid structure")
 
-	// ErrInvalidOIDFormat occurs if the oid has an invalid format
+	// ErrInvalidOIDFormat occurs if the oid has an invalid format.
 	ErrInvalidOIDFormat = errors.New("OID has an invalid format")
 )
 
-// ReadPointer tries to read LFS pointer data from the reader
+// ReadPointer tries to read LFS pointer data from the reader.
 func ReadPointer(reader io.Reader) (Pointer, error) {
 	buf := make([]byte, blobSizeCutoff)
 	n, err := io.ReadFull(reader, buf)
 	if err != nil && err != io.ErrUnexpectedEOF {
-		return Pointer{}, err
+		return Pointer{}, err //nolint:wrapcheck
 	}
 	buf = buf[:n]
 
@@ -71,7 +71,7 @@ func ReadPointerFromBuffer(buf []byte) (Pointer, error) {
 	}
 	size, err := strconv.ParseInt(strings.TrimPrefix(splitLines[2], "size "), 10, 64)
 	if err != nil {
-		return p, err
+		return p, err //nolint:wrapcheck
 	}
 
 	p.Oid = oid
@@ -111,12 +111,12 @@ func (p Pointer) RelativePath() string {
 	return path.Join(p.Oid[0:2], p.Oid[2:4], p.Oid)
 }
 
-// GeneratePointer generates a pointer for arbitrary content
+// GeneratePointer generates a pointer for arbitrary content.
 func GeneratePointer(content io.Reader) (Pointer, error) {
 	h := sha256.New()
 	c, err := io.Copy(h, content)
 	if err != nil {
-		return Pointer{}, err
+		return Pointer{}, err //nolint:wrapcheck
 	}
 	sum := h.Sum(nil)
 	return Pointer{Oid: hex.EncodeToString(sum), Size: c}, nil

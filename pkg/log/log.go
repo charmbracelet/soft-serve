@@ -1,3 +1,4 @@
+// Package log provides logging functionality for soft-serve.
 package log
 
 import (
@@ -41,9 +42,9 @@ func NewLogger(cfg *config.Config) (*log.Logger, *os.File, error) {
 	var f *os.File
 	if cfg.Log.Path != "" {
 		var err error
-		f, err = os.OpenFile(cfg.Log.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		f, err = os.OpenFile(cfg.Log.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, err //nolint:wrapcheck
 		}
 		logger.SetOutput(f)
 	}

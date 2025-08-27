@@ -135,7 +135,7 @@ func (s *Selection) FullHelp() [][]key.Binding {
 			s.common.KeyMap.Section,
 		},
 	}
-	switch s.activePane {
+	switch s.activePane { //nolint:exhaustive
 	case readmePane:
 		k := s.readme.KeyMap
 		b = append(b, []key.Binding{
@@ -266,7 +266,7 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tabs.ActiveTabMsg:
 		s.activePane = pane(msg)
 	}
-	switch s.activePane {
+	switch s.activePane { //nolint:exhaustive
 	case readmePane:
 		r, cmd := s.readme.Update(msg)
 		s.readme = r.(*code.Code)
@@ -287,7 +287,7 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (s *Selection) View() string {
 	var view string
 	wm, hm := s.getMargins()
-	switch s.activePane {
+	switch s.activePane { //nolint:exhaustive
 	case selectorPane:
 		ss := lipgloss.NewStyle().
 			Width(s.common.Width - wm).

@@ -1,3 +1,4 @@
+// Package main is the entry point for the soft-serve CLI.
 package main
 
 import (
@@ -54,7 +55,7 @@ var (
 		RunE: func(_ *cobra.Command, _ []string) error {
 			manPage, err := mcobra.NewManPage(1, rootCmd) //.
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			manPage = manPage.WithSection("Copyright", "(C) 2021-2023 Charmbracelet, Inc.\n"+
@@ -118,7 +119,7 @@ func main() {
 
 	ctx = log.WithContext(ctx, logger)
 	if f != nil {
-		defer f.Close() // nolint: errcheck
+		defer f.Close() //nolint: errcheck
 	}
 
 	// Set global logger

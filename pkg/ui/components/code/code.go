@@ -1,3 +1,4 @@
+// Package code provides code syntax highlighting components.
 package code
 
 import (
@@ -83,7 +84,7 @@ func (r *Code) Init() tea.Cmd {
 	w := r.common.Width - r.common.Styles.App.GetHorizontalFrameSize()
 	content := r.content
 	if content == "" {
-		r.Viewport.Model.SetContent(r.NoContentStyle.String())
+		r.Model.SetContent(r.NoContentStyle.String())
 		return nil
 	}
 
@@ -113,7 +114,7 @@ func (r *Code) Init() tea.Cmd {
 
 	if r.sidenote != "" {
 		lines := strings.Split(r.sidenote, "\n")
-		sideNoteWidth := int(math.Ceil(float64(r.Model.Width()) * r.SideNotePercent))
+		sideNoteWidth := int(math.Ceil(float64(r.Width()) * r.SideNotePercent))
 		for i, l := range lines {
 			lines[i] = common.TruncateString(l, sideNoteWidth)
 		}
@@ -126,7 +127,7 @@ func (r *Code) Init() tea.Cmd {
 	// TODO: solve this upstream in Glamour/Reflow.
 	content = lipgloss.NewStyle().Width(w).Render(content)
 
-	r.Viewport.Model.SetContent(content)
+	r.Model.SetContent(content)
 
 	return nil
 }
@@ -197,11 +198,11 @@ func (r *Code) glamourize(w int, md string) (string, error) {
 		glamour.WithWordWrap(w),
 	)
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 	mdt, err := tr.Render(md)
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 	return mdt, nil
 }
@@ -232,7 +233,7 @@ func (r *Code) renderFile(path, content string) (string, error) {
 	}
 	err := formatter.Render(&s, rc)
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
 	return s.String(), nil
