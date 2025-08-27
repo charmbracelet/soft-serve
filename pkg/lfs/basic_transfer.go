@@ -12,17 +12,17 @@ import (
 	"github.com/charmbracelet/log/v2"
 )
 
-// BasicTransferAdapter implements the "basic" adapter
+// BasicTransferAdapter implements the "basic" adapter.
 type BasicTransferAdapter struct {
 	client *http.Client
 }
 
-// Name returns the name of the adapter
+// Name returns the name of the adapter.
 func (a *BasicTransferAdapter) Name() string {
 	return "basic"
 }
 
-// Download reads the download location and downloads the data
+// Download reads the download location and downloads the data.
 func (a *BasicTransferAdapter) Download(ctx context.Context, _ Pointer, l *Link) (io.ReadCloser, error) {
 	resp, err := a.performRequest(ctx, "GET", l, nil, nil)
 	if err != nil {
@@ -31,7 +31,7 @@ func (a *BasicTransferAdapter) Download(ctx context.Context, _ Pointer, l *Link)
 	return resp.Body, nil
 }
 
-// Upload sends the content to the LFS server
+// Upload sends the content to the LFS server.
 func (a *BasicTransferAdapter) Upload(ctx context.Context, p Pointer, r io.Reader, l *Link) error {
 	res, err := a.performRequest(ctx, "PUT", l, r, func(req *http.Request) {
 		if len(req.Header.Get("Content-Type")) == 0 {
@@ -50,7 +50,7 @@ func (a *BasicTransferAdapter) Upload(ctx context.Context, p Pointer, r io.Reade
 	return res.Body.Close()
 }
 
-// Verify calls the verify handler on the LFS server
+// Verify calls the verify handler on the LFS server.
 func (a *BasicTransferAdapter) Verify(ctx context.Context, p Pointer, l *Link) error {
 	logger := log.FromContext(ctx).WithPrefix("lfs")
 	b, err := json.Marshal(p)

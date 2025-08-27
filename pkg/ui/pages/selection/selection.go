@@ -176,6 +176,8 @@ func (s *Selection) FullHelp() [][]key.Binding {
 			k.CancelWhileFiltering,
 			k.AcceptWhileFiltering,
 		})
+	case lastPane:
+		// lastPane is not a real pane, used for bounds checking
 	}
 	return b
 }
@@ -279,6 +281,8 @@ func (s *Selection) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
+	case lastPane:
+		// lastPane is not a real pane, no updates needed
 	}
 	return s, tea.Batch(cmds...)
 }
@@ -306,6 +310,8 @@ func (s *Selection) View() string {
 			s.readme.View(),
 			readmeStatus,
 		))
+	case lastPane:
+		// lastPane is not a real pane, no view
 	}
 	if s.activePane != selectorPane || s.FilterState() != list.Filtering {
 		tabs := s.common.Styles.Tabs.Render(s.tabs.View())

@@ -88,8 +88,10 @@ func (l *Log) Path() string {
 	switch l.activeView {
 	case logViewCommits:
 		return ""
-	default:
+	case logViewLoading, logViewDiff:
 		return "diff" // XXX: this is a place holder and doesn't mean anything
+	default:
+		return "diff"
 	}
 }
 
@@ -126,6 +128,8 @@ func (l *Log) ShortHelp() []key.Binding {
 			l.common.KeyMap.GotoTop,
 			l.common.KeyMap.GotoBottom,
 		}
+	case logViewLoading:
+		return []key.Binding{}
 	default:
 		return []key.Binding{}
 	}
@@ -178,6 +182,8 @@ func (l *Log) FullHelp() [][]key.Binding {
 				l.common.KeyMap.GotoBottom,
 			},
 		}...)
+	case logViewLoading:
+		// No key bindings while loading
 	}
 	return b
 }
@@ -264,6 +270,8 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+		case logViewLoading:
+			// No key handling while loading
 		}
 	case GoBackMsg:
 		l.goBack()
@@ -342,6 +350,8 @@ func (l *Log) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
+	case logViewLoading, logViewCommits:
+		// No additional viewport updates needed
 	}
 	return l, tea.Batch(cmds...)
 }

@@ -268,6 +268,8 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch f.activeView {
 		case filesViewFiles, filesViewContent:
 			cmds = append(cmds, f.deselectItemCmd())
+		case filesViewLoading:
+			// Do nothing while loading
 		}
 	case tea.KeyPressMsg:
 		switch f.activeView {
@@ -303,6 +305,8 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				f.code.UseGlamour = !f.code.UseGlamour
 				cmds = append(cmds, f.code.SetContent(f.currentContent.content, f.currentContent.ext))
 			}
+		case filesViewLoading:
+			// No key handling while loading
 		}
 	case tea.WindowSizeMsg:
 		f.SetSize(msg.Width, msg.Height)
@@ -319,6 +323,8 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, cmd)
 				}
 			}
+		case filesViewLoading:
+			// Do nothing while loading
 		}
 	case EmptyRepoMsg:
 		f.ref = nil
@@ -347,6 +353,12 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case filesViewContent:
 		m, cmd := f.code.Update(msg)
 		f.code = m.(*code.Code)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case filesViewLoading:
+		m, cmd := f.spinner.Update(msg)
+		f.spinner = m
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
@@ -389,6 +401,8 @@ func (f *Files) StatusBarInfo() string {
 		return fmt.Sprintf("# %d/%d", f.selector.Index()+1, len(f.selector.VisibleItems()))
 	case filesViewContent:
 		return common.ScrollPercent(f.code.ScrollPosition())
+	case filesViewLoading:
+		return "Loading..."
 	default:
 		return ""
 	}

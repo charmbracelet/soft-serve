@@ -109,6 +109,8 @@ func (m model) ShortHelp() []key.Binding {
 			m.common.KeyMap.Quit,
 			m.common.KeyMap.Help,
 		}
+	case startState:
+		return m.model.ShortHelp()
 	default:
 		return m.model.ShortHelp()
 	}
@@ -127,6 +129,8 @@ func (m model) FullHelp() [][]key.Binding {
 				m.common.KeyMap.Help,
 			},
 		}
+	case startState:
+		return m.model.FullHelp()
 	default:
 		return m.model.FullHelp()
 	}

@@ -136,7 +136,7 @@ func (f *DiffFile) Files() (from *DiffFileChange, to *DiffFileChange) {
 	return
 }
 
-// FileStats
+// FileStats.
 type FileStats []*DiffFile
 
 // String returns a string representation of file stats.

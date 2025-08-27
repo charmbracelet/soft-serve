@@ -129,6 +129,8 @@ func (s *Stash) StatusBarInfo() string {
 		return fmt.Sprintf("p. %d/%d", s.list.Page()+1, totalPages)
 	case stashStatePatch:
 		return common.ScrollPercent(s.code.ScrollPosition())
+	case stashStateLoading:
+		return "Loading..."
 	default:
 		return ""
 	}
@@ -184,6 +186,8 @@ func (s *Stash) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, copyCmd(patch.Patch(), "Stash patch copied to clipboard"))
 				}
 			}
+		case stashStateLoading:
+			// No key handling while loading
 		}
 	case StashListMsg:
 		s.state = stashStateList
@@ -230,6 +234,8 @@ func (s *Stash) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
+	case stashStateLoading:
+		// No updates while loading
 	}
 	return s, tea.Batch(cmds...)
 }

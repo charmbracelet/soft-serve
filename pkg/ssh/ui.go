@@ -91,6 +91,8 @@ func (ui *UI) ShortHelp() []key.Binding {
 		b = append(b, ui.common.KeyMap.Back)
 	case readyState:
 		b = append(b, ui.pages[ui.activePage].ShortHelp()...)
+	case loadingState:
+		// No key bindings while loading
 	}
 	if !ui.IsFiltering() {
 		b = append(b, ui.common.KeyMap.Quit)
@@ -107,6 +109,8 @@ func (ui *UI) FullHelp() [][]key.Binding {
 		b = append(b, []key.Binding{ui.common.KeyMap.Back})
 	case readyState:
 		b = append(b, ui.pages[ui.activePage].FullHelp()...)
+	case loadingState:
+		// No key bindings while loading
 	}
 	h := []key.Binding{
 		ui.common.KeyMap.Help,

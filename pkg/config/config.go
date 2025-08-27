@@ -307,7 +307,7 @@ func DefaultDataPath() string {
 }
 
 // ConfigPath returns the path to the config file.
-func (c *Config) ConfigPath() string { //nolint:revive
+func (c *Config) ConfigPath() string {
 	// If we have a custom config location set, then use that.
 	if path := os.Getenv("SOFT_SERVE_CONFIG_LOCATION"); exist(path) {
 		return path

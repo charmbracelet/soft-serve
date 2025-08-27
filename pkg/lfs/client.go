@@ -6,16 +6,16 @@ import (
 )
 
 const (
-	// SchemeHTTP represents the HTTP protocol scheme
+	// SchemeHTTP represents the HTTP protocol scheme.
 	SchemeHTTP = "http"
-	// SchemeHTTPS represents the HTTPS protocol scheme
+	// SchemeHTTPS represents the HTTPS protocol scheme.
 	SchemeHTTPS = "https"
 )
 
-// DownloadCallback gets called for every requested LFS object to process its content
+// DownloadCallback gets called for every requested LFS object to process its content.
 type DownloadCallback func(p Pointer, content io.ReadCloser, objectError error) error
 
-// UploadCallback gets called for every requested LFS object to provide its content
+// UploadCallback gets called for every requested LFS object to provide its content.
 type UploadCallback func(p Pointer, objectError error) (io.ReadCloser, error)
 
 // Client is a Git LFS client to communicate with a LFS source API.

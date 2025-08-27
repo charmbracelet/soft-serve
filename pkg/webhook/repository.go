@@ -37,6 +37,8 @@ func NewRepositoryEvent(ctx context.Context, user proto.User, repo proto.Reposit
 	switch action {
 	case RepositoryEventActionVisibilityChange:
 		event = EventRepositoryVisibilityChange
+	case RepositoryEventActionDelete, RepositoryEventActionRename, RepositoryEventActionDefaultBranchChange:
+		event = EventRepository
 	default:
 		event = EventRepository
 	}
