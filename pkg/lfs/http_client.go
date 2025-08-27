@@ -86,7 +86,7 @@ func (c *httpClient) batch(ctx context.Context, operation string, objects []Poin
 		logger.Errorf("Error while processing request: %v", err)
 		return nil, err
 	}
-	defer res.Body.Close() //nolint: errcheck
+	defer res.Body.Close() 
 
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("Unexpected server response: %s", res.Status)
@@ -162,7 +162,7 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 
 			err = transferAdapter.Upload(ctx, object.Pointer, content, link)
 
-			content.Close() //nolint: errcheck
+			content.Close() 
 
 			if err != nil {
 				return err

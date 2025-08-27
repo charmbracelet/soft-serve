@@ -15,7 +15,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// LFSAuthenticate implements teh Git LFS SSH authentication command.
+// LFSAuthenticate implements the Git LFS SSH authentication command.
 // Context must have *config.Config, *log.Logger, proto.User.
 // cmd.Args should have the repo path and operation as arguments.
 func LFSAuthenticate(ctx context.Context, cmd ServiceCommand) error {

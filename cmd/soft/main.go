@@ -118,7 +118,7 @@ func main() {
 
 	ctx = log.WithContext(ctx, logger)
 	if f != nil {
-		defer f.Close() //nolint:errcheck
+		defer f.Close()
 	}
 
 	// Set global logger

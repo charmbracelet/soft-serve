@@ -51,7 +51,7 @@ func SearchPointerBlobs(ctx context.Context, repo *git.Repository, pointerChan c
 
 func createPointerResultsFromCatFileBatch(ctx context.Context, catFileBatchReader *io.PipeReader, wg *sync.WaitGroup, pointerChan chan<- PointerBlob) {
 	defer wg.Done()
-	defer catFileBatchReader.Close() //nolint: errcheck
+	defer catFileBatchReader.Close() 
 
 	bufferedReader := bufio.NewReader(catFileBatchReader)
 	buf := make([]byte, 1025)
@@ -104,8 +104,8 @@ loop:
 
 func catFileBatch(ctx context.Context, shasToBatchReader *io.PipeReader, catFileBatchWriter *io.PipeWriter, wg *sync.WaitGroup, basePath string) {
 	defer wg.Done()
-	defer shasToBatchReader.Close()  //nolint: errcheck
-	defer catFileBatchWriter.Close() //nolint: errcheck
+	defer shasToBatchReader.Close()  
+	defer catFileBatchWriter.Close() 
 
 	stderr := new(bytes.Buffer)
 	var errbuf strings.Builder
@@ -122,7 +122,7 @@ func catFileBatch(ctx context.Context, shasToBatchReader *io.PipeReader, catFile
 
 func blobsLessThan1024FromCatFileBatchCheck(catFileCheckReader *io.PipeReader, shasToBatchWriter *io.PipeWriter, wg *sync.WaitGroup) {
 	defer wg.Done()
-	defer catFileCheckReader.Close() //nolint: errcheck
+	defer catFileCheckReader.Close() 
 	scanner := bufio.NewScanner(catFileCheckReader)
 	defer func() {
 		_ = shasToBatchWriter.CloseWithError(scanner.Err())
@@ -154,8 +154,8 @@ func blobsLessThan1024FromCatFileBatchCheck(catFileCheckReader *io.PipeReader, s
 
 func catFileBatchCheck(ctx context.Context, shasToCheckReader *io.PipeReader, catFileCheckWriter *io.PipeWriter, wg *sync.WaitGroup, basePath string) {
 	defer wg.Done()
-	defer shasToCheckReader.Close()  //nolint: errcheck
-	defer catFileCheckWriter.Close() //nolint: errcheck
+	defer shasToCheckReader.Close()  
+	defer catFileCheckWriter.Close() 
 
 	stderr := new(bytes.Buffer)
 	var errbuf strings.Builder
@@ -172,7 +172,7 @@ func catFileBatchCheck(ctx context.Context, shasToCheckReader *io.PipeReader, ca
 
 func blobsFromRevListObjects(revListReader *io.PipeReader, shasToCheckWriter *io.PipeWriter, wg *sync.WaitGroup) {
 	defer wg.Done()
-	defer revListReader.Close() //nolint: errcheck
+	defer revListReader.Close() 
 	scanner := bufio.NewScanner(revListReader)
 	defer func() {
 		_ = shasToCheckWriter.CloseWithError(scanner.Err())
@@ -201,7 +201,7 @@ func blobsFromRevListObjects(revListReader *io.PipeReader, shasToCheckWriter *io
 
 func revListAllObjects(ctx context.Context, revListWriter *io.PipeWriter, wg *sync.WaitGroup, basePath string, errChan chan<- error) {
 	defer wg.Done()
-	defer revListWriter.Close() //nolint: errcheck
+	defer revListWriter.Close() 
 
 	stderr := new(bytes.Buffer)
 	var errbuf strings.Builder

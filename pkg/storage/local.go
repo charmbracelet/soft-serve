@@ -51,7 +51,7 @@ func (l *LocalStorage) Put(name string, r io.Reader) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close() //nolint: errcheck
+	defer f.Close()
 	return io.Copy(f, r)
 }
 

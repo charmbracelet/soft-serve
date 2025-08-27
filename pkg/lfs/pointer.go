@@ -27,17 +27,17 @@ const (
 )
 
 var (
-	// ErrMissingPrefix occurs if the content lacks the LFS prefix
+	// ErrMissingPrefix occurs if the content lacks the LFS prefix.
 	ErrMissingPrefix = errors.New("Content lacks the LFS prefix")
 
-	// ErrInvalidStructure occurs if the content has an invalid structure
+	// ErrInvalidStructure occurs if the content has an invalid structure.
 	ErrInvalidStructure = errors.New("Content has an invalid structure")
 
-	// ErrInvalidOIDFormat occurs if the oid has an invalid format
+	// ErrInvalidOIDFormat occurs if the oid has an invalid format.
 	ErrInvalidOIDFormat = errors.New("OID has an invalid format")
 )
 
-// ReadPointer tries to read LFS pointer data from the reader
+// ReadPointer tries to read LFS pointer data from the reader.
 func ReadPointer(reader io.Reader) (Pointer, error) {
 	buf := make([]byte, blobSizeCutoff)
 	n, err := io.ReadFull(reader, buf)

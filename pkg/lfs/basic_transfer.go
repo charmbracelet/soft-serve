@@ -105,7 +105,7 @@ func (a *BasicTransferAdapter) performRequest(ctx context.Context, method string
 }
 
 func handleErrorResponse(resp *http.Response) error {
-	defer resp.Body.Close() //nolint: errcheck
+	defer resp.Body.Close()
 
 	er, err := decodeResponseError(resp.Body)
 	if err != nil {

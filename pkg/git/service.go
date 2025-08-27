@@ -124,7 +124,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 	// stdin
 	if scmd.Stdin != nil {
 		go func() {
-			defer stdin.Close() //nolint: errcheck
+			defer stdin.Close() 
 			if _, err := io.Copy(stdin, scmd.Stdin); err != nil {
 				log.Errorf("gitServiceHandler: failed to copy stdin: %v", err)
 			}
