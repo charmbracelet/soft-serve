@@ -228,7 +228,7 @@ func IsVerbose() bool {
 func parseFile(cfg *Config, path string) error {
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open config file %s: %w", path, err)
 	}
 
 	defer f.Close()
@@ -284,9 +284,12 @@ func (c *Config) Parse() error {
 // writeConfig writes the configuration to the given file.
 func writeConfig(cfg *Config, path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
-		return err
+		return fmt.Errorf("failed to create config directory: %w", err)
 	}
-	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644) //nolint: errcheck, gosec
+	if err := os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+	return nil
 }
 
 // WriteConfig writes the configuration to the default file.
@@ -386,7 +389,7 @@ func (c *Config) Validate() error {
 	if !filepath.IsAbs(c.DataPath) {
 		dp, err := filepath.Abs(c.DataPath)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get absolute path for data directory: %w", err)
 		}
 		c.DataPath = dp
 	}

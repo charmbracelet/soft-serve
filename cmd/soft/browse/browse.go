@@ -29,7 +29,7 @@ var Command = &cobra.Command{
 
 		abs, err := filepath.Abs(rp)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get absolute path: %w", err)
 		}
 
 		r, err := git.Open(abs)
@@ -64,7 +64,10 @@ var Command = &cobra.Command{
 		)
 
 		_, err = p.Run()
-		return err
+		if err != nil {
+			return fmt.Errorf("program execution failed: %w", err)
+		}
+		return nil
 	},
 }
 

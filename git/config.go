@@ -1,6 +1,7 @@
 package git
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -12,14 +13,14 @@ func (r *Repository) Config() (*gcfg.Config, error) {
 	cp := filepath.Join(r.Path, "config")
 	f, err := os.Open(cp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open git config file: %w", err)
 	}
 
 	defer f.Close()
 	d := gcfg.NewDecoder(f)
 	cfg := gcfg.New()
 	if err := d.Decode(cfg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode git config: %w", err)
 	}
 
 	return cfg, nil
@@ -30,10 +31,13 @@ func (r *Repository) SetConfig(cfg *gcfg.Config) error {
 	cp := filepath.Join(r.Path, "config")
 	f, err := os.Create(cp)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create git config file: %w", err)
 	}
 
 	defer f.Close()
 	e := gcfg.NewEncoder(f)
-	return e.Encode(cfg)
+	if err := e.Encode(cfg); err != nil {
+		return fmt.Errorf("failed to encode git config: %w", err)
+	}
+	return nil
 }
