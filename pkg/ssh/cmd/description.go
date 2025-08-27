@@ -22,7 +22,7 @@ func descriptionCommand() *cobra.Command {
 			case 1:
 				desc, err := be.Description(ctx, rn)
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				cmd.Println(desc)
@@ -31,7 +31,7 @@ func descriptionCommand() *cobra.Command {
 					return err
 				}
 				if err := be.SetDescription(ctx, rn, strings.Join(args[1:], " ")); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 

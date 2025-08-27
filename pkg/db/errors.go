@@ -20,7 +20,7 @@ var (
 // WrapError is a convenient function that unite various database driver
 // errors to consistent errors.
 func WrapError(err error) error {
-	if err != nil {
+	if err != nil { //nolint:nestif
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrRecordNotFound
 		}

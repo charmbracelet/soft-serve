@@ -32,7 +32,7 @@ type EmptyRepoMsg struct{}
 type CopyURLMsg struct{}
 
 // RepoMsg is a message that contains a git.Repository.
-type RepoMsg proto.Repository // nolint:revive
+type RepoMsg proto.Repository //nolint:revive
 
 // GoBackMsg is a message to go back to the previous view.
 type GoBackMsg struct{}
@@ -226,6 +226,7 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// other is used when loading the log.
 	// Check if the spinner ID matches the spinner model.
 	case spinner.TickMsg:
+		//nolint:nestif // Complex UI state management requires nested conditions
 		if r.state == loadingState && r.spinner.ID() == msg.ID {
 			s, cmd := r.spinner.Update(msg)
 			r.spinner = s

@@ -62,13 +62,13 @@ func LFSTransfer(ctx context.Context, cmd ServiceCommand) error {
 	for _, cap := range transfer.Capabilities {
 		if err := handler.WritePacketText(cap); err != nil {
 			logger.Errorf("error sending capability: %s: %v", cap, err)
-			return err
+			return err //nolint:wrapcheck
 		}
 	}
 
 	if err := handler.WriteFlush(); err != nil {
 		logger.Error("error sending flush", "err", err)
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	repoID := strconv.FormatInt(repo.ID(), 10)
@@ -83,7 +83,7 @@ func LFSTransfer(ctx context.Context, cmd ServiceCommand) error {
 		repo:    repo,
 	}, &lfsLogger{logger})
 
-	return processor.ProcessCommands(op)
+	return processor.ProcessCommands(op) //nolint:wrapcheck
 }
 
 // Batch implements transfer.Backend.
@@ -91,17 +91,17 @@ func (t *lfsTransfer) Batch(_ string, pointers []transfer.BatchItem, _ transfer.
 	for i := range pointers {
 		obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), pointers[i].Oid)
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-			return pointers, db.WrapError(err)
+			return pointers, db.WrapError(err) //nolint:wrapcheck
 		}
 
 		pointers[i].Present, err = t.storage.Exists(path.Join("objects", pointers[i].RelativePath()))
 		if err != nil {
-			return pointers, err
+			return pointers, err //nolint:wrapcheck
 		}
 
 		if pointers[i].Present && obj.ID == 0 {
 			if err := t.store.CreateLFSObject(t.ctx, t.dbx, t.repo.ID(), pointers[i].Oid, pointers[i].Size); err != nil {
-				return pointers, db.WrapError(err)
+				return pointers, db.WrapError(err) //nolint:wrapcheck
 			}
 		}
 	}
@@ -117,11 +117,11 @@ func (t *lfsTransfer) Download(oid string, _ transfer.Args) (io.ReadCloser, int6
 	pointer := transfer.Pointer{Oid: oid}
 	obj, err := strg.Open(path.Join("objects", pointer.RelativePath()))
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, err //nolint:wrapcheck
 	}
 	stat, err := obj.Stat()
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, err //nolint:wrapcheck
 	}
 	return obj, stat.Size(), nil
 }
@@ -135,7 +135,7 @@ func (t *lfsTransfer) Upload(oid string, size int64, r io.Reader, _ transfer.Arg
 	tempDir := "incomplete"
 	randBytes := make([]byte, 12)
 	if _, err := rand.Read(randBytes); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	tempName := fmt.Sprintf("%s%x", oid, randBytes)
@@ -144,13 +144,13 @@ func (t *lfsTransfer) Upload(oid string, size int64, r io.Reader, _ transfer.Arg
 	written, err := t.storage.Put(tempName, r)
 	if err != nil {
 		t.logger.Errorf("error putting object: %v", err)
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	obj, err := t.storage.Open(tempName)
 	if err != nil {
 		t.logger.Errorf("error opening object: %v", err)
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	pointer := transfer.Pointer{
@@ -163,14 +163,14 @@ func (t *lfsTransfer) Upload(oid string, size int64, r io.Reader, _ transfer.Arg
 	}
 
 	if err := t.store.CreateLFSObject(t.ctx, t.dbx, t.repo.ID(), pointer.Oid, pointer.Size); err != nil {
-		return db.WrapError(err)
+		return db.WrapError(err) //nolint:wrapcheck
 	}
 
 	expectedPath := path.Join("objects", pointer.RelativePath())
 	if err := t.storage.Rename(obj.Name(), expectedPath); err != nil {
 		t.logger.Errorf("error renaming object: %v", err)
 		_ = t.store.DeleteLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), pointer.Oid)
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	return nil
@@ -184,7 +184,7 @@ func (t *lfsTransfer) Verify(oid string, size int64, _ transfer.Args) (transfer.
 			return transfer.NewStatus(transfer.StatusNotFound, "object not found"), nil
 		}
 		t.logger.Errorf("error getting object: %v", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	if obj.Size != size {
@@ -236,7 +236,7 @@ func (l *lfsLockBackend) Create(path string, refname string) (transfer.Lock, err
 			return nil, transfer.ErrConflict
 		}
 		l.logger.Errorf("error creating lock: %v", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	lock.backend = l
@@ -249,7 +249,7 @@ func (l *lfsLockBackend) FromID(id string) (transfer.Lock, error) {
 	var lock LFSLock
 	iid, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	if err := l.dbx.TransactionContext(l.ctx, func(tx *db.Tx) error {
@@ -266,7 +266,7 @@ func (l *lfsLockBackend) FromID(id string) (transfer.Lock, error) {
 			return nil, transfer.ErrNotFound
 		}
 		l.logger.Errorf("error getting lock: %v", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	lock.backend = l
@@ -292,7 +292,7 @@ func (l *lfsLockBackend) FromPath(path string) (transfer.Lock, error) {
 			return nil, transfer.ErrNotFound
 		}
 		l.logger.Errorf("error getting lock: %v", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	lock.backend = l
@@ -344,7 +344,7 @@ func (l *lfsLockBackend) Range(cursor string, limit int, fn func(transfer.Lock) 
 
 		return nil
 	}); err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
 	for _, lock := range locks {
@@ -360,7 +360,7 @@ func (l *lfsLockBackend) Range(cursor string, limit int, fn func(transfer.Lock) 
 func (l *lfsLockBackend) Unlock(lock transfer.Lock) error {
 	id, err := strconv.ParseInt(lock.ID(), 10, 64)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	err = l.dbx.TransactionContext(l.ctx, func(tx *db.Tx) error {
@@ -373,7 +373,7 @@ func (l *lfsLockBackend) Unlock(lock transfer.Lock) error {
 			return transfer.ErrNotFound
 		}
 		l.logger.Error("error unlocking lock", "err", err)
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	return nil

@@ -1,3 +1,4 @@
+// Package hook provides git hook commands for soft-serve.
 package hook
 
 import (
@@ -168,5 +169,5 @@ func runCommand(ctx context.Context, in io.Reader, out io.Writer, err io.Writer,
 	cmd.Stdin = in
 	cmd.Stdout = out
 	cmd.Stderr = err
-	return cmd.Run()
+	return cmd.Run() //nolint:wrapcheck
 }

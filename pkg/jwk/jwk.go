@@ -1,3 +1,4 @@
+// Package jwk provides JSON Web Key functionality.
 package jwk
 
 import (
@@ -34,7 +35,7 @@ func (p Pair) JWK() jose.JSONWebKey {
 func NewPair(cfg *config.Config) (Pair, error) {
 	kp, err := config.KeyPair(cfg)
 	if err != nil {
-		return Pair{}, err
+		return Pair{}, err //nolint:wrapcheck
 	}
 
 	sum := sha256.Sum256(kp.RawPrivateKey())

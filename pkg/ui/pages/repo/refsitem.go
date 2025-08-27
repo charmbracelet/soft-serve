@@ -58,7 +58,7 @@ func (cl RefItems) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
 // Less implements sort.Interface.
 func (cl RefItems) Less(i, j int) bool {
 	if cl[i].Commit != nil && cl[j].Commit != nil {
-		return cl[i].Commit.Author.When.After(cl[j].Commit.Author.When)
+		return cl[i].Author.When.After(cl[j].Author.When)
 	} else if cl[i].Commit != nil && cl[j].Commit == nil {
 		return true
 	}
@@ -99,7 +99,7 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 		return
 	}
 
-	isTag := i.Reference.IsTag()
+	isTag := i.IsTag()
 	isActive := index == m.Index()
 	s := d.common.Styles.Ref
 	st := s.Normal
@@ -130,6 +130,7 @@ func (d RefItemDelegate) Render(w io.Writer, m list.Model, index int, listItem l
 	ref := i.Short()
 
 	var desc string
+	//nolint:nestif // Complex UI logic requires nested conditions
 	if isTag {
 		if c != nil {
 			date := c.Committer.When.Format("Jan 02")

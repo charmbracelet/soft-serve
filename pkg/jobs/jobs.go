@@ -1,3 +1,4 @@
+// Package jobs provides background job processing functionality.
 package jobs
 
 import (

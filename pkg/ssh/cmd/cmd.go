@@ -82,7 +82,7 @@ func UsageFunc(c *cobra.Command) error {
 	t := template.New("usage")
 	t.Funcs(templateFuncs)
 	template.Must(t.Parse(c.UsageTemplate()))
-	return t.Execute(c.OutOrStderr(), struct {
+	return t.Execute(c.OutOrStderr(), struct { //nolint:wrapcheck
 		*cobra.Command
 		SSHCommand string
 	}{

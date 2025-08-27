@@ -33,7 +33,7 @@ func (i LogItem) Hash() string {
 // Title returns the item title. Implements list.DefaultItem.
 func (i LogItem) Title() string {
 	if i.Commit != nil {
-		return strings.Split(i.Commit.Message, "\n")[0]
+		return strings.Split(i.Message, "\n")[0]
 	}
 	return ""
 }

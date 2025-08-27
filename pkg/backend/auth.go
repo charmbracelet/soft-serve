@@ -15,7 +15,7 @@ const saltySalt = "salty-soft-serve"
 func HashPassword(password string) (string, error) {
 	crypt, err := bcrypt.GenerateFromPassword([]byte(password+saltySalt), bcrypt.DefaultCost)
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
 	return string(crypt), nil

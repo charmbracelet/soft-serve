@@ -1,3 +1,4 @@
+// Package keymap provides keyboard mapping definitions.
 package keymap
 
 import "github.com/charmbracelet/bubbles/v2/key"

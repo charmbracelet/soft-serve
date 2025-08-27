@@ -12,14 +12,14 @@ func (r *Repository) Config() (*gcfg.Config, error) {
 	cp := filepath.Join(r.Path, "config")
 	f, err := os.Open(cp)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
-	defer f.Close() // nolint: errcheck
+	defer f.Close() //nolint: errcheck
 	d := gcfg.NewDecoder(f)
 	cfg := gcfg.New()
 	if err := d.Decode(cfg); err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return cfg, nil
@@ -30,10 +30,10 @@ func (r *Repository) SetConfig(cfg *gcfg.Config) error {
 	cp := filepath.Join(r.Path, "config")
 	f, err := os.Create(cp)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
-	defer f.Close() // nolint: errcheck
+	defer f.Close() //nolint: errcheck
 	e := gcfg.NewEncoder(f)
-	return e.Encode(cfg)
+	return e.Encode(cfg) //nolint:wrapcheck
 }

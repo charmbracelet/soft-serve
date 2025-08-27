@@ -1,3 +1,4 @@
+// Package cmd provides common command functionality for soft-serve.
 package cmd
 
 import (
@@ -21,7 +22,7 @@ func InitBackendContext(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 	cfg := config.FromContext(ctx)
 	if _, err := os.Stat(cfg.DataPath); errors.Is(err, fs.ErrNotExist) {
-		if err := os.MkdirAll(cfg.DataPath, os.ModePerm); err != nil {
+		if err := os.MkdirAll(cfg.DataPath, os.ModePerm); err != nil { //nolint:gosec
 			return fmt.Errorf("create data directory: %w", err)
 		}
 	}
@@ -58,12 +59,12 @@ func CloseDBContext(cmd *cobra.Command, _ []string) error {
 func InitializeHooks(ctx context.Context, cfg *config.Config, be *backend.Backend) error {
 	repos, err := be.Repositories(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get repositories: %w", err)
 	}
 
 	for _, repo := range repos {
 		if err := hooks.GenerateHooks(ctx, cfg, repo.Name()); err != nil {
-			return err
+			return fmt.Errorf("failed to generate hooks for repo %s: %w", repo.Name(), err)
 		}
 	}
 

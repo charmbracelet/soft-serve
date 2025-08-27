@@ -41,13 +41,13 @@ type Delivery struct {
 func do(ctx context.Context, url string, method string, headers http.Header, body io.Reader) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	req.Header = headers
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return res, nil
@@ -63,14 +63,14 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 	switch contentType {
 	case ContentTypeJSON:
 		if err := json.NewEncoder(&buf).Encode(payload); err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 	case ContentTypeForm:
 		v, err := query.Values(payload)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
-		buf.WriteString(v.Encode()) // nolint: errcheck
+		buf.WriteString(v.Encode())
 	default:
 		return ErrInvalidContentType
 	}
@@ -82,7 +82,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 
 	id, err := uuid.NewUUID()
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	headers.Add("X-SoftServe-Delivery", id.String())
@@ -90,7 +90,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 	reqBody := buf.String()
 	if w.Secret != "" {
 		sig := hmac.New(sha256.New, []byte(w.Secret))
-		sig.Write([]byte(reqBody)) // nolint: errcheck
+		sig.Write([]byte(reqBody))
 		headers.Add("X-SoftServe-Signature", "sha256="+hex.EncodeToString(sig.Sum(nil)))
 	}
 
@@ -111,17 +111,17 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 		}
 
 		if res.Body != nil {
-			defer res.Body.Close() // nolint: errcheck
+			defer res.Body.Close() //nolint:errcheck
 			b, err := io.ReadAll(res.Body)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			resBody = string(b)
 		}
 	}
 
-	return db.WrapError(datastore.CreateWebhookDelivery(ctx, dbx, id, w.ID, int(event), w.URL, http.MethodPost, reqErr, reqHeaders, reqBody, resStatus, resHeaders, resBody))
+	return db.WrapError(datastore.CreateWebhookDelivery(ctx, dbx, id, w.ID, int(event), w.URL, http.MethodPost, reqErr, reqHeaders, reqBody, resStatus, resHeaders, resBody)) //nolint:wrapcheck
 }
 
 // SendEvent sends a webhook event.
@@ -130,7 +130,7 @@ func SendEvent(ctx context.Context, payload EventPayload) error {
 	datastore := store.FromContext(ctx)
 	webhooks, err := datastore.GetWebhooksByRepoIDWhereEvent(ctx, dbx, payload.RepositoryID(), []int{int(payload.Event())})
 	if err != nil {
-		return db.WrapError(err)
+		return db.WrapError(err) //nolint:wrapcheck
 	}
 
 	for _, w := range webhooks {
@@ -153,7 +153,7 @@ func getDefaultBranch(repo proto.Repository) (string, error) {
 	// This means that the repo doesn't have a default branch yet and this is
 	// the first push to it.
 	if err != nil && !errors.Is(err, git.ErrReferenceNotExist) {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
 	return branch, nil

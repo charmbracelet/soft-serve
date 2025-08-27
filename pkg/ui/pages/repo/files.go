@@ -128,7 +128,7 @@ func (f *Files) SetSize(width, height int) {
 // ShortHelp implements help.KeyMap.
 func (f *Files) ShortHelp() []key.Binding {
 	k := f.selector.KeyMap
-	switch f.activeView {
+	switch f.activeView { //nolint:exhaustive
 	case filesViewFiles:
 		return []key.Binding{
 			f.common.KeyMap.SelectItem,
@@ -152,7 +152,7 @@ func (f *Files) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
 	copyKey := f.common.KeyMap.Copy
 	actionKeys := []key.Binding{}
-	switch f.activeView {
+	switch f.activeView { //nolint:exhaustive
 	case filesViewFiles:
 		copyKey.SetHelp("c", "copy name")
 		k := f.selector.KeyMap
@@ -261,12 +261,12 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case GoBackMsg:
-		switch f.activeView {
+		switch f.activeView { //nolint:exhaustive
 		case filesViewFiles, filesViewContent:
 			cmds = append(cmds, f.deselectItemCmd())
 		}
 	case tea.KeyPressMsg:
-		switch f.activeView {
+		switch f.activeView { //nolint:exhaustive
 		case filesViewFiles:
 			switch {
 			case key.Matches(msg, f.common.KeyMap.SelectItem):
@@ -302,7 +302,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		f.SetSize(msg.Width, msg.Height)
-		switch f.activeView {
+		switch f.activeView { //nolint:exhaustive
 		case filesViewFiles:
 			if f.repo != nil {
 				cmds = append(cmds, f.updateFilesCmd)
@@ -333,7 +333,7 @@ func (f *Files) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-	switch f.activeView {
+	switch f.activeView { //nolint:exhaustive
 	case filesViewFiles:
 		m, cmd := f.selector.Update(msg)
 		f.selector = m.(*selector.Selector)
@@ -380,7 +380,7 @@ func (f *Files) StatusBarValue() string {
 
 // StatusBarInfo returns the status bar info.
 func (f *Files) StatusBarInfo() string {
-	switch f.activeView {
+	switch f.activeView { //nolint:exhaustive
 	case filesViewFiles:
 		return fmt.Sprintf("# %d/%d", f.selector.Index()+1, len(f.selector.VisibleItems()))
 	case filesViewContent:
@@ -432,7 +432,7 @@ func (f *Files) selectTreeCmd() tea.Msg {
 
 func (f *Files) selectFileCmd() tea.Msg {
 	i := f.currentItem
-	if i != nil && !i.entry.IsTree() {
+	if i != nil && !i.entry.IsTree() { //nolint:nestif
 		fi := i.entry.File()
 		if i.Mode().IsDir() || f == nil {
 			return common.ErrorMsg(errInvalidFile)

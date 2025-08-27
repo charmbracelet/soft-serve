@@ -1,3 +1,4 @@
+// Package hooks provides Git hook generation and management.
 package hooks
 
 import (
@@ -31,8 +32,8 @@ const (
 func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 	repo = utils.SanitizeRepo(repo) + ".git"
 	hooksPath := filepath.Join(cfg.DataPath, "repos", repo, "hooks")
-	if err := os.MkdirAll(hooksPath, os.ModePerm); err != nil {
-		return err
+	if err := os.MkdirAll(hooksPath, os.ModePerm); err != nil { //nolint:gosec
+		return err //nolint:wrapcheck
 	}
 
 	for _, hook := range []string{
@@ -49,13 +50,13 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 
 		// Write the hooks primary script
 		if err := os.WriteFile(hp, []byte(hookTemplate), os.ModePerm); err != nil { //nolint:gosec
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		// Create ${hook}.d directory.
 		hp += ".d"
-		if err := os.MkdirAll(hp, os.ModePerm); err != nil {
-			return err
+		if err := os.MkdirAll(hp, os.ModePerm); err != nil { //nolint:gosec
+			return err //nolint:wrapcheck
 		}
 
 		switch hook {

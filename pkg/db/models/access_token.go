@@ -1,3 +1,4 @@
+// Package models provides database model definitions.
 package models
 
 import (

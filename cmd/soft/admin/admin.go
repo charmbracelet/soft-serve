@@ -1,3 +1,4 @@
+// Package admin provides administrative commands for soft-serve.
 package admin
 
 import (

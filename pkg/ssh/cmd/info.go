@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// InfoCommand returns a command that shows the user's info
+// InfoCommand returns a command that shows the user's info.
 func InfoCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "info",
@@ -18,7 +18,7 @@ func InfoCommand() *cobra.Command {
 			pk := sshutils.PublicKeyFromContext(ctx)
 			user, err := be.UserByPublicKey(ctx, pk)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			cmd.Printf("Username: %s\n", user.Username())

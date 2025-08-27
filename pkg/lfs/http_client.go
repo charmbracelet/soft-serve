@@ -63,7 +63,7 @@ func (c *httpClient) batch(ctx context.Context, operation string, objects []Poin
 	err := json.NewEncoder(payload).Encode(request)
 	if err != nil {
 		logger.Errorf("Error encoding json: %v", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	logger.Debugf("Calling: %s", url)
@@ -71,7 +71,7 @@ func (c *httpClient) batch(ctx context.Context, operation string, objects []Poin
 	req, err := http.NewRequestWithContext(ctx, "POST", url, payload)
 	if err != nil {
 		logger.Errorf("Error creating request: %v", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	req.Header.Set("Content-type", MediaType)
 	req.Header.Set("Accept", MediaType)
@@ -80,23 +80,23 @@ func (c *httpClient) batch(ctx context.Context, operation string, objects []Poin
 	if err != nil {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, ctx.Err() //nolint:wrapcheck
 		default:
 		}
 		logger.Errorf("Error while processing request: %v", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
-	defer res.Body.Close() // nolint: errcheck
+	defer res.Body.Close() //nolint: errcheck
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Unexpected server response: %s", res.Status)
+		return nil, fmt.Errorf("unexpected server response: %s", res.Status)
 	}
 
 	var response BatchResponse
 	err = json.NewDecoder(res.Body).Decode(&response)
 	if err != nil {
 		logger.Errorf("Error decoding json: %v", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	if len(response.Transfer) == 0 {
@@ -128,7 +128,7 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 	}
 
 	for _, object := range result.Objects {
-		if object.Error != nil {
+		if object.Error != nil { //nolint:nestif
 			objectError := errors.New(object.Error.Message)
 			logger.Debugf("Error on object %v: %v", object.Pointer, objectError)
 			if uc != nil {
@@ -143,7 +143,7 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 			continue
 		}
 
-		if uc != nil {
+		if uc != nil { //nolint:nestif
 			if len(object.Actions) == 0 {
 				logger.Debugf("%v already present on server", object.Pointer)
 				continue
@@ -152,7 +152,7 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 			link, ok := object.Actions[ActionUpload]
 			if !ok {
 				logger.Debugf("%+v", object)
-				return errors.New("Missing action 'upload'")
+				return errors.New("missing action 'upload'")
 			}
 
 			content, err := uc(object.Pointer, nil)
@@ -162,28 +162,28 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 
 			err = transferAdapter.Upload(ctx, object.Pointer, content, link)
 
-			content.Close() // nolint: errcheck
+			content.Close() //nolint:errcheck,gosec
 
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			link, ok = object.Actions[ActionVerify]
 			if ok {
 				if err := transferAdapter.Verify(ctx, object.Pointer, link); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 		} else {
 			link, ok := object.Actions[ActionDownload]
 			if !ok {
 				logger.Debugf("%+v", object)
-				return errors.New("Missing action 'download'")
+				return errors.New("missing action 'download'")
 			}
 
 			content, err := transferAdapter.Download(ctx, object.Pointer, link)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			if err := dc(object.Pointer, content, nil); err != nil {

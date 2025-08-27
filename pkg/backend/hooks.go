@@ -37,7 +37,7 @@ func (d *Backend) Update(ctx context.Context, _ io.Writer, _ io.Writer, repo str
 
 	// Find user
 	var user proto.User
-	if pubkey := os.Getenv("SOFT_SERVE_PUBLIC_KEY"); pubkey != "" {
+	if pubkey := os.Getenv("SOFT_SERVE_PUBLIC_KEY"); pubkey != "" { //nolint:nestif
 		pk, _, err := sshutils.ParseAuthorizedKey(pubkey)
 		if err != nil {
 			d.logger.Error("error parsing public key", "err", err)
@@ -127,7 +127,7 @@ func populateLastModified(ctx context.Context, d *Backend, name string) error {
 
 	c, err := r.LatestCommitTime()
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	return rr.writeLastModified(c)

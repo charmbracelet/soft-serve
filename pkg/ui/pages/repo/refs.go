@@ -64,9 +64,10 @@ func (r *Refs) Path() string {
 
 // TabName returns the name of the tab.
 func (r *Refs) TabName() string {
-	if r.refPrefix == git.RefsHeads {
+	switch r.refPrefix {
+	case git.RefsHeads:
 		return "Branches"
-	} else if r.refPrefix == git.RefsTags {
+	case git.RefsTags:
 		return "Tags"
 	}
 	return "Refs"

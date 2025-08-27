@@ -39,12 +39,12 @@ func branchListCommand() *cobra.Command {
 			rn := strings.TrimSuffix(args[0], ".git")
 			rr, err := be.Repository(ctx, rn)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			r, err := rr.Open()
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			branches, _ := r.Branches()
@@ -73,17 +73,17 @@ func branchDefaultCommand() *cobra.Command {
 			case 1:
 				rr, err := be.Repository(ctx, rn)
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				r, err := rr.Open()
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				head, err := r.HEAD()
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				cmd.Println(head.Name().Short())
@@ -94,12 +94,12 @@ func branchDefaultCommand() *cobra.Command {
 
 				rr, err := be.Repository(ctx, rn)
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				r, err := rr.Open()
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				branch := args[1]
@@ -121,14 +121,14 @@ func branchDefaultCommand() *cobra.Command {
 						Context: ctx,
 					},
 				}); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				// TODO: move this to backend?
 				user := proto.UserFromContext(ctx)
 				wh, err := webhook.NewRepositoryEvent(ctx, user, rr, webhook.RepositoryEventActionDefaultBranchChange)
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				return webhook.SendEvent(ctx, wh)
@@ -154,12 +154,12 @@ func branchDeleteCommand() *cobra.Command {
 			rn := strings.TrimSuffix(args[0], ".git")
 			rr, err := be.Repository(ctx, rn)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			r, err := rr.Open()
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			branch := args[1]
@@ -178,7 +178,7 @@ func branchDeleteCommand() *cobra.Command {
 
 			head, err := r.HEAD()
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			if head.Name().Short() == branch {
@@ -187,16 +187,16 @@ func branchDeleteCommand() *cobra.Command {
 
 			branchCommit, err := r.BranchCommit(branch)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			if err := r.DeleteBranch(branch, gitm.DeleteBranchOptions{Force: true}); err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			wh, err := webhook.NewBranchTagEvent(ctx, proto.UserFromContext(ctx), rr, git.RefsHeads+branch, branchCommit.ID.String(), git.ZeroID)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			return webhook.SendEvent(ctx, wh)

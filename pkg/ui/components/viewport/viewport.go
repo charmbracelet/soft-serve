@@ -1,3 +1,4 @@
+// Package viewport provides viewport UI components.
 package viewport
 
 import (
@@ -28,8 +29,8 @@ func New(c common.Common) *Viewport {
 // SetSize implements common.Component.
 func (v *Viewport) SetSize(width, height int) {
 	v.common.SetSize(width, height)
-	v.Model.SetWidth(width)
-	v.Model.SetHeight(height)
+	v.SetWidth(width)
+	v.SetHeight(height)
 }
 
 // Init implements tea.Model.
@@ -75,12 +76,12 @@ func (v *Viewport) GotoBottom() {
 
 // HalfViewDown moves the viewport down by half the viewport height.
 func (v *Viewport) HalfViewDown() {
-	v.Model.HalfPageDown()
+	v.HalfPageDown()
 }
 
 // HalfViewUp moves the viewport up by half the viewport height.
 func (v *Viewport) HalfViewUp() {
-	v.Model.HalfPageUp()
+	v.HalfPageUp()
 }
 
 // ScrollPercent returns the viewport's scroll percentage.

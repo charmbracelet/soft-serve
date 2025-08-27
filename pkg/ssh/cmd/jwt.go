@@ -22,7 +22,7 @@ func JWTCommand() *cobra.Command {
 			cfg := config.FromContext(ctx)
 			kp, err := jwk.NewPair(cfg)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			user := proto.UserFromContext(ctx)
@@ -45,7 +45,7 @@ func JWTCommand() *cobra.Command {
 			token.Header["kid"] = kp.JWK().KeyID
 			j, err := token.SignedString(kp.PrivateKey())
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			cmd.Println(j)

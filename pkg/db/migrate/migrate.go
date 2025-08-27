@@ -10,8 +10,14 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/db"
 )
 
+const (
+	postgresDriver = "postgres"
+	sqliteDriver   = "sqlite"
+	sqlite3Driver  = "sqlite3"
+)
+
 // MigrateFunc is a function that executes a migration.
-type MigrateFunc func(ctx context.Context, tx *db.Tx) error // nolint:revive
+type MigrateFunc func(ctx context.Context, tx *db.Tx) error //nolint:revive
 
 // Migration is a struct that contains the name of the migration and the
 // function to execute it.
@@ -31,14 +37,14 @@ type Migrations struct {
 
 func (Migrations) schema(driverName string) string {
 	switch driverName {
-	case "sqlite3", "sqlite":
+	case sqlite3Driver, sqliteDriver:
 		return `CREATE TABLE IF NOT EXISTS migrations (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				name TEXT NOT NULL,
 				version INTEGER NOT NULL UNIQUE
 			);
 		`
-	case "postgres":
+	case postgresDriver:
 		return `CREATE TABLE IF NOT EXISTS migrations (
 			id SERIAL PRIMARY KEY,
 			name TEXT NOT NULL,
@@ -62,17 +68,17 @@ func (Migrations) schema(driverName string) string {
 // Migrate runs the migrations.
 func Migrate(ctx context.Context, dbx *db.DB) error {
 	logger := log.FromContext(ctx).WithPrefix("migrate")
-	return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
+	return dbx.TransactionContext(ctx, func(tx *db.Tx) error { //nolint:wrapcheck
 		if !hasTable(tx, "migrations") {
 			if _, err := tx.Exec(Migrations{}.schema(tx.DriverName())); err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 		}
 
 		var migrs Migrations
 		if err := tx.Get(&migrs, tx.Rebind("SELECT * FROM migrations ORDER BY version DESC LIMIT 1")); err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
-				return err
+				return err //nolint:wrapcheck
 			}
 		}
 
@@ -87,7 +93,7 @@ func Migrate(ctx context.Context, dbx *db.DB) error {
 			}
 
 			if _, err := tx.Exec(tx.Rebind("INSERT INTO migrations (name, version) VALUES (?, ?)"), m.Name, m.Version); err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 		}
 
@@ -98,7 +104,7 @@ func Migrate(ctx context.Context, dbx *db.DB) error {
 // Rollback rolls back a migration.
 func Rollback(ctx context.Context, dbx *db.DB) error {
 	logger := log.FromContext(ctx).WithPrefix("migrate")
-	return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
+	return dbx.TransactionContext(ctx, func(tx *db.Tx) error { //nolint:wrapcheck
 		var migrs Migrations
 		if err := tx.Get(&migrs, tx.Rebind("SELECT * FROM migrations ORDER BY version DESC LIMIT 1")); err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
@@ -117,7 +123,7 @@ func Rollback(ctx context.Context, dbx *db.DB) error {
 		}
 
 		if _, err := tx.Exec(tx.Rebind("DELETE FROM migrations WHERE version = ?"), migrs.Version); err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		return nil
@@ -127,9 +133,9 @@ func Rollback(ctx context.Context, dbx *db.DB) error {
 func hasTable(tx *db.Tx, tableName string) bool {
 	var query string
 	switch tx.DriverName() {
-	case "sqlite3", "sqlite":
+	case sqlite3Driver, sqliteDriver:
 		query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
-	case "postgres":
+	case postgresDriver:
 		fallthrough
 	case "mysql":
 		query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?"

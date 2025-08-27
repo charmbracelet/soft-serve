@@ -62,7 +62,7 @@ func NewPushEvent(ctx context.Context, user proto.User, repo proto.Repository, r
 	datastore := store.FromContext(ctx)
 	owner, err := datastore.GetUserByID(ctx, dbx, repo.UserID())
 	if err != nil {
-		return PushEvent{}, db.WrapError(err)
+		return PushEvent{}, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	payload.Repository.Owner.ID = owner.ID
@@ -71,7 +71,7 @@ func NewPushEvent(ctx context.Context, user proto.User, repo proto.Repository, r
 	// Find commits.
 	r, err := repo.Open()
 	if err != nil {
-		return PushEvent{}, err
+		return PushEvent{}, err //nolint:wrapcheck
 	}
 
 	payload.Repository.DefaultBranch, _ = getDefaultBranch(repo)
@@ -87,7 +87,7 @@ func NewPushEvent(ctx context.Context, user proto.User, repo proto.Repository, r
 		MaxCount: 20,
 	})
 	if err != nil {
-		return PushEvent{}, err
+		return PushEvent{}, err //nolint:wrapcheck
 	}
 
 	payload.Commits = make([]Commit, len(commits))

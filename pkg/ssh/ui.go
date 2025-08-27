@@ -86,7 +86,7 @@ func (ui *UI) getMargins() (wm, hm int) {
 // ShortHelp implements help.KeyMap.
 func (ui *UI) ShortHelp() []key.Binding {
 	b := make([]key.Binding, 0)
-	switch ui.state {
+	switch ui.state { //nolint:exhaustive
 	case errorState:
 		b = append(b, ui.common.KeyMap.Back)
 	case readyState:
@@ -102,7 +102,7 @@ func (ui *UI) ShortHelp() []key.Binding {
 // FullHelp implements help.KeyMap.
 func (ui *UI) FullHelp() [][]key.Binding {
 	b := make([][]key.Binding, 0)
-	switch ui.state {
+	switch ui.state { //nolint:exhaustive
 	case errorState:
 		b = append(b, []key.Binding{ui.common.KeyMap.Back})
 	case readyState:
@@ -300,7 +300,7 @@ func (ui *UI) openRepo(rn string) (proto.Repository, error) {
 	repos, err := be.Repositories(ctx)
 	if err != nil {
 		ui.common.Logger.Debugf("ui: failed to list repos: %v", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	for _, r := range repos {
 		if r.Name() == rn {

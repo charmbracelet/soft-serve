@@ -29,7 +29,7 @@ func (*repoStore) CreateRepo(ctx context.Context, tx db.Handler, name string, us
 
 	query = tx.Rebind(query)
 	_, err := tx.ExecContext(ctx, query, values...)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // DeleteRepoByName implements store.RepositoryStore.
@@ -37,7 +37,7 @@ func (*repoStore) DeleteRepoByName(ctx context.Context, tx db.Handler, name stri
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("DELETE FROM repos WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, name)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetAllRepos implements store.RepositoryStore.
@@ -45,7 +45,7 @@ func (*repoStore) GetAllRepos(ctx context.Context, tx db.Handler) ([]models.Repo
 	var repos []models.Repo
 	query := tx.Rebind("SELECT * FROM repos;")
 	err := tx.SelectContext(ctx, &repos, query)
-	return repos, db.WrapError(err)
+	return repos, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetUserRepos implements store.RepositoryStore.
@@ -53,7 +53,7 @@ func (*repoStore) GetUserRepos(ctx context.Context, tx db.Handler, userID int64)
 	var repos []models.Repo
 	query := tx.Rebind("SELECT * FROM repos WHERE user_id = ?;")
 	err := tx.SelectContext(ctx, &repos, query, userID)
-	return repos, db.WrapError(err)
+	return repos, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetRepoByName implements store.RepositoryStore.
@@ -62,7 +62,7 @@ func (*repoStore) GetRepoByName(ctx context.Context, tx db.Handler, name string)
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT * FROM repos WHERE name = ?;")
 	err := tx.GetContext(ctx, &repo, query, name)
-	return repo, db.WrapError(err)
+	return repo, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetRepoDescriptionByName implements store.RepositoryStore.
@@ -71,7 +71,7 @@ func (*repoStore) GetRepoDescriptionByName(ctx context.Context, tx db.Handler, n
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT description FROM repos WHERE name = ?;")
 	err := tx.GetContext(ctx, &description, query, name)
-	return description, db.WrapError(err)
+	return description, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetRepoIsHiddenByName implements store.RepositoryStore.
@@ -80,7 +80,7 @@ func (*repoStore) GetRepoIsHiddenByName(ctx context.Context, tx db.Handler, name
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT hidden FROM repos WHERE name = ?;")
 	err := tx.GetContext(ctx, &isHidden, query, name)
-	return isHidden, db.WrapError(err)
+	return isHidden, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetRepoIsMirrorByName implements store.RepositoryStore.
@@ -89,7 +89,7 @@ func (*repoStore) GetRepoIsMirrorByName(ctx context.Context, tx db.Handler, name
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT mirror FROM repos WHERE name = ?;")
 	err := tx.GetContext(ctx, &isMirror, query, name)
-	return isMirror, db.WrapError(err)
+	return isMirror, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetRepoIsPrivateByName implements store.RepositoryStore.
@@ -98,7 +98,7 @@ func (*repoStore) GetRepoIsPrivateByName(ctx context.Context, tx db.Handler, nam
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT private FROM repos WHERE name = ?;")
 	err := tx.GetContext(ctx, &isPrivate, query, name)
-	return isPrivate, db.WrapError(err)
+	return isPrivate, db.WrapError(err) //nolint:wrapcheck
 }
 
 // GetRepoProjectNameByName implements store.RepositoryStore.
@@ -107,7 +107,7 @@ func (*repoStore) GetRepoProjectNameByName(ctx context.Context, tx db.Handler, n
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("SELECT project_name FROM repos WHERE name = ?;")
 	err := tx.GetContext(ctx, &pname, query, name)
-	return pname, db.WrapError(err)
+	return pname, db.WrapError(err) //nolint:wrapcheck
 }
 
 // SetRepoDescriptionByName implements store.RepositoryStore.
@@ -115,7 +115,7 @@ func (*repoStore) SetRepoDescriptionByName(ctx context.Context, tx db.Handler, n
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET description = ? WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, description, name)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // SetRepoIsHiddenByName implements store.RepositoryStore.
@@ -123,7 +123,7 @@ func (*repoStore) SetRepoIsHiddenByName(ctx context.Context, tx db.Handler, name
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET hidden = ? WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, isHidden, name)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // SetRepoIsPrivateByName implements store.RepositoryStore.
@@ -131,7 +131,7 @@ func (*repoStore) SetRepoIsPrivateByName(ctx context.Context, tx db.Handler, nam
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET private = ? WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, isPrivate, name)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // SetRepoNameByName implements store.RepositoryStore.
@@ -140,7 +140,7 @@ func (*repoStore) SetRepoNameByName(ctx context.Context, tx db.Handler, name str
 	newName = utils.SanitizeRepo(newName)
 	query := tx.Rebind("UPDATE repos SET name = ? WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, newName, name)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }
 
 // SetRepoProjectNameByName implements store.RepositoryStore.
@@ -148,5 +148,5 @@ func (*repoStore) SetRepoProjectNameByName(ctx context.Context, tx db.Handler, n
 	name = utils.SanitizeRepo(name)
 	query := tx.Rebind("UPDATE repos SET project_name = ? WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, projectName, name)
-	return db.WrapError(err)
+	return db.WrapError(err) //nolint:wrapcheck
 }

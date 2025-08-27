@@ -32,7 +32,7 @@ func LatestFile(repo *Repository, ref *Reference, pattern string) (string, strin
 		if te.IsTree() {
 			continue
 		}
-		if g.Match(fp) {
+		if g.Match(fp) { //nolint:nestif
 			if te.IsSymlink() {
 				bts, err := te.Contents()
 				if err != nil {

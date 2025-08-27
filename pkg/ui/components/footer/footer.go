@@ -1,3 +1,4 @@
+// Package footer provides footer UI components.
 package footer
 
 import (

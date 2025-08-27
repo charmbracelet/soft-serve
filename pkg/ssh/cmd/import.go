@@ -43,7 +43,7 @@ func importCommand() *cobra.Command {
 					return errors.New("import already in progress")
 				}
 
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			return nil

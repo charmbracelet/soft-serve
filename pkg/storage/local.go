@@ -1,3 +1,4 @@
+// Package storage provides storage functionality.
 package storage
 
 import (
@@ -25,34 +26,34 @@ func NewLocalStorage(root string) *LocalStorage {
 // Delete implements Storage.
 func (l *LocalStorage) Delete(name string) error {
 	name = l.fixPath(name)
-	return os.Remove(name)
+	return os.Remove(name) //nolint:wrapcheck
 }
 
 // Open implements Storage.
 func (l *LocalStorage) Open(name string) (Object, error) {
 	name = l.fixPath(name)
-	return os.Open(name)
+	return os.Open(name) //nolint:wrapcheck
 }
 
 // Stat implements Storage.
 func (l *LocalStorage) Stat(name string) (fs.FileInfo, error) {
 	name = l.fixPath(name)
-	return os.Stat(name)
+	return os.Stat(name) //nolint:wrapcheck
 }
 
 // Put implements Storage.
 func (l *LocalStorage) Put(name string, r io.Reader) (int64, error) {
 	name = l.fixPath(name)
-	if err := os.MkdirAll(filepath.Dir(name), os.ModePerm); err != nil {
-		return 0, err
+	if err := os.MkdirAll(filepath.Dir(name), os.ModePerm); err != nil { //nolint:gosec
+		return 0, err //nolint:wrapcheck
 	}
 
 	f, err := os.Create(name)
 	if err != nil {
-		return 0, err
+		return 0, err //nolint:wrapcheck
 	}
-	defer f.Close() // nolint: errcheck
-	return io.Copy(f, r)
+	defer f.Close()      //nolint:errcheck
+	return io.Copy(f, r) //nolint:wrapcheck
 }
 
 // Exists implements Storage.
@@ -65,21 +66,21 @@ func (l *LocalStorage) Exists(name string) (bool, error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	}
-	return false, err
+	return false, err //nolint:wrapcheck
 }
 
 // Rename implements Storage.
 func (l *LocalStorage) Rename(oldName, newName string) error {
 	oldName = l.fixPath(oldName)
 	newName = l.fixPath(newName)
-	if err := os.MkdirAll(filepath.Dir(newName), os.ModePerm); err != nil {
-		return err
+	if err := os.MkdirAll(filepath.Dir(newName), os.ModePerm); err != nil { //nolint:gosec
+		return err //nolint:wrapcheck
 	}
 
-	return os.Rename(oldName, newName)
+	return os.Rename(oldName, newName) //nolint:wrapcheck
 }
 
-// Replace all slashes with the OS-specific separator
+// Replace all slashes with the OS-specific separator.
 func (l LocalStorage) fixPath(path string) string {
 	path = strings.ReplaceAll(path, "/", string(os.PathSeparator))
 	if !filepath.IsAbs(path) {

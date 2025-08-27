@@ -25,12 +25,12 @@ func NewEndpoint(rawurl string) (Endpoint, error) {
 	switch u.Scheme {
 	case "git":
 		// Use https for git:// URLs and strip the port if it exists.
-		u.Scheme = "https"
+		u.Scheme = httpsScheme
 		if u.Port() != "" {
 			u.Host = u.Hostname()
 		}
 		fallthrough
-	case "http", "https":
+	case httpScheme, httpsScheme:
 		if strings.HasSuffix(u.Path, ".git") {
 			u.Path += "/info/lfs"
 		} else {
@@ -52,7 +52,7 @@ func endpointFromBareSSH(rawurl string) (*url.URL, error) {
 	parts := strings.Split(rawurl, ":")
 	partsLen := len(parts)
 	if partsLen < 2 {
-		return url.Parse(rawurl)
+		return url.Parse(rawurl) //nolint:wrapcheck
 	}
 
 	// Treat presence of ':' as a bare URL
@@ -66,5 +66,5 @@ func endpointFromBareSSH(rawurl string) (*url.URL, error) {
 		newPath = strings.Join(parts, "/")
 	}
 	newrawurl := fmt.Sprintf("ssh://%v", newPath)
-	return url.Parse(newrawurl)
+	return url.Parse(newrawurl) //nolint:wrapcheck
 }

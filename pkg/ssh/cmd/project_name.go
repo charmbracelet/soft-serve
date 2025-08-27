@@ -22,7 +22,7 @@ func projectName() *cobra.Command {
 			case 1:
 				pn, err := be.ProjectName(ctx, rn)
 				if err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				cmd.Println(pn)
@@ -31,7 +31,7 @@ func projectName() *cobra.Command {
 					return err
 				}
 				if err := be.SetProjectName(ctx, rn, strings.Join(args[1:], " ")); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 

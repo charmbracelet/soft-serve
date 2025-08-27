@@ -94,21 +94,21 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 	if scmd.Stdin != nil {
 		stdin, err = cmd.StdinPipe()
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 	}
 
 	if scmd.Stdout != nil {
 		stdout, err = cmd.StdoutPipe()
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 	}
 
 	if scmd.Stderr != nil {
 		stderr, err = cmd.StderrPipe()
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 	}
 
@@ -116,7 +116,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrInvalidRepo
 		}
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	wg := &sync.WaitGroup{}
@@ -124,7 +124,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 	// stdin
 	if scmd.Stdin != nil {
 		go func() {
-			defer stdin.Close() // nolint: errcheck
+			defer stdin.Close() //nolint: errcheck
 			if _, err := io.Copy(stdin, scmd.Stdin); err != nil {
 				log.Errorf("gitServiceHandler: failed to copy stdin: %v", err)
 			}
@@ -167,7 +167,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 			return fmt.Errorf("%s: %s", exitErr, exitErr.Stderr)
 		}
 
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	return nil

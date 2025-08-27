@@ -1,3 +1,4 @@
+// Package migrate provides database migration functionality.
 package migrate
 
 import (
@@ -34,25 +35,25 @@ var createTables = Migration{
 			hasUserTable := hasTable(tx, "user")
 			if hasUserTable {
 				if _, err := tx.ExecContext(ctx, "ALTER TABLE user RENAME TO user_old"); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 
 			if hasTable(tx, "public_key") {
 				if _, err := tx.ExecContext(ctx, "ALTER TABLE public_key RENAME TO public_key_old"); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 
 			if hasTable(tx, "collab") {
 				if _, err := tx.ExecContext(ctx, "ALTER TABLE collab RENAME TO collab_old"); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 
 			if hasTable(tx, "repo") {
 				if _, err := tx.ExecContext(ctx, "ALTER TABLE repo RENAME TO repo_old"); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 		}
@@ -65,7 +66,7 @@ var createTables = Migration{
 		case "sqlite3", "sqlite":
 
 			if _, err := tx.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			if hasTable(tx, "user_old") {
@@ -74,7 +75,7 @@ var createTables = Migration{
 					SELECT id, username, admin, updated_at FROM user_old;
 				`
 				if _, err := tx.ExecContext(ctx, sqlm); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 
@@ -85,7 +86,7 @@ var createTables = Migration{
 					PublicKey string `db:"public_key"`
 				}{}
 				if err := tx.SelectContext(ctx, &pks, "SELECT id, public_key FROM public_key_old"); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 
 				pkss := map[string]struct{}{}
@@ -101,7 +102,7 @@ var createTables = Migration{
 					SELECT id, user_id, public_key, created_at, updated_at FROM public_key_old;
 				`
 				if _, err := tx.ExecContext(ctx, sqlm); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 
@@ -113,7 +114,7 @@ var createTables = Migration{
 				) FROM repo_old;
 				`
 				if _, err := tx.ExecContext(ctx, sqlm); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 
@@ -123,19 +124,19 @@ var createTables = Migration{
 					SELECT id, user_id, repo_id, ` + strconv.Itoa(int(access.ReadWriteAccess)) + `, created_at, updated_at FROM collab_old;
 				`
 				if _, err := tx.ExecContext(ctx, sqlm); err != nil {
-					return err
+					return err //nolint:wrapcheck
 				}
 			}
 
 			if _, err := tx.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 		}
 
 		// Insert default user
 		insertUser := tx.Rebind(insert + "INTO users (username, admin, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
 		if _, err := tx.ExecContext(ctx, insertUser, "admin", true); err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		for _, k := range cfg.AdminKeys() {
@@ -150,7 +151,7 @@ var createTables = Migration{
 				if errors.Is(db.WrapError(err), db.ErrDuplicateKey) {
 					continue
 				}
-				return err
+				return err //nolint:wrapcheck
 			}
 		}
 

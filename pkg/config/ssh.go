@@ -24,5 +24,5 @@ func KeyPair(cfg *Config) (*keygen.SSHKeyPair, error) {
 		return nil, ErrEmptySSHKeyPath
 	}
 
-	return keygen.New(cfg.SSH.KeyPath, keygen.WithKeyType(keygen.Ed25519))
+	return keygen.New(cfg.SSH.KeyPath, keygen.WithKeyType(keygen.Ed25519)) //nolint:wrapcheck
 }

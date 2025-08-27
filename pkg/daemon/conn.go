@@ -1,3 +1,4 @@
+// Package daemon provides Git daemon server functionality.
 package daemon
 
 import (
@@ -25,7 +26,7 @@ func (m *connections) Close(c net.Conn) error {
 	defer m.mu.Unlock()
 	err := c.Close()
 	delete(m.m, c)
-	return err
+	return err //nolint:wrapcheck
 }
 
 func (m *connections) Size() int {
@@ -91,15 +92,15 @@ func (c *serverConn) updateDeadline() {
 		initTimeout := time.Now().Add(c.initTimeout)
 		c.initTimeout = 0
 		if initTimeout.Unix() < c.maxDeadline.Unix() || c.maxDeadline.IsZero() {
-			c.Conn.SetDeadline(initTimeout) // nolint: errcheck
+			c.SetDeadline(initTimeout) //nolint:errcheck,gosec
 			return
 		}
 	case c.idleTimeout > 0:
 		idleDeadline := time.Now().Add(c.idleTimeout)
 		if idleDeadline.Unix() < c.maxDeadline.Unix() || c.maxDeadline.IsZero() {
-			c.Conn.SetDeadline(idleDeadline) // nolint: errcheck
+			c.SetDeadline(idleDeadline) //nolint:errcheck,gosec
 			return
 		}
 	}
-	c.Conn.SetDeadline(c.maxDeadline) // nolint: errcheck
+	c.SetDeadline(c.maxDeadline) //nolint:errcheck,gosec
 }

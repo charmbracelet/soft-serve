@@ -1,3 +1,4 @@
+// Package test provides testing utilities for database operations.
 package test
 
 import (
@@ -18,7 +19,7 @@ func OpenSqlite(ctx context.Context, tb testing.TB) (*db.DB, error) {
 	dbpath := filepath.Join(tb.TempDir(), "test.db")
 	dbx, err := db.Open(ctx, "sqlite", dbpath)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 	tb.Cleanup(func() {
 		if err := dbx.Close(); err != nil {

@@ -31,7 +31,7 @@ import (
 func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.User, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	rp := filepath.Join(d.repoPath(name))
@@ -53,24 +53,24 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 			opts.Hidden,
 			opts.Mirror,
 		); err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		_, err := git.Init(rp, true)
 		if err != nil {
 			d.logger.Debug("failed to create repository", "err", err)
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(opts.Description), fs.ModePerm); err != nil {
 			d.logger.Error("failed to write description", "repo", name, "err", err)
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		if !opts.Private {
 			if err := os.WriteFile(filepath.Join(rp, "git-daemon-export-ok"), []byte{}, fs.ModePerm); err != nil {
 				d.logger.Error("failed to write git-daemon-export-ok", "repo", name, "err", err)
-				return err
+				return err //nolint:wrapcheck
 			}
 		}
 
@@ -82,7 +82,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 			return nil, proto.ErrRepoExist
 		}
 
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return d.Repository(ctx, name)
@@ -93,7 +93,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 func (d *Backend) ImportRepository(_ context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	rp := filepath.Join(d.repoPath(name))
@@ -156,7 +156,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		rr, err := r.Open()
 		if err != nil {
 			d.logger.Error("failed to open repository", "err", err, "path", rp)
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		repoc <- r
@@ -164,7 +164,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		rcfg, err := rr.Config()
 		if err != nil {
 			d.logger.Error("failed to get repository config", "err", err, "path", rp)
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		endpoint := remote
@@ -176,13 +176,13 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 
 		if err := rr.SetConfig(rcfg); err != nil {
 			d.logger.Error("failed to set repository config", "err", err, "path", rp)
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		ep, err := lfs.NewEndpoint(endpoint)
 		if err != nil {
 			d.logger.Error("failed to create lfs endpoint", "err", err, "path", rp)
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		client := lfs.NewClient(ep)
@@ -224,7 +224,7 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	// send the event after deleting the repository.
 	wh, err := webhook.NewRepositoryEvent(ctx, user, r, webhook.RepositoryEventActionDelete)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
@@ -273,10 +273,10 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 			return proto.ErrRepoNotFound
 		}
 
-		return db.WrapError(err)
+		return db.WrapError(err) //nolint:wrapcheck
 	}
 
-	return webhook.SendEvent(ctx, wh)
+	return webhook.SendEvent(ctx, wh) //nolint:wrapcheck
 }
 
 // DeleteUserRepositories deletes all user repositories.
@@ -284,12 +284,12 @@ func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) e
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		user, err := d.store.FindUserByUsername(ctx, tx, username)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		repos, err := d.store.GetUserRepos(ctx, tx, user.ID)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		for _, repo := range repos {
@@ -300,7 +300,7 @@ func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) e
 
 		return nil
 	}); err != nil {
-		return db.WrapError(err)
+		return db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return nil
@@ -312,12 +312,12 @@ func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) e
 func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName string) error {
 	oldName = utils.SanitizeRepo(oldName)
 	if err := utils.ValidateRepo(oldName); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	newName = utils.SanitizeRepo(newName)
 	if err := utils.ValidateRepo(newName); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	if oldName == newName {
@@ -339,17 +339,17 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 		defer d.cache.Delete(oldName)
 
 		if err := d.store.SetRepoNameByName(ctx, tx, oldName, newName); err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		// Make sure the new repository parent directory exists.
-		if err := os.MkdirAll(filepath.Dir(np), os.ModePerm); err != nil {
-			return err
+		if err := os.MkdirAll(filepath.Dir(np), os.ModePerm); err != nil { //nolint:gosec
+			return err //nolint:wrapcheck
 		}
 
 		return os.Rename(op, np)
 	}); err != nil {
-		return db.WrapError(err)
+		return db.WrapError(err) //nolint:wrapcheck
 	}
 
 	user := proto.UserFromContext(ctx)
@@ -360,10 +360,10 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 
 	wh, err := webhook.NewRepositoryEvent(ctx, user, repo, webhook.RepositoryEventActionRename)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
-	return webhook.SendEvent(ctx, wh)
+	return webhook.SendEvent(ctx, wh) //nolint:wrapcheck
 }
 
 // Repositories returns a list of repositories per page.
@@ -375,7 +375,7 @@ func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		ms, err := d.store.GetAllRepos(ctx, tx)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		for _, m := range ms {
@@ -393,7 +393,7 @@ func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) 
 
 		return nil
 	}); err != nil {
-		return nil, db.WrapError(err)
+		return nil, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return repos, nil
@@ -426,7 +426,7 @@ func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, proto.ErrRepoNotFound
 		}
-		return nil, db.WrapError(err)
+		return nil, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	r := &repo{
@@ -450,9 +450,9 @@ func (d *Backend) Description(ctx context.Context, name string) (string, error) 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		desc, err = d.store.GetRepoDescriptionByName(ctx, tx, name)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
-		return "", db.WrapError(err)
+		return "", db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return desc, nil
@@ -467,9 +467,9 @@ func (d *Backend) IsMirror(ctx context.Context, name string) (bool, error) {
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		mirror, err = d.store.GetRepoIsMirrorByName(ctx, tx, name)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
-		return false, db.WrapError(err)
+		return false, db.WrapError(err) //nolint:wrapcheck
 	}
 	return mirror, nil
 }
@@ -483,9 +483,9 @@ func (d *Backend) IsPrivate(ctx context.Context, name string) (bool, error) {
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		private, err = d.store.GetRepoIsPrivateByName(ctx, tx, name)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
-		return false, db.WrapError(err)
+		return false, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return private, nil
@@ -500,9 +500,9 @@ func (d *Backend) IsHidden(ctx context.Context, name string) (bool, error) {
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		hidden, err = d.store.GetRepoIsHiddenByName(ctx, tx, name)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
-		return false, db.WrapError(err)
+		return false, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return hidden, nil
@@ -517,9 +517,9 @@ func (d *Backend) ProjectName(ctx context.Context, name string) (string, error) 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		pname, err = d.store.GetRepoProjectNameByName(ctx, tx, name)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
-		return "", db.WrapError(err)
+		return "", db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return pname, nil
@@ -534,7 +534,7 @@ func (d *Backend) SetHidden(ctx context.Context, name string, hidden bool) error
 	// Delete cache
 	d.cache.Delete(name)
 
-	return db.WrapError(d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+	return db.WrapError(d.db.TransactionContext(ctx, func(tx *db.Tx) error { //nolint:wrapcheck
 		return d.store.SetRepoIsHiddenByName(ctx, tx, name, hidden)
 	}))
 }
@@ -549,10 +549,10 @@ func (d *Backend) SetDescription(ctx context.Context, name string, desc string) 
 	// Delete cache
 	d.cache.Delete(name)
 
-	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+	return d.db.TransactionContext(ctx, func(tx *db.Tx) error { //nolint:wrapcheck
 		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(desc), fs.ModePerm); err != nil {
 			d.logger.Error("failed to write description", "repo", name, "err", err)
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		return d.store.SetRepoDescriptionByName(ctx, tx, name, desc)
@@ -575,13 +575,13 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 			if !private {
 				if err := os.WriteFile(fp, []byte{}, fs.ModePerm); err != nil {
 					d.logger.Error("failed to write git-daemon-export-ok", "repo", name, "err", err)
-					return err
+					return err //nolint:wrapcheck
 				}
 			} else {
 				if _, err := os.Stat(fp); err == nil {
 					if err := os.Remove(fp); err != nil {
 						d.logger.Error("failed to remove git-daemon-export-ok", "repo", name, "err", err)
-						return err
+						return err //nolint:wrapcheck
 					}
 				}
 			}
@@ -589,7 +589,7 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 			return d.store.SetRepoIsPrivateByName(ctx, tx, name, private)
 		}),
 	); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	user := proto.UserFromContext(ctx)
@@ -601,11 +601,11 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 	if repo.IsPrivate() != !private {
 		wh, err := webhook.NewRepositoryEvent(ctx, user, repo, webhook.RepositoryEventActionVisibilityChange)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		if err := webhook.SendEvent(ctx, wh); err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 	}
 
@@ -621,7 +621,7 @@ func (d *Backend) SetProjectName(ctx context.Context, repo string, name string) 
 	// Delete cache
 	d.cache.Delete(repo)
 
-	return db.WrapError(
+	return db.WrapError( //nolint:wrapcheck
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.SetRepoProjectNameByName(ctx, tx, repo, name)
 		}),
@@ -694,7 +694,7 @@ func (r *repo) Name() string {
 //
 // It implements backend.Repository.
 func (r *repo) Open() (*git.Repository, error) {
-	return git.Open(r.path)
+	return git.Open(r.path) //nolint:wrapcheck
 }
 
 // ProjectName returns the repository's project name.
@@ -738,20 +738,20 @@ func (r *repo) UpdatedAt() time.Time {
 
 func (r *repo) writeLastModified(t time.Time) error {
 	fp := filepath.Join(r.path, "info", "last-modified")
-	if err := os.MkdirAll(filepath.Dir(fp), os.ModePerm); err != nil {
-		return err
+	if err := os.MkdirAll(filepath.Dir(fp), os.ModePerm); err != nil { //nolint:gosec
+		return err //nolint:wrapcheck
 	}
 
-	return os.WriteFile(fp, []byte(t.Format(time.RFC3339)), os.ModePerm) //nolint:gosec
+	return os.WriteFile(fp, []byte(t.Format(time.RFC3339)), os.ModePerm) //nolint:gosec,wrapcheck
 }
 
 func readOneline(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", err
+		return "", err //nolint:wrapcheck
 	}
 
-	defer f.Close() // nolint: errcheck
+	defer f.Close() //nolint: errcheck
 	s := bufio.NewScanner(f)
 	s.Scan()
 	return s.Text(), s.Err()

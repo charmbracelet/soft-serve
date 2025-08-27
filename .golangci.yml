@@ -30,6 +30,10 @@ linters:
       - text: '(slog|log)\.\w+'
         linters:
           - noctx
+      - text: 'var-naming: avoid meaningless package names'
+        linters:
+          - revive
+        path: 'pkg/ui/common/'
     generated: lax
     presets:
       - common-false-positives

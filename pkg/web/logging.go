@@ -24,13 +24,13 @@ var _ http.Flusher = (*logWriter)(nil)
 
 var _ http.Hijacker = (*logWriter)(nil)
 
-var _ http.CloseNotifier = (*logWriter)(nil) // nolint: staticcheck
+var _ http.CloseNotifier = (*logWriter)(nil) //nolint: staticcheck
 
 // Write implements http.ResponseWriter.
 func (r *logWriter) Write(p []byte) (int, error) {
 	written, err := r.ResponseWriter.Write(p)
 	r.bytes += written
-	return written, err
+	return written, err //nolint:wrapcheck
 }
 
 // Note this is generally only called when sending an HTTP error, so it's
@@ -54,7 +54,7 @@ func (r *logWriter) Flush() {
 
 // CloseNotify implements http.CloseNotifier.
 func (r *logWriter) CloseNotify() <-chan bool {
-	if cn, ok := r.ResponseWriter.(http.CloseNotifier); ok { // nolint: staticcheck
+	if cn, ok := r.ResponseWriter.(http.CloseNotifier); ok { //nolint: staticcheck
 		return cn.CloseNotify()
 	}
 	return nil
@@ -63,7 +63,7 @@ func (r *logWriter) CloseNotify() <-chan bool {
 // Hijack implements http.Hijacker.
 func (r *logWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if h, ok := r.ResponseWriter.(http.Hijacker); ok {
-		return h.Hijack()
+		return h.Hijack() //nolint:wrapcheck
 	}
 	return nil, nil, fmt.Errorf("http.Hijacker not implemented")
 }

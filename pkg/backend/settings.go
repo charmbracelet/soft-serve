@@ -15,7 +15,7 @@ func (b *Backend) AllowKeyless(ctx context.Context) bool {
 	if err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		allow, err = b.store.GetAllowKeylessAccess(ctx, tx)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
 		return false
 	}
@@ -27,7 +27,7 @@ func (b *Backend) AllowKeyless(ctx context.Context) bool {
 //
 // It implements backend.Backend.
 func (b *Backend) SetAllowKeyless(ctx context.Context, allow bool) error {
-	return b.db.TransactionContext(ctx, func(tx *db.Tx) error {
+	return b.db.TransactionContext(ctx, func(tx *db.Tx) error { //nolint:wrapcheck
 		return b.store.SetAllowKeylessAccess(ctx, tx, allow)
 	})
 }
@@ -40,7 +40,7 @@ func (b *Backend) AnonAccess(ctx context.Context) access.AccessLevel {
 	if err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		level, err = b.store.GetAnonAccess(ctx, tx)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
 		return access.NoAccess
 	}
@@ -52,7 +52,7 @@ func (b *Backend) AnonAccess(ctx context.Context) access.AccessLevel {
 //
 // It implements backend.Backend.
 func (b *Backend) SetAnonAccess(ctx context.Context, level access.AccessLevel) error {
-	return b.db.TransactionContext(ctx, func(tx *db.Tx) error {
+	return b.db.TransactionContext(ctx, func(tx *db.Tx) error { //nolint:wrapcheck
 		return b.store.SetAnonAccess(ctx, tx, level)
 	})
 }

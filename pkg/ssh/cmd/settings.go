@@ -31,7 +31,7 @@ func SettingsCommand() *cobra.Command {
 				case 1:
 					v, _ := strconv.ParseBool(args[0])
 					if err := be.SetAllowKeyless(ctx, v); err != nil {
-						return err
+						return err //nolint:wrapcheck
 					}
 				}
 
@@ -60,7 +60,7 @@ func SettingsCommand() *cobra.Command {
 						return fmt.Errorf("invalid access level: %s. Please choose one of the following: %s", args[0], als)
 					}
 					if err := be.SetAnonAccess(ctx, al); err != nil {
-						return err
+						return err //nolint:wrapcheck
 					}
 				}
 

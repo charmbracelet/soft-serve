@@ -28,7 +28,7 @@ const (
 	DefaultLocksLimit = 20
 )
 
-// Pointer contains LFS pointer data
+// Pointer contains LFS pointer data.
 type Pointer struct {
 	Oid  string `json:"oid"`
 	Size int64  `json:"size"`

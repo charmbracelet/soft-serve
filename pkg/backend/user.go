@@ -42,7 +42,7 @@ func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ss
 }
 
 // AccessLevelForUser returns the access level of a user for a repository.
-// TODO: user repository ownership
+// TODO: user repository ownership.
 func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user proto.User) access.AccessLevel {
 	var username string
 	anon := d.AnonAccess(ctx)
@@ -61,7 +61,7 @@ func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user prot
 		r, _ = d.Repository(ctx, repo)
 	}
 
-	if r != nil {
+	if r != nil { //nolint:nestif
 		if user != nil {
 			// If the user is the owner, they have admin access.
 			if r.UserID() == user.ID() {
@@ -110,7 +110,7 @@ func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user prot
 func (d *Backend) User(ctx context.Context, username string) (proto.User, error) {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	var m models.User
@@ -119,18 +119,18 @@ func (d *Backend) User(ctx context.Context, username string) (proto.User, error)
 		var err error
 		m, err = d.store.FindUserByUsername(ctx, tx, username)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
 		err = db.WrapError(err)
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, proto.ErrUserNotFound
 		}
 		d.logger.Error("error finding user", "username", username, "error", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return &user{
@@ -147,18 +147,18 @@ func (d *Backend) UserByID(ctx context.Context, id int64) (proto.User, error) {
 		var err error
 		m, err = d.store.GetUserByID(ctx, tx, id)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
 		err = db.WrapError(err)
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, proto.ErrUserNotFound
 		}
 		d.logger.Error("error finding user", "id", id, "error", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return &user{
@@ -181,14 +181,14 @@ func (d *Backend) UserByPublicKey(ctx context.Context, pk ssh.PublicKey) (proto.
 		}
 
 		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
 		err = db.WrapError(err)
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, proto.ErrUserNotFound
 		}
 		d.logger.Error("error finding user", "pk", sshutils.MarshalAuthorizedKey(pk), "error", err)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return &user{
@@ -220,14 +220,14 @@ func (d *Backend) UserByAccessToken(ctx context.Context, token string) (proto.Us
 		}
 
 		pks, err = d.store.ListPublicKeysByUserID(ctx, tx, m.ID)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
 		err = db.WrapError(err)
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, proto.ErrUserNotFound
 		}
 		d.logger.Error("failed to find user by access token", "err", err, "token", token)
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return &user{
@@ -244,7 +244,7 @@ func (d *Backend) Users(ctx context.Context) ([]string, error) {
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		ms, err := d.store.GetAllUsers(ctx, tx)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		for _, m := range ms {
@@ -253,7 +253,7 @@ func (d *Backend) Users(ctx context.Context) ([]string, error) {
 
 		return nil
 	}); err != nil {
-		return nil, db.WrapError(err)
+		return nil, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return users, nil
@@ -265,10 +265,10 @@ func (d *Backend) Users(ctx context.Context) ([]string, error) {
 func (d *Backend) AddPublicKey(ctx context.Context, username string, pk ssh.PublicKey) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
-	return db.WrapError(
+	return db.WrapError( //nolint:wrapcheck
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.AddPublicKeyByUsername(ctx, tx, username, pk)
 		}),
@@ -281,13 +281,13 @@ func (d *Backend) AddPublicKey(ctx context.Context, username string, pk ssh.Publ
 func (d *Backend) CreateUser(ctx context.Context, username string, opts proto.UserOptions) (proto.User, error) {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		return d.store.CreateUser(ctx, tx, username, opts.Admin, opts.PublicKeys)
 	}); err != nil {
-		return nil, db.WrapError(err)
+		return nil, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return d.User(ctx, username)
@@ -299,10 +299,10 @@ func (d *Backend) CreateUser(ctx context.Context, username string, opts proto.Us
 func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
-	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+	return d.db.TransactionContext(ctx, func(tx *db.Tx) error { //nolint:wrapcheck
 		if err := d.store.DeleteUserByUsername(ctx, tx, username); err != nil {
 			return db.WrapError(err)
 		}
@@ -315,7 +315,7 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 //
 // It implements backend.Backend.
 func (d *Backend) RemovePublicKey(ctx context.Context, username string, pk ssh.PublicKey) error {
-	return db.WrapError(
+	return db.WrapError( //nolint:wrapcheck
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.RemovePublicKeyByUsername(ctx, tx, username, pk)
 		}),
@@ -326,16 +326,16 @@ func (d *Backend) RemovePublicKey(ctx context.Context, username string, pk ssh.P
 func (d *Backend) ListPublicKeys(ctx context.Context, username string) ([]ssh.PublicKey, error) {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	var keys []ssh.PublicKey
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		keys, err = d.store.ListPublicKeysByUsername(ctx, tx, username)
-		return err
+		return err //nolint:wrapcheck
 	}); err != nil {
-		return nil, db.WrapError(err)
+		return nil, db.WrapError(err) //nolint:wrapcheck
 	}
 
 	return keys, nil
@@ -347,10 +347,10 @@ func (d *Backend) ListPublicKeys(ctx context.Context, username string) ([]ssh.Pu
 func (d *Backend) SetUsername(ctx context.Context, username string, newUsername string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
-	return db.WrapError(
+	return db.WrapError( //nolint:wrapcheck
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.SetUsernameByUsername(ctx, tx, username, newUsername)
 		}),
@@ -363,10 +363,10 @@ func (d *Backend) SetUsername(ctx context.Context, username string, newUsername 
 func (d *Backend) SetAdmin(ctx context.Context, username string, admin bool) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
-	return db.WrapError(
+	return db.WrapError( //nolint:wrapcheck
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.SetAdminByUsername(ctx, tx, username, admin)
 		}),
@@ -377,7 +377,7 @@ func (d *Backend) SetAdmin(ctx context.Context, username string, admin bool) err
 func (d *Backend) SetPassword(ctx context.Context, username string, rawPassword string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	password, err := HashPassword(rawPassword)
@@ -385,7 +385,7 @@ func (d *Backend) SetPassword(ctx context.Context, username string, rawPassword 
 		return err
 	}
 
-	return db.WrapError(
+	return db.WrapError( //nolint:wrapcheck
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.SetUserPasswordByUsername(ctx, tx, username, password)
 		}),
@@ -399,17 +399,17 @@ type user struct {
 
 var _ proto.User = (*user)(nil)
 
-// IsAdmin implements proto.User
+// IsAdmin implements proto.User.
 func (u *user) IsAdmin() bool {
 	return u.user.Admin
 }
 
-// PublicKeys implements proto.User
+// PublicKeys implements proto.User.
 func (u *user) PublicKeys() []ssh.PublicKey {
 	return u.publicKeys
 }
 
-// Username implements proto.User
+// Username implements proto.User.
 func (u *user) Username() string {
 	return u.user.Username
 }

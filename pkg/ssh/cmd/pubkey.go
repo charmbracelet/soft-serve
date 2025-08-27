@@ -26,12 +26,12 @@ func PubkeyCommand() *cobra.Command {
 			pk := sshutils.PublicKeyFromContext(ctx)
 			user, err := be.UserByPublicKey(ctx, pk)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			apk, _, err := sshutils.ParseAuthorizedKey(strings.Join(args, " "))
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			return be.AddPublicKey(ctx, user.Username(), apk)
@@ -48,12 +48,12 @@ func PubkeyCommand() *cobra.Command {
 			pk := sshutils.PublicKeyFromContext(ctx)
 			user, err := be.UserByPublicKey(ctx, pk)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			apk, _, err := sshutils.ParseAuthorizedKey(strings.Join(args, " "))
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			return be.RemovePublicKey(ctx, user.Username(), apk)
@@ -71,7 +71,7 @@ func PubkeyCommand() *cobra.Command {
 			pk := sshutils.PublicKeyFromContext(ctx)
 			user, err := be.UserByPublicKey(ctx, pk)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck
 			}
 
 			pks := user.PublicKeys()
