@@ -436,7 +436,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 			renderInternalServerError(w, r)
 			return
 		}
-		defer reader.Close() //nolint: errcheck
+		defer reader.Close()
 	}
 
 	cmd.Stdin = reader

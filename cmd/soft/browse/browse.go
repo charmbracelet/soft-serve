@@ -177,6 +177,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case m.common.Zone.Get("footer").InBounds(msg):
 				cmds = append(cmds, footer.ToggleFooterCmd)
 			}
+		default:
+			// Handle other mouse buttons
 		}
 	case footer.ToggleFooterMsg:
 		m.footer.SetShowAll(!m.footer.ShowAll())

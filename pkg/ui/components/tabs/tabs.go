@@ -72,6 +72,8 @@ func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, t.activeTabCmd)
 				}
 			}
+		default:
+			// Handle other mouse buttons
 		}
 	case SelectTabMsg:
 		tab := int(msg)

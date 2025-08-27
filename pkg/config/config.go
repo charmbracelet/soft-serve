@@ -231,7 +231,7 @@ func parseFile(cfg *Config, path string) error {
 		return err
 	}
 
-	defer f.Close() //nolint: errcheck
+	defer f.Close()
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode config: %w", err)
 	}

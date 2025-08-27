@@ -251,6 +251,8 @@ func (s *Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
+		default:
+			// Handle other mouse buttons
 		}
 	case tea.KeyPressMsg:
 		filterState := s.FilterState()

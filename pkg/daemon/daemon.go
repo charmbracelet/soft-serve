@@ -139,7 +139,9 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 }
 
 func (d *GitDaemon) fatal(c net.Conn, err error) {
-	git.WritePktlineErr(c, err) 
+	if writeErr := git.WritePktlineErr(c, err); writeErr != nil {
+		d.logger.Debugf("git: error writing pktline: %v", writeErr)
+	}
 	if err := c.Close(); err != nil {
 		d.logger.Debugf("git: error closing connection: %v", err)
 	}
@@ -321,7 +323,9 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 // Close closes the underlying listener.
 func (d *GitDaemon) Close() error {
 	err := d.closeListener()
-	d.conns.CloseAll() 
+	if closeErr := d.conns.CloseAll(); closeErr != nil {
+		d.logger.Debugf("git: error closing connections: %v", closeErr)
+	}
 	return err
 }
 

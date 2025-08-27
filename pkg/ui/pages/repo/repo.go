@@ -197,6 +197,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case r.common.Zone.Get("repo-main").InBounds(msg):
 					cmds = append(cmds, goBackCmd)
 				}
+			default:
+				// Handle other mouse buttons
 			}
 		}
 		switch msg := msg.(type) {
