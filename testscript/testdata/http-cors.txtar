@@ -1,0 +1,81 @@
+# vi: set ft=conf
+
+# FIXME: don't skip windows
+[windows] skip 'curl makes github actions hang'
+
+# convert crlf to lf on windows
+[windows] dos2unix http1.txt http2.txt http3.txt goget.txt gitclone.txt
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create user
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# create access token
+soft token create --expires-in '1h' 'repo2'
+cp stdout tokenfile
+envfile TOKEN=tokenfile
+soft token create --expires-in '1ns' 'repo2'
+cp stdout etokenfile
+envfile ETOKEN=etokenfile
+usoft token create 'repo2'
+cp stdout utokenfile
+envfile UTOKEN=utokenfile
+
+# push & create repo with some files, commits, tags...
+mkdir ./repo2
+git -c init.defaultBranch=master -C repo2 init
+mkfile ./repo2/README.md '# Project\nfoo'
+mkfile ./repo2/foo.png 'foo'
+mkfile ./repo2/bar.png 'bar'
+git -C repo2 remote add origin http://$TOKEN@localhost:$HTTP_PORT/repo2
+git -C repo2 lfs install --local
+git -C repo2 lfs track '*.png'
+git -C repo2 add -A
+git -C repo2 commit -m 'first'
+git -C repo2 tag v0.1.0
+git -C repo2 push origin HEAD
+git -C repo2 push origin HEAD --tags
+
+-- test 1 --
+# default public url is always allowed
+curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2/git-upload-pack -H 'Origin: http://localhost:23232' -H 'Access-Control-Request-Method: POST'
+stderr '.*200 OK.*'
+
+# stop the server
+stopserver
+
+-- test 2 --
+# by default the server does not allow example.com, so the response does not have the "Access-Control-Allow-Origin" header and cors will fail.
+
+# restart soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2/git-upload-pack -H 'Origin: https://example.com' -H 'Access-Control-Request-Method: POST'
+! stderr '.*Access-Control-Allow-Origin.*'
+
+# stop the server
+stopserver
+
+-- test 3 --
+# allow cross-origin OPTIONS requests for example.com
+env SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS="https://example.com"
+env SOFT_SERVE_HTTP_CORS_ALLOWED_METHODS="GET,OPTIONS"
+env SOFT_SERVE_HTTP_CORS_ALLOWED_HEADERS="Origin,Access-Control-Request-Method"
+
+# restart soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+curl -v --request OPTIONS http://localhost:$HTTP_PORT/repo2.git/info/refs -H 'Origin: https://example.com' -H 'Access-Control-Request-Method: GET'
+stderr '.*200 OK.*'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
