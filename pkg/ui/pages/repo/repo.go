@@ -216,7 +216,6 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, r.updateTabComponent(&Readme{}, msg))
 	case FileItemsMsg, FileContentMsg:
 		cmds = append(cmds, r.updateTabComponent(&Files{}, msg))
-	case LogCommitMsg:
 	case LogItemsMsg, LogDiffMsg, LogCountMsg:
 		log := &Log{}
 		if lim, ok := msg.(LogItemsMsg); ok {
