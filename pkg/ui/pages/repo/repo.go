@@ -139,6 +139,9 @@ func (r *Repo) FullHelp() [][]key.Binding {
 func (r *Repo) Init() tea.Cmd {
 	r.state = loadingState
 	r.activeTab = 0
+	// Reset the tab names on every init so that we do not
+	// briefly show incorrect counts when navigating between repos
+	r.tabs.ResetTabNames()
 	return tea.Batch(
 		r.tabs.Init(),
 		r.statusbar.Init(),

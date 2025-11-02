@@ -108,6 +108,13 @@ func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return t, tea.Batch(cmds...)
 }
 
+// ResetTabNames resets all tab names to their IDs.
+func (t *Tabs) ResetTabNames() {
+	for i := range t.tabs {
+		t.tabs[i].Value = t.tabs[i].ID
+	}
+}
+
 // View implements tea.Model.
 func (t *Tabs) View() string {
 	s := strings.Builder{}
