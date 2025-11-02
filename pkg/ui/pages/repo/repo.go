@@ -68,7 +68,7 @@ func New(c common.Common, comps ...common.TabComponent) *Repo {
 		ts = append(ts, c.TabName())
 	}
 	c.Logger = c.Logger.WithPrefix("ui.repo")
-	tb := tabs.New(c, ts)
+	tb := tabs.NewTabs(c, ts)
 	// Make sure the order matches the order of tab constants above.
 	s := spinner.New(spinner.WithSpinner(spinner.Dot),
 		spinner.WithStyle(c.Styles.Spinner))
@@ -216,10 +216,27 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, r.updateTabComponent(&Readme{}, msg))
 	case FileItemsMsg, FileContentMsg:
 		cmds = append(cmds, r.updateTabComponent(&Files{}, msg))
+	case LogCommitMsg:
 	case LogItemsMsg, LogDiffMsg, LogCountMsg:
-		cmds = append(cmds, r.updateTabComponent(&Log{}, msg))
+		log := &Log{}
+		if lcm, ok := msg.(LogCountMsg); ok {
+			msg := tabs.SetTabValueMsg{ID: log.TabName(), Value: fmt.Sprintf("Commits (%d)", int64(lcm))}
+			t, cmd := r.tabs.Update(msg)
+			r.tabs = t.(*tabs.Tabs)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+		cmds = append(cmds, r.updateTabComponent(log, msg))
 	case RefItemsMsg:
-		cmds = append(cmds, r.updateTabComponent(&Refs{refPrefix: msg.prefix}, msg))
+		refs := &Refs{refPrefix: msg.prefix}
+		tabMsg := tabs.SetTabValueMsg{ID: refs.TabName(), Value: fmt.Sprintf("%s (%d)", refs.TabName(), len(msg.items))}
+		t, cmd := r.tabs.Update(tabMsg)
+		r.tabs = t.(*tabs.Tabs)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		cmds = append(cmds, r.updateTabComponent(refs, msg))
 	case StashListMsg, StashPatchMsg:
 		cmds = append(cmds, r.updateTabComponent(&Stash{}, msg))
 	// We have two spinners, one is used to when loading the repository and the
