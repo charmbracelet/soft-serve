@@ -68,7 +68,7 @@ func New(c common.Common, comps ...common.TabComponent) *Repo {
 		ts = append(ts, c.TabName())
 	}
 	c.Logger = c.Logger.WithPrefix("ui.repo")
-	tb := tabs.NewTabs(c, ts)
+	tb := tabs.New(c, ts)
 	// Make sure the order matches the order of tab constants above.
 	s := spinner.New(spinner.WithSpinner(spinner.Dot),
 		spinner.WithStyle(c.Styles.Spinner))
@@ -219,8 +219,8 @@ func (r *Repo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case LogCommitMsg:
 	case LogItemsMsg, LogDiffMsg, LogCountMsg:
 		log := &Log{}
-		if lcm, ok := msg.(LogCountMsg); ok {
-			msg := tabs.SetTabValueMsg{ID: log.TabName(), Value: fmt.Sprintf("Commits (%d)", int64(lcm))}
+		if lim, ok := msg.(LogItemsMsg); ok {
+			msg := tabs.SetTabValueMsg{ID: log.TabName(), Value: fmt.Sprintf("Commits (%d)", len(lim))}
 			t, cmd := r.tabs.Update(msg)
 			r.tabs = t.(*tabs.Tabs)
 			if cmd != nil {
