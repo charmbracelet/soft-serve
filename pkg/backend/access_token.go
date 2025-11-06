@@ -7,12 +7,14 @@ import (
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/utils"
 )
 
 // CreateAccessToken creates an access token for user.
 func (b *Backend) CreateAccessToken(ctx context.Context, user proto.User, name string, expiresAt time.Time) (string, error) {
 	token := GenerateToken()
 	tokenHash := HashToken(token)
+	name = utils.Sanitize(name)
 
 	if err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		_, err := b.store.CreateAccessToken(ctx, tx, name, user.ID(), tokenHash, expiresAt)

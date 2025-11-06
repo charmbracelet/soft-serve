@@ -544,6 +544,7 @@ func (d *Backend) SetHidden(ctx context.Context, name string, hidden bool) error
 // It implements backend.Backend.
 func (d *Backend) SetDescription(ctx context.Context, name string, desc string) error {
 	name = utils.SanitizeRepo(name)
+	desc = utils.Sanitize(desc)
 	rp := filepath.Join(d.repoPath(name))
 
 	// Delete cache
@@ -617,6 +618,7 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 // It implements backend.Backend.
 func (d *Backend) SetProjectName(ctx context.Context, repo string, name string) error {
 	repo = utils.SanitizeRepo(repo)
+	name = utils.Sanitize(name)
 
 	// Delete cache
 	d.cache.Delete(repo)

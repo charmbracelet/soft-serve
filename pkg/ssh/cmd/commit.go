@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
+	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -59,9 +60,9 @@ func commitCommand() *cobra.Command {
 
 			s := strings.Builder{}
 			commitLine := "commit " + commitSHA
-			authorLine := "Author: " + commit.Author.Name
+			authorLine := "Author: " + utils.Sanitize(commit.Author.Name)
 			dateLine := "Date:   " + commit.Committer.When.UTC().Format(time.UnixDate)
-			msgLine := strings.ReplaceAll(commit.Message, "\r\n", "\n")
+			msgLine := strings.ReplaceAll(utils.Sanitize(commit.Message), "\r\n", "\n")
 			statsLine := renderStats(diff, commonStyle, color)
 			diffLine := renderDiff(patch, color)
 

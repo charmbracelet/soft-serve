@@ -5,10 +5,13 @@ import (
 	"path"
 	"strings"
 	"unicode"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 // SanitizeRepo returns a sanitized version of the given repository name.
 func SanitizeRepo(repo string) string {
+	repo = Sanitize(repo)
 	// We need to use an absolute path for the path to be cleaned correctly.
 	repo = strings.TrimPrefix(repo, "/")
 	repo = "/" + repo
@@ -18,6 +21,11 @@ func SanitizeRepo(repo string) string {
 	repo = path.Clean(repo)
 	repo = strings.TrimSuffix(repo, ".git")
 	return repo[1:]
+}
+
+// Sanitize strips ANSI escape codes from the given string.
+func Sanitize(s string) string {
+	return ansi.Strip(s)
 }
 
 // ValidateUsername returns an error if any of the given usernames are invalid.

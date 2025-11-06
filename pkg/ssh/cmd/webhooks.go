@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss/v2/table"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
+	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 	"github.com/dustin/go-humanize"
 	"github.com/google/uuid"
@@ -69,7 +70,7 @@ func webhookListCommand() *cobra.Command {
 
 				table = table.Row(
 					strconv.FormatInt(h.ID, 10),
-					h.URL,
+					utils.Sanitize(h.URL),
 					strings.Join(events, ","),
 					strconv.FormatBool(h.Active),
 					humanize.Time(h.CreatedAt),
@@ -122,7 +123,8 @@ func webhookCreateCommand() *cobra.Command {
 				return webhook.ErrInvalidContentType
 			}
 
-			return be.CreateWebhook(ctx, repo, strings.TrimSpace(args[1]), ct, secret, evs, active)
+			url := utils.Sanitize(args[1])
+			return be.CreateWebhook(ctx, repo, strings.TrimSpace(url), ct, secret, evs, active)
 		},
 	}
 
