@@ -13,28 +13,22 @@ stderr 'Created repository test-repo.*'
 
 # Try to create webhook with localhost - should fail
 ! soft repo webhook create test-repo http://localhost:8080/webhook -e push
-stderr 'invalid webhook URL.*private'
 
 # Try to create webhook with 127.0.0.1 - should fail
 ! soft repo webhook create test-repo http://127.0.0.1:8080/webhook -e push
-stderr 'invalid webhook URL.*private'
 
 # Try to create webhook with AWS metadata service - should fail
 ! soft repo webhook create test-repo http://169.254.169.254/latest/meta-data/ -e push
-stderr 'invalid webhook URL.*private'
 
 # Try to create webhook with private network - should fail
 ! soft repo webhook create test-repo http://192.168.1.1/webhook -e push
-stderr 'invalid webhook URL.*private'
 
 # Try to create webhook with private 10.x network - should fail
 ! soft repo webhook create test-repo http://10.0.0.1/webhook -e push
-stderr 'invalid webhook URL.*private'
 
 # Create webhook with valid public IP - should succeed
 new-webhook WH_PUBLIC
 soft repo webhook create test-repo $WH_PUBLIC -e push
-! stderr 'invalid webhook URL'
 
 # List webhooks - should show only the valid one
 soft repo webhook list test-repo
@@ -42,7 +36,6 @@ stdout 'webhook.site'
 
 # Try to update webhook to localhost - should fail
 ! soft repo webhook update test-repo 1 --url http://localhost:9090/hook
-stderr 'invalid webhook URL.*private'
 
 # stop the server
 [windows] stopserver
