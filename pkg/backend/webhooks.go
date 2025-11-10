@@ -20,6 +20,11 @@ func (b *Backend) CreateWebhook(ctx context.Context, repo proto.Repository, url 
 	datastore := store.FromContext(ctx)
 	url = utils.Sanitize(url)
 
+	// Validate webhook URL to prevent SSRF attacks
+	if err := webhook.ValidateWebhookURL(url); err != nil {
+		return err //nolint:wrapcheck
+	}
+
 	return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 		lastID, err := datastore.CreateWebhook(ctx, tx, repo.ID(), url, secret, int(contentType), active)
 		if err != nil {
@@ -119,6 +124,11 @@ func (b *Backend) ListWebhooks(ctx context.Context, repo proto.Repository) ([]we
 func (b *Backend) UpdateWebhook(ctx context.Context, repo proto.Repository, id int64, url string, contentType webhook.ContentType, secret string, updatedEvents []webhook.Event, active bool) error {
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
+
+	// Validate webhook URL to prevent SSRF attacks
+	if err := webhook.ValidateWebhookURL(url); err != nil {
+		return err
+	}
 
 	return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 		if err := datastore.UpdateWebhookByID(ctx, tx, repo.ID(), id, url, secret, int(contentType), active); err != nil {
