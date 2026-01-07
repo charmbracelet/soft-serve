@@ -10,7 +10,6 @@ require (
 	charm.land/log/v2 v2.0.0-20251110204020-529bb77f35da
 	charm.land/wish/v2 v2.0.0-20251118130305-6cd7463a7b97
 	github.com/alecthomas/chroma/v2 v2.20.0
-	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be
 	github.com/aymanbagabas/git-module v1.8.4-0.20250826192401-1f81c5471e53
 	github.com/caarlos0/duration v0.0.0-20240108180406-5d492514f3c7
 	github.com/caarlos0/env/v11 v11.3.1
@@ -41,7 +40,6 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.9.1
-	github.com/stretchr/testify v1.10.0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/crypto v0.45.0
 	golang.org/x/sync v0.18.0
@@ -50,6 +48,7 @@ require (
 )
 
 require (
+	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -65,7 +64,6 @@ require (
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/git-lfs/pktline v0.0.0-20230103162542-ca444d533ef1 // indirect
@@ -83,7 +81,6 @@ require (
 	github.com/muesli/mango-pflag v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.65.0 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
