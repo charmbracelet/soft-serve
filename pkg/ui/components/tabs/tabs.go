@@ -3,8 +3,8 @@ package tabs
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 )
 
@@ -51,7 +51,7 @@ func (t *Tabs) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (t *Tabs) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (t *Tabs) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:

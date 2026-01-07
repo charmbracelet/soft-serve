@@ -1,10 +1,10 @@
 package footer
 
 import (
-	"github.com/charmbracelet/bubbles/v2/help"
-	"github.com/charmbracelet/bubbles/v2/key"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 )
 
@@ -37,8 +37,8 @@ func New(c common.Common, keymap help.KeyMap) *Footer {
 // SetSize implements common.Component.
 func (f *Footer) SetSize(width, height int) {
 	f.common.SetSize(width, height)
-	f.help.Width = width -
-		f.common.Styles.Footer.GetHorizontalFrameSize()
+	f.help.SetWidth(width -
+		f.common.Styles.Footer.GetHorizontalFrameSize())
 }
 
 // Init implements tea.Model.
@@ -47,7 +47,7 @@ func (f *Footer) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (f *Footer) Update(_ tea.Msg) (tea.Model, tea.Cmd) {
+func (f *Footer) Update(_ tea.Msg) (common.Model, tea.Cmd) {
 	return f, nil
 }
 

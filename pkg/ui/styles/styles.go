@@ -3,7 +3,7 @@ package styles
 import (
 	"image/color"
 
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // XXX: For now, this is in its own package so that it can be shared between

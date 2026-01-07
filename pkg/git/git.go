@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	gitm "github.com/aymanbagabas/git-module"
-	"github.com/charmbracelet/log/v2"
+	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 )

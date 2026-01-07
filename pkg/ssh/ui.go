@@ -3,10 +3,10 @@ package ssh
 import (
 	"errors"
 
-	"github.com/charmbracelet/bubbles/v2/key"
-	"github.com/charmbracelet/bubbles/v2/list"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -256,7 +256,11 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View implements tea.Model.
-func (ui *UI) View() string {
+func (ui *UI) View() tea.View {
+	var v tea.View
+	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
+
 	var view string
 	wm, hm := ui.getMargins()
 	switch ui.state {
@@ -284,9 +288,10 @@ func (ui *UI) View() string {
 	if ui.showFooter {
 		view = lipgloss.JoinVertical(lipgloss.Left, view, ui.footer.View())
 	}
-	return ui.common.Zone.Scan(
+	v.Content = ui.common.Zone.Scan(
 		ui.common.Styles.App.Render(view),
 	)
+	return v
 }
 
 func (ui *UI) openRepo(rn string) (proto.Repository, error) {

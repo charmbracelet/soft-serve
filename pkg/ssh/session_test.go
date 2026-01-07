@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/log/v2"
+	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -17,8 +17,8 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/store/database"
 	"github.com/charmbracelet/soft-serve/pkg/test"
 	"github.com/charmbracelet/ssh"
-	bm "github.com/charmbracelet/wish/v2/bubbletea"
-	"github.com/charmbracelet/wish/v2/testsession"
+	bm "charm.land/wish/v2/bubbletea"
+	"charm.land/wish/v2/testsession"
 	"github.com/matryer/is"
 	gossh "golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite" // sqlite driver

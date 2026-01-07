@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/log/v2"
+	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/jwk"
 	"github.com/charmbracelet/soft-serve/pkg/lfs"

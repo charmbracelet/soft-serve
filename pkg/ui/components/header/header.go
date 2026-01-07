@@ -3,7 +3,7 @@ package header
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea/v2"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 )
 
@@ -32,7 +32,7 @@ func (h *Header) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (h *Header) Update(_ tea.Msg) (tea.Model, tea.Cmd) {
+func (h *Header) Update(_ tea.Msg) (common.Model, tea.Cmd) {
 	return h, nil
 }
 

@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/charmbracelet/bubbles/v2/key"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
@@ -58,10 +58,7 @@ var Command = &cobra.Command{
 		}
 
 		m.footer = footer.New(c, m)
-		p := tea.NewProgram(m,
-			tea.WithAltScreen(),
-			tea.WithMouseCellMotion(),
-		)
+		p := tea.NewProgram(m)
 
 		_, err = p.Run()
 		return err
@@ -202,7 +199,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View implements tea.Model.
-func (m *model) View() string {
+func (m *model) View() tea.View {
+	var v tea.View
+	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
+
 	style := m.common.Styles.App
 	wm, hm := style.GetHorizontalFrameSize(), style.GetVerticalFrameSize()
 	if m.showFooter {
@@ -230,7 +231,8 @@ func (m *model) View() string {
 		view = lipgloss.JoinVertical(lipgloss.Left, view, m.footer.View())
 	}
 
-	return m.common.Zone.Scan(style.Render(view))
+	v.Content = m.common.Zone.Scan(style.Render(view))
+	return v
 }
 
 type repository struct {

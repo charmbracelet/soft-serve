@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/chroma/v2/lexers"
-	gansi "github.com/charmbracelet/glamour/v2/ansi"
+	gansi "charm.land/glamour/v2/ansi"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
 )
 

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/charmbracelet/log/v2"
+	"charm.land/log/v2"
 )
 
 // httpClient is a Git LFS client to communicate with a LFS source API.

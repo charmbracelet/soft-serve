@@ -1,14 +1,20 @@
 package common
 
 import (
-	"github.com/charmbracelet/bubbles/v2/help"
-	tea "github.com/charmbracelet/bubbletea/v2"
+	"charm.land/bubbles/v2/help"
+	tea "charm.land/bubbletea/v2"
 )
+
+// Model represents a simple UI model.
+type Model interface {
+	Init() tea.Cmd
+	Update(tea.Msg) (Model, tea.Cmd)
+	View() string
+}
 
 // Component represents a Bubble Tea model that implements a SetSize function.
 type Component interface {
-	tea.Model
-	tea.ViewModel
+	Model
 	help.KeyMap
 	SetSize(width, height int)
 }

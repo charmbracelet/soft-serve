@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/charmbracelet/log/v2"
+	"charm.land/log/v2"
 	"github.com/dustin/go-humanize"
 )
 

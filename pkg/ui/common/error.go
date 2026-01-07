@@ -3,7 +3,7 @@ package common
 import (
 	"errors"
 
-	tea "github.com/charmbracelet/bubbletea/v2"
+	tea "charm.land/bubbletea/v2"
 )
 
 // ErrMissingRepo indicates that the requested repository could not be found.

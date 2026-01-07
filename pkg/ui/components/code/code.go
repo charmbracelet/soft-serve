@@ -5,11 +5,11 @@ import (
 	"strings"
 	"sync"
 
+	tea "charm.land/bubbletea/v2"
+	"charm.land/glamour/v2"
+	gansi "charm.land/glamour/v2/ansi"
+	"charm.land/lipgloss/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/glamour/v2"
-	gansi "github.com/charmbracelet/glamour/v2/ansi"
-	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	vp "github.com/charmbracelet/soft-serve/pkg/ui/components/viewport"
 )
@@ -132,7 +132,7 @@ func (r *Code) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (r *Code) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (r *Code) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg.(type) {
 	case tea.WindowSizeMsg:

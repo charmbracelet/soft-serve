@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/charmbracelet/log/v2"
+	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"  // postgres driver

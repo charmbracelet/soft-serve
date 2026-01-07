@@ -3,15 +3,15 @@ package ssh
 import (
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea/v2"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/wish/v2"
+	bm "charm.land/wish/v2/bubbletea"
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish/v2"
-	bm "github.com/charmbracelet/wish/v2/bubbletea"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -54,9 +54,7 @@ func SessionHandler(s ssh.Session) *tea.Program {
 
 	opts := bm.MakeOptions(s)
 	opts = append(opts,
-		tea.WithAltScreen(),
 		tea.WithoutCatchPanics(),
-		tea.WithMouseCellMotion(),
 		tea.WithContext(ctx),
 		tea.WithColorProfile(common.DefaultColorProfile),
 	)
