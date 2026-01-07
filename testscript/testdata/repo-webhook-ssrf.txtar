@@ -39,4 +39,3 @@ stdout 'webhook.site'
 
 # stop the server
 [windows] stopserver
-[windows] ! stderr .
