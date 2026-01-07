@@ -45,11 +45,12 @@ func SessionHandler(s ssh.Session) *tea.Program {
 	initialRepo := ""
 	if len(cmd) == 1 {
 		initialRepo = cmd[0]
-		auth := be.AccessLevelByPublicKey(ctx, initialRepo, s.PublicKey())
-		if auth < access.ReadOnlyAccess {
-			wish.Fatalln(s, proto.ErrUnauthorized)
-			return nil
-		}
+	}
+
+	auth := be.AccessLevelByPublicKey(ctx, initialRepo, s.PublicKey())
+	if auth < access.ReadOnlyAccess {
+		wish.Fatalln(s, proto.ErrUnauthorized)
+		return nil
 	}
 
 	opts := bm.MakeOptions(s)
