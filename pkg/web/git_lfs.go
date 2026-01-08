@@ -893,7 +893,6 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Delete another user's lock
 	l := lfs.Lock{
 		ID:       strconv.FormatInt(lock.ID, 10),
 		Path:     lock.Path,
@@ -902,7 +901,27 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 			Name: owner.Username,
 		},
 	}
+
+	// Retrieve user context first for authorization checks
+	user := proto.UserFromContext(ctx)
+	if user == nil {
+		logger.Error("error getting user from context")
+		renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
+			Message: "unauthorized",
+		})
+		return
+	}
+
+	// Force delete another user's lock (requires admin privileges)
 	if req.Force {
+		if !user.IsAdmin() {
+			logger.Error("non-admin user attempted force delete", "user", user.Username())
+			renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+				Message: "admin access required for force delete",
+			})
+			return
+		}
+
 		if err := datastore.DeleteLFSLock(ctx, dbx, repo.ID(), lockID); err != nil {
 			logger.Error("error deleting lock", "err", err)
 			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
@@ -915,16 +934,7 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Delete our own lock
-	user := proto.UserFromContext(ctx)
-	if user == nil {
-		logger.Error("error getting user from context")
-		renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
-			Message: "unauthorized",
-		})
-		return
-	}
-
+	// Delete our own lock - verify ownership
 	if owner.ID != user.ID() {
 		logger.Error("error deleting another user's lock")
 		renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
