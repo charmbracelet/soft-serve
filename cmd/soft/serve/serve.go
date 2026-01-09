@@ -86,7 +86,7 @@ var (
 			done := make(chan os.Signal, 1)
 			doneOnce := sync.OnceFunc(func() { close(done) })
 
-			signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+			signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 			// This endpoint is added for testing purposes
 			// It allows us to stop the server from the test suite.
@@ -107,12 +107,23 @@ var (
 				doneOnce()
 			}()
 
-			select {
-			case err := <-lch:
-				if err != nil {
-					return fmt.Errorf("server error: %w", err)
+			for {
+				select {
+				case err := <-lch:
+					if err != nil {
+						return fmt.Errorf("server error: %w", err)
+					}
+				case sig := <-done:
+					if sig == syscall.SIGHUP {
+						s.logger.Info("received SIGHUP signal, reloading TLS certificates if enabled")
+						if err := s.ReloadCertificates(); err != nil {
+							s.logger.Error("failed to reload TLS certificates", "err", err)
+						}
+						continue
+					}
 				}
-			case <-done:
+
+				break
 			}
 
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

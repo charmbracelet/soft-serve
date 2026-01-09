@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"time"
 
@@ -37,6 +38,11 @@ func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 	return s, nil
 }
 
+// SetTLSConfig sets the TLS configuration for the HTTP server.
+func (s *HTTPServer) SetTLSConfig(tlsConfig *tls.Config) {
+	s.Server.TLSConfig = tlsConfig
+}
+
 // Close closes the HTTP server.
 func (s *HTTPServer) Close() error {
 	return s.Server.Close()
@@ -44,8 +50,8 @@ func (s *HTTPServer) Close() error {
 
 // ListenAndServe starts the HTTP server.
 func (s *HTTPServer) ListenAndServe() error {
-	if s.cfg.HTTP.TLSKeyPath != "" && s.cfg.HTTP.TLSCertPath != "" {
-		return s.Server.ListenAndServeTLS(s.cfg.HTTP.TLSCertPath, s.cfg.HTTP.TLSKeyPath)
+	if s.Server.TLSConfig != nil {
+		return s.Server.ListenAndServeTLS("", "")
 	}
 	return s.Server.ListenAndServe()
 }
