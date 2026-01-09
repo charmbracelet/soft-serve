@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	"charm.land/wish/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -13,7 +14,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/sshutils"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/ssh"
-	"charm.land/wish/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/cobra"
@@ -135,7 +135,7 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 		rootCmd.SetContext(ctx)
 
 		if err := rootCmd.ExecuteContext(ctx); err != nil {
-			s.Exit(1) // nolint: errcheck
+			s.Exit(1) //nolint: errcheck
 			return
 		}
 	}

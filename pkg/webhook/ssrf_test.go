@@ -158,7 +158,7 @@ func TestDialContextBlocksPrivateIPs(t *testing.T) {
 // sendWebhookWithContext is a test helper that doesn't require database.
 func sendWebhookWithContext(ctx context.Context, w models.Webhook, _ Event, _ any) error {
 	// This is a simplified version for testing that just attempts the HTTP connection
-	req, err := http.NewRequest("POST", w.URL, nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", w.URL, nil)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}

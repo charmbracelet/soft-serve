@@ -8,17 +8,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/charmbracelet/keygen"
 	"charm.land/log/v2"
+	"charm.land/wish/v2"
+	bm "charm.land/wish/v2/bubbletea"
+	rm "charm.land/wish/v2/recover"
+	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/ssh"
-	"charm.land/wish/v2"
-	bm "charm.land/wish/v2/bubbletea"
-	rm "charm.land/wish/v2/recover"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gossh "golang.org/x/crypto/ssh"
@@ -41,7 +41,7 @@ var (
 )
 
 // SSHServer is a SSH server that implements the git protocol.
-type SSHServer struct { // nolint: revive
+type SSHServer struct { //nolint: revive
 	srv    *ssh.Server
 	cfg    *config.Config
 	be     *backend.Backend
@@ -157,12 +157,9 @@ func initializePermissions(ctx ssh.Context) {
 	if perms.Extensions == nil {
 		perms.Extensions = make(map[string]string)
 	}
-	if perms.Permissions.Extensions == nil {
-		perms.Permissions.Extensions = make(map[string]string)
-	}
 }
 
-// PublicKeyAuthHandler handles public key authentication.
+// PublicKeyHandler handles public key authentication.
 func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed bool) {
 	if pk == nil {
 		return false

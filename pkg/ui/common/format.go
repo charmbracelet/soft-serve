@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alecthomas/chroma/v2/lexers"
 	gansi "charm.land/glamour/v2/ansi"
+	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
 )
 

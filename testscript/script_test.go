@@ -38,9 +38,9 @@ func PrepareBuildCommand(binPath string) *exec.Cmd {
 	_, disableRaceSet := os.LookupEnv("SOFT_SERVE_DISABLE_RACE_CHECKS")
 	if disableRaceSet {
 		// don't add the -race flag
-		return exec.Command("go", "build", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
+		return exec.Command("go", "build", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft")) //nolint:noctx
 	}
-	return exec.Command("go", "build", "-race", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft"))
+	return exec.Command("go", "build", "-race", "-cover", "-o", binPath, filepath.Join("..", "cmd", "soft")) //nolint:noctx
 }
 
 func TestMain(m *testing.M) {
@@ -167,7 +167,7 @@ func TestScript(t *testing.T) {
 			// Override the database data source if we're using postgres
 			// so we can create a temporary database for the tests.
 			if cfg.DB.Driver == "postgres" {
-				err, cleanup := setupPostgres(e.T(), cfg)
+				cleanup, err := setupPostgres(e.T(), cfg)
 				if err != nil {
 					return err
 				}
@@ -263,7 +263,7 @@ func cmdUI(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []stri
 					break
 				}
 				check(ts, err, neg)
-				stdin.Write([]byte(string(r))) // nolint: errcheck
+				_, _ = io.WriteString(stdin, string(r))
 
 				// Wait for the UI to process the input
 				time.Sleep(100 * time.Millisecond)
@@ -381,7 +381,7 @@ func cmdNewWebhook(ts *testscript.TestScript, neg bool, args []string) {
 	}
 
 	const whSite = "https://webhook.site"
-	req, err := http.NewRequest(http.MethodPost, whSite+"/token", nil)
+	req, err := http.NewRequest(http.MethodPost, whSite+"/token", nil) //nolint:noctx
 	check(ts, err, neg)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -409,7 +409,7 @@ func cmdCurl(ts *testscript.TestScript, neg bool, args []string) {
 				return err
 			}
 
-			req, err := http.NewRequest(method, url.String(), nil)
+			req, err := http.NewRequest(method, url.String(), nil) //nolint:noctx
 			if err != nil {
 				return err
 			}
@@ -494,7 +494,7 @@ func cmdEnsureServerRunning(ts *testscript.TestScript, neg bool, args []string) 
 	// verify that the server is up
 	addr := net.JoinHostPort("localhost", port)
 	for {
-		conn, _ := net.DialTimeout(
+		conn, _ := net.DialTimeout( //nolint:noctx
 			"tcp",
 			addr,
 			time.Second,
@@ -519,29 +519,26 @@ func cmdEnsureServerNotRunning(ts *testscript.TestScript, neg bool, args []strin
 
 	// verify that the server is not up
 	addr := net.JoinHostPort("localhost", port)
-	for {
-		conn, _ := net.DialTimeout(
-			"tcp",
-			addr,
-			time.Second,
-		)
-		if conn != nil {
-			ts.Fatalf("server is running on port %s while it should not be running", port)
-			conn.Close()
-		}
-		break
+	conn, _ := net.DialTimeout( //nolint:noctx
+		"tcp",
+		addr,
+		time.Second,
+	)
+	if conn != nil {
+		ts.Fatalf("server is running on port %s while it should not be running", port)
+		conn.Close()
 	}
 }
 
 func cmdStopserver(ts *testscript.TestScript, neg bool, args []string) {
 	// stop the server
-	resp, err := http.DefaultClient.Head(fmt.Sprintf("%s/__stop", ts.Getenv("SOFT_SERVE_HTTP_PUBLIC_URL")))
+	resp, err := http.DefaultClient.Head(fmt.Sprintf("%s/__stop", ts.Getenv("SOFT_SERVE_HTTP_PUBLIC_URL"))) //nolint:noctx
 	check(ts, err, neg)
 	resp.Body.Close()
 	time.Sleep(time.Second * 2) // Allow some time for the server to stop
 }
 
-func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
+func setupPostgres(t testscript.T, cfg *config.Config) (func(), error) {
 	// Indicates postgres
 	// Create a disposable database
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -553,7 +550,7 @@ func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
 
 	dbUrl, err := url.Parse(cfg.DB.DataSource)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	scheme := dbUrl.Scheme
@@ -598,21 +595,21 @@ func setupPostgres(t testscript.T, cfg *config.Config) (error, func()) {
 	// Create the database
 	dbx, err := db.Open(context.TODO(), cfg.DB.Driver, connInfo)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	if _, err := dbx.Exec("CREATE DATABASE " + dbName); err != nil {
-		return err, nil
+	if _, err := dbx.ExecContext(context.TODO(), "CREATE DATABASE "+dbName); err != nil {
+		return nil, err
 	}
 
-	return nil, func() {
+	return func() {
 		dbx, err := db.Open(context.TODO(), cfg.DB.Driver, connInfo)
 		if err != nil {
 			t.Fatal("failed to open database", dbName, err)
 		}
 
-		if _, err := dbx.Exec("DROP DATABASE " + dbName); err != nil {
+		if _, err := dbx.ExecContext(context.TODO(), "DROP DATABASE "+dbName); err != nil {
 			t.Fatal("failed to drop database", dbName, err)
 		}
-	}
+	}, nil
 }

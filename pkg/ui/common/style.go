@@ -1,9 +1,9 @@
 package common
 
 import (
-	"github.com/charmbracelet/colorprofile"
 	gansi "charm.land/glamour/v2/ansi"
 	"charm.land/glamour/v2/styles"
+	"github.com/charmbracelet/colorprofile"
 )
 
 // DefaultColorProfile is the default color profile used by the SSH server.

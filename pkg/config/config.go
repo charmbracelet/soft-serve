@@ -246,7 +246,7 @@ func parseFile(cfg *Config, path string) error {
 		return err
 	}
 
-	defer f.Close() // nolint: errcheck
+	defer f.Close() //nolint: errcheck
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode config: %w", err)
 	}
@@ -301,7 +301,7 @@ func writeConfig(cfg *Config, path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644) // nolint: errcheck, gosec
+	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644) //nolint: errcheck, gosec
 }
 
 // WriteConfig writes the configuration to the default file.
@@ -322,7 +322,7 @@ func DefaultDataPath() string {
 }
 
 // ConfigPath returns the path to the config file.
-func (c *Config) ConfigPath() string { // nolint:revive
+func (c *Config) ConfigPath() string { //nolint:revive
 	// If we have a custom config location set, then use that.
 	if path := os.Getenv("SOFT_SERVE_CONFIG_LOCATION"); exist(path) {
 		return path

@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -60,13 +61,13 @@ func ValidateWebhookURL(rawURL string) error {
 	}
 
 	// Resolve hostname to IP addresses
-	ips, err := net.LookupIP(hostname)
+	ips, err := net.DefaultResolver.LookupIPAddr(context.Background(), hostname)
 	if err != nil {
 		return fmt.Errorf("%w: cannot resolve hostname: %v", ErrInvalidURL, err)
 	}
 
 	// Check all resolved IPs
-	if slices.ContainsFunc(ips, isPrivateOrInternalIP) {
+	if slices.ContainsFunc(ips, isPrivateOrInternalIPAddr) {
 		return ErrPrivateIP
 	}
 
@@ -79,6 +80,11 @@ func isLocalhost(hostname string) bool {
 	return hostname == "localhost" ||
 		hostname == "localhost.localdomain" ||
 		strings.HasSuffix(hostname, ".localhost")
+}
+
+// isPrivateOrInternalIPAddr is a helper function that users net.IPAddr instead of net.IP.
+func isPrivateOrInternalIPAddr(ipAddr net.IPAddr) bool {
+	return isPrivateOrInternalIP(ipAddr.IP)
 }
 
 // isPrivateOrInternalIP checks if an IP address is private, internal, or reserved.

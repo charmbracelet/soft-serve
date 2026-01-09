@@ -11,7 +11,7 @@ import (
 )
 
 // MigrateFunc is a function that executes a migration.
-type MigrateFunc func(ctx context.Context, tx *db.Tx) error // nolint:revive
+type MigrateFunc func(ctx context.Context, tx *db.Tx) error //nolint:revive
 
 // Migration is a struct that contains the name of the migration and the
 // function to execute it.
@@ -64,7 +64,7 @@ func Migrate(ctx context.Context, dbx *db.DB) error {
 	logger := log.FromContext(ctx).WithPrefix("migrate")
 	return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 		if !hasTable(tx, "migrations") {
-			if _, err := tx.Exec(Migrations{}.schema(tx.DriverName())); err != nil {
+			if _, err := tx.ExecContext(ctx, Migrations{}.schema(tx.DriverName())); err != nil {
 				return err
 			}
 		}
@@ -86,7 +86,7 @@ func Migrate(ctx context.Context, dbx *db.DB) error {
 				return err
 			}
 
-			if _, err := tx.Exec(tx.Rebind("INSERT INTO migrations (name, version) VALUES (?, ?)"), m.Name, m.Version); err != nil {
+			if _, err := tx.ExecContext(ctx, tx.Rebind("INSERT INTO migrations (name, version) VALUES (?, ?)"), m.Name, m.Version); err != nil {
 				return err
 			}
 		}
@@ -116,7 +116,7 @@ func Rollback(ctx context.Context, dbx *db.DB) error {
 			return err
 		}
 
-		if _, err := tx.Exec(tx.Rebind("DELETE FROM migrations WHERE version = ?"), migrs.Version); err != nil {
+		if _, err := tx.ExecContext(ctx, tx.Rebind("DELETE FROM migrations WHERE version = ?"), migrs.Version); err != nil {
 			return err
 		}
 

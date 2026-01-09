@@ -86,10 +86,10 @@ func (c *httpClient) batch(ctx context.Context, operation string, objects []Poin
 		logger.Errorf("Error while processing request: %v", err)
 		return nil, err
 	}
-	defer res.Body.Close() // nolint: errcheck
+	defer res.Body.Close() //nolint: errcheck
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Unexpected server response: %s", res.Status)
+		return nil, fmt.Errorf("unexpected server response: %s", res.Status)
 	}
 
 	var response BatchResponse
@@ -152,7 +152,7 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 			link, ok := object.Actions[ActionUpload]
 			if !ok {
 				logger.Debugf("%+v", object)
-				return errors.New("Missing action 'upload'")
+				return errors.New("missing action 'upload'")
 			}
 
 			content, err := uc(object.Pointer, nil)
@@ -162,7 +162,7 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 
 			err = transferAdapter.Upload(ctx, object.Pointer, content, link)
 
-			content.Close() // nolint: errcheck
+			content.Close() //nolint: errcheck
 
 			if err != nil {
 				return err
@@ -178,7 +178,7 @@ func (c *httpClient) performOperation(ctx context.Context, objects []Pointer, dc
 			link, ok := object.Actions[ActionDownload]
 			if !ok {
 				logger.Debugf("%+v", object)
-				return errors.New("Missing action 'download'")
+				return errors.New("missing action 'download'")
 			}
 
 			content, err := transferAdapter.Download(ctx, object.Pointer, link)

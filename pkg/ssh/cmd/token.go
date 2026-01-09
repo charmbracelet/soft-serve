@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/caarlos0/duration"
 	"charm.land/lipgloss/v2/table"
+	"github.com/caarlos0/duration"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/dustin/go-humanize"

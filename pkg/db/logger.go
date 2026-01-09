@@ -43,9 +43,11 @@ func (d *DB) QueryRowx(query string, args ...interface{}) *sqlx.Row {
 }
 
 // Exec is a wrapper around sqlx.Exec that logs the query and arguments.
+//
+// Deprecated: Use [DB.ExecContext] instead.
 func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	trace(d.logger, query, args...)
-	return d.DB.Exec(query, args...)
+	return d.DB.Exec(query, args...) //nolint:noctx
 }
 
 // SelectContext is a wrapper around sqlx.SelectContext that logs the query and arguments.
@@ -103,9 +105,11 @@ func (t *Tx) QueryRowx(query string, args ...interface{}) *sqlx.Row {
 }
 
 // Exec is a wrapper around sqlx.Exec that logs the query and arguments.
+//
+// Deprecated: Use [Tx.ExecContext] instead.
 func (t *Tx) Exec(query string, args ...interface{}) (sql.Result, error) {
 	trace(t.logger, query, args...)
-	return t.Tx.Exec(query, args...)
+	return t.Tx.Exec(query, args...) //nolint:noctx
 }
 
 // SelectContext is a wrapper around sqlx.SelectContext that logs the query and arguments.

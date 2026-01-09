@@ -151,6 +151,6 @@ jobs:
 
 func newConfigFile(cfg *Config) string {
 	var b bytes.Buffer
-	configFileTmpl.Execute(&b, cfg) // nolint: errcheck
+	configFileTmpl.Execute(&b, cfg) //nolint: errcheck
 	return b.String()
 }

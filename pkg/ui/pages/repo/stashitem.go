@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	gitm "github.com/aymanbagabas/git-module"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
+	gitm "github.com/aymanbagabas/git-module"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 )
 
