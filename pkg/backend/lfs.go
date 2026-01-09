@@ -39,7 +39,7 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 				return objectError
 			}
 
-			defer content.Close() // nolint: errcheck
+			defer content.Close() //nolint: errcheck
 			return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 				if err := store.CreateLFSObject(ctx, tx, repo.ID(), p.Oid, p.Size); err != nil {
 					return db.WrapError(err)

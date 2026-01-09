@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer dbx.Close() // nolint: errcheck
+	defer dbx.Close() //nolint: errcheck
 	if err := migrate.Migrate(ctx, dbx); err != nil {
 		log.Fatal(err)
 	}
@@ -74,8 +74,9 @@ func TestIdleTimeout(t *testing.T) {
 	var err error
 	var c net.Conn
 	var tries int
+	var dialer net.Dialer
 	for {
-		c, err = net.Dial("tcp", testDaemon.addr)
+		c, err = dialer.DialContext(t.Context(), "tcp", testDaemon.addr)
 		if err != nil && tries >= 3 {
 			t.Fatalf("failed to connect to daemon after %d tries: %v", tries, err)
 		}
@@ -93,7 +94,7 @@ func TestIdleTimeout(t *testing.T) {
 }
 
 func TestInvalidRepo(t *testing.T) {
-	c, err := net.Dial("tcp", testDaemon.addr)
+	c, err := net.Dial("tcp", testDaemon.addr) //nolint:noctx
 	if err != nil {
 		t.Fatalf("failed to connect to daemon: %v", err)
 	}

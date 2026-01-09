@@ -58,7 +58,7 @@ type GitDaemon struct {
 	liMu      sync.Mutex
 }
 
-// NewDaemon returns a new Git daemon.
+// NewGitDaemon returns a new Git daemon.
 func NewGitDaemon(ctx context.Context) (*GitDaemon, error) {
 	cfg := config.FromContext(ctx)
 	addr := cfg.Git.ListenAddr
@@ -79,7 +79,8 @@ func (d *GitDaemon) ListenAndServe() error {
 	if d.done.Load() {
 		return ErrServerClosed
 	}
-	listener, err := net.Listen("tcp", d.addr)
+	var cfg net.ListenConfig
+	listener, err := cfg.Listen(d.ctx, "tcp", d.addr)
 	if err != nil {
 		return err
 	}
@@ -108,7 +109,7 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 			default:
 				d.logger.Debugf("git: error accepting connection: %v", err)
 			}
-			if ne, ok := err.(net.Error); ok && ne.Temporary() { // nolint: staticcheck
+			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {
 					tempDelay = 5 * time.Millisecond
 				} else {
@@ -139,7 +140,7 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 }
 
 func (d *GitDaemon) fatal(c net.Conn, err error) {
-	git.WritePktlineErr(c, err) // nolint: errcheck
+	git.WritePktlineErr(c, err) //nolint: errcheck
 	if err := c.Close(); err != nil {
 		d.logger.Debugf("git: error closing connection: %v", err)
 	}
@@ -160,7 +161,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 	}
 	d.conns.Add(c)
 	defer func() {
-		d.conns.Close(c) // nolint: errcheck
+		d.conns.Close(c) //nolint: errcheck
 	}()
 
 	errc := make(chan error, 1)
@@ -213,7 +214,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 
 		opts := bytes.SplitN(split[1], []byte{0}, 3)
 		if len(opts) < 2 {
-			d.fatal(c, git.ErrInvalidRequest) // nolint: errcheck
+			d.fatal(c, git.ErrInvalidRequest) //nolint: errcheck
 			return
 		}
 
@@ -317,7 +318,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 // Close closes the underlying listener.
 func (d *GitDaemon) Close() error {
 	err := d.closeListener()
-	d.conns.CloseAll() // nolint: errcheck
+	d.conns.CloseAll() //nolint: errcheck
 	return err
 }
 

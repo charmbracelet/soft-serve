@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	bm "charm.land/wish/v2/bubbletea"
+	"charm.land/wish/v2/testsession"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -17,8 +19,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/store/database"
 	"github.com/charmbracelet/soft-serve/pkg/test"
 	"github.com/charmbracelet/ssh"
-	bm "charm.land/wish/v2/bubbletea"
-	"charm.land/wish/v2/testsession"
 	"github.com/matryer/is"
 	gossh "golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite" // sqlite driver
@@ -36,7 +36,7 @@ func TestSession(t *testing.T) {
 		go func() {
 			time.Sleep(1 * time.Second)
 			// s.Signal(gossh.SIGTERM)
-			s.Close() // nolint: errcheck
+			s.Close() //nolint: errcheck
 		}()
 		t.Log("waiting for session to exit")
 		_, err = s.Output("test")
@@ -76,7 +76,6 @@ func setup(tb testing.TB) (*gossh.Session, func() error) {
 	dbstore := database.New(ctx, dbx)
 	ctx = store.WithContext(ctx, dbstore)
 	be := backend.New(ctx, cfg, dbx, dbstore)
-	ctx = backend.WithContext(ctx, be)
 	return testsession.New(tb, &ssh.Server{
 		Handler: ContextMiddleware(cfg, dbx, dbstore, be, log.Default())(bm.MiddlewareWithProgramHandler(SessionHandler)(func(s ssh.Session) {
 			_, _, active := s.Pty()

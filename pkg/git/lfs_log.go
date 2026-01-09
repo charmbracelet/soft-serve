@@ -1,8 +1,8 @@
 package git
 
 import (
-	"github.com/charmbracelet/git-lfs-transfer/transfer"
 	"charm.land/log/v2"
+	"github.com/charmbracelet/git-lfs-transfer/transfer"
 )
 
 type lfsLogger struct {

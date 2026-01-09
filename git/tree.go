@@ -128,11 +128,7 @@ const sniffLen = 8000
 func IsBinary(r io.Reader) (bool, error) {
 	reader := bufio.NewReader(r)
 	c := 0
-	for {
-		if c == sniffLen {
-			break
-		}
-
+	for c < sniffLen {
 		b, err := reader.ReadByte()
 		if err == io.EOF {
 			break

@@ -7,8 +7,8 @@ import (
 	"runtime/debug"
 	"strconv"
 
-	"github.com/charmbracelet/colorprofile"
 	"charm.land/log/v2"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/soft-serve/cmd/soft/admin"
 	"github.com/charmbracelet/soft-serve/cmd/soft/browse"
 	"github.com/charmbracelet/soft-serve/cmd/soft/hook"
@@ -118,7 +118,7 @@ func main() {
 
 	ctx = log.WithContext(ctx, logger)
 	if f != nil {
-		defer f.Close() // nolint: errcheck
+		defer f.Close() //nolint: errcheck
 	}
 
 	// Set global logger

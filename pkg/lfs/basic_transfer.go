@@ -105,11 +105,11 @@ func (a *BasicTransferAdapter) performRequest(ctx context.Context, method string
 }
 
 func handleErrorResponse(resp *http.Response) error {
-	defer resp.Body.Close() // nolint: errcheck
+	defer resp.Body.Close() //nolint: errcheck
 
 	er, err := decodeResponseError(resp.Body)
 	if err != nil {
-		return fmt.Errorf("Request failed with status %s", resp.Status)
+		return fmt.Errorf("request failed with status %s", resp.Status)
 	}
 	return errors.New(er.Message)
 }
