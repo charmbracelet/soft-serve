@@ -1,6 +1,4 @@
-//go:build !unix
-
-package web
+package serve
 
 import (
 	"crypto/tls"
@@ -31,6 +29,19 @@ func NewCertReloader(certPath, keyPath string, logger *log.Logger) (*CertReloade
 	reloader.cert = &cert
 
 	return reloader, nil
+}
+
+// Reload attempts to reload the certificate and key.
+func (cr *CertReloader) Reload() error {
+	newCert, err := tls.LoadX509KeyPair(cr.certPath, cr.keyPath)
+	if err != nil {
+		return err
+	}
+
+	cr.certMu.Lock()
+	defer cr.certMu.Unlock()
+	cr.cert = &newCert
+	return nil
 }
 
 // GetCertificateFunc returns a function that can be used with tls.Config.GetCertificate.

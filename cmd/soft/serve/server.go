@@ -2,6 +2,7 @@ package serve
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,6 +28,7 @@ type Server struct {
 	GitDaemon   *daemon.GitDaemon
 	HTTPServer  *web.HTTPServer
 	StatsServer *stats.StatsServer
+	CertLoader  *CertReloader
 	Cron        *cron.Scheduler
 	Config      *config.Config
 	Backend     *backend.Backend
@@ -87,7 +89,26 @@ func NewServer(ctx context.Context) (*Server, error) {
 		return nil, fmt.Errorf("create stats server: %w", err)
 	}
 
+	if cfg.HTTP.TLSKeyPath != "" && cfg.HTTP.TLSCertPath != "" {
+		srv.CertLoader, err = NewCertReloader(cfg.HTTP.TLSCertPath, cfg.HTTP.TLSKeyPath, logger)
+		if err != nil {
+			return nil, fmt.Errorf("create cert reloader: %w", err)
+		}
+
+		srv.HTTPServer.SetTLSConfig(&tls.Config{
+			GetCertificate: srv.CertLoader.GetCertificateFunc(),
+		})
+	}
+
 	return srv, nil
+}
+
+// ReloadCertificates reloads the TLS certificates for the HTTP server.
+func (s *Server) ReloadCertificates() error {
+	if s.CertLoader == nil {
+		return nil
+	}
+	return s.CertLoader.Reload()
 }
 
 // Start starts the SSH server.

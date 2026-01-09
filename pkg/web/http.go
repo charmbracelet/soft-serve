@@ -14,7 +14,6 @@ import (
 type HTTPServer struct {
 	ctx context.Context
 	cfg *config.Config
-	cr  *CertReloader
 
 	Server *http.Server
 }
@@ -36,19 +35,12 @@ func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 		},
 	}
 
-	if cfg.HTTP.TLSKeyPath != "" && cfg.HTTP.TLSCertPath != "" {
-		cr, err := NewCertReloader(cfg.HTTP.TLSCertPath, cfg.HTTP.TLSKeyPath, logger)
-		if err != nil {
-			return nil, err
-		}
-		s.cr = cr
-
-		s.Server.TLSConfig = &tls.Config{
-			GetCertificate: cr.GetCertificateFunc(),
-		}
-	}
-
 	return s, nil
+}
+
+// SetTLSConfig sets the TLS configuration for the HTTP server.
+func (s *HTTPServer) SetTLSConfig(tlsConfig *tls.Config) {
+	s.Server.TLSConfig = tlsConfig
 }
 
 // Close closes the HTTP server.

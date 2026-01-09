@@ -1,6 +1,6 @@
 //go:build unix
 
-package web
+package serve
 
 import (
 	"crypto/rand"
@@ -9,6 +9,8 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
@@ -60,8 +62,8 @@ func generateTestCert(t *testing.T, certPath, keyPath, cn string) {
 
 func TestCertReloader(t *testing.T) {
 	dir := t.TempDir()
-	certPath := dir + "/cert.pem"
-	keyPath := dir + "/key.pem"
+	certPath := filepath.Join(dir, "/cert.pem")
+	keyPath := filepath.Join(dir, "/key.pem")
 
 	// Initial cert
 	generateTestCert(t, certPath, keyPath, "cert-v1")
@@ -72,6 +74,18 @@ func TestCertReloader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create reloader: %v", err)
 	}
+
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGHUP)
+		for range sigCh {
+			if err := certReloader.Reload(); err != nil {
+				logger.Error("failed to reload certificate", "err", err)
+			} else {
+				logger.Info("certificate reloaded successfully")
+			}
+		}
+	}()
 
 	getCert := certReloader.GetCertificateFunc()
 
