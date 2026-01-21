@@ -16,7 +16,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
-	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/ssh"
 	"github.com/prometheus/client_golang/prometheus"
@@ -74,13 +73,14 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 			CommandMiddleware,
 			// Logging middleware.
 			LoggingMiddleware,
-			// Context middleware.
-			ContextMiddleware(cfg, dbx, datastore, be, logger),
 			// Authentication middleware.
 			// gossh.PublicKeyHandler doesn't guarantee that the public key
 			// is in fact the one used for authentication, so we need to
 			// check it again here.
 			AuthenticationMiddleware,
+			// Context middleware.
+			// This must come first to set up the context.
+			ContextMiddleware(cfg, dbx, datastore, be, logger),
 		),
 	}
 
@@ -166,14 +166,6 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 	}
 
 	allowed = true
-	defer func(allowed *bool) {
-		publicKeyCounter.WithLabelValues(strconv.FormatBool(*allowed)).Inc()
-	}(&allowed)
-
-	user, _ := s.be.UserByPublicKey(ctx, pk)
-	if user != nil {
-		ctx.SetValue(proto.ContextKeyUser, user)
-	}
 
 	// XXX: store the first "approved" public-key fingerprint in the
 	// permissions block to use for authentication later.
@@ -194,10 +186,10 @@ func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.Keyboard
 	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
 
 	// If we're allowing keyless access, reset the public key fingerprint
-	if ac {
-		initializePermissions(ctx)
-		perms := ctx.Permissions()
+	initializePermissions(ctx)
+	perms := ctx.Permissions()
 
+	if ac {
 		// XXX: reset the public-key fingerprint. This is used to validate the
 		// public key being used to authenticate.
 		perms.Extensions["pubkey-fp"] = ""

@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"charm.land/log/v2"
@@ -30,23 +31,43 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 		// validate the authentication. We need to verify that the _last_ key
 		// that was approved is the one that's being used.
 
+		ctx := s.Context()
+		be := backend.FromContext(ctx)
+
+		var pkFp string
+		perms := s.Permissions().Permissions
 		pk := s.PublicKey()
 		if pk != nil {
 			// There is no public key stored in the context, public-key auth
 			// was never requested, skip
-			perms := s.Permissions().Permissions
 			if perms == nil {
 				wish.Fatalln(s, ErrPermissionDenied)
 				return
 			}
 
-			// Check if the key is the same as the one we have in context
-			fp := perms.Extensions["pubkey-fp"]
-			if fp == "" || fp != gossh.FingerprintSHA256(pk) {
-				wish.Fatalln(s, ErrPermissionDenied)
-				return
-			}
+			pkFp = gossh.FingerprintSHA256(pk)
 		}
+
+		// Check if the key is the same as the one we have in context
+		fp := perms.Extensions["pubkey-fp"]
+		if fp != "" && fp != pkFp {
+			wish.Fatalln(s, ErrPermissionDenied)
+			return
+		}
+
+		ac := be.AllowKeyless(ctx)
+		publicKeyCounter.WithLabelValues(strconv.FormatBool(ac || pk != nil)).Inc()
+		if !ac && pk == nil {
+			wish.Fatalln(s, ErrPermissionDenied)
+			return
+		}
+
+		// Set the auth'd user, or anon, in the context
+		var user proto.User
+		if pk != nil {
+			user, _ = be.UserByPublicKey(ctx, pk)
+		}
+		ctx.SetValue(proto.ContextKeyUser, user)
 
 		sh(s)
 	}

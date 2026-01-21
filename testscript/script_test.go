@@ -82,6 +82,10 @@ func TestScript(t *testing.T) {
 	admin1Key, admin1 := mkkey("admin1")
 	_, admin2 := mkkey("admin2")
 	user1Key, user1 := mkkey("user1")
+	attackerKey, attacker := mkkey("attacker")
+	attackerSigner := &maliciousSigner{
+		publicKey: admin1.PublicKey(),
+	}
 
 	testscript.Run(t, testscript.Params{
 		Dir:                 "./testdata/",
@@ -90,8 +94,10 @@ func TestScript(t *testing.T) {
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"soft":                   cmdSoft("admin", admin1.Signer()),
 			"usoft":                  cmdSoft("user1", user1.Signer()),
+			"attacksoft":             cmdSoft("attacker", attackerSigner, attacker.Signer()),
 			"git":                    cmdGit(admin1Key),
 			"ugit":                   cmdGit(user1Key),
+			"agit":                   cmdGit(attackerKey),
 			"curl":                   cmdCurl,
 			"mkfile":                 cmdMkfile,
 			"envfile":                cmdEnvfile,
@@ -127,6 +133,7 @@ func TestScript(t *testing.T) {
 			e.Setenv("ADMIN1_AUTHORIZED_KEY", admin1.AuthorizedKey())
 			e.Setenv("ADMIN2_AUTHORIZED_KEY", admin2.AuthorizedKey())
 			e.Setenv("USER1_AUTHORIZED_KEY", user1.AuthorizedKey())
+			e.Setenv("ATTACKER_AUTHORIZED_KEY", attacker.AuthorizedKey())
 			e.Setenv("SSH_KNOWN_HOSTS_FILE", filepath.Join(t.TempDir(), "known_hosts"))
 			e.Setenv("SSH_KNOWN_CONFIG_FILE", filepath.Join(t.TempDir(), "config"))
 
@@ -189,14 +196,14 @@ func TestScript(t *testing.T) {
 	})
 }
 
-func cmdSoft(user string, key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []string) {
+func cmdSoft(user string, keys ...ssh.Signer) func(ts *testscript.TestScript, neg bool, args []string) {
 	return func(ts *testscript.TestScript, neg bool, args []string) {
 		cli, err := ssh.Dial(
 			"tcp",
 			net.JoinHostPort("localhost", ts.Getenv("SSH_PORT")),
 			&ssh.ClientConfig{
 				User:            user,
-				Auth:            []ssh.AuthMethod{ssh.PublicKeys(key)},
+				Auth:            []ssh.AuthMethod{ssh.PublicKeys(keys...)},
 				HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			},
 		)
@@ -612,4 +619,21 @@ func setupPostgres(t testscript.T, cfg *config.Config) (func(), error) {
 			t.Fatal("failed to drop database", dbName, err)
 		}
 	}, nil
+}
+
+type maliciousSigner struct {
+	publicKey ssh.PublicKey
+}
+
+var _ ssh.Signer = (*maliciousSigner)(nil)
+
+// PublicKey implements ssh.Signer.
+func (m *maliciousSigner) PublicKey() ssh.PublicKey {
+	return m.publicKey
+}
+
+// Sign implements ssh.Signer.
+func (m *maliciousSigner) Sign(rand io.Reader, data []byte) (*ssh.Signature, error) {
+	// The attacker doesn't know how to sign the data without a private key.
+	return &ssh.Signature{}, nil
 }
