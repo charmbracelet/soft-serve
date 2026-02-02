@@ -22,14 +22,14 @@ require (
 	github.com/go-git/go-git/v5 v5.16.4
 	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/gobwas/glob v0.2.3
-	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-querystring v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.11.1
 	github.com/lrstanley/bubblezone/v2 v2.0.0-alpha.3
 	github.com/matryer/is v1.4.1
 	github.com/muesli/mango-cobra v1.3.0
