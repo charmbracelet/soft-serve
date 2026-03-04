@@ -41,6 +41,24 @@ stdout 'admin-access.*'
 ! stdout .
 stderr .
 
+# check default repo visibility
+soft settings default-repo-visibility
+stdout 'public.*'
+
+# change default-repo-visibility and check
+soft settings default-repo-visibility private
+soft settings default-repo-visibility
+stdout 'private.*'
+
+soft settings default-repo-visibility public
+soft settings default-repo-visibility
+stdout 'public.*'
+
+# try to set a bad visibility
+! soft settings default-repo-visibility nope
+! stdout .
+stderr .
+
 # stop the server
 [windows] stopserver
 
