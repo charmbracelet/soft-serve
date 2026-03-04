@@ -16,7 +16,21 @@ import (
 
 // authenticate authenticates the user from the request.
 func authenticate(r *http.Request) (proto.User, error) {
-	// Prefer the Authorization header
+	ctx := r.Context()
+	cfg := config.FromContext(ctx)
+
+	// Check trusted proxy auth header first.
+	if header := cfg.HTTP.ProxyAuthHeader; header != "" {
+		if username := r.Header.Get(header); username != "" {
+			be := backend.FromContext(ctx)
+			user, err := be.User(ctx, username)
+			if err == nil {
+				return user, nil
+			}
+		}
+	}
+
+	// Fall back to the Authorization header.
 	user, err := parseAuthHdr(r)
 	if err != nil || user == nil {
 		if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
