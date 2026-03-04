@@ -1,0 +1,60 @@
+# vi: set ft=conf
+
+# Test proxy_auth_header authentication
+
+[windows] skip 'curl makes github actions hang'
+
+# Enable proxy auth header
+env SOFT_SERVE_HTTP_PROXY_AUTH_HEADER=X-User
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create a non-admin user
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# create a private repo and push content
+soft repo create private-repo -p
+mkdir ./repo
+git -c init.defaultBranch=main -C repo init
+mkfile ./repo/README.md '# test'
+git -C repo add -A
+git -C repo commit -m 'init'
+git -C repo remote add origin http://localhost:$HTTP_PORT/private-repo.git
+
+# create access token for admin to push
+soft token create --expires-in '1h' 'push-token'
+stdout 'ss_*'
+cp stdout pushtokenfile
+envfile PUSH_TOKEN=pushtokenfile
+git -C repo remote set-url origin http://$PUSH_TOKEN@localhost:$HTTP_PORT/private-repo.git
+git -C repo push origin main
+
+# add user1 as collaborator
+soft repo collab add private-repo user1
+
+# Test 1: proxy header authenticates as the named user
+curl -H 'X-User: user1' http://localhost:$HTTP_PORT/private-repo.git/info/refs?service=git-upload-pack
+stdout '.*refs/heads/main.*'
+
+# Test 2: wrong/unknown user in proxy header is denied
+curl -H 'X-User: nobody' http://localhost:$HTTP_PORT/private-repo.git/info/refs?service=git-upload-pack
+stdout '401 Unauthorized'
+
+# Test 3: no proxy header falls back to requiring auth
+curl http://localhost:$HTTP_PORT/private-repo.git/info/refs?service=git-upload-pack
+stdout '401 Unauthorized'
+
+# Test 4: create a token for user1 and verify Authorization header still works
+usoft token create --expires-in '1h' 'test-token'
+stdout 'ss_*'
+cp stdout tokenfile
+envfile TOKEN=tokenfile
+curl http://$TOKEN@localhost:$HTTP_PORT/private-repo.git/info/refs?service=git-upload-pack
+stdout '.*refs/heads/main.*'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
