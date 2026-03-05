@@ -56,3 +56,39 @@ func (b *Backend) SetAnonAccess(ctx context.Context, level access.AccessLevel) e
 		return b.store.SetAnonAccess(ctx, tx, level)
 	})
 }
+
+// IsDefaultRepoPrivate returns whether new repositories are created as private
+// by default.
+func (b *Backend) IsDefaultRepoPrivate(ctx context.Context) bool {
+	var visibility string
+	if err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		var err error
+		visibility, err = b.store.GetDefaultRepoVisibility(ctx, tx)
+		return err
+	}); err != nil {
+		return false
+	}
+
+	return visibility == "private"
+}
+
+// DefaultRepoVisibility returns the default repo visibility setting.
+func (b *Backend) DefaultRepoVisibility(ctx context.Context) string {
+	var visibility string
+	if err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		var err error
+		visibility, err = b.store.GetDefaultRepoVisibility(ctx, tx)
+		return err
+	}); err != nil {
+		return "public"
+	}
+
+	return visibility
+}
+
+// SetDefaultRepoVisibility sets the default repo visibility.
+func (b *Backend) SetDefaultRepoVisibility(ctx context.Context, visibility string) error {
+	return b.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		return b.store.SetDefaultRepoVisibility(ctx, tx, visibility)
+	})
+}

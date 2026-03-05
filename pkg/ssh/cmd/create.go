@@ -27,6 +27,9 @@ func createCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			user := proto.UserFromContext(ctx)
 			name := args[0]
+			if !cmd.Flags().Changed("private") {
+				private = be.IsDefaultRepoPrivate(ctx)
+			}
 			r, err := be.CreateRepository(ctx, name, user, proto.RepositoryOptions{
 				Private:     private,
 				Description: description,
