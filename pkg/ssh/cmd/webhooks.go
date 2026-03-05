@@ -313,6 +313,7 @@ func webhookDeliveriesRedeliverCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "redeliver REPOSITORY WEBHOOK_ID DELIVERY_ID",
 		Short:             "Redeliver a webhook delivery",
+		Args:              cobra.ExactArgs(3),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -343,6 +344,7 @@ func webhookDeliveriesGetCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "get REPOSITORY WEBHOOK_ID DELIVERY_ID",
 		Short:             "Get a webhook delivery",
+		Args:              cobra.ExactArgs(3),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
