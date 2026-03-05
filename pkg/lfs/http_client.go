@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"charm.land/log/v2"
+	"github.com/charmbracelet/soft-serve/pkg/ssrf"
 )
 
 // httpClient is a Git LFS client to communicate with a LFS source API.
@@ -22,11 +23,12 @@ var _ Client = (*httpClient)(nil)
 
 // newHTTPClient returns a new Git LFS client.
 func newHTTPClient(endpoint Endpoint) *httpClient {
+	client := ssrf.NewSecureClient()
 	return &httpClient{
-		client:   http.DefaultClient,
+		client:   client,
 		endpoint: endpoint,
 		transfers: map[string]TransferAdapter{
-			TransferBasic: &BasicTransferAdapter{http.DefaultClient},
+			TransferBasic: &BasicTransferAdapter{client},
 		},
 	}
 }

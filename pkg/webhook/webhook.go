@@ -10,14 +10,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"time"
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/ssrf"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/soft-serve/pkg/version"
@@ -38,42 +37,8 @@ type Delivery struct {
 	Event Event
 }
 
-// secureHTTPClient creates an HTTP client with SSRF protection.
-var secureHTTPClient = &http.Client{
-	Timeout: 30 * time.Second,
-	Transport: &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// Parse the address to get the IP
-			host, _, err := net.SplitHostPort(addr)
-			if err != nil {
-				return nil, err //nolint:wrapcheck
-			}
-
-			// Validate the resolved IP before connecting
-			ip := net.ParseIP(host)
-			if ip != nil {
-				if err := ValidateIPBeforeDial(ip); err != nil {
-					return nil, fmt.Errorf("blocked connection to private IP: %w", err)
-				}
-			}
-
-			// Use standard dialer with timeout
-			dialer := &net.Dialer{
-				Timeout:   10 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}
-			return dialer.DialContext(ctx, network, addr)
-		},
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	},
-	// Don't follow redirects to prevent bypassing IP validation
-	CheckRedirect: func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
-	},
-}
+// secureHTTPClient is an HTTP client with SSRF protection.
+var secureHTTPClient = ssrf.NewSecureClient()
 
 // do sends a webhook.
 // Caller must close the returned body.
