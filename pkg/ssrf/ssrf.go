@@ -23,16 +23,16 @@ var (
 
 // NewSecureClient returns an HTTP client with SSRF protection.
 // It validates resolved IPs at dial time to block connections to private
-// and internal networks. Since validation uses the already-resolved IP
-// from the Transport's DNS lookup, there is no TOCTOU gap between
-// resolution and connection. Redirects are disabled to match the
-// webhook client convention and prevent redirect-based SSRF.
+// and internal networks. Hostnames are resolved and the validated IP is
+// used directly in the dial call to prevent DNS rebinding (TOCTOU between
+// validation and connection). Redirects are disabled to match the webhook
+// client convention and prevent redirect-based SSRF.
 func NewSecureClient() *http.Client {
 	return &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				host, _, err := net.SplitHostPort(addr)
+				host, port, err := net.SplitHostPort(addr)
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
@@ -56,7 +56,11 @@ func NewSecureClient() *http.Client {
 					Timeout:   10 * time.Second,
 					KeepAlive: 30 * time.Second,
 				}
-				return dialer.DialContext(ctx, network, addr)
+				// Dial using the validated IP to prevent DNS rebinding.
+				// Without this, the dialer resolves the hostname again
+				// independently, and the second resolution could return
+				// a different (private) IP.
+				return dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
 			},
 			MaxIdleConns:          100,
 			IdleConnTimeout:       90 * time.Second,

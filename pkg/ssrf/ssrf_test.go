@@ -49,6 +49,25 @@ func TestNewSecureClientBlocksPrivateIPs(t *testing.T) {
 	}
 }
 
+func TestNewSecureClientBlocksPrivateHostnames(t *testing.T) {
+	client := NewSecureClient()
+	transport := client.Transport.(*http.Transport)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	// "localhost" resolves to 127.0.0.1 (loopback) -- must be blocked.
+	// This exercises the hostname resolution path in DialContext:
+	// net.LookupIP("localhost") -> 127.0.0.1 -> isPrivateOrInternal -> blocked.
+	conn, err := transport.DialContext(ctx, "tcp", "localhost:80")
+	if conn != nil {
+		conn.Close()
+	}
+	if !errors.Is(err, ErrPrivateIP) {
+		t.Errorf("expected ErrPrivateIP for hostname resolving to loopback, got: %v", err)
+	}
+}
+
 func TestNewSecureClientNilIPNotErrPrivateIP(t *testing.T) {
 	client := NewSecureClient()
 	transport := client.Transport.(*http.Transport)
