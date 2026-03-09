@@ -1,6 +1,6 @@
 module github.com/charmbracelet/soft-serve
 
-go 1.24.2
+go 1.25.0
 
 require (
 	charm.land/bubbles/v2 v2.0.0
@@ -42,7 +42,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/crypto v0.48.0
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.46.1
 )
