@@ -137,6 +137,7 @@ type LFSConfig struct {
 // JobsConfig is the configuration for cron jobs.
 type JobsConfig struct {
 	MirrorPull string `env:"MIRROR_PULL" yaml:"mirror_pull"`
+	GitGC      string `env:"GIT_GC" yaml:"git_gc"`
 }
 
 // Config is the configuration for Soft Serve.
