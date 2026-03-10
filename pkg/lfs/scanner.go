@@ -214,3 +214,54 @@ func revListAllObjects(ctx context.Context, revListWriter *io.PipeWriter, wg *sy
 		errChan <- fmt.Errorf("git rev-list [%s]: %w - %s", basePath, err, errbuf.String())
 	}
 }
+
+// pointerBlobHash calculates the hash value of each LFS pointer
+func pointerBlobHash(r *git.Repository, pointerChan <-chan Pointer, shastoCheckWriter *io.PipeWriter, wg *sync.WaitGroup) {
+	defer wg.Done()
+	defer shastoCheckWriter.Close()
+
+	for pointer := range pointerChan {
+		pointerSha := hex.EncodeToString(r.ComputeObjectHash(gitm.ObjectBlob, []byte(pointer.String())))
+		shastoCheckWriter.Write([]byte(pointerSha + "\n"))
+	}
+}
+
+// catFileBatchLineExist reads the git cat-file batch check results line by line from the reader,
+// and outputs the existence status through resultChan.
+func catFileBatchLineExist(catFileCheckReader *io.PipeReader, resultChan chan<- bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+	defer catFileCheckReader.Close()
+	scanner := bufio.NewScanner(catFileCheckReader)
+	defer func() {
+		close(resultChan)
+	}()
+
+	for scanner.Scan() {
+		typ := scanner.Text()
+		if len(typ) == 0 {
+			continue
+		}
+		// typ is:
+		// <sha> SP <type> SP <size> LF
+		// or  <object> SP missing|excluded|ambiguous|submodule LF
+
+		idx := strings.IndexByte(typ, ' ')
+		if idx < 0 {
+			resultChan <- false
+			continue
+		}
+		typ = typ[idx+1:] // remove <sha>
+
+		idx = strings.IndexByte(typ, ' ')
+		if idx < 0 {
+			resultChan <- false
+			continue
+		}
+
+		sizeStr := typ[idx+1 : len(typ)-1] // remove <type>
+		typ = typ[:idx]
+
+		_, err := strconv.ParseInt(sizeStr, 10, 64) // # validate size
+		resultChan <- (err == nil)
+	}
+}
