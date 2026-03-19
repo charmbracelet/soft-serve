@@ -1,19 +1,19 @@
 module github.com/charmbracelet/soft-serve
 
-go 1.25.0
+go 1.25.8
 
 require (
 	charm.land/bubbles/v2 v2.0.0
-	charm.land/bubbletea/v2 v2.0.1
-	charm.land/glamour/v2 v2.0.0-20251110203732-69649f93d3b1
-	charm.land/lipgloss/v2 v2.0.0
-	charm.land/log/v2 v2.0.0-20251110204020-529bb77f35da
-	charm.land/wish/v2 v2.0.0-20251118130305-6cd7463a7b97
+	charm.land/bubbletea/v2 v2.0.2
+	charm.land/glamour/v2 v2.0.0
+	charm.land/lipgloss/v2 v2.0.2
+	charm.land/log/v2 v2.0.0
+	charm.land/wish/v2 v2.0.0
 	github.com/alecthomas/chroma/v2 v2.23.1
 	github.com/aymanbagabas/git-module v1.8.4-0.20250826192401-1f81c5471e53
 	github.com/caarlos0/duration v0.0.0-20240108180406-5d492514f3c7
 	github.com/caarlos0/env/v11 v11.4.0
-	github.com/charmbracelet/colorprofile v0.4.2
+	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92
 	github.com/charmbracelet/keygen v0.5.4
 	github.com/charmbracelet/ssh v0.0.0-20250826160808-ebfa259c7309
@@ -41,7 +41,7 @@ require (
 	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.10.2
 	go.uber.org/automaxprocs v1.6.0
-	golang.org/x/crypto v0.48.0
+	golang.org/x/crypto v0.49.0
 	golang.org/x/sync v0.20.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.46.1
@@ -92,10 +92,10 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.5 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
-	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
-	golang.org/x/tools v0.41.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	modernc.org/libc v1.67.6 // indirect
