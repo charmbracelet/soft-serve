@@ -25,6 +25,15 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 )
 
+func validateImportRemote(remote string) error {
+	endpoint, err := lfs.NewEndpoint(remote)
+	if err != nil || endpoint.Host == "" {
+		return proto.ErrInvalidRemote
+	}
+
+	return nil
+}
+
 // CreateRepository creates a new repository.
 //
 // It implements backend.Backend.
@@ -93,6 +102,11 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 func (d *Backend) ImportRepository(_ context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
+		return nil, err
+	}
+
+	remote = utils.Sanitize(remote)
+	if err := validateImportRemote(remote); err != nil {
 		return nil, err
 	}
 

@@ -1,0 +1,34 @@
+# vi: set ft=conf
+
+[windows] skip 'uses a raw server filesystem path as the import remote'
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create a private repo and a second user
+soft repo create secret -p
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# seed the private repo with content
+git clone ssh://localhost:$SSH_PORT/secret secret
+mkfile ./secret/SECRET.txt 'top secret'
+git -C secret add -A
+git -C secret commit -m 'first'
+git -C secret push origin HEAD
+
+# user1 cannot read the private repo directly
+! usoft repo info secret
+stderr 'repository not found'
+
+# user1 also must not be able to import the server-local repo path
+! usoft repo import stolen "$DATA_PATH/repos/secret.git" --lfs-endpoint http://example.com
+stderr 'remote must be a network URL'
+
+# the failed import must not create a readable repo
+! usoft repo info stolen
+stderr 'repository not found'
+
+[windows] stopserver
+[windows] ! stderr .

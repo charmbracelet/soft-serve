@@ -7,6 +7,8 @@ import (
 var (
 	// ErrUnauthorized is returned when the user is not authorized to perform action.
 	ErrUnauthorized = errors.New("unauthorized")
+	// ErrInvalidRemote is returned when a repository import remote is invalid.
+	ErrInvalidRemote = errors.New("remote must be a network URL")
 	// ErrFileNotFound is returned when the file is not found.
 	ErrFileNotFound = errors.New("file not found")
 	// ErrRepoNotFound is returned when a repository is not found.
