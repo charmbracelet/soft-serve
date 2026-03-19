@@ -143,6 +143,7 @@ lfs:
 # Cron job configuration
 jobs:
   mirror_pull: "{{ .Jobs.MirrorPull }}"
+  git_gc: "{{ .Jobs.GitGC }}"
 
 # Additional admin keys.
 #initial_admin_keys:
