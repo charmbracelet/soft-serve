@@ -27,15 +27,22 @@ func (d *Backend) AccessLevel(ctx context.Context, repo string, username string)
 //
 // It implements backend.Backend.
 func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ssh.PublicKey) access.AccessLevel {
-	for _, k := range d.cfg.AdminKeys() {
-		if sshutils.KeysEqual(pk, k) {
-			return access.AdminAccess
+	if pk != nil {
+		for _, k := range d.cfg.AdminKeys() {
+			if sshutils.KeysEqual(pk, k) {
+				return access.AdminAccess
+			}
+		}
+
+		user, _ := d.UserByPublicKey(ctx, pk)
+		if user != nil {
+			return d.AccessLevel(ctx, repo, user.Username())
 		}
 	}
 
-	user, _ := d.UserByPublicKey(ctx, pk)
-	if user != nil {
-		return d.AccessLevel(ctx, repo, user.Username())
+	// Fall back to the context user (e.g., authenticated via access token).
+	if ctxUser := proto.UserFromContext(ctx); ctxUser != nil {
+		return d.AccessLevel(ctx, repo, ctxUser.Username())
 	}
 
 	return d.AccessLevel(ctx, repo, "")
