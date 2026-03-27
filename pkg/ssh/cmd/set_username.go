@@ -14,7 +14,7 @@ func SetUsernameCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			user, err := currentUser(ctx, be)
+			user, err := currentUser(ctx)
 			if err != nil {
 				return err
 			}

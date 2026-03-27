@@ -113,7 +113,7 @@ func CommandName(args []string) string {
 // currentUser resolves the authenticated user from the session context.
 // It checks the context user first (set by AuthenticationMiddleware for
 // both public key and token auth), avoiding a redundant DB lookup.
-func currentUser(ctx context.Context, _ *backend.Backend) (proto.User, error) {
+func currentUser(ctx context.Context) (proto.User, error) {
 	user := proto.UserFromContext(ctx)
 	if user != nil {
 		return user, nil
