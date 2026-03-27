@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -36,6 +37,9 @@ func UserCommand() *cobra.Command {
 			// becomes -k ssh-ed25519 AAAA as separate tokens). Merge any
 			// trailing args into the key to reassemble the full value.
 			if len(args) > 1 {
+				if key == "" {
+					return fmt.Errorf("accepts 1 arg(s), received %d", len(args))
+				}
 				key = strings.Join(append([]string{key}, args[1:]...), " ")
 				key = strings.TrimSpace(key)
 			}
