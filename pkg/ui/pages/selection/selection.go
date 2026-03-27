@@ -192,7 +192,8 @@ func (s *Selection) Init() tea.Cmd {
 	ctx := s.common.Context()
 	be := s.common.Backend()
 	pk := s.common.PublicKey()
-	if pk == nil && !be.AllowKeyless(ctx) {
+	user := proto.UserFromContext(ctx)
+	if pk == nil && user == nil && !be.AllowKeyless(ctx) {
 		return nil
 	}
 
