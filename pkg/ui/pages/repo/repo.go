@@ -115,8 +115,11 @@ func (r *Repo) commonHelp() []key.Binding {
 	back.SetHelp("esc", "back to menu")
 	tab := r.common.KeyMap.Section
 	tab.SetHelp("tab", "switch tab")
+	copy := r.common.KeyMap.Copy
+	copy.SetHelp("c", "copy clone cmd")
 	b = append(b, back)
 	b = append(b, tab)
+	b = append(b, copy)
 	return b
 }
 
@@ -204,6 +207,11 @@ func (r *Repo) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, r.common.KeyMap.Back):
 				cmds = append(cmds, goBackCmd)
+			case key.Matches(msg, r.common.KeyMap.Copy):
+				if r.selectedRepo != nil {
+					cmd := r.common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
+					cmds = append(cmds, copyCmd(cmd, "Command copied to clipboard"))
+				}
 			}
 		}
 	case CopyMsg:
