@@ -204,7 +204,11 @@ func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, challenge gossh.
 			s.logger.Info("keyboard-interactive token auth succeeded", "username", user.Username())
 			return true
 		}
-		s.logger.Warn("keyboard-interactive token auth failed", "err", tokenErr)
+		if tokenErr != nil {
+			s.logger.Warn("keyboard-interactive token auth failed", "err", tokenErr)
+		} else {
+			s.logger.Warn("keyboard-interactive token auth failed", "err", "user not found")
+		}
 	}
 
 	// No valid token: fall back to AllowKeyless behavior.
