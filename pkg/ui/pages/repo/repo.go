@@ -115,11 +115,11 @@ func (r *Repo) commonHelp() []key.Binding {
 	back.SetHelp("esc", "back to menu")
 	tab := r.common.KeyMap.Section
 	tab.SetHelp("tab", "switch tab")
-	copy := r.common.KeyMap.Copy
-	copy.SetHelp("c", "copy clone cmd")
+	copyKey := r.common.KeyMap.Copy
+	copyKey.SetHelp("c", "copy clone cmd")
 	b = append(b, back)
 	b = append(b, tab)
-	b = append(b, copy)
+	b = append(b, copyKey)
 	return b
 }
 
