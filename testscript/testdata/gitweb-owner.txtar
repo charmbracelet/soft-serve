@@ -1,0 +1,25 @@
+# vi: set ft=conf
+
+# Regression test for https://github.com/charmbracelet/soft-serve/issues/753
+# gitweb.owner should be set in the git config when a repo is created.
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create user1 (non-admin)
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# TEST 1: admin creates a repo — gitweb.owner should be "admin"
+soft repo create adminrepo
+readfile $DATA_PATH/repos/adminrepo.git/config
+stdout 'owner = admin'
+
+# TEST 2: user1 creates a repo — gitweb.owner should be "user1"
+usoft repo create userrepo
+readfile $DATA_PATH/repos/userrepo.git/config
+stdout 'owner = user1'
+
+# stop the server
+[windows] stopserver
