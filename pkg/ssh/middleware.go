@@ -55,17 +55,28 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 			return
 		}
 
+		// Check if this session was authenticated via access token.
+		tokenUser := perms.Extensions[tokenUserExtKey]
+
 		ac := be.AllowKeyless(ctx)
-		publicKeyCounter.WithLabelValues(strconv.FormatBool(ac || pk != nil)).Inc()
-		if !ac && pk == nil {
+		publicKeyCounter.WithLabelValues(strconv.FormatBool(ac || pk != nil || tokenUser != "")).Inc()
+		if !ac && pk == nil && tokenUser == "" {
 			wish.Fatalln(s, ErrPermissionDenied)
 			return
 		}
 
-		// Set the auth'd user, or anon, in the context
+		// Resolve the authenticated user identity.
 		var user proto.User
 		if pk != nil {
 			user, _ = be.UserByPublicKey(ctx, pk)
+		} else if tokenUser != "" {
+			var err error
+			user, err = be.User(ctx, tokenUser)
+			if err != nil {
+				log.FromContext(ctx).Warn("token-authenticated user not found", "username", tokenUser, "err", err)
+				wish.Fatalln(s, ErrPermissionDenied)
+				return
+			}
 		}
 		ctx.SetValue(proto.ContextKeyUser, user)
 

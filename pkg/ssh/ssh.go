@@ -23,6 +23,10 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
+// tokenUserExtKey is the permissions extension key used to pass the
+// authenticated username from KeyboardInteractiveHandler to AuthenticationMiddleware.
+const tokenUserExtKey = "token-user"
+
 var (
 	publicKeyCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "soft_serve",
@@ -180,18 +184,34 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
-// This is used after all public key authentication has failed.
-func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
-	ac := s.be.AllowKeyless(ctx)
-	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
-
-	// If we're allowing keyless access, reset the public key fingerprint
+// It prompts for an access token and validates it. If no valid token is
+// provided, it falls back to AllowKeyless behavior.
+func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, challenge gossh.KeyboardInteractiveChallenge) bool {
 	initializePermissions(ctx)
 	perms := ctx.Permissions()
 
+	// Prompt the user for an access token.
+	answers, err := challenge("", "", []string{"Access Token: "}, []bool{false})
+	if err == nil && len(answers) > 0 && answers[0] != "" {
+		token := answers[0]
+		user, tokenErr := s.be.UserByAccessToken(ctx, token)
+		if tokenErr == nil && user != nil {
+			// Valid token: store user identity and allow access.
+			perms.Extensions["pubkey-fp"] = ""
+			perms.Extensions[tokenUserExtKey] = user.Username()
+			ctx.SetValue(ssh.ContextKeyPermissions, perms)
+			keyboardInteractiveCounter.WithLabelValues("true").Inc()
+			s.logger.Info("keyboard-interactive token auth succeeded", "username", user.Username())
+			return true
+		}
+		s.logger.Warn("keyboard-interactive token auth failed", "err", tokenErr)
+	}
+
+	// No valid token: fall back to AllowKeyless behavior.
+	ac := s.be.AllowKeyless(ctx)
+	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
+
 	if ac {
-		// XXX: reset the public-key fingerprint. This is used to validate the
-		// public key being used to authenticate.
 		perms.Extensions["pubkey-fp"] = ""
 		ctx.SetValue(ssh.ContextKeyPermissions, perms)
 	}

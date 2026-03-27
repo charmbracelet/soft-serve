@@ -23,8 +23,7 @@ func PubkeyCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			pk := sshutils.PublicKeyFromContext(ctx)
-			user, err := be.UserByPublicKey(ctx, pk)
+			user, err := currentUser(ctx, be)
 			if err != nil {
 				return err
 			}
@@ -45,8 +44,7 @@ func PubkeyCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			pk := sshutils.PublicKeyFromContext(ctx)
-			user, err := be.UserByPublicKey(ctx, pk)
+			user, err := currentUser(ctx, be)
 			if err != nil {
 				return err
 			}
@@ -68,8 +66,7 @@ func PubkeyCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			pk := sshutils.PublicKeyFromContext(ctx)
-			user, err := be.UserByPublicKey(ctx, pk)
+			user, err := currentUser(ctx, be)
 			if err != nil {
 				return err
 			}
