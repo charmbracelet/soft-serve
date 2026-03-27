@@ -208,9 +208,13 @@ func (r *Repo) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 			case key.Matches(msg, r.common.KeyMap.Back):
 				cmds = append(cmds, goBackCmd)
 			case key.Matches(msg, r.common.KeyMap.Copy):
-				if r.selectedRepo != nil {
+				// Only handle clone copy on the Readme tab to avoid
+				// conflicting with pane-level copy handlers (Files, Log, Refs, Stash).
+				if r.selectedRepo != nil && r.panes[r.activeTab].TabName() == "Readme" {
 					cmd := r.common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
-					cmds = append(cmds, copyCmd(cmd, "Command copied to clipboard"))
+					if cmd != "" {
+						cmds = append(cmds, copyCmd(cmd, "Clone command copied to clipboard"))
+					}
 				}
 			}
 		}
