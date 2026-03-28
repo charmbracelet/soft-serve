@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/sshutils"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
@@ -171,6 +172,16 @@ type Config struct {
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
+	// AnonAccess is the anonymous access level applied on startup.
+	// Valid values: "no-access", "read-only", "read-write", "admin-access".
+	// Leave empty to keep the value stored in the database.
+	AnonAccess string `env:"ANON_ACCESS" yaml:"anon_access"`
+
+	// AllowKeyless controls whether keyless (keyboard-interactive) access is
+	// allowed. When set, this overrides the value stored in the database on
+	// every startup.  Leave unset to keep the database value.
+	AllowKeyless *bool `env:"ALLOW_KEYLESS" yaml:"allow_keyless"`
+
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" yaml:"-"`
 }
@@ -190,6 +201,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_DATA_PATH=%s", c.DataPath),
 		fmt.Sprintf("SOFT_SERVE_NAME=%s", c.Name),
 		fmt.Sprintf("SOFT_SERVE_INITIAL_ADMIN_KEYS=%s", strings.Join(c.InitialAdminKeys, "\n")),
+		fmt.Sprintf("SOFT_SERVE_ANON_ACCESS=%s", c.AnonAccess),
 		fmt.Sprintf("SOFT_SERVE_SSH_ENABLED=%t", c.SSH.Enabled),
 		fmt.Sprintf("SOFT_SERVE_SSH_LISTEN_ADDR=%s", c.SSH.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_SSH_PUBLIC_URL=%s", c.SSH.PublicURL),
@@ -442,6 +454,21 @@ func (c *Config) Validate() error {
 	}
 
 	c.InitialAdminKeys = pks
+
+	if c.AnonAccess != "" {
+		level := access.ParseAccessLevel(c.AnonAccess)
+		// ParseAccessLevel returns NoAccess for unknown strings, but "no-access"
+		// is also a valid explicit value, so check by re-serialising.
+		if level.String() != c.AnonAccess {
+			return fmt.Errorf("invalid anon_access %q: must be one of %s, %s, %s, %s",
+				c.AnonAccess,
+				access.NoAccess.String(),
+				access.ReadOnlyAccess.String(),
+				access.ReadWriteAccess.String(),
+				access.AdminAccess.String(),
+			)
+		}
+	}
 
 	c.HTTP.CORS.AllowedOrigins = append([]string{c.HTTP.PublicURL}, c.HTTP.CORS.AllowedOrigins...)
 
