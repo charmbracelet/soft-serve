@@ -163,6 +163,11 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		return ErrInvalidRepo
 	} else if err != nil {
 		var exitErr *exec.ExitError
+		// Note: errors.As correctly unwraps through errors.Join, which Go 1.20+
+		// uses when cmd.WaitDelay fires (joining the ExitError with a timeout
+		// error). Verified: errors.As(errors.Join(exitErr, timeoutErr), &exitErr)
+		// returns true. So the suppression path below is safe even when WaitDelay
+		// wraps the ExitError via errors.Join.
 		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == -1 && errors.Is(ctx.Err(), context.Canceled) {
 				// Process was killed because context was cancelled — either a client
@@ -175,6 +180,12 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 			if len(exitErr.Stderr) > 0 {
 				return fmt.Errorf("%w: %s", err, exitErr.Stderr)
 			}
+		} else if errors.Is(ctx.Err(), context.Canceled) {
+			// Fallback: context was cancelled but the error is not an ExitError
+			// (e.g. WaitDelay produced a pure timeout error without an underlying
+			// ExitError). Suppress this as well — it is expected cleanup noise.
+			log.FromContext(ctx).Debug("git process cleanup on context cancellation", "service", svc.Name())
+			return nil
 		}
 
 		return err
