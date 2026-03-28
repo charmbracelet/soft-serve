@@ -164,7 +164,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 	} else if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			if exitErr.ExitCode() == -1 && ctx.Err() != nil {
+			if exitErr.ExitCode() == -1 && errors.Is(ctx.Err(), context.Canceled) {
 				// Process was killed because context was cancelled (client disconnected).
 				// This is normal for capability-advertisement-only clients (e.g. git ls-remote).
 				return nil
