@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -82,6 +83,13 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 			// This must come first to set up the context.
 			ContextMiddleware(cfg, dbx, datastore, be, logger),
 		),
+	}
+
+	// Ensure the directory for the host key file exists.
+	if dir := filepath.Dir(cfg.SSH.KeyPath); dir != "." {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return nil, fmt.Errorf("create ssh key dir: %w", err)
+		}
 	}
 
 	opts := []ssh.Option{
