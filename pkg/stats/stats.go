@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"time"
 
@@ -33,6 +34,11 @@ func NewStatsServer(ctx context.Context) (*StatsServer, error) {
 			MaxHeaderBytes:    http.DefaultMaxHeaderBytes,
 		},
 	}, nil
+}
+
+// Serve accepts connections on l and serves HTTP requests.
+func (s *StatsServer) Serve(l net.Listener) error {
+	return s.server.Serve(l)
 }
 
 // ListenAndServe starts the StatsServer.

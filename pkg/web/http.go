@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"crypto/tls"
+	"net"
 	"net/http"
 	"time"
 
@@ -46,6 +47,14 @@ func (s *HTTPServer) SetTLSConfig(tlsConfig *tls.Config) {
 // Close closes the HTTP server.
 func (s *HTTPServer) Close() error {
 	return s.Server.Close()
+}
+
+// Serve accepts connections on l and serves HTTP requests.
+func (s *HTTPServer) Serve(l net.Listener) error {
+	if s.Server.TLSConfig != nil {
+		return s.Server.ServeTLS(l, "", "")
+	}
+	return s.Server.Serve(l)
 }
 
 // ListenAndServe starts the HTTP server.
