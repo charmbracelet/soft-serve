@@ -39,6 +39,12 @@ var (
 	}, []string{"allowed"})
 )
 
+// tokenAuthUserIDKey is a package-private context key used to carry the
+// token-authenticated user ID from KeyboardInteractiveHandler to
+// AuthenticationMiddleware. Using a private type (not a string) prevents
+// injection via SSH certificate extensions, which use string-keyed maps.
+type tokenAuthUserIDKey struct{}
+
 // SSHServer is a SSH server that implements the git protocol.
 type SSHServer struct { //nolint: revive
 	srv    *ssh.Server
@@ -157,6 +163,7 @@ func initializePermissions(ctx ssh.Context) {
 	if perms.Extensions == nil {
 		perms.Extensions = make(map[string]string)
 	}
+	ctx.SetValue(ssh.ContextKeyPermissions, perms)
 }
 
 // PublicKeyHandler handles public key authentication.
@@ -180,20 +187,47 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
-// This is used after all public key authentication has failed.
-func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
-	ac := s.be.AllowKeyless(ctx)
-	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
-
-	// If we're allowing keyless access, reset the public key fingerprint
+// It prompts for an access token and validates it. If no valid token is
+// provided, it falls back to AllowKeyless behavior.
+func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, challenge gossh.KeyboardInteractiveChallenge) bool {
 	initializePermissions(ctx)
 	perms := ctx.Permissions()
 
+	// Prompt the user for an access token.
+	answers, err := challenge("", "", []string{"Access Token: "}, []bool{false})
+	if err != nil {
+		s.logger.Debug("keyboard-interactive challenge failed", "err", err)
+	} else if len(answers) > 0 && answers[0] != "" {
+		token := answers[0]
+		user, tokenErr := s.be.UserByAccessToken(ctx, token)
+		if tokenErr == nil && user != nil {
+			// Valid token: store the user ID via a package-private context key.
+			// We intentionally do NOT use perms.Extensions here — certificate
+			// extensions from gossh are merged into the same map, so a string
+			// key can be injected by a client presenting a crafted certificate.
+			//
+			// Clear pubkey-fp so AuthenticationMiddleware's fingerprint guard
+			// does not reject this keyless token-auth session.
+			perms.Extensions["pubkey-fp"] = ""
+			ctx.SetValue(ssh.ContextKeyPermissions, perms)
+			ctx.SetValue(tokenAuthUserIDKey{}, user.ID())
+			keyboardInteractiveCounter.WithLabelValues("true").Inc()
+			s.logger.Info("keyboard-interactive token auth succeeded", "username", user.Username())
+			return true
+		}
+		if tokenErr != nil {
+			s.logger.Warn("keyboard-interactive token auth failed", "err", tokenErr)
+		} else {
+			s.logger.Warn("keyboard-interactive token auth failed", "err", "user not found")
+		}
+	}
+
+	// No valid token: fall back to AllowKeyless behavior.
+	ac := s.be.AllowKeyless(ctx)
+	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
+
 	if ac {
-		// XXX: reset the public-key fingerprint. This is used to validate the
-		// public key being used to authenticate.
 		perms.Extensions["pubkey-fp"] = ""
-		ctx.SetValue(ssh.ContextKeyPermissions, perms)
 	}
 	return ac
 }

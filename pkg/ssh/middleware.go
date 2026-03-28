@@ -55,17 +55,37 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 			return
 		}
 
+		// Check if this session was authenticated via access token.
+		// Token-authenticated sessions carry the user ID via a package-private
+		// context key (tokenAuthUserIDKey) set during keyboard-interactive auth.
+		// We intentionally do NOT read this from perms.Extensions — certificate
+		// extensions from gossh are merged into the same map, so a string key
+		// can be injected by a client presenting a crafted certificate.
+		_, isTokenAuth := ctx.Value(tokenAuthUserIDKey{}).(int64)
+
 		ac := be.AllowKeyless(ctx)
-		publicKeyCounter.WithLabelValues(strconv.FormatBool(ac || pk != nil)).Inc()
-		if !ac && pk == nil {
+		publicKeyCounter.WithLabelValues(strconv.FormatBool(ac || pk != nil || isTokenAuth)).Inc()
+		if !ac && pk == nil && !isTokenAuth {
 			wish.Fatalln(s, ErrPermissionDenied)
 			return
 		}
 
-		// Set the auth'd user, or anon, in the context
+		// Set the auth'd user, or anon, in the context.
 		var user proto.User
 		if pk != nil {
-			user, _ = be.UserByPublicKey(ctx, pk)
+			if u, err := be.UserByPublicKey(ctx, pk); err != nil {
+				log.FromContext(ctx).Debug("public key lookup failed", "err", err)
+			} else {
+				user = u
+			}
+		} else if tokenID, ok := ctx.Value(tokenAuthUserIDKey{}).(int64); ok {
+			if u, err := be.UserByID(ctx, tokenID); err != nil {
+				log.FromContext(ctx).Warn("failed to resolve token-auth user", "id", tokenID, "err", err)
+				wish.Fatalln(s, ErrPermissionDenied)
+				return
+			} else {
+				user = u
+			}
 		}
 		ctx.SetValue(proto.ContextKeyUser, user)
 
