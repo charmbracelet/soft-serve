@@ -165,8 +165,11 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == -1 && errors.Is(ctx.Err(), context.Canceled) {
-				// Process was killed because context was cancelled (client disconnected).
-				// This is normal for capability-advertisement-only clients (e.g. git ls-remote).
+				// Process was killed because context was cancelled — either a client
+				// that disconnected after capability advertisement (e.g. git ls-remote)
+				// or an in-flight operation killed during server shutdown. Both are
+				// expected and not worth surfacing as errors.
+				log.FromContext(ctx).Debug("git process killed on context cancellation", "service", svc.Name())
 				return nil
 			}
 			if len(exitErr.Stderr) > 0 {
