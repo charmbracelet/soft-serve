@@ -5,29 +5,109 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/hooks"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/sshutils"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
+	"gopkg.in/yaml.v3"
 )
 
 var _ hooks.Hooks = (*Backend)(nil)
 
-// PostReceive is called by the git post-receive hook.
-//
-// It implements Hooks.
-func (d *Backend) PostReceive(ctx context.Context, _ io.Writer, _ io.Writer, repo string, args []hooks.HookArg) {
+// repoMetaConfig holds repository metadata fields synced from .soft-serve.yaml.
+type repoMetaConfig struct {
+	Description string `yaml:"description"`
+	Private     *bool  `yaml:"private"`
+	Hidden      *bool  `yaml:"hidden"`
+}
+
+// PostReceive is called by the git post-receive hook. It implements Hooks.
+// Metadata sync (.soft-serve.yaml) is performed asynchronously so the push
+// response is not blocked by DB writes or git tree reads.
+func (d *Backend) PostReceive(_ context.Context, _ io.Writer, _ io.Writer, repo string, args []hooks.HookArg) {
 	d.logger.Debug("post-receive hook called", "repo", repo, "args", args)
 
-	// Trigger push mirrors asynchronously.
+	// Sync .soft-serve.yaml metadata asynchronously so the push
+	// response is not blocked by DB writes or git tree reads.
+	go func() {
+		syncCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		d.syncRepoMeta(syncCtx, repo)
+	}()
+}
+
+// syncRepoMeta reads .soft-serve.yaml from HEAD and applies non-zero fields
+// to the repository backend. Private and hidden require admin access.
+func (d *Backend) syncRepoMeta(ctx context.Context, repo string) {
 	r, err := d.Repository(ctx, repo)
 	if err != nil {
-		d.logger.Warn("post-receive: failed to find repository for push mirrors", "repo", repo, "err", err)
+		d.logger.Warn("post-receive: failed to find repository", "repo", repo, "err", err)
 		return
 	}
+
+	// Trigger push mirrors asynchronously.
 	d.PushMirrors(ctx, r)
+
+	gr, err := r.Open()
+	if err != nil {
+		// empty or invalid repo — skip
+		return
+	}
+
+	const maxMetaFileSize = 64 * 1024 // 64 KB
+
+	content, _, err := git.LatestFile(gr, nil, ".soft-serve.yaml")
+	if err != nil {
+		// file absent or no commits yet — no-op
+		return
+	}
+	if len(content) > maxMetaFileSize {
+		d.logger.Warnf("post-receive: .soft-serve.yaml exceeds %d bytes, skipping", maxMetaFileSize)
+		return
+	}
+
+	var meta repoMetaConfig
+	if err := yaml.Unmarshal([]byte(content), &meta); err != nil {
+		d.logger.Warnf("post-receive: parse .soft-serve.yaml: %v", err)
+		return
+	}
+
+	// Only admins may change visibility — look up the pushing user
+	var isAdmin bool
+	if pubkey := os.Getenv("SOFT_SERVE_PUBLIC_KEY"); pubkey != "" {
+		pk, _, pkErr := sshutils.ParseAuthorizedKey(pubkey)
+		if pkErr == nil {
+			if u, uErr := d.UserByPublicKey(ctx, pk); uErr == nil {
+				isAdmin = u.IsAdmin()
+			}
+		}
+	} else if username := os.Getenv("SOFT_SERVE_USERNAME"); username != "" {
+		if u, uErr := d.User(ctx, username); uErr == nil {
+			isAdmin = u.IsAdmin()
+		}
+	}
+
+	if meta.Description != "" {
+		if err := d.SetDescription(ctx, repo, meta.Description); err != nil {
+			d.logger.Warnf("post-receive: set description: %v", err)
+		}
+	}
+
+	if isAdmin {
+		if meta.Private != nil {
+			if err := d.SetPrivate(ctx, repo, *meta.Private); err != nil {
+				d.logger.Warnf("post-receive: set private: %v", err)
+			}
+		}
+		if meta.Hidden != nil {
+			if err := d.SetHidden(ctx, repo, *meta.Hidden); err != nil {
+				d.logger.Warnf("post-receive: set hidden: %v", err)
+			}
+		}
+	}
 }
 
 // PreReceive is called by the git pre-receive hook.
