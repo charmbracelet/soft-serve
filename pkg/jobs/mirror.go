@@ -24,12 +24,14 @@ func init() {
 type mirrorPull struct{}
 
 // Spec derives the spec used for pull mirrors and implements Runner.
+// Returns an empty string when the job is disabled, which causes the scheduler
+// to skip registering it.
 func (m mirrorPull) Spec(ctx context.Context) string {
 	cfg := config.FromContext(ctx)
-	if cfg.Jobs.MirrorPull != "" {
-		return cfg.Jobs.MirrorPull
+	if !cfg.Jobs.MirrorPull.Enabled {
+		return ""
 	}
-	return "@every 10m"
+	return cfg.Jobs.MirrorPull.Schedule
 }
 
 // Func runs the (pull) mirror job task and implements Runner.
