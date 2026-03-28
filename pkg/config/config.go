@@ -516,7 +516,9 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	c.HTTP.CORS.AllowedOrigins = append([]string{c.HTTP.PublicURL}, c.HTTP.CORS.AllowedOrigins...)
+	if len(c.HTTP.CORS.AllowedOrigins) == 0 || c.HTTP.CORS.AllowedOrigins[0] != c.HTTP.PublicURL {
+		c.HTTP.CORS.AllowedOrigins = append([]string{c.HTTP.PublicURL}, c.HTTP.CORS.AllowedOrigins...)
+	}
 
 	return nil
 }

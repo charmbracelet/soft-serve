@@ -235,6 +235,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	batchResponse.Objects = objects
+	w.Header().Set("Cache-Control", "no-store, private")
 	renderJSON(w, http.StatusOK, batchResponse)
 }
 
@@ -620,6 +621,14 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 			logger.Error("error getting lock", "err", err)
 			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
 				Message: "internal server error",
+			})
+			return
+		}
+
+		// Scope check: reject locks belonging to other repos.
+		if lock.RepoID != repo.ID() {
+			renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+				Message: "lock not found",
 			})
 			return
 		}
