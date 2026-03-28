@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -24,6 +25,12 @@ func Open(ctx context.Context, driverName string, dsn string) (*DB, error) {
 	db, err := sqlx.ConnectContext(ctx, driverName, dsn)
 	if err != nil {
 		return nil, err
+	}
+
+	if strings.HasPrefix(driverName, "sqlite") {
+		if _, err := db.ExecContext(ctx, "PRAGMA journal_mode=WAL"); err != nil {
+			return nil, fmt.Errorf("enable WAL mode: %w", err)
+		}
 	}
 
 	d := &DB{

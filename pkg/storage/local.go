@@ -76,6 +76,13 @@ func (l *LocalStorage) Rename(oldName, newName string) error {
 		return err
 	}
 
+	// If destination already exists the object was uploaded concurrently.
+	// Remove the temp file and return success — the stored copy is authoritative.
+	if _, err := os.Stat(newName); err == nil {
+		_ = os.Remove(oldName)
+		return nil
+	}
+
 	return os.Rename(oldName, newName)
 }
 
