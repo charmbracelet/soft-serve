@@ -19,7 +19,7 @@ import (
 var _ sort.Interface = Items{}
 
 // copiedResetMsg is sent after the copy feedback timer expires.
-type copiedResetMsg struct{}
+type copiedResetMsg struct{ gen int }
 
 // Items is a list of Item.
 type Items []Item
@@ -104,6 +104,7 @@ type ItemDelegate struct {
 	common     *common.Common
 	activePane *pane
 	copiedIdx  int
+	copiedGen  int
 }
 
 // NewItemDelegate creates a new ItemDelegate.
@@ -142,17 +143,21 @@ func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
 			d.copiedIdx = idx
+			d.copiedGen++
+			gen := d.copiedGen
 			return tea.Batch(
 				tea.SetClipboard(item.Command()),
 				m.SetItem(m.GlobalIndex(), item),
 				func() tea.Msg {
 					time.Sleep(1500 * time.Millisecond)
-					return copiedResetMsg{}
+					return copiedResetMsg{gen: gen}
 				},
 			)
 		}
 	case copiedResetMsg:
-		d.copiedIdx = -1
+		if msg.gen == d.copiedGen {
+			d.copiedIdx = -1
+		}
 	}
 	return nil
 }
