@@ -165,7 +165,10 @@ func (r *Readme) updateReadmeCmd() tea.Msg {
 	if r.repo == nil {
 		return common.ErrorMsg(common.ErrMissingRepo)
 	}
-	rm, rp, _ := backend.Readme(r.repo, r.ref)
+	rm, rp, err := backend.Readme(r.repo, r.ref)
+	if err != nil {
+		return common.ErrorMsg(err)
+	}
 	m.Content = rm
 	m.Path = rp
 	return m
