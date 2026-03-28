@@ -18,8 +18,16 @@ var _ hooks.Hooks = (*Backend)(nil)
 // PostReceive is called by the git post-receive hook.
 //
 // It implements Hooks.
-func (d *Backend) PostReceive(_ context.Context, _ io.Writer, _ io.Writer, repo string, args []hooks.HookArg) {
+func (d *Backend) PostReceive(ctx context.Context, _ io.Writer, _ io.Writer, repo string, args []hooks.HookArg) {
 	d.logger.Debug("post-receive hook called", "repo", repo, "args", args)
+
+	// Trigger push mirrors asynchronously.
+	r, err := d.Repository(ctx, repo)
+	if err != nil {
+		d.logger.Warn("post-receive: failed to find repository for push mirrors", "repo", repo, "err", err)
+		return
+	}
+	d.PushMirrors(ctx, r)
 }
 
 // PreReceive is called by the git pre-receive hook.

@@ -9,4 +9,5 @@ type Store interface {
 	LFSStore
 	AccessTokenStore
 	WebhookStore
+	PushMirrorStore
 }

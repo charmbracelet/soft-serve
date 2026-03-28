@@ -33,6 +33,7 @@ func RepoCommand() *cobra.Command {
 		mirrorCommand(),
 		privateCommand(),
 		projectName(),
+		pushMirrorCommand(),
 		renameCommand(),
 		tagCommand(),
 		treeCommand(),
