@@ -133,7 +133,6 @@ func (d *ItemDelegate) Spacing() int { return 1 }
 
 // Update implements list.ItemDelegate.
 func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
-	idx := m.Index()
 	item, ok := m.SelectedItem().(Item)
 	if !ok {
 		return nil
@@ -142,7 +141,7 @@ func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
-			d.copiedIdx = idx
+			d.copiedIdx = m.GlobalIndex()
 			d.copiedGen++
 			gen := d.copiedGen
 			return tea.Batch(
