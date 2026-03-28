@@ -24,8 +24,8 @@ import (
 )
 
 // tokenUserExtKey is the permissions extension key used to pass the
-// authenticated username from KeyboardInteractiveHandler to AuthenticationMiddleware.
-const tokenUserExtKey = "token-user"
+// authenticated user ID from KeyboardInteractiveHandler to AuthenticationMiddleware.
+const tokenUserExtKey = "token-user-id"
 
 var (
 	publicKeyCounter = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -197,9 +197,9 @@ func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, challenge gossh.
 		token := answers[0]
 		user, tokenErr := s.be.UserByAccessToken(ctx, token)
 		if tokenErr == nil && user != nil {
-			// Valid token: store user identity and allow access.
+			// Valid token: store user ID and allow access.
 			perms.Extensions["pubkey-fp"] = ""
-			perms.Extensions[tokenUserExtKey] = user.Username()
+			perms.Extensions[tokenUserExtKey] = strconv.FormatInt(user.ID(), 10)
 			ctx.SetValue(ssh.ContextKeyPermissions, perms)
 			keyboardInteractiveCounter.WithLabelValues("true").Inc()
 			s.logger.Info("keyboard-interactive token auth succeeded", "username", user.Username())
