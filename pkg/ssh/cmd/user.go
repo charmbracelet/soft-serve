@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -22,7 +23,7 @@ func UserCommand() *cobra.Command {
 	var admin bool
 	var key string
 	userCreateCommand := &cobra.Command{
-		Use:               "create USERNAME [AUTHORIZED_KEY]",
+		Use:               "create USERNAME",
 		Short:             "Create a new user",
 		Args:              cobra.MinimumNArgs(1),
 		PersistentPreRunE: checkIfAdmin,
@@ -31,10 +32,16 @@ func UserCommand() *cobra.Command {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
 			username := args[0]
-			// Accept key as remaining positional args (joined) to handle the case
-			// where the SSH layer splits "ssh-ed25519 AAAA..." into two tokens.
-			if key == "" && len(args) > 1 {
-				key = strings.Join(args[1:], " ")
+			// When -k is passed over SSH, the key value may be split across
+			// the flag and trailing positional args (e.g. -k "ssh-ed25519 AAAA"
+			// becomes -k ssh-ed25519 AAAA as separate tokens). Merge any
+			// trailing args into the key to reassemble the full value.
+			if len(args) > 1 {
+				if key == "" {
+					return fmt.Errorf("accepts 1 arg(s), received %d", len(args))
+				}
+				key = strings.Join(append([]string{key}, args[1:]...), " ")
+				key = strings.TrimSpace(key)
 			}
 			if key != "" {
 				pk, _, err := sshutils.ParseAuthorizedKey(key)
