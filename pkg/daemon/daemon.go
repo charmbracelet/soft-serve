@@ -146,6 +146,17 @@ func (d *GitDaemon) fatal(c net.Conn, err error) {
 	}
 }
 
+// sanitizeParamValue rejects values containing newlines, nulls, or other
+// control characters that could corrupt the GIT_PROTOCOL env var.
+func sanitizeParamValue(s string) (string, bool) {
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return "", false
+		}
+	}
+	return s, true
+}
+
 // handleClient handles a git protocol client.
 func (d *GitDaemon) handleClient(conn net.Conn) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -284,15 +295,32 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		}
 
 		// Add git protocol environment variable.
+		// Only the "version" key is accepted; values are checked for control characters.
 		if len(extraParams) > 0 {
 			var gitProto string
 			for k, v := range extraParams {
+				if k != "version" {
+					d.logger.Warnf("git: ignoring unknown extra param key %q", k)
+					continue
+				}
+				sk, ok := sanitizeParamValue(k)
+				if !ok {
+					d.logger.Warnf("git: dropping extra param with unsafe key %q", k)
+					continue
+				}
+				sv, ok := sanitizeParamValue(v)
+				if !ok {
+					d.logger.Warnf("git: dropping extra param with unsafe value for key %q", k)
+					continue
+				}
 				if len(gitProto) > 0 {
 					gitProto += ":"
 				}
-				gitProto += k + "=" + v
+				gitProto += sk + "=" + sv
 			}
-			envs = append(envs, "GIT_PROTOCOL="+gitProto)
+			if gitProto != "" {
+				envs = append(envs, "GIT_PROTOCOL="+gitProto)
+			}
 		}
 
 		envs = append(envs, d.cfg.Environ()...)

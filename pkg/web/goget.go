@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"text/template"
+	"html/template"
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"

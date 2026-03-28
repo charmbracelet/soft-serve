@@ -341,7 +341,8 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxLFSObjectSize)
 
 	pointer := lfs.Pointer{Oid: oid}
-	if _, err := strg.Put(path.Join("objects", pointer.RelativePath()), r.Body); err != nil {
+	n, err := strg.Put(path.Join("objects", pointer.RelativePath()), r.Body)
+	if err != nil {
 		logger.Error("error writing object", "oid", oid, "err", err)
 		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
@@ -349,16 +350,7 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	size, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)
-	if err != nil {
-		logger.Error("error parsing content length", "err", err)
-		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid content length",
-		})
-		return
-	}
-
-	if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), oid, size); err != nil {
+	if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), oid, n); err != nil {
 		if errors.Is(err, db.ErrDuplicateKey) {
 			// A concurrent upload for the same OID already committed the record;
 			// treat as idempotent success (git-lfs sends parallel PUTs for large pushes).
