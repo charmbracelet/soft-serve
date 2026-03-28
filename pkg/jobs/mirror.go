@@ -69,19 +69,37 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 						"remote update --prune", // update remote and prune remote refs
 					}
 
+					// Build the SSH env once; reused for every git command below.
+					sshEnv := fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+						filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
+						cfg.SSH.ClientKeyPath,
+					)
+
+					syncOK := true
 					for _, c := range cmds {
 						args := strings.Split(c, " ")
-						cmd := git.NewCommand(args...).WithContext(ctx)
-						cmd.AddEnvs(
-							fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-								filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
-								cfg.SSH.ClientKeyPath,
-							),
-						)
+						// Prepend -c gc.auto=0 to disable automatic garbage
+						// collection. git fetch and git remote update both
+						// trigger gc --auto by default; on large repos this
+						// spawns git rev-list --objects --all and pegs a CPU
+						// for the entire sync window.
+						args = append([]string{"-c", "gc.auto=0"}, args...)
+						// Use no timeout (-1) so that syncing large repos is not
+						// killed by the 1-minute DefaultTimeout. The initial clone
+						// in ImportRepository already sets Timeout: -1 for the
+						// same reason. git-module RunInDirWithOptions only applies
+						// a deadline when timeout > 0, so -1 is safe here.
+						cmd := git.NewCommand(args...).WithContext(ctx).WithTimeout(-1)
+						cmd.AddEnvs(sshEnv)
 
 						if _, err := cmd.RunInDir(r.Path); err != nil {
-							logger.Error("error running git remote update", "repo", name, "err", err)
+							logger.Error("error running git command", "cmd", c, "repo", name, "err", err)
+							syncOK = false
+							break
 						}
+					}
+					if !syncOK {
+						return
 					}
 
 					if cfg.LFS.Enabled {
