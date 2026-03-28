@@ -169,12 +169,13 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		// returns true. So the suppression path below is safe even when WaitDelay
 		// wraps the ExitError via errors.Join.
 		if errors.As(err, &exitErr) {
-			if exitErr.ExitCode() == -1 && errors.Is(ctx.Err(), context.Canceled) {
-				// Process was killed because context was cancelled — either a client
-				// that disconnected after capability advertisement (e.g. git ls-remote)
-				// or an in-flight operation killed during server shutdown. Both are
-				// expected and not worth surfacing as errors.
-				log.FromContext(ctx).Debug("git process killed on context cancellation", "service", svc.Name())
+			if errors.Is(ctx.Err(), context.Canceled) {
+				// Process exited because context was cancelled — client disconnected
+				// or server is shutting down. Expected; not worth surfacing.
+				// We do not gate on ExitCode()==-1: on Unix a signal-killed process
+				// has no exit code (-1), but on Windows TerminateProcess sets exit
+				// code 1. Checking ctx.Err() alone is portable across both.
+				log.FromContext(ctx).Debug("git process exited on context cancellation", "service", svc.Name())
 				return nil
 			}
 			if len(exitErr.Stderr) > 0 {
