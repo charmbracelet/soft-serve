@@ -214,6 +214,10 @@ type Config struct {
 	// every startup.  Leave unset to keep the database value.
 	AllowKeyless *bool `env:"ALLOW_KEYLESS" yaml:"allow_keyless"`
 
+	// AllowPublicGoGet serves go-get meta tags for private/hidden repos when true.
+	// The actual git content remains inaccessible without authentication.
+	AllowPublicGoGet bool `env:"ALLOW_PUBLIC_GO_GET" yaml:"allow_public_go_get"`
+
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" yaml:"-"`
 }
@@ -269,6 +273,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_LFS_SSH_ENABLED=%t", c.LFS.SSHEnabled),
 		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL_ENABLED=%t", c.Jobs.MirrorPull.Enabled),
 		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL_SCHEDULE=%s", c.Jobs.MirrorPull.Schedule),
+		fmt.Sprintf("SOFT_SERVE_ALLOW_PUBLIC_GO_GET=%t", c.AllowPublicGoGet),
 	}...)
 
 	return envs

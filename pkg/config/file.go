@@ -188,6 +188,10 @@ jobs:
 # Overrides the value stored in the database when set.
 # Leave commented out to preserve the database value.
 #allow_keyless: true
+
+# When true, serve go-get meta tags for private/hidden repositories.
+# The actual git content remains inaccessible without credentials.
+# allow_public_go_get: false
 `))
 
 func newConfigFile(cfg *Config) string {
