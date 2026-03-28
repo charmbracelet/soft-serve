@@ -18,6 +18,9 @@ import (
 
 var _ sort.Interface = Items{}
 
+// copiedResetMsg is sent after the copy feedback timer expires.
+type copiedResetMsg struct{}
+
 // Items is a list of Item.
 type Items []Item
 
@@ -139,8 +142,17 @@ func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
 			d.copiedIdx = idx
-			return tea.SetClipboard(item.Command())
+			return tea.Batch(
+				tea.SetClipboard(item.Command()),
+				m.SetItem(m.GlobalIndex(), item),
+				func() tea.Msg {
+					time.Sleep(1500 * time.Millisecond)
+					return copiedResetMsg{}
+				},
+			)
 		}
+	case copiedResetMsg:
+		d.copiedIdx = -1
 	}
 	return nil
 }
@@ -207,7 +219,6 @@ func (d *ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	if d.copiedIdx == index {
 		cmd = "(copied to clipboard)"
 		cmdStyler = styles.Desc.Render
-		d.copiedIdx = -1
 	}
 	cmd = common.TruncateString(cmd, m.Width()-styles.Base.GetHorizontalFrameSize())
 	s.WriteString(cmdStyler(cmd))
