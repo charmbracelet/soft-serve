@@ -452,7 +452,14 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
 
-	version := r.Header.Get("Git-Protocol")
+	gitProtocol := r.Header.Get("Git-Protocol")
+	// Sanitize: reject any control characters to prevent env var injection.
+	for _, c := range gitProtocol {
+		if c < 0x20 || c == 0x7f {
+			gitProtocol = ""
+			break
+		}
+	}
 
 	var stdout bytes.Buffer
 	cmd := git.ServiceCommand{
@@ -477,10 +484,8 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 			"SOFT_SERVE_USERNAME=" + user.Username(),
 		}...)
 	}
-	if len(version) != 0 {
-		cmd.Env = append(cmd.Env, []string{
-			fmt.Sprintf("GIT_PROTOCOL=%s", version),
-		}...)
+	if gitProtocol != "" {
+		cmd.Env = append(cmd.Env, "GIT_PROTOCOL="+gitProtocol)
 	}
 
 	var (
@@ -563,6 +568,13 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 	dir, repoName, file := mux.Vars(r)["dir"], mux.Vars(r)["repo"], mux.Vars(r)["file"]
 	service := getServiceType(r)
 	protocol := r.Header.Get("Git-Protocol")
+	// Sanitize: reject any control characters to prevent env var injection.
+	for _, c := range protocol {
+		if c < 0x20 || c == 0x7f {
+			protocol = ""
+			break
+		}
+	}
 
 	gitHttpUploadCounter.WithLabelValues(repoName, file).Inc()
 
@@ -587,8 +599,8 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 				"SOFT_SERVE_USERNAME=" + user.Username(),
 			}...)
 		}
-		if len(protocol) != 0 {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_PROTOCOL=%s", protocol))
+		if protocol != "" {
+			cmd.Env = append(cmd.Env, "GIT_PROTOCOL="+protocol)
 		}
 
 		var version int
@@ -648,6 +660,13 @@ func getTextFile(w http.ResponseWriter, r *http.Request) {
 func sendFile(contentType string, w http.ResponseWriter, r *http.Request) {
 	dir, file := mux.Vars(r)["dir"], mux.Vars(r)["file"]
 	reqFile := filepath.Join(dir, file)
+
+	// Guard against path traversal.
+	root := dir + string(filepath.Separator)
+	if !strings.HasPrefix(reqFile, root) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
 
 	f, err := os.Stat(reqFile)
 	if os.IsNotExist(err) {
