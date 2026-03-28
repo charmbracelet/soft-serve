@@ -27,7 +27,7 @@ var repoIndexHTMLTpl = template.Must(template.New("index").Parse(`<!DOCTYPE html
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <meta http-equiv="refresh" content="0; url=https://godoc.org/{{ .ImportRoot }}/{{.Repo}}">
-    <meta name="go-import" content="{{ .ImportRoot }}/{{ .Repo }} git {{ .Config.HTTP.PublicURL }}/{{ .Repo }}.git">
+    <meta name="go-import" content="{{ .ImportRoot }}/{{ .Repo }} git {{ .CloneURL }}">
 </head>
 <body>
 Redirecting to docs at <a href="https://godoc.org/{{ .ImportRoot }}/{{ .Repo }}">godoc.org/{{ .ImportRoot }}/{{ .Repo }}</a>...
@@ -73,14 +73,21 @@ func GoGetHandler(w http.ResponseWriter, r *http.Request) {
 			repo = path.Dir(repo)
 		}
 
+		sanitized := utils.SanitizeRepo(repo)
+		cloneURL := cfg.HTTP.PublicURL + "/" + sanitized + ".git"
+		if cfg.HTTP.StripGitSuffix {
+			cloneURL = cfg.HTTP.PublicURL + "/" + sanitized
+		}
 		if err := repoIndexHTMLTpl.Execute(w, struct {
 			Repo       string
 			Config     *config.Config
 			ImportRoot string
+			CloneURL   string
 		}{
-			Repo:       utils.SanitizeRepo(repo),
+			Repo:       sanitized,
 			Config:     cfg,
 			ImportRoot: importRoot.Host,
+			CloneURL:   cloneURL,
 		}); err != nil {
 			logger.Error("failed to render go get template", "err", err)
 			renderInternalServerError(w, r)

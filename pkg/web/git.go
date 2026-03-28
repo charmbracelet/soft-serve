@@ -73,6 +73,53 @@ var (
 	}, []string{"repo", "file"})
 )
 
+// gitSuffixMiddleware rewrites request paths so that repos are accessible
+// without the .git suffix when cfg.HTTP.StripGitSuffix is true.
+// It inserts ".git" before any recognised git sub-path so that all
+// downstream handlers continue to see the canonical /<name>.git/... form.
+func gitSuffixMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
+	// Known sub-paths that immediately follow the repo segment.
+	gitSubPaths := []string{
+		"/info/refs",
+		"/git-upload-pack",
+		"/git-receive-pack",
+		"/git-upload-archive",
+		"/HEAD",
+		"/objects/",
+		"/info/lfs/",
+		"/raw/",
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if cfg.HTTP.StripGitSuffix && !strings.Contains(r.URL.Path, ".git") {
+				p := r.URL.Path
+				for _, sub := range gitSubPaths {
+					if idx := strings.Index(p, sub); idx > 0 {
+						// Insert .git before the sub-path.
+						newPath := p[:idx] + ".git" + p[idx:]
+						r2 := r.Clone(r.Context())
+						r2.URL.Path = newPath
+						if r.URL.RawPath != "" {
+							r2.URL.RawPath = p[:idx] + ".git" + r.URL.RawPath[idx:]
+						}
+						next.ServeHTTP(w, r2)
+						return
+					}
+				}
+				// No sub-path found — path is bare /<repo> (e.g. go-get).
+				// Append .git so withParams can strip it back to the repo name.
+				if p != "/" {
+					r2 := r.Clone(r.Context())
+					r2.URL.Path = strings.TrimSuffix(p, "/") + ".git"
+					next.ServeHTTP(w, r2)
+					return
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func withParams(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
