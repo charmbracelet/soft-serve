@@ -48,6 +48,11 @@ ssh:
   # A value of 0 means no timeout.
   idle_timeout: {{ .SSH.IdleTimeout }}
 
+  # Allow mouse events in the TUI. When true (default), mouse clicks and
+  # scrolling work in the TUI. Set to false to restore terminal text selection.
+  # Can also be controlled with SOFT_SERVE_SSH_ALLOW_MOUSE_EVENTS=false.
+  allow_mouse_events: {{ .SSH.AllowMouseEvents }}
+
 # The Git daemon configuration.
 git:
   # Enable the Git daemon.

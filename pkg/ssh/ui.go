@@ -259,7 +259,12 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (ui *UI) View() tea.View {
 	var v tea.View
 	v.AltScreen = true
-	v.MouseMode = tea.MouseModeCellMotion
+	// Respect the allow_mouse_events config: when false, disable TUI mouse
+	// capture so the terminal's native text-selection works instead.
+	cfg := ui.common.Config()
+	if cfg == nil || cfg.SSH.AllowMouseEvents {
+		v.MouseMode = tea.MouseModeCellMotion
+	}
 
 	var view string
 	wm, hm := ui.getMargins()

@@ -39,6 +39,12 @@ type SSHConfig struct {
 
 	// IdleTimeout is the number of seconds a connection can be idle before it is closed.
 	IdleTimeout int `env:"IDLE_TIMEOUT" yaml:"idle_timeout"`
+
+	// AllowMouseEvents controls whether the TUI enables mouse-event capture.
+	// When true (the default), mouse clicks and scrolling work in the TUI but
+	// the terminal's native text-selection is disabled.  Set to false to
+	// restore terminal text selection at the cost of mouse-driven navigation.
+	AllowMouseEvents bool `env:"ALLOW_MOUSE_EVENTS" yaml:"allow_mouse_events"`
 }
 
 // GitConfig is the Git daemon configuration for the server.
@@ -362,10 +368,11 @@ func DefaultConfig() *Config {
 		Name:     "Soft Serve",
 		DataPath: DefaultDataPath(),
 		SSH: SSHConfig{
-			Enabled:       true,
-			ListenAddr:    ":23231",
-			PublicURL:     "ssh://localhost:23231",
-			KeyPath:       filepath.Join("ssh", "soft_serve_host_ed25519"),
+			Enabled:          true,
+			ListenAddr:       ":23231",
+			PublicURL:        "ssh://localhost:23231",
+			KeyPath:          filepath.Join("ssh", "soft_serve_host_ed25519"),
+			AllowMouseEvents: true,
 			ClientKeyPath: filepath.Join("ssh", "soft_serve_client_ed25519"),
 			MaxTimeout:    0,
 			IdleTimeout:   10 * 60, // 10 minutes
