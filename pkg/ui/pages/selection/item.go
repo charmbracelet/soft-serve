@@ -139,10 +139,7 @@ func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
 			d.copiedIdx = idx
-			return tea.Batch(
-				tea.SetClipboard(item.Command()),
-				m.SetItem(idx, item),
-			)
+			return tea.SetClipboard(item.Command())
 		}
 	}
 	return nil
