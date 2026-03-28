@@ -47,7 +47,7 @@ func SessionHandler(s ssh.Session) *tea.Program {
 		initialRepo = cmd[0]
 	}
 
-	auth := be.AccessLevelByPublicKey(ctx, initialRepo, s.PublicKey())
+	auth := be.AccessLevelForUser(ctx, initialRepo, proto.UserFromContext(ctx))
 	if auth < access.ReadOnlyAccess {
 		wish.Fatalln(s, proto.ErrUnauthorized)
 		return nil
