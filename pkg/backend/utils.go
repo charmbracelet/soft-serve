@@ -38,7 +38,9 @@ func Readme(r proto.Repository, ref *git.Reference) (readme string, path string,
 		if err == nil {
 			return
 		}
-		if !errors.Is(err, git.ErrFileNotFound) && !errors.Is(err, git.ErrRevisionNotExist) {
+		if !errors.Is(err, git.ErrFileNotFound) &&
+			!errors.Is(err, git.ErrRevisionNotExist) &&
+			!errors.Is(err, git.ErrReferenceNotExist) {
 			return
 		}
 	}
