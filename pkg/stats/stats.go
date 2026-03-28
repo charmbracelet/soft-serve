@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"time"
 
@@ -38,6 +39,11 @@ func NewStatsServer(ctx context.Context) (*StatsServer, error) {
 // ListenAndServe starts the StatsServer.
 func (s *StatsServer) ListenAndServe() error {
 	return s.server.ListenAndServe()
+}
+
+// Serve starts the StatsServer on the given listener.
+func (s *StatsServer) Serve(l net.Listener) error {
+	return s.server.Serve(l)
 }
 
 // Shutdown gracefully shuts down the StatsServer.
