@@ -413,7 +413,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		}
 
 		switch {
-		case r.URL.Query().Get("go-get") == "1" && accessLevel >= access.ReadOnlyAccess:
+		case r.URL.Query().Get("go-get") == "1" && (accessLevel >= access.ReadOnlyAccess || cfg.AllowPublicGoGet):
 			// Allow go-get requests to passthrough.
 			break
 		case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrInvalidPassword):
