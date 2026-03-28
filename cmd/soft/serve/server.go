@@ -194,19 +194,16 @@ func (s *Server) Start() error {
 		// the errg.Go wrappers above; any that leak would incorrectly
 		// trigger this path.
 		//
-		// shutdownOnce prevents a double-Shutdown in the rare case where
-		// SIGTERM arrives at the same moment a goroutine fails (serve.go
-		// would also call s.Shutdown after breaking out of its select).
+		// s.Shutdown is idempotent (shutdownOnce-protected), so it is
+		// safe if serve.go's SIGTERM handler races to call it first.
 		if context.Cause(gctx) == nil {
 			return
 		}
-		s.shutdownOnce.Do(func() {
-			shutCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			if shutErr := s.Shutdown(shutCtx); shutErr != nil {
-				s.logger.Error("error shutting down after unexpected server failure", "err", shutErr)
-			}
-		})
+		shutCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if shutErr := s.Shutdown(shutCtx); shutErr != nil {
+			s.logger.Error("error shutting down after unexpected server failure", "err", shutErr)
+		}
 	}()
 
 	if s.Config.SSH.Enabled {
@@ -256,8 +253,18 @@ func (s *Server) Start() error {
 	return errg.Wait()
 }
 
-// Shutdown lets the server gracefully shutdown.
+// Shutdown lets the server gracefully shutdown. It is safe to call
+// concurrently; only the first call performs the actual shutdown and
+// subsequent calls are no-ops that return nil.
 func (s *Server) Shutdown(ctx context.Context) error {
+	var shutErr error
+	s.shutdownOnce.Do(func() {
+		shutErr = s.shutdown(ctx)
+	})
+	return shutErr
+}
+
+func (s *Server) shutdown(ctx context.Context) error {
 	errg, ctx := errgroup.WithContext(ctx)
 	errg.Go(func() error {
 		return s.GitDaemon.Shutdown(ctx)

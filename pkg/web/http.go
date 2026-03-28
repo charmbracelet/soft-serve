@@ -53,11 +53,15 @@ func (s *HTTPServer) Close() error {
 // Serve accepts connections on l and serves HTTP requests.
 func (s *HTTPServer) Serve(l net.Listener) error {
 	if s.Server.TLSConfig != nil {
-		// ServeTLS with empty cert/key paths is only valid when
-		// GetCertificate or Certificates is set on the TLSConfig.
-		if s.Server.TLSConfig.GetCertificate == nil &&
-			len(s.Server.TLSConfig.Certificates) == 0 {
-			return errors.New("TLS configured but no certificate source provided (set GetCertificate or Certificates)")
+		// ServeTLS with empty cert/key paths is only valid when at least
+		// one certificate source is set on the TLSConfig: Certificates,
+		// GetCertificate, or GetConfigForClient (which can supply a full
+		// tls.Config dynamically, e.g. for SNI-based routing).
+		tlsCfg := s.Server.TLSConfig
+		if len(tlsCfg.Certificates) == 0 &&
+			tlsCfg.GetCertificate == nil &&
+			tlsCfg.GetConfigForClient == nil {
+			return errors.New("TLS configured but no certificate source provided (set Certificates, GetCertificate, or GetConfigForClient)")
 		}
 		return s.Server.ServeTLS(l, "", "")
 	}
