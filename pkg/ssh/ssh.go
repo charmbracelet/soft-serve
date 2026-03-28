@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -86,6 +87,19 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 			// This must come first to set up the context.
 			ContextMiddleware(cfg, dbx, datastore, be, logger),
 		),
+	}
+
+	// Ensure the host key directory exists before wish.WithHostKeyPath tries
+	// to generate the key. If the parent directory is missing, keygen.New
+	// fails silently inside wish and the server falls back to a new ephemeral
+	// in-memory key on every restart — causing host-key-changed errors for
+	// clients on each restart.
+	if cfg.SSH.KeyPath != "" {
+		if dir := filepath.Dir(cfg.SSH.KeyPath); dir != "." {
+			if err := os.MkdirAll(dir, 0o700); err != nil {
+				return nil, fmt.Errorf("create host key directory: %w", err)
+			}
+		}
 	}
 
 	opts := []ssh.Option{
