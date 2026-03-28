@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"charm.land/log/v2"
@@ -36,8 +37,9 @@ type Server struct {
 	Backend     *backend.Backend
 	DB          *db.DB
 
-	logger *log.Logger
-	ctx    context.Context
+	logger       *log.Logger
+	ctx          context.Context
+	shutdownOnce sync.Once
 }
 
 // NewServer returns a new *Server configured to serve Soft Serve. The SSH
@@ -181,19 +183,30 @@ func (s *Server) Start() error {
 	// errg.Wait() itself on return — so this goroutine never leaks.
 	go func() {
 		<-gctx.Done()
-		// context.Cause is non-nil only when a goroutine returned an
-		// error (errgroup calls cancel(err)). When errg.Wait() returns
-		// normally it calls cancel(nil), so Cause == nil — skip to
-		// avoid a redundant Shutdown call after normal termination or
-		// SIGTERM (where serve.go's signal handler drives shutdown).
+		// errgroup.Wait() calls cancel(g.err) where g.err is the first
+		// non-nil error from any goroutine. If every goroutine returns
+		// nil (normal or SIGTERM-driven shutdown), g.err is nil and
+		// context.Cause(gctx) == nil — skip to avoid a redundant call.
+		// If a goroutine returned a non-nil error, Cause != nil and we
+		// must shut down the remaining servers ourselves.
+		//
+		// Invariant: all ErrServerClosed variants MUST be filtered in
+		// the errg.Go wrappers above; any that leak would incorrectly
+		// trigger this path.
+		//
+		// shutdownOnce prevents a double-Shutdown in the rare case where
+		// SIGTERM arrives at the same moment a goroutine fails (serve.go
+		// would also call s.Shutdown after breaking out of its select).
 		if context.Cause(gctx) == nil {
 			return
 		}
-		shutCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		if err := s.Shutdown(shutCtx); err != nil {
-			s.logger.Error("error shutting down after unexpected server failure", "err", err)
-		}
+		s.shutdownOnce.Do(func() {
+			shutCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if shutErr := s.Shutdown(shutCtx); shutErr != nil {
+				s.logger.Error("error shutting down after unexpected server failure", "err", shutErr)
+			}
+		})
 	}()
 
 	if s.Config.SSH.Enabled {

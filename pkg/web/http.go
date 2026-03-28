@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -52,6 +53,12 @@ func (s *HTTPServer) Close() error {
 // Serve accepts connections on l and serves HTTP requests.
 func (s *HTTPServer) Serve(l net.Listener) error {
 	if s.Server.TLSConfig != nil {
+		// ServeTLS with empty cert/key paths is only valid when
+		// GetCertificate or Certificates is set on the TLSConfig.
+		if s.Server.TLSConfig.GetCertificate == nil &&
+			len(s.Server.TLSConfig.Certificates) == 0 {
+			return errors.New("TLS configured but no certificate source provided (set GetCertificate or Certificates)")
+		}
 		return s.Server.ServeTLS(l, "", "")
 	}
 	return s.Server.Serve(l)

@@ -37,6 +37,8 @@ func NewStatsServer(ctx context.Context) (*StatsServer, error) {
 }
 
 // Serve accepts connections on l and serves HTTP requests.
+// The stats endpoint intentionally does not support TLS; it is expected
+// to be exposed only on a loopback or internal network interface.
 func (s *StatsServer) Serve(l net.Listener) error {
 	return s.server.Serve(l)
 }
