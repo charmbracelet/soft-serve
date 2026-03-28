@@ -170,7 +170,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 				return nil
 			}
 			if len(exitErr.Stderr) > 0 {
-				return fmt.Errorf("%s: %w", exitErr.Stderr, err)
+				return fmt.Errorf("%w: %s", err, exitErr.Stderr)
 			}
 		}
 
