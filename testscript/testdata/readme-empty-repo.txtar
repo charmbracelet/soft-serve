@@ -11,17 +11,18 @@ exec soft serve &
 ensureserverrunning SSH_PORT
 
 # create an empty repo (no initial commit, no README)
-soft repo create empty-repo -d 'empty repository for issue 522'
-stderr 'Created repository empty-repo.*'
-stdout ssh://localhost:$SSH_PORT/empty-repo.git
+soft repo create emptyrepo -d 'emptyrepo-issue-522'
+stderr 'Created repository emptyrepo.*'
+stdout ssh://localhost:$SSH_PORT/emptyrepo.git
 
 # verify the repo exists and reports correct metadata
-soft repo info empty-repo
-stdout 'Repository: empty-repo'
-stdout 'Description: empty repository for issue 522'
+soft repo info emptyrepo
+stdout 'Repository: emptyrepo'
+stdout 'Description: emptyrepo-issue-522'
+stdout 'Default Branch: \(empty repository\)'
 
 # verify the repo directory exists on disk
-exists $DATA_PATH/repos/empty-repo.git
+exists $DATA_PATH/repos/emptyrepo.git
 
 # stop the server
 [windows] stopserver
