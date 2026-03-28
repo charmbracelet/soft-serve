@@ -164,16 +164,13 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 	} else if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			// ExitCode == -1 means the process was killed by a signal.
-			// This happens when a client (e.g. Flux's Source controller)
-			// performs only a capability advertisement check and then closes
-			// the connection. Treat this as a clean client disconnect, not
-			// an error.
-			if exitErr.ExitCode() == -1 {
+			if exitErr.ExitCode() == -1 && ctx.Err() != nil {
+				// Process was killed because context was cancelled (client disconnected).
+				// This is normal for capability-advertisement-only clients (e.g. git ls-remote).
 				return nil
 			}
 			if len(exitErr.Stderr) > 0 {
-				return fmt.Errorf("%s: %s", exitErr, exitErr.Stderr)
+				return fmt.Errorf("%s: %w", exitErr.Stderr, err)
 			}
 		}
 
