@@ -78,7 +78,7 @@ func parseAuthHdr(r *http.Request) (proto.User, error) {
 	logger := log.FromContext(ctx).WithPrefix("http.auth")
 	be := backend.FromContext(ctx)
 
-	logger.Debug("authorization auth header", "header", header)
+	logger.Debug("authorization auth header", "scheme", strings.SplitN(header, " ", 2)[0])
 
 	parts := strings.SplitN(header, " ", 2)
 	if len(parts) != 2 {

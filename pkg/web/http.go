@@ -31,6 +31,7 @@ func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 			Addr:              cfg.HTTP.ListenAddr,
 			Handler:           NewRouter(ctx),
 			ReadHeaderTimeout: time.Second * 10,
+			WriteTimeout:      5 * time.Minute,
 			IdleTimeout:       time.Second * 10,
 			MaxHeaderBytes:    http.DefaultMaxHeaderBytes,
 			ErrorLog:          logger.StandardLog(log.StandardLogOptions{ForceLevel: log.ErrorLevel}),

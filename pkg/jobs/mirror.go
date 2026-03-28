@@ -75,7 +75,7 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 					}
 
 					// Build the SSH env once; reused for every git command below.
-					sshEnv := fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+					sshEnv := fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=accept-new -i "%s"`,
 						filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
 						cfg.SSH.ClientKeyPath,
 					)
