@@ -147,6 +147,17 @@ jobs:
 # Additional admin keys.
 #initial_admin_keys:
 #  - "ssh-rsa AAAAB3NzaC1yc2..."
+
+# Anonymous access level applied on every startup.
+# Overrides the value stored in the database when set.
+# Valid values: no-access, read-only, read-write, admin-access.
+# Leave commented out to preserve the database value.
+#anon_access: read-only
+
+# Whether keyless (keyboard-interactive) access is allowed.
+# Overrides the value stored in the database when set.
+# Leave commented out to preserve the database value.
+#allow_keyless: true
 `))
 
 func newConfigFile(cfg *Config) string {
