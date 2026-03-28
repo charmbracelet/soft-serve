@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS push_mirrors (
+    id BIGSERIAL PRIMARY KEY,
+    repo_id BIGINT NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    remote_url TEXT NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(repo_id, name)
+);
