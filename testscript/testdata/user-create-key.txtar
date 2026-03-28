@@ -32,7 +32,11 @@ stdout 'Username: charlie'
 
 # TEST 5: invalid key is rejected
 ! soft user create dave -k 'not-a-valid-key'
-stderr '.'
+stderr 'no key found'
+
+# TEST 6: extra args without -k flag are rejected
+! soft user create eve extraarg
+stderr 'accepts 1 arg'
 
 # stop the server
 [windows] stopserver
