@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	"charm.land/log/v2"
 
@@ -170,7 +171,22 @@ func (s *Server) Start() error {
 	// All binds succeeded; goroutines take ownership of each listener.
 	closeAll = nil
 
-	errg, _ := errgroup.WithContext(s.ctx)
+	errg, gctx := errgroup.WithContext(s.ctx)
+
+	// Monitor goroutine: if any server goroutine fails unexpectedly,
+	// shut down all remaining servers so errg.Wait() unblocks and the
+	// caller sees the error. When the parent context is already
+	// cancelled (SIGTERM etc.), the signal handler in serve.go drives
+	// shutdown instead — avoid calling Shutdown twice.
+	errg.Go(func() error {
+		<-gctx.Done()
+		if s.ctx.Err() == nil {
+			shutCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			_ = s.Shutdown(shutCtx) //nolint:errcheck
+		}
+		return nil
+	})
 
 	if s.Config.SSH.Enabled {
 		errg.Go(func() error {
