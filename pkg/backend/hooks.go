@@ -16,16 +16,17 @@ import (
 
 var _ hooks.Hooks = (*Backend)(nil)
 
-// repoMetaConfig is the schema for .soft-serve.yaml in a repository root.
+// repoMetaConfig holds repository metadata fields synced from .soft-serve.yaml.
 type repoMetaConfig struct {
 	Description string `yaml:"description"`
 	Private     *bool  `yaml:"private"`
 	Hidden      *bool  `yaml:"hidden"`
 }
 
-// PostReceive is called by the git post-receive hook.
-//
-// It implements Hooks.
+// PostReceive is called by the git post-receive hook. It implements Hooks.
+// On each push, it reads .soft-serve.yaml from the repository's HEAD and
+// syncs repository metadata to the backend. Description can be updated by
+// any writer; private and hidden fields require admin access.
 func (d *Backend) PostReceive(ctx context.Context, _ io.Writer, _ io.Writer, repo string, args []hooks.HookArg) {
 	d.logger.Debug("post-receive hook called", "repo", repo, "args", args)
 
@@ -44,9 +45,15 @@ func (d *Backend) PostReceive(ctx context.Context, _ io.Writer, _ io.Writer, rep
 		return
 	}
 
+	const maxMetaFileSize = 64 * 1024 // 64 KB
+
 	content, _, err := git.LatestFile(gr, nil, ".soft-serve.yaml")
 	if err != nil {
 		// file absent or no commits yet — no-op
+		return
+	}
+	if len(content) > maxMetaFileSize {
+		d.logger.Warnf("post-receive: .soft-serve.yaml exceeds %d bytes, skipping", maxMetaFileSize)
 		return
 	}
 
@@ -56,21 +63,37 @@ func (d *Backend) PostReceive(ctx context.Context, _ io.Writer, _ io.Writer, rep
 		return
 	}
 
+	// Only admins may change visibility — look up the pushing user
+	var isAdmin bool
+	if pubkey := os.Getenv("SOFT_SERVE_PUBLIC_KEY"); pubkey != "" {
+		pk, _, pkErr := sshutils.ParseAuthorizedKey(pubkey)
+		if pkErr == nil {
+			if u, uErr := d.UserByPublicKey(ctx, pk); uErr == nil {
+				isAdmin = u.IsAdmin()
+			}
+		}
+	} else if username := os.Getenv("SOFT_SERVE_USERNAME"); username != "" {
+		if u, uErr := d.User(ctx, username); uErr == nil {
+			isAdmin = u.IsAdmin()
+		}
+	}
+
 	if meta.Description != "" {
 		if err := d.SetDescription(ctx, repo, meta.Description); err != nil {
 			d.logger.Warnf("post-receive: set description: %v", err)
 		}
 	}
 
-	if meta.Private != nil {
-		if err := d.SetPrivate(ctx, repo, *meta.Private); err != nil {
-			d.logger.Warnf("post-receive: set private: %v", err)
+	if isAdmin {
+		if meta.Private != nil {
+			if err := d.SetPrivate(ctx, repo, *meta.Private); err != nil {
+				d.logger.Warnf("post-receive: set private: %v", err)
+			}
 		}
-	}
-
-	if meta.Hidden != nil {
-		if err := d.SetHidden(ctx, repo, *meta.Hidden); err != nil {
-			d.logger.Warnf("post-receive: set hidden: %v", err)
+		if meta.Hidden != nil {
+			if err := d.SetHidden(ctx, repo, *meta.Hidden); err != nil {
+				d.logger.Warnf("post-receive: set hidden: %v", err)
+			}
 		}
 	}
 }
