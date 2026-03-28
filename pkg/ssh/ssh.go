@@ -114,14 +114,23 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		return nil, err
 	}
 
-	if config.IsDebug() {
-		s.srv.ServerConfigCallback = func(_ ssh.Context) *gossh.ServerConfig {
-			return &gossh.ServerConfig{
-				AuthLogCallback: func(conn gossh.ConnMetadata, method string, err error) {
-					logger.Debug("authentication", "user", conn.User(), "method", method, "err", err)
-				},
+	s.srv.ServerConfigCallback = func(_ ssh.Context) *gossh.ServerConfig {
+		sc := &gossh.ServerConfig{}
+		if len(cfg.SSH.KeyExchanges) > 0 {
+			sc.KeyExchanges = cfg.SSH.KeyExchanges
+		}
+		if len(cfg.SSH.Ciphers) > 0 {
+			sc.Ciphers = cfg.SSH.Ciphers
+		}
+		if len(cfg.SSH.MACs) > 0 {
+			sc.MACs = cfg.SSH.MACs
+		}
+		if config.IsDebug() {
+			sc.AuthLogCallback = func(conn gossh.ConnMetadata, method string, err error) {
+				logger.Debug("authentication", "user", conn.User(), "method", method, "err", err)
 			}
 		}
+		return sc
 	}
 
 	if cfg.SSH.MaxTimeout > 0 {

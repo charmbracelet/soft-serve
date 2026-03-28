@@ -45,6 +45,18 @@ type SSHConfig struct {
 	// the terminal's native text-selection is disabled.  Set to false to
 	// restore terminal text selection at the cost of mouse-driven navigation.
 	AllowMouseEvents bool `env:"ALLOW_MOUSE_EVENTS" yaml:"allow_mouse_events"`
+
+	// KeyExchanges is the list of key exchange algorithms to use.
+	// When empty the server uses the go/crypto defaults.
+	KeyExchanges []string `env:"KEY_EXCHANGES" envSeparator:"," yaml:"key_exchanges"`
+
+	// Ciphers is the list of ciphers to use.
+	// When empty the server uses the go/crypto defaults.
+	Ciphers []string `env:"CIPHERS" envSeparator:"," yaml:"ciphers"`
+
+	// MACs is the list of MAC algorithms to use.
+	// When empty the server uses the go/crypto defaults.
+	MACs []string `env:"MACS" envSeparator:"," yaml:"macs"`
 }
 
 // GitConfig is the Git daemon configuration for the server.
@@ -229,6 +241,9 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_KEY_PATH=%s", c.SSH.ClientKeyPath),
 		fmt.Sprintf("SOFT_SERVE_SSH_MAX_TIMEOUT=%d", c.SSH.MaxTimeout),
 		fmt.Sprintf("SOFT_SERVE_SSH_IDLE_TIMEOUT=%d", c.SSH.IdleTimeout),
+		fmt.Sprintf("SOFT_SERVE_SSH_KEY_EXCHANGES=%s", strings.Join(c.SSH.KeyExchanges, ",")),
+		fmt.Sprintf("SOFT_SERVE_SSH_CIPHERS=%s", strings.Join(c.SSH.Ciphers, ",")),
+		fmt.Sprintf("SOFT_SERVE_SSH_MACS=%s", strings.Join(c.SSH.MACs, ",")),
 		fmt.Sprintf("SOFT_SERVE_GIT_ENABLED=%t", c.Git.Enabled),
 		fmt.Sprintf("SOFT_SERVE_GIT_LISTEN_ADDR=%s", c.Git.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_GIT_PUBLIC_URL=%s", c.Git.PublicURL),
