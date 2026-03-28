@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -246,7 +247,11 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		}
 
 		if err := service.Handler(ctx, scmd); err != nil {
-			logger.Error("failed to handle git service", "service", service, "err", err, "repo", name)
+			if ctx.Err() == context.Canceled {
+				logger.Debug("git: client disconnected", "service", service, "err", err, "repo", name)
+			} else {
+				logger.Error("failed to handle git service", "service", service, "err", err, "repo", name)
+			}
 			defer func() {
 				if repo == nil {
 					// If the repo was created, but the request failed, delete it.
@@ -291,7 +296,11 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		if errors.Is(err, git.ErrInvalidRepo) {
 			return git.ErrInvalidRepo
 		} else if err != nil {
-			logger.Error("failed to handle git service", "service", service, "err", err, "repo", name)
+			if ctx.Err() == context.Canceled {
+				logger.Debug("git: client disconnected", "service", service, "err", err, "repo", name)
+			} else {
+				logger.Error("failed to handle git service", "service", service, "err", err, "repo", name)
+			}
 			return git.ErrSystemMalfunction
 		}
 
@@ -334,7 +343,11 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		}
 
 		if err := service.Handler(ctx, scmd); err != nil {
-			logger.Error("failed to handle lfs service", "service", service, "err", err, "repo", name)
+			if ctx.Err() == context.Canceled {
+				logger.Debug("git: client disconnected", "service", service, "err", err, "repo", name)
+			} else {
+				logger.Error("failed to handle lfs service", "service", service, "err", err, "repo", name)
+			}
 			return git.ErrSystemMalfunction
 		}
 
