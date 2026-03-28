@@ -2,6 +2,7 @@ package git
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/gobwas/glob"
@@ -28,7 +29,7 @@ func LatestFile(repo *Repository, ref *Reference, pattern string) (string, strin
 	}
 	for _, e := range ents {
 		te := e
-		fp := filepath.Join(dir, te.Name())
+		fp := path.Join(dir, te.Name())
 		if te.IsTree() {
 			continue
 		}
