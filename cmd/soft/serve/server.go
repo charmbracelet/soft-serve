@@ -173,20 +173,26 @@ func (s *Server) Start() error {
 
 	errg, gctx := errgroup.WithContext(s.ctx)
 
-	// Monitor goroutine: if any server goroutine fails unexpectedly,
-	// shut down all remaining servers so errg.Wait() unblocks and the
-	// caller sees the error. When the parent context is already
-	// cancelled (SIGTERM etc.), the signal handler in serve.go drives
-	// shutdown instead — avoid calling Shutdown twice.
-	errg.Go(func() error {
+	// External monitor goroutine: if any server goroutine returns an
+	// error, shut down all remaining servers so errg.Wait() unblocks
+	// and the caller sees the error. Runs *outside* the errgroup so it
+	// never blocks errg.Wait() itself.
+	// gctx is always cancelled — either by an erroring goroutine or by
+	// errg.Wait() itself on return — so this goroutine never leaks.
+	go func() {
 		<-gctx.Done()
-		if s.ctx.Err() == nil {
-			shutCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			_ = s.Shutdown(shutCtx) //nolint:errcheck
+		// When the parent context is already cancelled (SIGTERM etc.),
+		// serve.go's signal handler drives shutdown; skip to avoid a
+		// redundant concurrent call.
+		if s.ctx.Err() != nil {
+			return
 		}
-		return nil
-	})
+		shutCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := s.Shutdown(shutCtx); err != nil {
+			s.logger.Error("error shutting down after unexpected server failure", "err", err)
+		}
+	}()
 
 	if s.Config.SSH.Enabled {
 		errg.Go(func() error {
