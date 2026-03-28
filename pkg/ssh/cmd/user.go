@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -22,22 +23,45 @@ func UserCommand() *cobra.Command {
 	var admin bool
 	var key string
 	userCreateCommand := &cobra.Command{
-		Use:               "create USERNAME",
-		Short:             "Create a new user",
-		Args:              cobra.ExactArgs(1),
+		Use:   "create USERNAME",
+		Short: "Create a new user",
+		Long: `Create a new user.
+
+When passing a public key with -k, shell quoting is stripped by OpenSSH
+before the command is transmitted, so an ed25519 key such as:
+
+  ssh host user create alice -k 'ssh-ed25519 AAAA... user@host'
+
+arrives on the server as three separate tokens. Soft Serve re-joins them
+automatically, so both of the following forms work:
+
+  -k 'ssh-ed25519 AAAA... user@host'   (quoted, local shell)
+  -k ssh-ed25519 AAAA... user@host     (unquoted, same effect over SSH)
+`,
+		Args:              cobra.MinimumNArgs(1),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var pubkeys []ssh.PublicKey
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
 			username := args[0]
-			if key != "" {
-				pk, _, err := sshutils.ParseAuthorizedKey(key)
+
+			switch {
+			case cmd.Flags().Changed("key") && key == "":
+				// -k was supplied with an empty value.
+				return fmt.Errorf("flag --key requires a non-empty public key")
+			case cmd.Flags().Changed("key"):
+				// Re-join the -k value with any remaining positional args.
+				// This reconstructs a key split across tokens by SSH quoting
+				// stripping (e.g. 'ssh-ed25519 AAAA' → two tokens).
+				keyStr := strings.TrimSpace(strings.Join(append([]string{key}, args[1:]...), " "))
+				pk, _, err := sshutils.ParseAuthorizedKey(keyStr)
 				if err != nil {
 					return err
 				}
-
 				pubkeys = []ssh.PublicKey{pk}
+			case len(args) > 1:
+				return fmt.Errorf("unexpected arguments: %s", strings.Join(args[1:], " "))
 			}
 
 			opts := proto.UserOptions{
