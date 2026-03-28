@@ -147,7 +147,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, erro := io.Copy(scmd.Stderr, stderr); err != nil {
+			if _, erro := io.Copy(scmd.Stderr, stderr); erro != nil {
 				log.Errorf("gitServiceHandler: failed to copy stderr: %v", erro)
 			}
 		}()
@@ -159,12 +159,31 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 	wg.Wait()
 
 	err = cmd.Wait()
-	if err != nil && errors.Is(err, os.ErrNotExist) {
-		return ErrInvalidRepo
-	} else if err != nil {
+	if err != nil {
 		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
-			return fmt.Errorf("%s: %s", exitErr, exitErr.Stderr)
+		// Note: errors.As correctly unwraps through errors.Join, which Go 1.20+
+		// uses when cmd.WaitDelay fires (joining the ExitError with a timeout
+		// error). Verified: errors.As(errors.Join(exitErr, timeoutErr), &exitErr)
+		// returns true. So the suppression path below is safe even when WaitDelay
+		// wraps the ExitError via errors.Join.
+		if errors.As(err, &exitErr) {
+			if errors.Is(ctx.Err(), context.Canceled) {
+				// Process exited because context was cancelled — client disconnected
+				// or server is shutting down. Expected; not worth surfacing.
+				// We do not gate on ExitCode()==-1: on Unix a signal-killed process
+				// has no exit code (-1), but on Windows TerminateProcess sets exit
+				// code 1. Checking ctx.Err() alone is portable across both.
+				log.FromContext(ctx).Debug("git process exited on context cancellation", "service", svc.Name())
+				return nil
+			}
+			if len(exitErr.Stderr) > 0 {
+				return fmt.Errorf("%w: %s", err, exitErr.Stderr)
+			}
+		} else if errors.Is(err, exec.ErrWaitDelay) && errors.Is(ctx.Err(), context.Canceled) {
+			// WaitDelay expired after context cancellation — the process was already
+			// killed; pipe goroutines did not drain within 30s. Not an error.
+			log.FromContext(ctx).Debug("git pipe drain timed out after cancellation", "service", svc.Name())
+			return nil
 		}
 
 		return err
