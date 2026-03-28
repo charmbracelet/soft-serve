@@ -117,6 +117,14 @@ func GitController(_ context.Context, r *mux.Router) {
 }
 
 var gitRoutes = []GitRoute{
+	// Raw file content endpoint.
+	// Must be registered before the git-protocol routes so that
+	// /raw/... paths are not swallowed by the git object handlers.
+	{
+		method:  []string{http.MethodGet},
+		handler: getRawBlob,
+		path:    "/raw/{ref}/{filepath:.*}",
+	},
 	// Git services
 	// These routes don't handle authentication/authorization.
 	// This is handled through wrapping the handlers for each route.
@@ -252,6 +260,11 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		// - git-upload-pack
 		// - git-receive-pack
 		// - git-lfs
+		//
+		// Routes that carry no service var and no info/lfs prefix (e.g. the raw
+		// blob endpoint, go-get) intentionally fall through this switch with no
+		// case matched. They are then subject to the catch-all access check below
+		// (lines ~359-371) which enforces ReadOnlyAccess via renderNotFound.
 		switch {
 		case service == git.ReceivePackService:
 			if accessLevel < access.ReadWriteAccess {
