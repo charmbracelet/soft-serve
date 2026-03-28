@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -59,7 +60,7 @@ func RepoCommand() *cobra.Command {
 				}
 
 				head, err := r.HEAD()
-				isEmpty := err == git.ErrReferenceNotExist
+				isEmpty := errors.Is(err, git.ErrReferenceNotExist)
 				if err != nil && !isEmpty {
 					return err
 				}
