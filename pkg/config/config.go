@@ -146,9 +146,18 @@ type LFSConfig struct {
 	SSHEnabled bool `env:"SSH_ENABLED" yaml:"ssh_enabled"`
 }
 
+// MirrorPullJobConfig is the configuration for the mirror pull cron job.
+type MirrorPullJobConfig struct {
+	// Enabled toggles the mirror pull job on/off.
+	Enabled bool `env:"ENABLED" yaml:"enabled"`
+
+	// Schedule is the cron schedule for the mirror pull job.
+	Schedule string `env:"SCHEDULE" yaml:"schedule"`
+}
+
 // JobsConfig is the configuration for cron jobs.
 type JobsConfig struct {
-	MirrorPull string `env:"MIRROR_PULL" yaml:"mirror_pull"`
+	MirrorPull MirrorPullJobConfig `envPrefix:"MIRROR_PULL_" yaml:"mirror_pull"`
 }
 
 // Config is the configuration for Soft Serve.
@@ -243,7 +252,8 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_DB_DATA_SOURCE=%s", c.DB.DataSource),
 		fmt.Sprintf("SOFT_SERVE_LFS_ENABLED=%t", c.LFS.Enabled),
 		fmt.Sprintf("SOFT_SERVE_LFS_SSH_ENABLED=%t", c.LFS.SSHEnabled),
-		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL=%s", c.Jobs.MirrorPull),
+		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL_ENABLED=%t", c.Jobs.MirrorPull.Enabled),
+		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL_SCHEDULE=%s", c.Jobs.MirrorPull.Schedule),
 	}...)
 
 	return envs
@@ -419,7 +429,10 @@ func DefaultConfig() *Config {
 			SSHEnabled: false,
 		},
 		Jobs: JobsConfig{
-			MirrorPull: "@every 10m",
+			MirrorPull: MirrorPullJobConfig{
+				Enabled:  true,
+				Schedule: "@every 10m",
+			},
 		},
 	}
 }

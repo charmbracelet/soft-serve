@@ -151,7 +151,11 @@ lfs:
 
 # Cron job configuration
 jobs:
-  mirror_pull: "{{ .Jobs.MirrorPull }}"
+  mirror_pull:
+    # Enable the periodic mirror pull job.
+    enabled: {{ .Jobs.MirrorPull.Enabled }}
+    # Cron schedule for the mirror pull job.
+    schedule: "{{ .Jobs.MirrorPull.Schedule }}"
 
 # Additional admin keys.
 #initial_admin_keys:
