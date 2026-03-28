@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/hooks"
@@ -24,12 +25,23 @@ type repoMetaConfig struct {
 }
 
 // PostReceive is called by the git post-receive hook. It implements Hooks.
-// On each push, it reads .soft-serve.yaml from the repository's HEAD and
-// syncs repository metadata to the backend. Description can be updated by
-// any writer; private and hidden fields require admin access.
-func (d *Backend) PostReceive(ctx context.Context, _ io.Writer, _ io.Writer, repo string, args []hooks.HookArg) {
+// Metadata sync (.soft-serve.yaml) is performed asynchronously so the push
+// response is not blocked by DB writes or git tree reads.
+func (d *Backend) PostReceive(_ context.Context, _ io.Writer, _ io.Writer, repo string, args []hooks.HookArg) {
 	d.logger.Debug("post-receive hook called", "repo", repo, "args", args)
 
+	// Sync .soft-serve.yaml metadata asynchronously so the push
+	// response is not blocked by DB writes or git tree reads.
+	go func() {
+		syncCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		d.syncRepoMeta(syncCtx, repo)
+	}()
+}
+
+// syncRepoMeta reads .soft-serve.yaml from HEAD and applies non-zero fields
+// to the repository backend. Private and hidden require admin access.
+func (d *Backend) syncRepoMeta(ctx context.Context, repo string) {
 	r, err := d.Repository(ctx, repo)
 	if err != nil {
 		d.logger.Warn("post-receive: failed to find repository", "repo", repo, "err", err)
