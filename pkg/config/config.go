@@ -96,6 +96,11 @@ type HTTPConfig struct {
 
 	// CORS is the cross-origin configuration for the HTTP server.
 	CORS CORSConfig `envPrefix:"CORS_" yaml:"cors"`
+
+	// StripGitSuffix allows cloning repos without the .git suffix in the URL.
+	// When true, both /<name> and /<name>.git are accepted.
+	// Default is false for backward compatibility.
+	StripGitSuffix bool `env:"STRIP_GIT_SUFFIX" yaml:"strip_git_suffix"`
 }
 
 // StatsConfig is the configuration for the stats server.
@@ -226,6 +231,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_KEY_PATH=%s", c.HTTP.TLSKeyPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_CERT_PATH=%s", c.HTTP.TLSCertPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_PUBLIC_URL=%s", c.HTTP.PublicURL),
+		fmt.Sprintf("SOFT_SERVE_HTTP_STRIP_GIT_SUFFIX=%t", c.HTTP.StripGitSuffix),
 		fmt.Sprintf("SOFT_SERVE_HTTP_CORS_ALLOWED_HEADERS=%s", strings.Join(c.HTTP.CORS.AllowedHeaders, ",")),
 		fmt.Sprintf("SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS=%s", strings.Join(c.HTTP.CORS.AllowedOrigins, ",")),
 		fmt.Sprintf("SOFT_SERVE_HTTP_CORS_ALLOWED_METHODS=%s", strings.Join(c.HTTP.CORS.AllowedMethods, ",")),

@@ -94,6 +94,10 @@ http:
   # Make sure to use https:// if you are using TLS.
   public_url: "{{ .HTTP.PublicURL }}"
 
+  # When true, repositories are accessible without the .git suffix in the URL.
+  # Both /<name> and /<name>.git will be accepted.
+  # strip_git_suffix: false
+
   # The cross-origin request security options
   cors:
     # The allowed cross-origin headers

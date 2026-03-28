@@ -23,14 +23,15 @@ func NewRouter(ctx context.Context) http.Handler {
 
 	router.PathPrefix("/").HandlerFunc(renderNotFound)
 
+	cfg := config.FromContext(ctx)
+
 	// Context handler
 	// Adds context to the request
 	h := NewLoggingMiddleware(router, logger)
 	h = NewContextHandler(ctx)(h)
+	h = gitSuffixMiddleware(cfg)(h)
 	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
-
-	cfg := config.FromContext(ctx)
 
 	h = handlers.CORS(handlers.AllowedHeaders(cfg.HTTP.CORS.AllowedHeaders),
 		handlers.AllowedOrigins(cfg.HTTP.CORS.AllowedOrigins),
