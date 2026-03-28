@@ -65,10 +65,23 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 			return err
 		}
 
-		_, err := git.Init(rp, true)
+		rr, err := git.Init(rp, true)
 		if err != nil {
 			d.logger.Debug("failed to create repository", "err", err)
 			return err
+		}
+
+		if user != nil && user.Username() != "" {
+			rcfg, err := rr.Config()
+			if err != nil {
+				d.logger.Error("failed to get repository config", "repo", name, "err", err)
+				return err
+			}
+			rcfg.Section("gitweb").SetOption("owner", user.Username())
+			if err := rr.SetConfig(rcfg); err != nil {
+				d.logger.Error("failed to set gitweb.owner", "repo", name, "err", err)
+				return err
+			}
 		}
 
 		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(opts.Description), fs.ModePerm); err != nil {

@@ -1,0 +1,53 @@
+# vi: set ft=conf
+
+# Regression test for https://github.com/charmbracelet/soft-serve/issues/750
+# SSH exec tokenizes commands on spaces, splitting "ssh-ed25519 AAAA..."
+# into separate args. The -k flag should reconstruct the full key.
+
+# convert crlf to lf on windows
+[windows] dos2unix user_info.txt
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# Create a user passing the public key via -k flag.
+# $USER1_AUTHORIZED_KEY expands to "ssh-ed25519 AAAA..." (two space-separated
+# tokens). When sent over SSH exec and re-split by the server, the key type
+# and key data become separate positional args — this is the bug from #750.
+soft user create testuser -k $USER1_AUTHORIZED_KEY
+
+# Verify the user exists and has the key attached.
+soft user info testuser
+cmpenv stdout user_info.txt
+
+# Create a second user passing the public key as positional args (no -k flag).
+# This exercises the SSH-exec tokenization reconstruction path: the client
+# sends "user create testuser2 ssh-ed25519 AAAA..." and the server receives
+# "testuser2", "ssh-ed25519", "AAAA..." as separate positional args.
+soft user create testuser2 $USER1_AUTHORIZED_KEY
+
+# Verify the second user also has the key attached correctly.
+soft user info testuser2
+cmpenv stdout user2_info.txt
+
+# Reject empty -k flag value.
+! soft user create baduser -k ''
+stderr 'non-empty'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+-- user_info.txt --
+Username: testuser
+Admin: false
+Public keys:
+  $USER1_AUTHORIZED_KEY
+
+-- user2_info.txt --
+Username: testuser2
+Admin: false
+Public keys:
+  $USER1_AUTHORIZED_KEY

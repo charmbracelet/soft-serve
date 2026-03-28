@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
+	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/code"
 	"github.com/charmbracelet/soft-serve/pkg/ui/components/selector"
@@ -191,7 +192,8 @@ func (s *Selection) Init() tea.Cmd {
 	ctx := s.common.Context()
 	be := s.common.Backend()
 	pk := s.common.PublicKey()
-	if pk == nil && !be.AllowKeyless(ctx) {
+	user := proto.UserFromContext(ctx)
+	if pk == nil && user == nil && !be.AllowKeyless(ctx) {
 		return nil
 	}
 
@@ -203,7 +205,7 @@ func (s *Selection) Init() tea.Cmd {
 	for _, r := range repos {
 		if r.Name() == ".soft-serve" {
 			readme, path, err := backend.Readme(r, nil)
-			if err != nil {
+			if err != nil || path == "" {
 				continue
 			}
 
@@ -213,7 +215,7 @@ func (s *Selection) Init() tea.Cmd {
 		if r.IsHidden() {
 			continue
 		}
-		al := be.AccessLevelByPublicKey(ctx, r.Name(), pk)
+		al := be.AccessLevelForUser(ctx, r.Name(), proto.UserFromContext(ctx))
 		if al >= access.ReadOnlyAccess {
 			item, err := NewItem(s.common, r)
 			if err != nil {

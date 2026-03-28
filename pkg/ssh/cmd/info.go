@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/sshutils"
 	"github.com/spf13/cobra"
 )
@@ -14,9 +13,7 @@ func InfoCommand() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			be := backend.FromContext(ctx)
-			pk := sshutils.PublicKeyFromContext(ctx)
-			user, err := be.UserByPublicKey(ctx, pk)
+			user, err := currentUser(ctx)
 			if err != nil {
 				return err
 			}
