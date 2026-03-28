@@ -140,6 +140,7 @@ func (ui *UI) Init() tea.Cmd {
 		repo.NewLog(ui.common),
 		repo.NewRefs(ui.common, git.RefsHeads),
 		repo.NewRefs(ui.common, git.RefsTags),
+		repo.NewDiff(ui.common),
 	)
 	ui.SetSize(ui.common.Width, ui.common.Height)
 	cmds := make([]tea.Cmd, 0)
