@@ -85,6 +85,7 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 
 						if _, err := cmd.RunInDir(r.Path); err != nil {
 							logger.Error("error running git remote update", "repo", name, "err", err)
+							break
 						}
 					}
 
