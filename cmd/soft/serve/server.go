@@ -181,10 +181,12 @@ func (s *Server) Start() error {
 	// errg.Wait() itself on return — so this goroutine never leaks.
 	go func() {
 		<-gctx.Done()
-		// When the parent context is already cancelled (SIGTERM etc.),
-		// serve.go's signal handler drives shutdown; skip to avoid a
-		// redundant concurrent call.
-		if s.ctx.Err() != nil {
+		// context.Cause is non-nil only when a goroutine returned an
+		// error (errgroup calls cancel(err)). When errg.Wait() returns
+		// normally it calls cancel(nil), so Cause == nil — skip to
+		// avoid a redundant Shutdown call after normal termination or
+		// SIGTERM (where serve.go's signal handler drives shutdown).
+		if context.Cause(gctx) == nil {
 			return
 		}
 		shutCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
