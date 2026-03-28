@@ -171,8 +171,12 @@ func (d *Diff) updateDiffCmd() tea.Msg {
 	}
 	content, err := r.DiffRefs(d.baseRef, d.targetRef)
 	if err != nil {
-		d.common.Logger.Debugf("ui: diff: error computing diff: %v", err)
-		return DiffMsg{From: d.baseRef, To: d.targetRef}
+		d.common.Logger.Debugf("ui: diff: error computing diff %s..%s: %v", d.baseRef, d.targetRef, err)
+		return DiffMsg{
+			Content: fmt.Sprintf("Cannot compute diff %s..%s: %v", d.baseRef, d.targetRef, err),
+			From:    d.baseRef,
+			To:      d.targetRef,
+		}
 	}
 	return DiffMsg{
 		Content: content,

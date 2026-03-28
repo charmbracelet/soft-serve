@@ -11,8 +11,8 @@ func (r *Repository) DiffRefs(from, to string) (string, error) {
 	// Use git diff --no-color from..to to get unified diff between two refs
 	out, err := NewCommand("diff", "--no-color", from+".."+to).RunInDir(r.Path)
 	if err != nil {
-		// git diff exits with status 1 when there are differences, which is not an error
-		// but git-module may wrap this; check if output is non-empty
+		// git diff exits non-zero only on errors (e.g. invalid ref, not a git repo).
+		// Non-zero exit with output means partial results; return them.
 		if len(out) > 0 {
 			return strings.TrimRight(string(out), "\n"), nil
 		}
