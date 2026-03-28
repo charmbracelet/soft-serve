@@ -21,10 +21,14 @@ func LatestFile(r proto.Repository, ref *git.Reference, pattern string) (string,
 // Root-level patterns are checked first; subdirectory paths are fallbacks,
 // matching GitHub's README discovery behavior.
 var readmePatterns = []string{
-	"[rR][eE][aA][dD][mM][eE]*",
-	"docs/[rR][eE][aA][dD][mM][eE]*",
-	".github/[rR][eE][aA][dD][mM][eE]*",
-	".gitlab/[rR][eE][aA][dD][mM][eE]*",
+	"[rR][eE][aA][dD][mM][eE]",
+	"[rR][eE][aA][dD][mM][eE].*",
+	"docs/[rR][eE][aA][dD][mM][eE]",
+	"docs/[rR][eE][aA][dD][mM][eE].*",
+	".github/[rR][eE][aA][dD][mM][eE]",
+	".github/[rR][eE][aA][dD][mM][eE].*",
+	".gitlab/[rR][eE][aA][dD][mM][eE]",
+	".gitlab/[rR][eE][aA][dD][mM][eE].*",
 }
 
 // Readme returns the repository's README.
