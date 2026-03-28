@@ -37,13 +37,24 @@ func validateImportRemote(remote string) error {
 // CreateRepository creates a new repository.
 //
 // It implements backend.Backend.
-func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.User, opts proto.RepositoryOptions) (proto.Repository, error) {
+func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.User, opts proto.RepositoryOptions) (_ proto.Repository, err error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
 		return nil, err
 	}
 
 	rp := filepath.Join(d.repoPath(name))
+
+	// Clean up the repo directory if the transaction fails — git.Init
+	// creates OS files that the DB rollback cannot undo, which would leave
+	// an orphaned directory blocking future create attempts.
+	defer func() {
+		if err != nil {
+			if rmErr := os.RemoveAll(rp); rmErr != nil {
+				d.logger.Error("failed to clean up repo dir after failed create", "path", rp, "err", rmErr)
+			}
+		}
+	}()
 
 	var userID int64
 	if user != nil {
@@ -101,7 +112,8 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 		d.logger.Debug("failed to create repository in database", "err", err)
 		err = db.WrapError(err)
 		if errors.Is(err, db.ErrDuplicateKey) {
-			return nil, proto.ErrRepoExist
+			err = proto.ErrRepoExist
+			return nil, err
 		}
 
 		return nil, err
