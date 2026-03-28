@@ -464,21 +464,26 @@ func (f *flushResponseWriter) ReadFrom(r io.Reader) (int64, error) {
 	var n int64
 	p := make([]byte, 1024)
 	for {
-		nRead, err := r.Read(p)
-		if err == io.EOF {
+		nRead, readErr := r.Read(p)
+		if nRead > 0 {
+			nWrite, err := f.ResponseWriter.Write(p[:nRead])
+			if err != nil {
+				return n, err
+			}
+			if nRead != nWrite {
+				return n, io.ErrShortWrite
+			}
+			n += int64(nRead)
+			// ResponseWriter must support http.Flusher to handle buffered output.
+			if err := flusher.Flush(); err != nil {
+				return n, fmt.Errorf("%w: error while flush", err)
+			}
+		}
+		if readErr == io.EOF {
 			break
 		}
-		nWrite, err := f.ResponseWriter.Write(p[:nRead])
-		if err != nil {
-			return n, err
-		}
-		if nRead != nWrite {
-			return n, err
-		}
-		n += int64(nRead)
-		// ResponseWriter must support http.Flusher to handle buffered output.
-		if err := flusher.Flush(); err != nil {
-			return n, fmt.Errorf("%w: error while flush", err)
+		if readErr != nil {
+			return n, readErr
 		}
 	}
 
