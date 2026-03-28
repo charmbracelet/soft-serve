@@ -163,8 +163,18 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		return ErrInvalidRepo
 	} else if err != nil {
 		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
-			return fmt.Errorf("%s: %s", exitErr, exitErr.Stderr)
+		if errors.As(err, &exitErr) {
+			// ExitCode == -1 means the process was killed by a signal.
+			// This happens when a client (e.g. Flux's Source controller)
+			// performs only a capability advertisement check and then closes
+			// the connection. Treat this as a clean client disconnect, not
+			// an error.
+			if exitErr.ExitCode() == -1 {
+				return nil
+			}
+			if len(exitErr.Stderr) > 0 {
+				return fmt.Errorf("%s: %s", exitErr, exitErr.Stderr)
+			}
 		}
 
 		return err
