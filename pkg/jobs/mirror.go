@@ -94,7 +94,7 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 						// in ImportRepository already sets Timeout: -1 for the
 						// same reason. git-module RunInDirWithOptions only applies
 						// a deadline when timeout > 0, so -1 is safe here.
-						cmd := git.NewCommand(args...).WithContext(ctx).WithTimeout(-1)
+						cmd := git.NewCommand(args...).WithContext(ctx).WithTimeout(30 * 60)
 						cmd.AddEnvs(sshEnv)
 
 						if _, err := cmd.RunInDir(r.Path); err != nil {

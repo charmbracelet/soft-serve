@@ -95,10 +95,16 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 
 	cmd.Args = append(cmd.Args, ".")
 
-	cmd.Env = os.Environ()
-	if len(scmd.Env) > 0 {
-		cmd.Env = append(cmd.Env, scmd.Env...)
+	// Build a minimal environment for the git subprocess.
+	// Start with only HOME and PATH; callers append SOFT_SERVE_* vars via scmd.Env.
+	minimal := []string{
+		"HOME=" + os.Getenv("HOME"),
+		"PATH=" + os.Getenv("PATH"),
 	}
+	if v := os.Getenv("GIT_EXEC_PATH"); v != "" {
+		minimal = append(minimal, "GIT_EXEC_PATH="+v)
+	}
+	cmd.Env = append(minimal, scmd.Env...)
 
 	if scmd.CmdFunc != nil {
 		scmd.CmdFunc(cmd)

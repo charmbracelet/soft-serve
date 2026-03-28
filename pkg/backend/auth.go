@@ -9,8 +9,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const saltySalt = "salty-soft-serve"
-
 // HashPassword hashes the password using bcrypt.
 func HashPassword(password string) (string, error) {
 	crypt, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -40,6 +38,6 @@ func GenerateToken() string {
 
 // HashToken hashes the token using sha256.
 func HashToken(token string) string {
-	sum := sha256.Sum256([]byte(token + saltySalt))
+	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
 }

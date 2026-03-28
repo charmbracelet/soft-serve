@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // authenticate authenticates the user from the request.
@@ -31,13 +32,22 @@ func authenticate(r *http.Request) (proto.User, error) {
 // ErrInvalidPassword is returned when the password is invalid.
 var ErrInvalidPassword = errors.New("invalid password")
 
+// dummyHash is a bcrypt hash used to equalize timing when user doesn't exist.
+// This prevents username enumeration via timing differences.
+const dummyHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+
 func parseUsernamePassword(ctx context.Context, username, password string) (proto.User, error) {
 	logger := log.FromContext(ctx)
 	be := backend.FromContext(ctx)
 
 	if username != "" && password != "" {
 		user, err := be.User(ctx, username)
-		if err == nil && user != nil && backend.VerifyPassword(password, user.Password()) {
+		if err != nil {
+			// Run a dummy bcrypt comparison to prevent username enumeration via timing.
+			_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
+			return nil, ErrInvalidPassword
+		}
+		if user != nil && backend.VerifyPassword(password, user.Password()) {
 			return user, nil
 		}
 
@@ -47,7 +57,11 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 			return user, nil
 		}
 
-		logger.Error("invalid password or token", "username", username, "err", err)
+		logUsername := username
+		if len(logUsername) > 20 {
+			logUsername = logUsername[:20] + "…"
+		}
+		logger.Error("invalid password or token", "username", logUsername, "err", err)
 		return nil, ErrInvalidPassword
 	} else if username != "" {
 		// Try to authenticate using access token as the username
