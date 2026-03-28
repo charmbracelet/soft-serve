@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/charmbracelet/soft-serve/pkg/backend"
-	"github.com/charmbracelet/soft-serve/pkg/sshutils"
 	"github.com/spf13/cobra"
 )
 
@@ -15,8 +14,7 @@ func SetUsernameCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			pk := sshutils.PublicKeyFromContext(ctx)
-			user, err := be.UserByPublicKey(ctx, pk)
+			user, err := currentUser(ctx)
 			if err != nil {
 				return err
 			}

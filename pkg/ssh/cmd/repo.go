@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/spf13/cobra"
@@ -58,7 +60,8 @@ func RepoCommand() *cobra.Command {
 				}
 
 				head, err := r.HEAD()
-				if err != nil {
+				isEmpty := errors.Is(err, git.ErrReferenceNotExist)
+				if err != nil && !isEmpty {
 					return err
 				}
 
@@ -84,7 +87,11 @@ func RepoCommand() *cobra.Command {
 				if owner != nil {
 					cmd.Println(strings.TrimSpace(fmt.Sprint("Owner: ", owner.Username())))
 				}
-				cmd.Println("Default Branch:", head.Name().Short())
+				if isEmpty {
+					cmd.Println("Default Branch: (empty repository)")
+				} else {
+					cmd.Println("Default Branch:", head.Name().Short())
+				}
 				if len(branches) > 0 {
 					cmd.Println("Branches:")
 					for _, b := range branches {
