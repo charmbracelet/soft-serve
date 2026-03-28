@@ -234,6 +234,8 @@ func (r *Repo) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 		cmds = append(cmds, r.updateTabComponent(&Refs{refPrefix: msg.prefix}, msg))
 	case StashListMsg, StashPatchMsg:
 		cmds = append(cmds, r.updateTabComponent(&Stash{}, msg))
+	case DiffMsg:
+		cmds = append(cmds, r.updateTabComponent(&Diff{}, msg))
 	// We have two spinners, one is used to when loading the repository and the
 	// other is used when loading the log.
 	// Check if the spinner ID matches the spinner model.
