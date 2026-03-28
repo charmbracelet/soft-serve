@@ -31,6 +31,9 @@ func (m mirrorPull) Spec(ctx context.Context) string {
 	if !cfg.Jobs.MirrorPull.Enabled {
 		return ""
 	}
+	if cfg.Jobs.MirrorPull.Schedule == "" {
+		return "@every 10m"
+	}
 	return cfg.Jobs.MirrorPull.Schedule
 }
 
