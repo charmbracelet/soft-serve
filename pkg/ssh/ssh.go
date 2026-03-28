@@ -187,9 +187,15 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 	initializePermissions(ctx)
 	perms := ctx.Permissions()
 
-	// Set the public key fingerprint to be used for authentication.
-	perms.Extensions["pubkey-fp"] = gossh.FingerprintSHA256(pk)
-	ctx.SetValue(ssh.ContextKeyPermissions, perms)
+	// Only record the first offered key — the SSH client will use this
+	// key for the authenticated signature step. Overwriting on each probe
+	// would store the LAST key offered, which may differ from the one the
+	// client ultimately signs with, causing a fingerprint mismatch in
+	// AuthenticationMiddleware.
+	if perms.Extensions["pubkey-fp"] == "" {
+		perms.Extensions["pubkey-fp"] = gossh.FingerprintSHA256(pk)
+		ctx.SetValue(ssh.ContextKeyPermissions, perms)
+	}
 
 	return
 }
