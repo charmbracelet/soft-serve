@@ -159,9 +159,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 	wg.Wait()
 
 	err = cmd.Wait()
-	if err != nil && errors.Is(err, os.ErrNotExist) {
-		return ErrInvalidRepo
-	} else if err != nil {
+	if err != nil {
 		var exitErr *exec.ExitError
 		// Note: errors.As correctly unwraps through errors.Join, which Go 1.20+
 		// uses when cmd.WaitDelay fires (joining the ExitError with a timeout
