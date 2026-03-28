@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
 	"charm.land/log/v2"
 )
@@ -57,8 +58,27 @@ func (s Service) Handler(ctx context.Context, cmd ServiceCommand) error {
 type ServiceHandler func(ctx context.Context, cmd ServiceCommand) error
 
 // gitServiceHandler is the default service handler using the git binary.
+//
+// Deadline invariant: the ctx passed here must be cancellation-only — it must
+// NOT carry a context.WithDeadline or context.WithTimeout. All three transport
+// callers (SSH via gliderlabs/ssh, git daemon via pkg/daemon, HTTP via
+// net/http) enforce timeouts by calling conn.SetDeadline on the underlying
+// net.Conn, NOT by attaching a deadline to the context. If a caller were ever
+// changed to pass a deadline-carrying context, exec.CommandContext would kill
+// the git subprocess when the deadline expires, potentially corrupting an
+// in-progress push. In that case, replace ctx with a context.WithCancelCause
+// derived from context.Background() that mirrors parent cancellation but not
+// DeadlineExceeded.
 func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) error {
+	// NOTE: ctx is cancellation-only (derived from context.Background via
+	// context.WithCancel). SSH and git-daemon timeouts fire as net.Conn
+	// deadline errors, not context deadlines — so no deadline can reach here
+	// and kill a long-running push or clone mid-transfer.
 	cmd := exec.CommandContext(ctx, "git")
+	// WaitDelay bounds how long we wait for stdin/stdout pipe goroutines to
+	// finish after the git process has already been killed (e.g. by context
+	// cancellation). It does NOT impose a timeout on running git operations.
+	cmd.WaitDelay = 30 * time.Second
 	cmd.Dir = scmd.Dir
 	cmd.Args = append(cmd.Args, []string{
 		// Enable partial clones
@@ -125,8 +145,11 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 	if scmd.Stdin != nil {
 		go func() {
 			defer stdin.Close() //nolint: errcheck
-			if _, err := io.Copy(stdin, scmd.Stdin); err != nil {
-				log.Errorf("gitServiceHandler: failed to copy stdin: %v", err)
+			if _, err := io.Copy(stdin, scmd.Stdin); err != nil && ctx.Err() == nil {
+				// Broken-pipe here is normal: git read all it needed and exited,
+				// cmd.Wait() closed the write end of the pipe before the client
+				// finished sending. Log at Debug to avoid spurious error noise.
+				log.FromContext(ctx).Debug("gitServiceHandler: stdin copy ended", "err", err)
 			}
 		}()
 	}
@@ -136,7 +159,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, err := io.Copy(scmd.Stdout, stdout); err != nil {
+			if _, err := io.Copy(scmd.Stdout, stdout); err != nil && ctx.Err() == nil {
 				log.Errorf("gitServiceHandler: failed to copy stdout: %v", err)
 			}
 		}()
@@ -147,7 +170,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, erro := io.Copy(scmd.Stderr, stderr); erro != nil {
+			if _, erro := io.Copy(scmd.Stderr, stderr); erro != nil && ctx.Err() == nil {
 				log.Errorf("gitServiceHandler: failed to copy stderr: %v", erro)
 			}
 		}()
@@ -176,13 +199,21 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 				log.FromContext(ctx).Debug("git process exited on context cancellation", "service", svc.Name())
 				return nil
 			}
+			// When WaitDelay fires alongside a non-zero exit, cmd.Wait returns
+			// errors.Join(exitErr, exec.ErrWaitDelay). Strip the WaitDelay noise
+			// so callers see a clean exit-status error, not an internal timeout.
+			retErr := error(exitErr)
 			if len(exitErr.Stderr) > 0 {
-				return fmt.Errorf("%w: %s", err, exitErr.Stderr)
+				retErr = fmt.Errorf("%w: %s", exitErr, exitErr.Stderr)
 			}
-		} else if errors.Is(err, exec.ErrWaitDelay) && errors.Is(ctx.Err(), context.Canceled) {
-			// WaitDelay expired after context cancellation — the process was already
-			// killed; pipe goroutines did not drain within 30s. Not an error.
-			log.FromContext(ctx).Debug("git pipe drain timed out after cancellation", "service", svc.Name())
+			return retErr
+		} else if errors.Is(err, exec.ErrWaitDelay) {
+			// WaitDelay (30s) expired before pipe goroutines drained. This branch
+			// is only reached when there is no accompanying ExitError (i.e. git
+			// exited 0 but the client read the pipe slowly). The git command
+			// succeeded; the drain timeout is an internal bookkeeping detail, not
+			// a caller-visible error.
+			log.FromContext(ctx).Debug("git pipe drain timed out", "service", svc.Name())
 			return nil
 		}
 
