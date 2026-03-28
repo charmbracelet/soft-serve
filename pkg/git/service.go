@@ -180,11 +180,10 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 			if len(exitErr.Stderr) > 0 {
 				return fmt.Errorf("%w: %s", err, exitErr.Stderr)
 			}
-		} else if errors.Is(ctx.Err(), context.Canceled) {
-			// Fallback: context was cancelled but the error is not an ExitError
-			// (e.g. WaitDelay produced a pure timeout error without an underlying
-			// ExitError). Suppress this as well — it is expected cleanup noise.
-			log.FromContext(ctx).Debug("git process cleanup on context cancellation", "service", svc.Name())
+		} else if errors.Is(err, exec.ErrWaitDelay) && errors.Is(ctx.Err(), context.Canceled) {
+			// WaitDelay expired after context cancellation — the process was already
+			// killed; pipe goroutines did not drain within 30s. Not an error.
+			log.FromContext(ctx).Debug("git pipe drain timed out after cancellation", "service", svc.Name())
 			return nil
 		}
 
