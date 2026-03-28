@@ -161,6 +161,7 @@ func initializePermissions(ctx ssh.Context) {
 	if perms.Extensions == nil {
 		perms.Extensions = make(map[string]string)
 	}
+	ctx.SetValue(ssh.ContextKeyPermissions, perms)
 }
 
 // PublicKeyHandler handles public key authentication.
