@@ -91,7 +91,7 @@ func gitSuffixMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if cfg.HTTP.StripGitSuffix && !strings.Contains(r.URL.Path, ".git") {
+			if cfg.HTTP.StripGitSuffix && !strings.Contains(r.URL.Path, ".git/") && !strings.HasSuffix(r.URL.Path, ".git") {
 				p := r.URL.Path
 				for _, sub := range gitSubPaths {
 					if idx := strings.Index(p, sub); idx > 0 {
@@ -100,7 +100,11 @@ func gitSuffixMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 						r2 := r.Clone(r.Context())
 						r2.URL.Path = newPath
 						if r.URL.RawPath != "" {
-							r2.URL.RawPath = p[:idx] + ".git" + r.URL.RawPath[idx:]
+							rawIdx := strings.Index(r.URL.RawPath, sub)
+							if rawIdx < 0 {
+								rawIdx = idx // fallback: decoded and encoded same length
+							}
+							r2.URL.RawPath = r.URL.RawPath[:rawIdx] + ".git" + r.URL.RawPath[rawIdx:]
 						}
 						next.ServeHTTP(w, r2)
 						return
