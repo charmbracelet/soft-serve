@@ -118,7 +118,7 @@ func (l *Log) ShortHelp() []key.Binding {
 		}
 	case logViewDiff:
 		copyKey := l.common.KeyMap.Copy
-		copyKey.SetHelp("c", "copy diff")
+		copyKey.SetHelp("c", "copy patch")
 		return []key.Binding{
 			l.common.KeyMap.UpDown,
 			l.common.KeyMap.BackItem,
@@ -158,7 +158,7 @@ func (l *Log) FullHelp() [][]key.Binding {
 		}...)
 	case logViewDiff:
 		copyKey := l.common.KeyMap.Copy
-		copyKey.SetHelp("c", "copy diff")
+		copyKey.SetHelp("c", "copy patch")
 		k := l.vp.KeyMap
 		b = append(b, []key.Binding{
 			l.common.KeyMap.BackItem,
@@ -259,8 +259,8 @@ func (l *Log) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 				case key.Matches(kmsg, l.common.KeyMap.BackItem):
 					l.goBack()
 				case key.Matches(kmsg, l.common.KeyMap.Copy):
-					if l.currentDiff != nil {
-						cmds = append(cmds, copyCmd(l.currentDiff.Patch(), "Commit diff copied to clipboard"))
+					if l.selectedCommit != nil && l.currentDiff != nil {
+						cmds = append(cmds, copyCmd(rawPatch(l.selectedCommit, l.currentDiff), "Commit patch copied to clipboard"))
 					}
 				}
 			}
@@ -543,4 +543,22 @@ func (l *Log) setItems(items []selector.IdentifiableItem) tea.Cmd {
 	return func() tea.Msg {
 		return LogItemsMsg(items)
 	}
+}
+
+// rawPatch formats a commit and its diff as an email-format patch, equivalent
+// to `git show --format=raw --color=never -p <hash>`.
+func rawPatch(c *git.Commit, d *git.Diff) string {
+	var sb strings.Builder
+	msg := strings.ReplaceAll(c.Message, "\r\n", "\n")
+	sb.WriteString(fmt.Sprintf("commit %s\n", c.ID.String()))
+	sb.WriteString(fmt.Sprintf("Author: %s <%s>\n", c.Author.Name, c.Author.Email))
+	sb.WriteString(fmt.Sprintf("Date:   %s\n\n", c.Author.When.Format(time.UnixDate)))
+	for _, line := range strings.Split(strings.TrimRight(msg, "\n"), "\n") {
+		sb.WriteString("    ")
+		sb.WriteString(line)
+		sb.WriteByte('\n')
+	}
+	sb.WriteByte('\n')
+	sb.WriteString(d.Patch())
+	return sb.String()
 }
