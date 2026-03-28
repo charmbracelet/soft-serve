@@ -87,12 +87,12 @@ func NewFiles(common common.Common) *Files {
 		lineNumber:   true,
 	}
 	selector := selector.New(common, []selector.IdentifiableItem{}, FileItemDelegate{&common})
-	selector.SetShowFilter(false)
+	selector.SetShowFilter(true)
 	selector.SetShowHelp(false)
 	selector.SetShowPagination(false)
 	selector.SetShowStatusBar(false)
 	selector.SetShowTitle(false)
-	selector.SetFilteringEnabled(false)
+	selector.SetFilteringEnabled(true)
 	selector.DisableQuitKeybindings()
 	selector.KeyMap.NextPage = common.KeyMap.NextPage
 	selector.KeyMap.PrevPage = common.KeyMap.PrevPage
