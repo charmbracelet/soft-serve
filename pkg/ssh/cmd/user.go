@@ -22,15 +22,28 @@ func UserCommand() *cobra.Command {
 	var admin bool
 	var key string
 	userCreateCommand := &cobra.Command{
-		Use:               "create USERNAME",
+		Use:               "create USERNAME [AUTHORIZED_KEY]",
 		Short:             "Create a new user",
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MinimumNArgs(1),
 		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var pubkeys []ssh.PublicKey
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
 			username := args[0]
+			// SSH clients strip shell quotes before sending the command, so an
+			// "ssh-ed25519 BASE64" key passed via -k may arrive split across the
+			// flag value and extra positional args. Join them back together.
+			// Extra positional args with no -k flag also provide the key directly
+			// (mirrors the behaviour of `user add-pubkey`).
+			if len(args) > 1 {
+				extra := strings.Join(args[1:], " ")
+				if key == "" {
+					key = extra
+				} else {
+					key = key + " " + extra
+				}
+			}
 			if key != "" {
 				pk, _, err := sshutils.ParseAuthorizedKey(key)
 				if err != nil {
