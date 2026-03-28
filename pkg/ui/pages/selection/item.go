@@ -19,7 +19,7 @@ import (
 var _ sort.Interface = Items{}
 
 // copiedResetMsg is sent after the copy feedback timer expires.
-type copiedResetMsg struct{ gen int }
+type copiedResetMsg struct{}
 
 // Items is a list of Item.
 type Items []Item
@@ -101,10 +101,10 @@ func (i Item) Command() string {
 
 // ItemDelegate is the delegate for the item.
 type ItemDelegate struct {
-	common     *common.Common
-	activePane *pane
-	copiedIdx  int
-	copiedGen  int
+	common      *common.Common
+	activePane  *pane
+	copiedItem  Item
+	hasCopied   bool
 }
 
 // NewItemDelegate creates a new ItemDelegate.
@@ -112,7 +112,6 @@ func NewItemDelegate(common *common.Common, activePane *pane) *ItemDelegate {
 	return &ItemDelegate{
 		common:     common,
 		activePane: activePane,
-		copiedIdx:  -1,
 	}
 }
 
@@ -141,22 +140,20 @@ func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
-			d.copiedIdx = m.GlobalIndex()
-			d.copiedGen++
-			gen := d.copiedGen
+			d.copiedItem = item
+			d.hasCopied = true
 			return tea.Batch(
 				tea.SetClipboard(item.Command()),
 				m.SetItem(m.GlobalIndex(), item),
 				func() tea.Msg {
 					time.Sleep(1500 * time.Millisecond)
-					return copiedResetMsg{gen: gen}
+					return copiedResetMsg{}
 				},
 			)
 		}
 	case copiedResetMsg:
-		if msg.gen == d.copiedGen {
-			d.copiedIdx = -1
-		}
+		d.hasCopied = false
+		d.copiedItem = Item{}
 	}
 	return nil
 }
@@ -220,7 +217,7 @@ func (d *ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 
 	cmd := i.Command()
 	cmdStyler := styles.Command.Render
-	if d.copiedIdx == index {
+	if d.hasCopied && d.copiedItem.ID() == i.ID() {
 		cmd = "(copied to clipboard)"
 		cmdStyler = styles.Desc.Render
 	}
