@@ -30,6 +30,8 @@ var readmePatterns = []string{
 // Readme returns the repository's README.
 // It checks the repository root first, then falls back to docs/, .github/,
 // and .gitlab/ subdirectories.
+// When no README is found in any location, it returns ("", "", nil).
+// Callers should check whether path is empty to detect a missing README.
 func Readme(r proto.Repository, ref *git.Reference) (readme string, path string, err error) {
 	for _, pattern := range readmePatterns {
 		readme, path, err = LatestFile(r, ref, pattern)
@@ -40,5 +42,7 @@ func Readme(r proto.Repository, ref *git.Reference) (readme string, path string,
 			return
 		}
 	}
-	return
+	// No README found in any location; return a clean sentinel rather than
+	// leaking the error from the last pattern tried.
+	return "", "", nil
 }

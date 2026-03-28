@@ -203,7 +203,7 @@ func (s *Selection) Init() tea.Cmd {
 	for _, r := range repos {
 		if r.Name() == ".soft-serve" {
 			readme, path, err := backend.Readme(r, nil)
-			if err != nil {
+			if err != nil || path == "" {
 				continue
 			}
 

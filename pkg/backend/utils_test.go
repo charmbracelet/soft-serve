@@ -160,7 +160,54 @@ func TestReadme_NotFound(t *testing.T) {
 	})
 	repo := &stubRepo{path: dir}
 	content, path, err := Readme(repo, nil)
-	if err == nil {
-		t.Errorf("expected error when no readme exists, got content=%q path=%q", content, path)
+	if err != nil {
+		t.Fatalf("unexpected error when no readme exists: %v", err)
+	}
+	if path != "" || content != "" {
+		t.Errorf("expected empty path and content when no readme exists, got content=%q path=%q", content, path)
+	}
+}
+
+// initBareTestRepo creates a bare git repo in a temp dir by initialising a
+// non-bare repo, committing the given files, and then cloning it as bare.
+func initBareTestRepo(t *testing.T, files map[string]string) string {
+	t.Helper()
+	src := initTestRepo(t, files)
+	bareDir := t.TempDir()
+	c := git.NewCommand("clone", "--bare", src, bareDir)
+	if _, err := c.Run(); err != nil {
+		t.Fatalf("git clone --bare: %v", err)
+	}
+	return bareDir
+}
+
+func TestReadme_BareRepo_Root(t *testing.T) {
+	dir := initBareTestRepo(t, map[string]string{
+		"README.md": "# Bare Readme",
+	})
+	repo := &stubRepo{path: dir}
+	content, path, err := Readme(repo, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if path != "README.md" {
+		t.Errorf("expected path README.md, got %q", path)
+	}
+	if content != "# Bare Readme" {
+		t.Errorf("unexpected content: %q", content)
+	}
+}
+
+func TestReadme_BareRepo_NotFound(t *testing.T) {
+	dir := initBareTestRepo(t, map[string]string{
+		"main.go": "package main",
+	})
+	repo := &stubRepo{path: dir}
+	content, path, err := Readme(repo, nil)
+	if err != nil {
+		t.Fatalf("unexpected error when no readme exists in bare repo: %v", err)
+	}
+	if path != "" || content != "" {
+		t.Errorf("expected empty result for bare repo with no readme, got content=%q path=%q", content, path)
 	}
 }
