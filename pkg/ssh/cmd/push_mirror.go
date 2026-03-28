@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+	"net/url"
 	"strconv"
+	"strings"
 
 	"charm.land/lipgloss/v2/table"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
@@ -34,11 +37,17 @@ func pushMirrorAddCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
+
+			remoteURL := args[2]
+			if err := validateMirrorURL(remoteURL); err != nil {
+				return err
+			}
+
 			repo, err := be.Repository(ctx, args[0])
 			if err != nil {
 				return err
 			}
-			return be.AddPushMirror(ctx, repo, args[1], args[2])
+			return be.AddPushMirror(ctx, repo, args[1], remoteURL)
 		},
 	}
 	return cmd
@@ -61,6 +70,24 @@ func pushMirrorRemoveCommand() *cobra.Command {
 		},
 	}
 	return cmd
+}
+
+// validateMirrorURL ensures the remote URL uses an allowed protocol.
+// Rejects file://, git://, and other protocols that could be used for SSRF.
+func validateMirrorURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid mirror URL: %w", err)
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "https", "http", "ssh":
+		return nil
+	case "":
+		// SCP-style SSH remote like git@github.com:org/repo.git — allowed
+		return nil
+	default:
+		return fmt.Errorf("mirror URL scheme %q is not allowed (use https, http, or ssh)", u.Scheme)
+	}
 }
 
 func pushMirrorListCommand() *cobra.Command {

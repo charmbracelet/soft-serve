@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"os/exec"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
@@ -43,19 +44,25 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 		return
 	}
 	repoPath := b.repoPath(repo.Name())
+	const mirrorPushTimeout = 10 * time.Minute
+	const maxConcurrentPushes = 5
+	sem := make(chan struct{}, maxConcurrentPushes)
 	for _, m := range mirrors {
 		if !m.Enabled {
 			continue
 		}
-		m := m // capture loop variable
-		go func() {
-			cmd := exec.CommandContext(ctx, "git", "push", "--mirror", m.RemoteURL)
+		sem <- struct{}{} // acquire
+		go func(m models.PushMirror) {
+			defer func() { <-sem }() // release
+			mirrorCtx, cancel := context.WithTimeout(context.Background(), mirrorPushTimeout)
+			defer cancel()
+			cmd := exec.CommandContext(mirrorCtx, "git", "push", "--mirror", m.RemoteURL)
 			cmd.Dir = repoPath
 			if out, err := cmd.CombinedOutput(); err != nil {
 				b.logger.Warn("push-mirror: push failed", "repo", repo.Name(), "mirror", m.Name, "err", err, "output", string(out))
 			} else {
 				b.logger.Info("push-mirror: pushed", "repo", repo.Name(), "mirror", m.Name)
 			}
-		}()
+		}(m)
 	}
 }
