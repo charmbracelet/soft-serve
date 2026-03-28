@@ -53,6 +53,23 @@ ssh:
   # Can also be controlled with SOFT_SERVE_SSH_ALLOW_MOUSE_EVENTS=false.
   allow_mouse_events: {{ .SSH.AllowMouseEvents }}
 
+  # Allowed SSH key exchange algorithms.
+  # Leave empty to use the go/crypto defaults.
+  # key_exchanges:
+  #   - curve25519-sha256
+  #   - ecdh-sha2-nistp256
+
+  # Allowed SSH ciphers.
+  # Leave empty to use the go/crypto defaults.
+  # ciphers:
+  #   - aes128-gcm@openssh.com
+  #   - chacha20-poly1305@openssh.com
+
+  # Allowed SSH MAC algorithms.
+  # Leave empty to use the go/crypto defaults.
+  # macs:
+  #   - hmac-sha2-256-etm@openssh.com
+
 # The Git daemon configuration.
 git:
   # Enable the Git daemon.
