@@ -69,9 +69,13 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 						"remote update --prune", // update remote and prune remote refs
 					}
 
+					gitSyncFailed := false
 					for _, c := range cmds {
-						args := strings.Split(c, " ")
-						cmd := git.NewCommand(args...).WithContext(ctx)
+						// Prepend -c gc.auto=0 to disable automatic GC which
+						// would otherwise spawn git rev-list --objects --all
+						// and peg a CPU for the entire mirror-sync window.
+						args := append([]string{"-c", "gc.auto=0"}, strings.Split(c, " ")...)
+						cmd := git.NewCommand(args...).WithContext(ctx).WithTimeout(-1)
 						cmd.AddEnvs(
 							fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
 								filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
@@ -80,8 +84,14 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 						)
 
 						if _, err := cmd.RunInDir(r.Path); err != nil {
-							logger.Error("error running git remote update", "repo", name, "err", err)
+							logger.Error("error running git mirror sync", "repo", name, "cmd", c, "err", err)
+							gitSyncFailed = true
+							break
 						}
+					}
+
+					if gitSyncFailed {
+						return
 					}
 
 					if cfg.LFS.Enabled {
