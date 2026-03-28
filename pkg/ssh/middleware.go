@@ -56,11 +56,11 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 		}
 
 		// Check if this session was authenticated via access token.
-		tokenUser := perms.Extensions[tokenUserExtKey]
+		tokenUserID := perms.Extensions[tokenUserExtKey]
 
 		ac := be.AllowKeyless(ctx)
-		publicKeyCounter.WithLabelValues(strconv.FormatBool(ac || pk != nil || tokenUser != "")).Inc()
-		if !ac && pk == nil && tokenUser == "" {
+		publicKeyCounter.WithLabelValues(strconv.FormatBool(ac || pk != nil || tokenUserID != "")).Inc()
+		if !ac && pk == nil && tokenUserID == "" {
 			wish.Fatalln(s, ErrPermissionDenied)
 			return
 		}
@@ -69,11 +69,16 @@ func AuthenticationMiddleware(sh ssh.Handler) ssh.Handler {
 		var user proto.User
 		if pk != nil {
 			user, _ = be.UserByPublicKey(ctx, pk)
-		} else if tokenUser != "" {
-			var err error
-			user, err = be.User(ctx, tokenUser)
+		} else if tokenUserID != "" {
+			uid, err := strconv.ParseInt(tokenUserID, 10, 64)
 			if err != nil {
-				log.FromContext(ctx).Warn("token-authenticated user not found", "username", tokenUser, "err", err)
+				log.FromContext(ctx).Warn("invalid token user ID", "id", tokenUserID, "err", err)
+				wish.Fatalln(s, ErrPermissionDenied)
+				return
+			}
+			user, err = be.UserByID(ctx, uid)
+			if err != nil {
+				log.FromContext(ctx).Warn("token-authenticated user not found", "id", tokenUserID, "err", err)
 				wish.Fatalln(s, ErrPermissionDenied)
 				return
 			}

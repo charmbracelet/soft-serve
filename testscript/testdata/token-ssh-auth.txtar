@@ -51,7 +51,7 @@ stdout 'Username: user1'
 
 # TEST 7: pubkey list works with token auth
 tokensoft $TOKEN pubkey list
-stdout 'ssh-'
+stdout 'ssh-ed25519 '
 
 # TEST 8: token list works with token auth (uses UserFromContext, already correct)
 tokensoft $TOKEN token list

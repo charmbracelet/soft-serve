@@ -23,31 +23,6 @@ func (d *Backend) AccessLevel(ctx context.Context, repo string, username string)
 	return d.AccessLevelForUser(ctx, repo, user)
 }
 
-// AccessLevelByPublicKey returns the access level of a user's public key for a repository.
-//
-// It implements backend.Backend.
-func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ssh.PublicKey) access.AccessLevel {
-	if pk != nil {
-		for _, k := range d.cfg.AdminKeys() {
-			if sshutils.KeysEqual(pk, k) {
-				return access.AdminAccess
-			}
-		}
-
-		user, _ := d.UserByPublicKey(ctx, pk)
-		if user != nil {
-			return d.AccessLevel(ctx, repo, user.Username())
-		}
-	}
-
-	// Fall back to the context user (e.g., authenticated via access token).
-	if ctxUser := proto.UserFromContext(ctx); ctxUser != nil {
-		return d.AccessLevel(ctx, repo, ctxUser.Username())
-	}
-
-	return d.AccessLevel(ctx, repo, "")
-}
-
 // AccessLevelForUser returns the access level of a user for a repository.
 // TODO: user repository ownership
 func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user proto.User) access.AccessLevel {

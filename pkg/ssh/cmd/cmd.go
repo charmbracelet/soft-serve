@@ -111,13 +111,9 @@ func CommandName(args []string) string {
 }
 
 // currentUser resolves the authenticated user from the session context.
-// It first tries public key auth, then falls back to the context user
-// (e.g., set by access token authentication).
-func currentUser(ctx context.Context, be *backend.Backend) (proto.User, error) {
-	pk := sshutils.PublicKeyFromContext(ctx)
-	if pk != nil {
-		return be.UserByPublicKey(ctx, pk)
-	}
+// It checks the context user first (set by AuthenticationMiddleware for
+// both public key and token auth), avoiding a redundant DB lookup.
+func currentUser(ctx context.Context) (proto.User, error) {
 	user := proto.UserFromContext(ctx)
 	if user != nil {
 		return user, nil
