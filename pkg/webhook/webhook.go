@@ -116,7 +116,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 
 		if res.Body != nil {
 			defer res.Body.Close() //nolint: errcheck
-			b, err := io.ReadAll(res.Body)
+			b, err := io.ReadAll(io.LimitReader(res.Body, 1<<20)) // 1 MiB
 			if err != nil {
 				return err
 			}

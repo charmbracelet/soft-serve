@@ -337,6 +337,9 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	const maxLFSObjectSize = 5 << 30 // 5 GiB
+	r.Body = http.MaxBytesReader(w, r.Body, maxLFSObjectSize)
+
 	pointer := lfs.Pointer{Oid: oid}
 	if _, err := strg.Put(path.Join("objects", pointer.RelativePath()), r.Body); err != nil {
 		logger.Error("error writing object", "oid", oid, "err", err)

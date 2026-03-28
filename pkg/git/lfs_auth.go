@@ -72,7 +72,7 @@ func LFSAuthenticate(ctx context.Context, cmd ServiceCommand) error {
 	}
 
 	href := fmt.Sprintf("%s/%s.git/info/lfs", cfg.HTTP.PublicURL, repo.Name())
-	logger.Debug("generated token", "token", j, "href", href, "expires_at", expiresAt)
+	logger.Debug("generated token", "href", href, "expires_at", expiresAt)
 
 	return json.NewEncoder(cmd.Stdout).Encode(lfs.AuthenticateResponse{
 		Header: map[string]string{

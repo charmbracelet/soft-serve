@@ -2,7 +2,9 @@ package backend
 
 import (
 	"context"
+	"net/url"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -50,6 +52,13 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 	for _, m := range mirrors {
 		if !m.Enabled {
 			continue
+		}
+		if u, err := url.Parse(m.RemoteURL); err == nil {
+			scheme := strings.ToLower(u.Scheme)
+			if scheme == "file" {
+				b.logger.Warn("push mirror: blocked file:// URL", "url", m.RemoteURL)
+				continue // skip this mirror
+			}
 		}
 		sem <- struct{}{} // acquire
 		go func(m models.PushMirror) {

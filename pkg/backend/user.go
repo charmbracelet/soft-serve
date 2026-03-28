@@ -208,7 +208,7 @@ func (d *Backend) UserByAccessToken(ctx context.Context, token string) (proto.Us
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, proto.ErrUserNotFound
 		}
-		d.logger.Error("failed to find user by access token", "err", err, "token", token)
+		d.logger.Error("failed to find user by access token", "err", err)
 		return nil, err
 	}
 

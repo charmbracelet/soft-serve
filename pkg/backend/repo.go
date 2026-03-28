@@ -160,7 +160,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 				Timeout: -1,
 				Context: ctx,
 				Envs: []string{
-					fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+					fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=accept-new -i "%s"`,
 						filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
 						d.cfg.SSH.ClientKeyPath,
 					),

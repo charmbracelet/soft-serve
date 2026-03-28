@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -83,7 +84,16 @@ func validateMirrorURL(rawURL string) error {
 	case "https", "http", "ssh":
 		return nil
 	case "":
-		// SCP-style SSH remote like git@github.com:org/repo.git — allowed
+		// SCP-style SSH remotes (git@host:path) are allowed.
+		// Bare local paths like /etc/shadow or ./relative are not.
+		if strings.HasPrefix(u.Path, "/") || strings.HasPrefix(u.Path, ".") {
+			return errors.New("local file paths are not allowed as mirror remotes")
+		}
+		// For SCP-style, url.Parse puts the whole thing in Opaque or Path.
+		// Ensure there's a recognizable host:path separator (colon).
+		if !strings.Contains(rawURL, ":") {
+			return errors.New("invalid mirror remote URL: no host specified")
+		}
 		return nil
 	default:
 		return fmt.Errorf("mirror URL scheme %q is not allowed (use https, http, or ssh)", u.Scheme)
