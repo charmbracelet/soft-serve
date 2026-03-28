@@ -40,6 +40,7 @@ type Server struct {
 	logger       *log.Logger
 	ctx          context.Context
 	shutdownOnce sync.Once
+	shutdownErr  error
 }
 
 // NewServer returns a new *Server configured to serve Soft Serve. The SSH
@@ -183,9 +184,9 @@ func (s *Server) Start() error {
 	// errg.Wait() itself on return — so this goroutine never leaks.
 	go func() {
 		<-gctx.Done()
-		// errgroup.Wait() calls cancel(g.err) where g.err is the first
-		// non-nil error from any goroutine. If every goroutine returns
-		// nil (normal or SIGTERM-driven shutdown), g.err is nil and
+		// errgroup (golang.org/x/sync >= v0.12.0) uses
+		// context.WithCancelCause internally and calls cancel(g.err)
+		// on Wait(). If every goroutine returns nil, g.err == nil and
 		// context.Cause(gctx) == nil — skip to avoid a redundant call.
 		// If a goroutine returned a non-nil error, Cause != nil and we
 		// must shut down the remaining servers ourselves.
@@ -254,14 +255,15 @@ func (s *Server) Start() error {
 }
 
 // Shutdown lets the server gracefully shutdown. It is safe to call
-// concurrently; only the first call performs the actual shutdown and
-// subsequent calls are no-ops that return nil.
+// concurrently; only the first call performs the actual shutdown.
+// Subsequent callers block until the first completes and then receive
+// the same error, so the process exit code reflects the real outcome
+// regardless of which path (monitor goroutine or SIGTERM handler) wins.
 func (s *Server) Shutdown(ctx context.Context) error {
-	var shutErr error
 	s.shutdownOnce.Do(func() {
-		shutErr = s.shutdown(ctx)
+		s.shutdownErr = s.shutdown(ctx)
 	})
-	return shutErr
+	return s.shutdownErr
 }
 
 func (s *Server) shutdown(ctx context.Context) error {

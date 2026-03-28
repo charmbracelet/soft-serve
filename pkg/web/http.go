@@ -71,6 +71,12 @@ func (s *HTTPServer) Serve(l net.Listener) error {
 // ListenAndServe starts the HTTP server.
 func (s *HTTPServer) ListenAndServe() error {
 	if s.Server.TLSConfig != nil {
+		tlsCfg := s.Server.TLSConfig
+		if len(tlsCfg.Certificates) == 0 &&
+			tlsCfg.GetCertificate == nil &&
+			tlsCfg.GetConfigForClient == nil {
+			return errors.New("TLS configured but no certificate source provided (set Certificates, GetCertificate, or GetConfigForClient)")
+		}
 		return s.Server.ListenAndServeTLS("", "")
 	}
 	return s.Server.ListenAndServe()
