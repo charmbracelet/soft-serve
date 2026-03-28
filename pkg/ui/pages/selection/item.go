@@ -147,7 +147,6 @@ func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 			gen := d.copiedGen
 			return tea.Batch(
 				tea.SetClipboard(item.Command()),
-				m.SetItem(m.GlobalIndex(), item),
 				func() tea.Msg {
 					time.Sleep(1500 * time.Millisecond)
 					return copiedResetMsg{gen: gen}
