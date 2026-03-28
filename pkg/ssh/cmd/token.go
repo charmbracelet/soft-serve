@@ -47,11 +47,11 @@ another user, for example when provisioning CI/CD credentials.`,
 				if !user.IsAdmin() {
 					return fmt.Errorf("only admins can create tokens for other users")
 				}
-				var err error
-				targetUser, err = be.User(ctx, targetUsername)
+				tu, err := be.User(ctx, targetUsername)
 				if err != nil {
 					return fmt.Errorf("user %q not found: %w", targetUsername, err)
 				}
+				targetUser = tu
 			}
 
 			var expiresAt time.Time
