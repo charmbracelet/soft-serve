@@ -1,0 +1,28 @@
+# vi: set ft=conf
+
+# Regression test for https://github.com/charmbracelet/soft-serve/issues/522
+# Verifies that an empty repository can be created and queried without errors.
+# The TUI bug (infinite loading spinner on Readme tab for empty repos) is fixed
+# by setting r.isLoading = false in the EmptyRepoMsg handler in readme.go.
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create an empty repo (no initial commit, no README)
+soft repo create empty-repo -d 'empty repository for issue 522'
+stderr 'Created repository empty-repo.*'
+stdout ssh://localhost:$SSH_PORT/empty-repo.git
+
+# verify the repo exists and reports correct metadata
+soft repo info empty-repo
+stdout 'Repository: empty-repo'
+stdout 'Description: empty repository for issue 522'
+
+# verify the repo directory exists on disk
+exists $DATA_PATH/repos/empty-repo.git
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

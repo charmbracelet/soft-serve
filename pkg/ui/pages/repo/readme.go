@@ -106,6 +106,7 @@ func (r *Readme) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		r.SetSize(msg.Width, msg.Height)
 	case EmptyRepoMsg:
+		r.isLoading = false
 		cmds = append(cmds,
 			r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(),
 				r.repo.Name()), ".md"),
