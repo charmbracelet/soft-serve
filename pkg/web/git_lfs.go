@@ -356,6 +356,12 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), oid, size); err != nil {
+		if errors.Is(err, db.ErrDuplicateKey) {
+			// A concurrent upload for the same OID already committed the record;
+			// treat as idempotent success (git-lfs sends parallel PUTs for large pushes).
+			renderStatus(http.StatusOK)(w, nil)
+			return
+		}
 		logger.Error("error creating object", "oid", oid, "err", err)
 		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
