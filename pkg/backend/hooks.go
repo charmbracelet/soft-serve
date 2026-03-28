@@ -11,9 +11,17 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/sshutils"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
+	"gopkg.in/yaml.v3"
 )
 
 var _ hooks.Hooks = (*Backend)(nil)
+
+// repoMetaConfig is the schema for .soft-serve.yaml in a repository root.
+type repoMetaConfig struct {
+	Description string `yaml:"description"`
+	Private     *bool  `yaml:"private"`
+	Hidden      *bool  `yaml:"hidden"`
+}
 
 // PostReceive is called by the git post-receive hook.
 //
@@ -21,13 +29,50 @@ var _ hooks.Hooks = (*Backend)(nil)
 func (d *Backend) PostReceive(ctx context.Context, _ io.Writer, _ io.Writer, repo string, args []hooks.HookArg) {
 	d.logger.Debug("post-receive hook called", "repo", repo, "args", args)
 
-	// Trigger push mirrors asynchronously.
 	r, err := d.Repository(ctx, repo)
 	if err != nil {
-		d.logger.Warn("post-receive: failed to find repository for push mirrors", "repo", repo, "err", err)
+		d.logger.Warn("post-receive: failed to find repository", "repo", repo, "err", err)
 		return
 	}
+
+	// Trigger push mirrors asynchronously.
 	d.PushMirrors(ctx, r)
+
+	gr, err := r.Open()
+	if err != nil {
+		// empty or invalid repo — skip
+		return
+	}
+
+	content, _, err := git.LatestFile(gr, nil, ".soft-serve.yaml")
+	if err != nil {
+		// file absent or no commits yet — no-op
+		return
+	}
+
+	var meta repoMetaConfig
+	if err := yaml.Unmarshal([]byte(content), &meta); err != nil {
+		d.logger.Warnf("post-receive: parse .soft-serve.yaml: %v", err)
+		return
+	}
+
+	if meta.Description != "" {
+		if err := d.SetDescription(ctx, repo, meta.Description); err != nil {
+			d.logger.Warnf("post-receive: set description: %v", err)
+		}
+	}
+
+	if meta.Private != nil {
+		if err := d.SetPrivate(ctx, repo, *meta.Private); err != nil {
+			d.logger.Warnf("post-receive: set private: %v", err)
+		}
+	}
+
+	if meta.Hidden != nil {
+		if err := d.SetHidden(ctx, repo, *meta.Hidden); err != nil {
+			d.logger.Warnf("post-receive: set hidden: %v", err)
+		}
+	}
 }
 
 // PreReceive is called by the git pre-receive hook.
