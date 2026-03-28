@@ -117,6 +117,14 @@ func GitController(_ context.Context, r *mux.Router) {
 }
 
 var gitRoutes = []GitRoute{
+	// Raw file content endpoint.
+	// Registered before git-protocol routes so /raw/... paths are not
+	// swallowed by the git object handlers.
+	{
+		method:  []string{http.MethodGet},
+		handler: getRawBlob,
+		path:    "/raw/{ref}/{filepath:.*}",
+	},
 	// Git services
 	// These routes don't handle authentication/authorization.
 	// This is handled through wrapping the handlers for each route.
