@@ -11,7 +11,7 @@ import (
 // LatestFile returns the contents of the first file at the specified path pattern in the repository and its file path.
 func LatestFile(repo *Repository, ref *Reference, pattern string) (string, string, error) {
 	g := glob.MustCompile(pattern)
-	dir := filepath.Dir(pattern)
+	dir := path.Dir(pattern)
 	if ref == nil {
 		head, err := repo.HEAD()
 		if err != nil {
