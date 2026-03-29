@@ -113,7 +113,6 @@ func (m *Manager) Run(id string, done chan<- error) {
 	// We won the CAS: we are the sole goroutine responsible for running p.fn.
 	// m.m already holds p from Add; no re-store needed here.
 	defer p.cancel()
-	defer m.m.Delete(id)
 
 	errc := make(chan error, 1)
 	go func(ctx context.Context) {
@@ -123,17 +122,19 @@ func (m *Manager) Run(id string, done chan<- error) {
 	select {
 	case <-m.ctx.Done():
 		done <- m.ctx.Err()
-		// The p.fn goroutine may still be running. Drain errc in the background
-		// so it does not block forever on the send; p.cancel() (deferred above)
-		// signals p.fn to stop. The id is deleted from the map by the deferred
-		// m.m.Delete, so no new task with the same id can reuse this Task until
-		// p.fn has sent on errc and this goroutine has exited.
-		go func() { <-errc }()
+		// Delay map deletion until the p.fn goroutine has fully exited so that
+		// a concurrent Add(id, ...) + Run(id, ...) cannot start a new task for
+		// the same id while the old goroutine is still executing p.fn.
+		go func() {
+			<-errc
+			m.m.Delete(id)
+		}()
 	case err := <-errc:
 		p.mu.Lock()
 		p.err = err
 		p.mu.Unlock()
-		// No re-store: m.m already holds p and defer m.m.Delete(id) runs next.
+		// No re-store: m.m already holds p; delete after storing the result.
+		m.m.Delete(id)
 		done <- err
 	}
 }

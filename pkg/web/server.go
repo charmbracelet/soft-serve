@@ -94,6 +94,12 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	// preflights receive CORS headers even when rate-limited (the browser needs
 	// those headers to understand the 429 response). All request methods,
 	// including OPTIONS, consume rate-limit tokens.
+	//
+	// AllowCredentials is explicitly NOT set (defaults to false). Wildcard
+	// AllowedOrigins ("*") is incompatible with credential-carrying requests;
+	// browsers reject Access-Control-Allow-Credentials: true when the origin
+	// is "*". Operators who need credentialed cross-origin access must specify
+	// explicit origins in the CORS config.
 	h = handlers.CORS(handlers.AllowedHeaders(cfg.HTTP.CORS.AllowedHeaders),
 		handlers.AllowedOrigins(cfg.HTTP.CORS.AllowedOrigins),
 		handlers.AllowedMethods(cfg.HTTP.CORS.AllowedMethods),
