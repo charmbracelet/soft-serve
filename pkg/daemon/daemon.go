@@ -252,7 +252,15 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		host := strings.TrimPrefix(string(opts[1]), "host=")
+		rawHost := strings.TrimPrefix(string(opts[1]), "host=")
+		// Sanitize host value for control characters before it enters the
+		// process environment (newlines in env blocks corrupt other vars).
+		host, hostOK := sanitizeParamValue(rawHost)
+		if !hostOK {
+			d.logger.Warnf("git: rejecting connection with invalid host value %q", rawHost)
+			d.fatal(c, git.ErrInvalidRequest)
+			return
+		}
 		extraParams := map[string]string{}
 
 		if len(opts) > 2 {
