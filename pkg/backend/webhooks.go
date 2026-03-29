@@ -286,12 +286,19 @@ func (b *Backend) RedeliverWebhookDelivery(ctx context.Context, repo proto.Repos
 }
 
 // WebhookDelivery returns a webhook delivery.
-func (b *Backend) WebhookDelivery(ctx context.Context, webhookID int64, id uuid.UUID) (webhook.Delivery, error) {
+// It verifies that the webhook belongs to the given repository before
+// returning the delivery to prevent cross-repo information leakage.
+func (b *Backend) WebhookDelivery(ctx context.Context, repo proto.Repository, webhookID int64, id uuid.UUID) (webhook.Delivery, error) {
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 
 	var delivery webhook.Delivery
 	if err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
+		// Verify webhook belongs to this repository before fetching delivery.
+		if _, err := datastore.GetWebhookByID(ctx, tx, repo.ID(), webhookID); err != nil {
+			return db.WrapError(err)
+		}
+
 		d, err := datastore.GetWebhookDeliveryByID(ctx, tx, webhookID, id)
 		if err != nil {
 			return db.WrapError(err)

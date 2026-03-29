@@ -309,10 +309,15 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 
 	// Delete each repository outside the user-deletion transaction to avoid
 	// nested-transaction issues (especially on SQLite).
+	var errs []error
 	for _, name := range repoNames {
 		if err := d.DeleteRepository(ctx, name); err != nil {
 			d.logger.Error("error deleting user repo", "repo", name, "err", err)
+			errs = append(errs, err)
 		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	return nil

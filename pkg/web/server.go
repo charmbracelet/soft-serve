@@ -16,15 +16,17 @@ import (
 )
 
 // realClientIP extracts the real client IP from the request.
-// It uses the leftmost value of X-Forwarded-For when present,
-// otherwise falls back to RemoteAddr (with port stripped).
-func realClientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// The leftmost IP is the original client.
-		if idx := strings.IndexByte(xff, ','); idx != -1 {
-			return strings.TrimSpace(xff[:idx])
+// When trustProxyHeaders is true it uses the leftmost value of
+// X-Forwarded-For; otherwise it falls back to RemoteAddr (with port stripped).
+func realClientIP(r *http.Request, trustProxyHeaders bool) string {
+	if trustProxyHeaders {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			// The leftmost IP is the original client.
+			if idx := strings.IndexByte(xff, ','); idx != -1 {
+				return strings.TrimSpace(xff[:idx])
+			}
+			return strings.TrimSpace(xff)
 		}
-		return strings.TrimSpace(xff)
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -33,10 +35,10 @@ func realClientIP(r *http.Request) string {
 	return host
 }
 
-func newRateLimitMiddleware(limiter *ratelimit.IPLimiter) func(http.Handler) http.Handler {
+func newRateLimitMiddleware(limiter *ratelimit.IPLimiter, trustProxyHeaders bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !limiter.Allow(realClientIP(r)) {
+			if !limiter.Allow(realClientIP(r, trustProxyHeaders)) {
 				http.Error(w, "too many requests", http.StatusTooManyRequests)
 				return
 			}
@@ -80,7 +82,7 @@ func NewRouter(ctx context.Context) http.Handler {
 	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
 	h = securityHeadersMiddleware(h)
-	h = newRateLimitMiddleware(httpLimiter)(h)
+	h = newRateLimitMiddleware(httpLimiter, cfg.HTTP.TrustProxyHeaders)(h)
 
 	h = handlers.CORS(handlers.AllowedHeaders(cfg.HTTP.CORS.AllowedHeaders),
 		handlers.AllowedOrigins(cfg.HTTP.CORS.AllowedOrigins),

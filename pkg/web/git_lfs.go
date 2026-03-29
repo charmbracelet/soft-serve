@@ -244,6 +244,10 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	oid := mux.Vars(r)["oid"]
 	repo := proto.RepositoryFromContext(ctx)
+	if repo == nil {
+		renderStatus(http.StatusNotFound)(w, r)
+		return
+	}
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
 	datastore := store.FromContext(ctx)

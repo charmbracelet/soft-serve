@@ -115,6 +115,10 @@ http:
   # Both /<name> and /<name>.git will be accepted.
   # strip_git_suffix: false
 
+  # When true, the X-Forwarded-For header is trusted for client IP resolution.
+  # Only enable this when the server sits behind a trusted reverse proxy.
+  # trust_proxy_headers: false
+
   # The cross-origin request security options
   cors:
     # The allowed cross-origin headers
