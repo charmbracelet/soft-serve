@@ -150,7 +150,7 @@ func (*webhookStore) GetWebhooksByRepoID(ctx context.Context, h db.Handler, repo
 
 // GetWebhooksByRepoIDWhereEvent implements store.WebhookStore.
 func (*webhookStore) GetWebhooksByRepoIDWhereEvent(ctx context.Context, h db.Handler, repoID int64, events []int) ([]models.Webhook, error) {
-	query, args, err := sqlx.In(`SELECT webhooks.*
+	query, args, err := sqlx.In(`SELECT DISTINCT webhooks.*
 			FROM webhooks
 			INNER JOIN webhook_events ON webhooks.id = webhook_events.webhook_id
 			WHERE webhooks.repo_id = ? AND webhook_events.event IN (?);`, repoID, events)

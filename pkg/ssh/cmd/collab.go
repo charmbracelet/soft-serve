@@ -54,7 +54,7 @@ func collabRemoveCommand() *cobra.Command {
 		Use:               "remove REPOSITORY USERNAME",
 		Args:              cobra.ExactArgs(2),
 		Short:             "Remove a collaborator from a repo",
-		PersistentPreRunE: checkIfReadableAndCollab,
+		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
