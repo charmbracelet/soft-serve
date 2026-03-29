@@ -293,26 +293,23 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 		d.manager.Run(tid, done)
 	}()
 
-	// Both channels are buffered (cap 1). In the normal path p.fn sends to
-	// repoc before returning, then Run delivers to done. In the cancellation
-	// path Run sends to done before p.fn has had a chance to send to repoc;
-	// blocking on <-repoc first would deadlock until the import goroutine
-	// eventually completes. Use select to handle whichever arrives first.
-	//
-	// When done fires with a nil error (e.g. context cancelled after the
-	// import succeeded), drain repoc non-blocking so the caller still gets
-	// the repository value that was already produced.
+	// Use select: repoc and done are both buffered (cap 1). Normal path sends
+	// repoc first then done; cancellation path sends done first.
 	select {
 	case r := <-repoc:
 		return r, <-done
 	case err := <-done:
 		if err == nil {
 			// Import may have completed just before the context fired;
-			// return the repository if available.
+			// return the repository if already produced.
 			select {
 			case r := <-repoc:
 				return r, nil
 			default:
+				// done fired before repoc was populated — the import goroutine
+				// completed (nil error) but the repository value is not yet
+				// available. Return an error so callers never observe (nil, nil).
+				return nil, fmt.Errorf("import: repository unavailable after completion")
 			}
 		}
 		return nil, err
