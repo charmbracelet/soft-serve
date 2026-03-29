@@ -309,14 +309,10 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 	}
 
 	// NOTE: There is a window between the user-record deletion and repository
-	// deletions below where orphaned repos have no owner. If anonymous access
-	// is enabled and a repo was public, it may be briefly accessible to anon
-	// users. This is a structural limitation; a future improvement would be
-	// to mark repos for deletion atomically inside the user-deletion transaction.
-	// Future improvement: set a soft-delete flag on repos inside the user-deletion
-	// transaction so they become invisible immediately before filesystem cleanup.
-	// Delete each repository outside the user-deletion transaction to avoid
-	// nested-transaction issues (especially on SQLite).
+	// deletions below where orphaned repos have no owner. A future improvement
+	// would be to soft-delete repos atomically inside the user-deletion transaction
+	// so they become invisible immediately before filesystem cleanup.
+	// Repos are deleted outside the transaction to avoid nested-transaction issues.
 	var errs []error
 	for _, name := range repoNames {
 		if err := d.DeleteRepository(ctx, name); err != nil {

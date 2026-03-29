@@ -117,7 +117,7 @@ type HTTPConfig struct {
 	// TrustProxyHeaders controls whether the X-Forwarded-For header is trusted
 	// for client IP resolution. Only enable this when the server sits behind a
 	// trusted reverse proxy. Default is false.
-	TrustProxyHeaders bool `env:"SOFT_SERVE_HTTP_TRUST_PROXY_HEADERS" yaml:"trust_proxy_headers"`
+	TrustProxyHeaders bool `env:"TRUST_PROXY_HEADERS" yaml:"trust_proxy_headers"`
 
 	// RateLimit is the maximum number of HTTP requests per second per IP.
 	// Set to 0 to disable HTTP rate limiting.

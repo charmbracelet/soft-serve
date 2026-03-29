@@ -86,6 +86,8 @@ func isPrivateOrInternal(ip net.IP) bool {
 		ip = ip4
 	}
 
+	// ip.IsPrivate() covers IPv6 ULA (fc00::/7) and IPv4 private ranges;
+	// no separate fc00::/7 check is needed here.
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
 		ip.IsPrivate() || ip.IsUnspecified() || ip.IsMulticast() {
 		return true

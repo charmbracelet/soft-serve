@@ -57,7 +57,7 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 			// resistance — it only reduces the bcrypt-timing gap.
 			// Also attempt token lookup so the not-found and wrong-password paths
 			// do the same amount of work.
-			_, _ = be.UserByAccessToken(ctx, password)
+			_, _ = be.UserByAccessToken(ctx, password) //nolint:errcheck // intentionally discarded for timing equalization
 			return nil, errInvalidPassword
 		}
 		if user != nil && backend.VerifyPassword(password, user.Password()) {
