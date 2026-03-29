@@ -210,7 +210,18 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 	if sess := sshutils.SessionFromContext(ctx); sess != nil {
 		for _, env := range sess.Environ() {
 			if strings.HasPrefix(env, "GIT_PROTOCOL=") {
-				envs = append(envs, env)
+				val := env[len("GIT_PROTOCOL="):]
+				// Sanitize: reject any control characters to prevent env var injection.
+				clean := true
+				for _, c := range val {
+					if c < 0x20 || c == 0x7f {
+						clean = false
+						break
+					}
+				}
+				if clean {
+					envs = append(envs, env)
+				}
 				break
 			}
 		}

@@ -280,6 +280,14 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 	} else {
 		if stat, err := strg.Stat(path.Join("objects", pointer.RelativePath())); err == nil {
 			size = stat.Size()
+			// Object exists on disk but is not in the database; register it now.
+			if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), oid, size); err != nil {
+				logger.Error("error creating lfs object in datastore", "oid", oid, "repo", repo.Name(), "err", err)
+				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+					Message: "internal server error",
+				})
+				return
+			}
 		}
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
@@ -425,6 +433,10 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 			renderJSON(w, http.StatusOK, map[string]string{"message": "verified"})
 			return
 		}
+		renderJSON(w, http.StatusUnprocessableEntity, struct {
+			Message string `json:"message"`
+		}{"size mismatch"})
+		return
 	} else if errors.Is(err, fs.ErrNotExist) {
 		logger.Error("file not found", "oid", pointer.Oid)
 		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
