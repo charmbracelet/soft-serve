@@ -83,16 +83,16 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		}
 
 		logUsername := username
-		if len(logUsername) > 20 {
-			logUsername = logUsername[:20] + "…"
+		if runes := []rune(logUsername); len(runes) > 20 {
+			logUsername = string(runes[:20]) + "…"
 		}
 		logger.Debug("invalid credentials", "username", logUsername, "err", err)
 		return nil, errInvalidPassword
 	} else if username != "" {
 		// Try to authenticate using access token as the username
 		logUser := username
-		if len(logUser) > 8 {
-			logUser = logUser[:8] + "…"
+		if runes := []rune(logUser); len(runes) > 8 {
+			logUser = string(runes[:8]) + "…"
 		}
 		logger.Debug("trying to authenticate using access token as username", "username", logUser)
 		user, err := be.UserByAccessToken(ctx, username)

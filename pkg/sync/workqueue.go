@@ -78,12 +78,10 @@ func (wq *WorkPool) Run() {
 }
 
 // Add adds a new job to the pool.
-// If the job already exists, it is a no-op.
+// If the job already exists, it is a no-op. LoadOrStore is used to make
+// the check-and-store atomic and safe for concurrent callers.
 func (wq *WorkPool) Add(id string, fn func()) {
-	if _, ok := wq.work.Load(id); ok {
-		return
-	}
-	wq.work.Store(id, fn)
+	wq.work.LoadOrStore(id, fn)
 }
 
 // Status checks if a job is in the queue.

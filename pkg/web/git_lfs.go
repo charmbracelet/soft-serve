@@ -346,12 +346,12 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close() //nolint: errcheck
 
 	// NOTE: Git LFS client will retry uploading the same object if there was a
-	// partial error, so we need to skip existing objects.
+	// partial error, so we need to skip existing objects. Do NOT drain the body
+	// here — the client can send up to 5 GiB and discarding it wastes CPU and
+	// bandwidth. Responding 200 immediately is correct; git-lfs treats a closed
+	// connection on a PUT as a successful upload.
 	if _, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), oid); err == nil {
-		// Object exists, skip request
-		if _, err := io.Copy(io.Discard, r.Body); err != nil {
-			logger.Debug("discard existing LFS object body", "err", err)
-		}
+		// Object exists, skip request.
 		renderStatus(http.StatusOK)(w, nil)
 		return
 	} else if !errors.Is(err, db.ErrRecordNotFound) {
