@@ -78,6 +78,10 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 		} else if err != nil || u.Scheme == "" {
 			// SCP-style remote (e.g. git@host:repo) — url.Parse either fails or
 			// produces an empty scheme. Both cases require manual host extraction.
+			// Note: url.Parse rarely errors on SCP-style strings (it typically
+			// succeeds with an empty scheme), so the err != nil branch here is
+			// largely dead code in practice — the empty-scheme check is the
+			// common path.
 			host, scpErr := extractSCPHost(m.RemoteURL)
 			if scpErr != nil {
 				b.logger.Warn("push mirror: cannot extract host from SCP-style remote", "remote", m.RemoteURL, "err", scpErr)
@@ -131,7 +135,9 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 				// This is a best-effort mitigation — it does not eliminate the window
 				// between SSRF validation and the first SSH handshake.
 				knownHostsFile := filepath.Join(b.cfg.DataPath, "mirror_known_hosts")
-				sshCommand := "ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=" + knownHostsFile
+				// shellQuote wraps the path in POSIX single-quotes to handle DataPath
+				// values that contain spaces without breaking the SSH argument list.
+				sshCommand := "ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=" + shellQuote(knownHostsFile)
 				if sockPath := os.Getenv("SSH_AUTH_SOCK"); sockPath != "" {
 					// SSH_AUTH_SOCK is a Unix socket path from the process environment.
 					// It is not influenced by user input (mirror URLs are validated

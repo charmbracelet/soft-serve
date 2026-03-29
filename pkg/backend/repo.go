@@ -171,7 +171,7 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 	// manager.Add. The task manager's LoadOrStore provides atomic dedup for
 	// concurrent callers, so this is safe for correctness; the stat check is
 	// advisory only.
-	if _, err := os.Stat(rp); err == nil || os.IsExist(err) {
+	if _, err := os.Stat(rp); err == nil || errors.Is(err, fs.ErrExist) {
 		return nil, proto.ErrRepoExist
 	}
 
@@ -306,9 +306,11 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 			case r := <-repoc:
 				return r, nil
 			default:
-				// done fired before repoc was populated — the import goroutine
-				// completed (nil error) but the repository value is not yet
-				// available. Return an error so callers never observe (nil, nil).
+				// This branch should be unreachable: the import goroutine always
+				// sends to repoc before signalling done with a nil error. If it
+				// is reached, something is very wrong — log loudly so it is not
+				// silently swallowed.
+				d.logger.Error("import: done fired with nil error but repoc was empty — this is a bug")
 				return nil, fmt.Errorf("import: repository unavailable after completion")
 			}
 		}

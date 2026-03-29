@@ -148,6 +148,11 @@ func (m *Manager) Run(id string, done chan<- error) {
 
 	select {
 	case <-m.ctx.Done():
+		// Note: p.cancel() fires via defer AFTER this select arm returns, so
+		// the p.fn goroutine's ctx is not yet cancelled at this point.
+		// Callers that observe done's result may briefly see m.Exists(id)==true
+		// until the background goroutine below drains errc and calls Delete.
+		// This is an acceptable narrow window and is documented in the API.
 		done <- m.ctx.Err()
 		// Delay map deletion until the p.fn goroutine has fully exited so that
 		// a concurrent Add(id, ...) + Run(id, ...) cannot start a new task for

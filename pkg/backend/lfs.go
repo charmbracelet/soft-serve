@@ -93,6 +93,10 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 		}
 	}
 
+	// errChan is closed by SearchPointerBlobs after wg.Wait() completes.
+	// If SearchPointerBlobs sent an error before closing, ok is true and err
+	// holds the error. If it closed without sending (no error), ok is false
+	// and err is nil — the zero value — which we correctly ignore.
 	if err, ok := <-errChan; ok {
 		return err
 	}
