@@ -64,20 +64,26 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 			return err
 		}
 
+		if exist && obj.ID != 0 {
+			// fully synced — skip
+			continue
+		}
 		if exist && obj.ID == 0 {
+			// on disk but not in DB — register
 			if err := store.CreateLFSObject(ctx, dbx, repo.ID(), pointer.Oid, pointer.Size); err != nil {
 				return db.WrapError(err)
 			}
-		} else {
-			batch = append(batch, pointer.Pointer)
-			// Limit batch requests to lfsBatchSize objects
-			if len(batch) >= lfsBatchSize {
-				if err := download(batch); err != nil {
-					return err
-				}
-
-				batch = nil
+			continue
+		}
+		// not on disk — add to download batch
+		batch = append(batch, pointer.Pointer)
+		// Limit batch requests to lfsBatchSize objects
+		if len(batch) >= lfsBatchSize {
+			if err := download(batch); err != nil {
+				return err
 			}
+
+			batch = nil
 		}
 	}
 
