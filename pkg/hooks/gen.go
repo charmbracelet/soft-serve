@@ -27,8 +27,9 @@ const (
 // - post-update
 //
 // This function should be called by the backend when a repository is created.
-// The context parameter is accepted for future use (e.g. cancellation during
-// slow filesystem operations) but is not yet consumed by the implementation.
+// The context parameter is currently unused but is reserved for future use
+// (e.g. cancellation during slow filesystem operations, operation-scoped logging).
+// TODO: wire context into hook execution if/when implementing async hooks.
 func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 	repo = utils.SanitizeRepo(repo) + ".git"
 	hooksPath := filepath.Join(cfg.DataPath, "repos", repo, "hooks")

@@ -203,13 +203,7 @@ func (*lfsStore) GetLFSObjectsByOids(ctx context.Context, tx db.Handler, repoID 
 	if len(oids) == 0 {
 		return nil, nil
 	}
-	// Convert []string to []interface{} for sqlx.In.
-	args := make([]interface{}, len(oids)+1)
-	args[0] = repoID
-	for i, oid := range oids {
-		args[i+1] = oid
-	}
-	query, args2, err := sqlx.In(`SELECT * FROM lfs_objects WHERE repo_id = ? AND oid IN (?);`, args[0], oids)
+	query, args2, err := sqlx.In(`SELECT * FROM lfs_objects WHERE repo_id = ? AND oid IN (?);`, repoID, oids)
 	if err != nil {
 		return nil, err
 	}

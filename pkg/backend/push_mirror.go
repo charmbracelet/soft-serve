@@ -75,7 +75,10 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
 				continue
 			}
-		} else if err != nil || u.Scheme == "" {
+		} else // SCP-style remote (e.g. git@host:repo) — url.Parse either fails or
+		// produces an empty scheme. The err != nil branch is for genuine
+		// parse errors; the u.Scheme == "" branch is for SCP-style strings.
+		if err != nil || u.Scheme == "" {
 			// SCP-style remote (e.g. git@host:repo) — url.Parse either fails or
 			// produces an empty scheme. Both cases require manual host extraction.
 			// Note: url.Parse rarely errors on SCP-style strings (it typically
@@ -125,6 +128,13 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 				"GIT_CONFIG_COUNT=0",
 			}
 			if sshCmd := os.Getenv("GIT_SSH_COMMAND"); sshCmd != "" {
+			// Warn if operator sets GIT_SSH_COMMAND but no pinned known_hosts entry
+			// exists for the target host — the default SSH setup pins fingerprints,
+			// but an operator override bypasses this mitigation.
+			knownHostsFile := filepath.Join(b.cfg.DataPath, "mirror_known_hosts")
+			if _, err := os.Stat(knownHostsFile); err != nil && os.IsNotExist(err) {
+				b.logger.Warn("push-mirror: GIT_SSH_COMMAND set but no known_hosts file exists — DNS rebinding mitigation bypassed", "remote", m.RemoteURL)
+			}
 				// Apply the same safety check used for SSH_AUTH_SOCK: a newline
 				// or NUL in an env var value would malform the env block passed
 				// to the subprocess.

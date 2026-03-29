@@ -74,6 +74,11 @@ func NewSecureClient() *http.Client {
 				// Without this, the dialer resolves the hostname again
 				// independently, and the second resolution could return
 				// a different (private) IP.
+				// Note: creating a new dialer per call is wasteful but
+				// ensures each connection has a fresh resolver state
+				// (safe against cache poisoning). For high-throughput
+				// webhook delivery, consider reusing a single dialer outside
+				// this closure if performance becomes a bottleneck.
 				return dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
 			},
 			MaxIdleConns:          100,

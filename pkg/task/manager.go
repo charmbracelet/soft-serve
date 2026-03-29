@@ -101,6 +101,12 @@ func (m *Manager) Exists(id string) bool {
 // If Stop() is called while a second goroutine is waiting on an already-started
 // task, done receives context.Canceled. Callers should treat context.Canceled as
 // "task was stopped or the manager shut down", not necessarily as a task error.
+//
+// Precondition: Add must have been called for id before Run. If no task is
+// registered for id, done receives ErrNotFound and Run returns immediately.
+// There is a narrow race window: if Stop() races with Run() between Add and Run,
+// Run may return ErrNotFound even though Add was called. Callers should handle
+// ErrNotFound gracefully.
 func (m *Manager) Run(id string, done chan<- error) {
 	v, ok := m.m.Load(id)
 	if !ok {

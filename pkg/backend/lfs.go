@@ -3,7 +3,9 @@ package backend
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -46,13 +48,21 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 			// without a corresponding DB row. The re-registration path below
 			// (obj != nil && obj.ID == 0) handles this case on the next download
 			// attempt by re-inserting the DB row without re-downloading the data.
+			// Write object to disk first (outside transaction to avoid holding
+			// DB slot for long downloads). If DB insert fails, delete file.
+			objPath := path.Join("objects", p.RelativePath())
+			if _, err := strg.Put(objPath, content); err != nil {
+				return fmt.Errorf("failed to write LFS object to disk: %w", err)
+			}
 			return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 				if err := store.CreateLFSObject(ctx, tx, repo.ID(), p.Oid, p.Size); err != nil {
-					return db.WrapError(err)
+					// DB insert failed — clean up on-disk file to avoid orphan.
+					if rmErr := os.Remove(objPath); rmErr != nil {
+						return fmt.Errorf("failed DB insert and failed to clean orphan file: %w; cleanup error: %v", err, rmErr)
+					}
+					return err
 				}
-
-				_, err := strg.Put(path.Join("objects", p.RelativePath()), content)
-				return err
+				return nil
 			})
 		})
 	}
@@ -75,7 +85,13 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 			continue
 		}
 		if exist && obj.ID == 0 {
-			// on disk but not in DB — register
+			// Disk-ahead-of-DB recovery: object is on disk but not in the DB.
+			// Validate the pointer before re-registering it to guard against
+			// malformed OIDs reaching the DB (defense-in-depth; the LFS scanner
+			// already validates OIDs, but we check again here to be explicit).
+			if !pointer.IsValid() {
+				return fmt.Errorf("lfs: invalid pointer during re-registration: oid=%s", pointer.Oid)
+			}
 			if err := store.CreateLFSObject(ctx, dbx, repo.ID(), pointer.Oid, pointer.Size); err != nil {
 				return db.WrapError(err)
 			}

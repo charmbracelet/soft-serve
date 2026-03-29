@@ -160,9 +160,9 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			obj, objNotFound := dbObjsByOid[o.Oid]
-			// objNotFound is true when the OID is absent from the DB map.
-			objInDB := !objNotFound
+			// Map lookup: objInDB is true when the OID was returned by the bulk
+			// query (i.e. it exists in the database).
+			obj, objInDB := dbObjsByOid[o.Oid]
 
 			if !exist {
 				objects = append(objects, &lfs.ObjectResponse{
