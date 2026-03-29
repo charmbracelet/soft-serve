@@ -47,15 +47,22 @@ func newRateLimitMiddleware(limiter *ratelimit.IPLimiter, trustProxyHeaders bool
 	}
 }
 
-// securityHeadersMiddleware sets defensive HTTP response headers.
-func securityHeadersMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-		w.Header().Set("Content-Security-Policy", "default-src 'none'")
-		next.ServeHTTP(w, r)
-	})
+// securityHeadersMiddleware returns middleware that sets defensive HTTP response headers.
+// When TLS is configured (both TLSKeyPath and TLSCertPath are set) it also adds an HSTS header.
+func securityHeadersMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			w.Header().Set("Content-Security-Policy", "default-src 'none'")
+			// Only add HSTS when serving over TLS
+			if cfg.HTTP.TLSKeyPath != "" && cfg.HTTP.TLSCertPath != "" {
+				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // NewRouter returns a new HTTP router and the rate limiter that must be closed
@@ -83,7 +90,7 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	h = gitSuffixMiddleware(cfg)(h)
 	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
-	h = securityHeadersMiddleware(h)
+	h = securityHeadersMiddleware(cfg)(h)
 	h = newRateLimitMiddleware(httpLimiter, cfg.HTTP.TrustProxyHeaders)(h)
 
 	// CORS wraps the rate limiter so that OPTIONS preflight requests receive

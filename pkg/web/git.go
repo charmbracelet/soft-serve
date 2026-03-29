@@ -131,6 +131,9 @@ func withParams(next http.Handler) http.Handler {
 		vars := mux.Vars(r)
 		repo := vars["repo"]
 
+		// Note: vars["file"] is computed using the raw repo segment (before .git stripping)
+		// which is intentional — the file path is relative to the full URL path including
+		// the .git suffix. SanitizeRepo is applied to repo only for backend lookups below.
 		// Construct "file" param from path
 		vars["file"] = strings.TrimPrefix(r.URL.Path, "/"+repo+"/")
 
@@ -496,25 +499,35 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		cmd.Env = append(cmd.Env, "GIT_PROTOCOL="+gitProtocol)
 	}
 
-	var (
-		err    error
-		reader io.ReadCloser
-	)
+	// maxReceivePackSize is the maximum size of a git-receive-pack request body (10 GiB).
+	// git-upload-pack is left uncapped — for read-only fetches this is acceptable since
+	// the client only negotiates which objects to send; the upload-pack protocol does not
+	// receive user-controlled blobs.
+	const maxReceivePackSize = 10 * 1024 * 1024 * 1024
+
+	var reader io.ReadCloser
+
+	// For receive-pack, cap the body to prevent unbounded uploads.
+	if service == git.ReceivePackService {
+		r.Body = http.MaxBytesReader(w, r.Body, maxReceivePackSize)
+	}
 
 	// Handle gzip encoding
-	// Note: git-upload-pack body is not capped by MaxBytesReader — for read-only fetches this is
-	// acceptable since the client only negotiates which objects to send; the upload-pack protocol
-	// does not receive user-controlled blobs.
 	reader = r.Body
 	switch r.Header.Get("Content-Encoding") {
 	case "gzip":
-		reader, err = gzip.NewReader(reader)
-		if err != nil {
-			logger.Errorf("failed to create gzip reader: %v", err)
+		gzReader, gzErr := gzip.NewReader(reader)
+		if gzErr != nil {
+			logger.Errorf("failed to create gzip reader: %v", gzErr)
 			renderInternalServerError(w, r)
 			return
 		}
-		defer reader.Close() //nolint: errcheck
+		defer gzReader.Close() //nolint: errcheck
+		if service == git.ReceivePackService {
+			reader = io.NopCloser(io.LimitReader(gzReader, maxReceivePackSize))
+		} else {
+			reader = gzReader
+		}
 	}
 
 	cmd.Stdin = reader
