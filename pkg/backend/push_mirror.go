@@ -124,6 +124,12 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			cmd.Env = []string{
 				"HOME=" + os.Getenv("HOME"),
 				"PATH=" + os.Getenv("PATH"),
+				// Prevent git from loading system-wide or user-level config files.
+				// An operator-controlled HOME could otherwise redirect git to an
+				// attacker-supplied .gitconfig. These variables are supported by
+				// git 2.32+ (GIT_CONFIG_COUNT) and older (GIT_CONFIG_NOSYSTEM).
+				"GIT_CONFIG_NOSYSTEM=1",
+				"GIT_CONFIG_COUNT=0",
 			}
 			if sshCmd := os.Getenv("GIT_SSH_COMMAND"); sshCmd != "" {
 				cmd.Env = append(cmd.Env, "GIT_SSH_COMMAND="+sshCmd)

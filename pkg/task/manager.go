@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 )
@@ -133,6 +134,11 @@ func (m *Manager) Run(id string, done chan<- error) {
 
 	errc := make(chan error, 1)
 	go func(ctx context.Context) {
+		defer func() {
+			if r := recover(); r != nil {
+				errc <- fmt.Errorf("task panicked: %v", r)
+			}
+		}()
 		errc <- p.fn(ctx)
 	}(p.ctx)
 

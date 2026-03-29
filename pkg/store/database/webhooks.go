@@ -99,8 +99,10 @@ func (*webhookStore) GetWebhookByID(ctx context.Context, h db.Handler, repoID in
 }
 
 // GetWebhookDeliveriesByWebhookID implements store.WebhookStore.
+// Returns the most recent 100 deliveries to prevent unbounded memory use.
+// Callers that need older deliveries should use a paginated query.
 func (*webhookStore) GetWebhookDeliveriesByWebhookID(ctx context.Context, h db.Handler, webhookID int64) ([]models.WebhookDelivery, error) {
-	query := h.Rebind(`SELECT * FROM webhook_deliveries WHERE webhook_id = ?;`)
+	query := h.Rebind(`SELECT * FROM webhook_deliveries WHERE webhook_id = ? ORDER BY created_at DESC LIMIT 100;`)
 	var whds []models.WebhookDelivery
 	err := h.SelectContext(ctx, &whds, query, webhookID)
 	return whds, err

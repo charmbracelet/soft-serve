@@ -336,6 +336,8 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 		// If the repo is not in the database but the directory exists, remove it.
 		// The previous guard (dberr!=nil && ferr!=nil) already returned, so
 		// the only remaining dberr!=nil case here is dberr!=nil && ferr==nil.
+		// os.RemoveAll is idempotent: a transaction retry after a prior
+		// successful removal returns nil safely.
 		if dberr != nil {
 			return os.RemoveAll(rp)
 		}

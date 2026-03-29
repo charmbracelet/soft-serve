@@ -277,7 +277,7 @@ func (b *Backend) RedeliverWebhookDelivery(ctx context.Context, repo proto.Repos
 		return db.WrapError(err)
 	}
 
-	b.logger.Infof("redelivering webhook delivery %s for webhook %d\n\n%s\n\n", delID, id, delivery.RequestBody)
+	b.logger.Infof("redelivering webhook delivery %s for webhook %d", delID, id)
 
 	var payload json.RawMessage
 	if err := json.Unmarshal([]byte(delivery.RequestBody), &payload); err != nil {
