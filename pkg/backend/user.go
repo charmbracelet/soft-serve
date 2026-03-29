@@ -333,6 +333,11 @@ func (d *Backend) SetUsername(ctx context.Context, username string, newUsername 
 		return err
 	}
 
+	newUsername = strings.ToLower(newUsername)
+	if err := utils.ValidateUsername(newUsername); err != nil {
+		return err
+	}
+
 	return db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.SetUsernameByUsername(ctx, tx, username, newUsername)

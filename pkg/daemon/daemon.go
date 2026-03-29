@@ -104,7 +104,6 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 	d.listeners = append(d.listeners, listener)
 	d.liMu.Unlock()
 
-	var tempDelay time.Duration
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -113,18 +112,6 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 				return ErrServerClosed
 			default:
 				d.logger.Debugf("git: error accepting connection: %v", err)
-			}
-			if ne, ok := err.(net.Error); ok && ne.Temporary() {
-				if tempDelay == 0 {
-					tempDelay = 5 * time.Millisecond
-				} else {
-					tempDelay *= 2
-				}
-				if max := 1 * time.Second; tempDelay > max { //nolint:revive
-					tempDelay = max
-				}
-				time.Sleep(tempDelay)
-				continue
 			}
 			return err
 		}
@@ -367,7 +354,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		counter.WithLabelValues(name)
+		counter.WithLabelValues(name).Inc()
 	}
 }
 
