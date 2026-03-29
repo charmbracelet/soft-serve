@@ -38,6 +38,10 @@ func (d *Backend) PostReceive(ctx context.Context, _ io.Writer, _ io.Writer, rep
 	// Sync .soft-serve.yaml metadata asynchronously so the push
 	// response is not blocked by DB writes or git tree reads.
 	go func() {
+		// The 30-second timeout covers metadata sync (DB writes, YAML parse).
+		// Push mirrors (PushMirrors) run with their own per-push timeout and are
+		// called from syncRepoMeta; they will be cancelled early if this ctx expires
+		// before they complete. Extend this timeout if long-running mirrors are expected.
 		syncCtx, cancel := context.WithTimeout(d.ctx, 30*time.Second)
 		defer cancel()
 		d.syncRepoMeta(syncCtx, repo, user)
