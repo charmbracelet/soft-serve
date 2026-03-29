@@ -67,6 +67,8 @@ func (il *IPLimiter) Allow(ip string) bool {
 
 func (il *IPLimiter) cleanup() {
 	cleanupInterval := il.ttl / 5
+	// cleanupInterval is clamped to a minimum of 1 minute regardless of TTL to avoid
+	// excessive ticker overhead with very short TTLs.
 	if cleanupInterval < time.Minute {
 		cleanupInterval = time.Minute
 	}

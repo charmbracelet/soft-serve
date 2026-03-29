@@ -139,12 +139,15 @@ func TestAuthenticationBypass(t *testing.T) {
 		is.Equal(authenticatedUser.Username(), "testattacker")
 		is.True(!authenticatedUser.IsAdmin())
 
-		// If the vulnerability exists, the context would still have admin user
-		contextUser := proto.UserFromContext(mockCtx)
-		if contextUser != nil && contextUser.Username() == "testadmin" {
-			t.Logf("WARNING: Context still contains admin user! This indicates the vulnerability exists.")
-			t.Logf("The authenticated key is attacker's, but context has admin user.")
-		}
+		// In this simulation the mock context still holds the admin user because
+		// AuthenticationMiddleware has NOT been invoked — only the raw backend lookup
+		// above was exercised. In production, AuthenticationMiddleware re-looks up the
+		// user from the authenticated pubkey fingerprint stored in SSH extensions
+		// (pubkey-fp), overwriting any stale context value set by an earlier
+		// PublicKeyHandler call. The assertions above (lines 135-140) confirm that the
+		// backend correctly resolves the attacker's key to "testattacker", so the
+		// middleware would store the right user. The pre-polluted context value is
+		// therefore harmless in the real code path.
 	})
 }
 

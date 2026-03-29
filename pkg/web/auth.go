@@ -23,6 +23,12 @@ func authenticate(r *http.Request) (proto.User, error) {
 		if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
 			return nil, err
 		}
+		if err != nil && !errors.Is(err, errInvalidHeader) {
+			// Transient backend error (e.g. DB failure) — propagate rather than
+			// masking as ErrUserNotFound so callers can distinguish auth failures
+			// from infrastructure errors.
+			return nil, err
+		}
 		return nil, proto.ErrUserNotFound
 	}
 

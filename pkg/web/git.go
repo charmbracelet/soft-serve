@@ -396,7 +396,8 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				case http.MethodGet:
 					// Basic download
 				case http.MethodPost:
-					// Basic verify
+					// No additional access check here — basic verify is a read-only metadata operation;
+					// auth is already enforced by the outer withAccess middleware.
 				}
 			}
 

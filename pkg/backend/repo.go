@@ -130,7 +130,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 }
 
 // ImportRepository imports a repository from remote.
-// XXX: This a expensive operation and should be run in a goroutine.
+// XXX: This is an expensive operation and should be run in a goroutine.
 func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
