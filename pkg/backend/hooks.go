@@ -145,7 +145,7 @@ func (d *Backend) Update(ctx context.Context, _ io.Writer, _ io.Writer, repo str
 			return
 		}
 	} else {
-		d.logger.Error("error finding user")
+		d.logger.Error("error finding user: neither SOFT_SERVE_PUBLIC_KEY nor SOFT_SERVE_USERNAME is set in hook environment")
 		return
 	}
 
