@@ -56,10 +56,12 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 			}
 			return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 				if err := store.CreateLFSObject(ctx, tx, repo.ID(), p.Oid, p.Size); err != nil {
-					// DB insert failed — clean up on-disk file to avoid orphan.
-					if rmErr := os.Remove(objPath); rmErr != nil {
-						return fmt.Errorf("failed DB insert and failed to clean orphan file: %w; cleanup error: %v", err, rmErr)
-					}
+												// DB insert failed — clean up on-disk file to avoid orphan.
+								if rmErr := os.Remove(objPath); rmErr != nil {
+									return errors.Join(err, rmErr)
+								}
+							return nil // os.Remove succeeded, propagate DB error
+						
 					return err
 				}
 				return nil
