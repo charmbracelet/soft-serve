@@ -98,6 +98,7 @@ func (m *Manager) Run(id string, done chan<- error) {
 		}
 
 		done <- p.ctx.Err()
+		return
 	}
 
 	p.started.Store(true)

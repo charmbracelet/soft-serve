@@ -29,6 +29,9 @@ func authenticate(r *http.Request) (proto.User, error) {
 			// from infrastructure errors.
 			return nil, err
 		}
+		// Note: errInvalidHeader (no Authorization header) is mapped to
+		// proto.ErrUserNotFound intentionally — callers treat "no credentials"
+		// the same as "unknown user" for access-control decisions.
 		return nil, proto.ErrUserNotFound
 	}
 
@@ -64,11 +67,16 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 			return user, nil
 		}
 
-		// Dummy bcrypt to equalize timing regardless of user-found vs user-not-found
+		// Dummy bcrypt to equalize timing regardless of user-found vs user-not-found.
+		// Both the "user not found" path (above) and this "user found, wrong password"
+		// path perform one bcrypt comparison and one UserByAccessToken call, so
+		// timing is equalized across both paths.
 		_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
 
-		// Try to authenticate using access token as the password
-		user, err = be.UserByAccessToken(ctx, password)
+		// Try to authenticate using access token as the password.
+		// This call also serves timing equalization (mirrors the token lookup in the
+		// user-not-found path above).
+		user, err = be.UserByAccessToken(ctx, password) //nolint:errcheck // timing equalization
 		if err == nil {
 			return user, nil
 		}

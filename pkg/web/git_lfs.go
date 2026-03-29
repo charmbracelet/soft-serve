@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -298,11 +299,11 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	}
 	defer f.Close() //nolint: errcheck
+	// Once io.Copy begins writing the response body, status code and headers
+	// are already flushed. Any error mid-stream cannot be surfaced as a new
+	// HTTP status; the client will receive a truncated response.
 	if _, err := io.Copy(w, f); err != nil {
 		logger.Error("error copying object to response", "oid", oid, "err", err)
-		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
-			Message: "internal server error",
-		})
 		return
 	}
 }
@@ -415,6 +416,11 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 		renderJSON(w, r, http.StatusBadRequest, lfs.ErrorResponse{
 			Message: "invalid request body",
 		})
+		return
+	}
+
+	if matched, _ := regexp.MatchString(`^sha256:[0-9a-f]{64}$`, pointer.Oid); !matched {
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{Message: "invalid oid format"})
 		return
 	}
 

@@ -78,6 +78,7 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			}
 			if colon := strings.LastIndex(raw, ":"); colon != -1 {
 				host := raw[:colon]
+				host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
 				if ssrfErr := ssrf.ValidateHost(host); ssrfErr != nil {
 					b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
 					continue
