@@ -371,7 +371,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 					// Create lock, delete lock, and verify require write access.
 					// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md#unauthorized-response-2
 					if accessLevel < access.ReadWriteAccess {
-						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+						renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 							Message: "write access required",
 						})
 						return
@@ -379,7 +379,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				case strings.HasSuffix(file, "lfs/locks") && r.Method == http.MethodGet:
 					// List locks only requires read access.
 					if accessLevel < access.ReadOnlyAccess {
-						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+						renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 							Message: "read access required",
 						})
 						return
@@ -390,7 +390,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				case http.MethodPut:
 					// Basic upload
 					if accessLevel < access.ReadWriteAccess {
-						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+						renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 							Message: "write access required",
 						})
 						return
@@ -405,16 +405,16 @@ func withAccess(next http.Handler) http.HandlerFunc {
 
 			if accessLevel < access.ReadOnlyAccess {
 				if repo == nil {
-					renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+					renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 						Message: "repository not found",
 					})
 				} else if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
-					renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+					renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 						Message: "bad credentials",
 					})
 				} else {
 					askCredentials(w, r)
-					renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
+					renderJSON(w, r, http.StatusUnauthorized, lfs.ErrorResponse{
 						Message: "credentials needed",
 					})
 				}
