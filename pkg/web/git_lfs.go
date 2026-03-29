@@ -131,6 +131,25 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	// S3 using object "expires_at" & "expires_in"
 	switch batchRequest.Operation {
 	case lfs.OperationDownload:
+		// Bulk-fetch all requested OIDs in a single query to avoid N+1 DB
+		// round-trips when a batch contains many objects.
+		oids := make([]string, len(batchRequest.Objects))
+		for i, o := range batchRequest.Objects {
+			oids[i] = o.Oid
+		}
+		dbObjs, err := datastore.GetLFSObjectsByOids(ctx, dbx, repo.ID(), oids)
+		if err != nil {
+			logger.Error("error bulk-fetching LFS objects from database", "repo", name, "err", err)
+			renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
+				Message: "internal server error",
+			})
+			return
+		}
+		dbObjsByOid := make(map[string]models.LFSObject, len(dbObjs))
+		for _, dbObj := range dbObjs {
+			dbObjsByOid[dbObj.Oid] = dbObj
+		}
+
 		for _, o := range batchRequest.Objects {
 			exist, err := strg.Exists(path.Join("objects", o.RelativePath()))
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -141,15 +160,9 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			obj, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), o.Oid)
-			objNotFound := errors.Is(err, db.ErrRecordNotFound)
-			if err != nil && !objNotFound {
-				logger.Error("error getting object from database", "oid", o.Oid, "repo", name, "err", err)
-				renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
-					Message: "internal server error",
-				})
-				return
-			}
+			obj, objNotFound := dbObjsByOid[o.Oid]
+			// objNotFound is true when the OID is absent from the DB map.
+			objInDB := !objNotFound
 
 			if !exist {
 				objects = append(objects, &lfs.ObjectResponse{
@@ -159,7 +172,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 						Message: "object not found",
 					},
 				})
-			} else if !objNotFound && obj.Size != o.Size {
+			} else if objInDB && obj.Size != o.Size {
 				objects = append(objects, &lfs.ObjectResponse{
 					Pointer: o,
 					Error: &lfs.ObjectError{
@@ -179,8 +192,9 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 					},
 				})
 
-				// If the object doesn't exist in the database, create it
-				if exist && objNotFound {
+				// If the object exists on disk but not in the database,
+				// re-register it (disk-ahead-of-DB recovery path).
+				if exist && !objInDB {
 					if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), o.Oid, o.Size); err != nil {
 						logger.Error("error creating object in datastore", "oid", o.Oid, "repo", name, "err", err)
 						renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{

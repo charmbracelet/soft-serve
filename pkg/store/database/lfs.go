@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
 	"github.com/charmbracelet/soft-serve/pkg/store"
+	"github.com/jmoiron/sqlx"
 )
 
 type lfsStore struct{}
@@ -193,6 +194,29 @@ func (*lfsStore) GetLFSObjectByOid(ctx context.Context, tx db.Handler, repoID in
 	query := tx.Rebind(`SELECT * FROM lfs_objects WHERE repo_id = ? AND oid = ?;`)
 	err := tx.GetContext(ctx, &obj, query, repoID, oid)
 	return obj, db.WrapError(err)
+}
+
+// GetLFSObjectsByOids implements store.LFSStore.
+// It returns the LFS objects for the given OIDs in a single IN query,
+// eliminating the N+1 pattern in the batch download handler.
+func (*lfsStore) GetLFSObjectsByOids(ctx context.Context, tx db.Handler, repoID int64, oids []string) ([]models.LFSObject, error) {
+	if len(oids) == 0 {
+		return nil, nil
+	}
+	// Convert []string to []interface{} for sqlx.In.
+	args := make([]interface{}, len(oids)+1)
+	args[0] = repoID
+	for i, oid := range oids {
+		args[i+1] = oid
+	}
+	query, args2, err := sqlx.In(`SELECT * FROM lfs_objects WHERE repo_id = ? AND oid IN (?);`, args[0], oids)
+	if err != nil {
+		return nil, err
+	}
+	query = tx.Rebind(query)
+	var objs []models.LFSObject
+	err = tx.SelectContext(ctx, &objs, query, args2...)
+	return objs, db.WrapError(err)
 }
 
 // GetLFSObjects implements store.LFSStore.

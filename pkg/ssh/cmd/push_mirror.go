@@ -87,7 +87,9 @@ func validateMirrorURL(rawURL string) error {
 		return fmt.Errorf("invalid mirror URL: %w", err)
 	}
 	switch strings.ToLower(u.Scheme) {
-	case "https", "http", "ssh":
+	case "https", "http", "ssh", "git+ssh", "ssh+git":
+		// git+ssh:// and ssh+git:// are aliases for ssh://, supported by the
+		// push engine in pkg/backend/push_mirror.go.
 		return nil
 	case "":
 		// SCP-style SSH remotes (git@host:path) are allowed.

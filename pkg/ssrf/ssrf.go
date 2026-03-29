@@ -206,6 +206,11 @@ func ValidateIPBeforeDial(ip net.IP) error {
 // ValidateHost resolves host and checks that none of the resolved IPs are
 // private or internal. Use this for non-HTTP schemes (e.g. ssh://) where
 // ValidateURL cannot be used. The provided context is used for the DNS lookup.
+//
+// A 5-second sub-deadline is applied for the DNS lookup regardless of any
+// deadline already present on ctx. If ctx has a tighter deadline, that takes
+// precedence. If ctx has a longer (or no) deadline, the 5-second guard is the
+// effective timeout for the DNS resolution step.
 func ValidateHost(ctx context.Context, host string) error {
 	if host == "" {
 		return fmt.Errorf("%w: missing hostname", ErrInvalidURL)

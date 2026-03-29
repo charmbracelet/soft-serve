@@ -55,6 +55,11 @@ func NewManager(ctx context.Context) *Manager {
 // window after Run() returns (manager-shutdown path) and before the map entry
 // is removed by the cleanup goroutine, a subsequent Add will be silently
 // dropped. Use Stop() followed by Add() to reliably replace a task.
+//
+// fn MUST respect context cancellation: when the context passed to fn is
+// cancelled (e.g. via Stop or manager shutdown), fn should return promptly.
+// A task that ignores cancellation will keep its goroutine alive until fn
+// returns naturally — there is no hard deadline imposed by the manager.
 func (m *Manager) Add(id string, fn func(context.Context) error) {
 	ctx, cancel := context.WithCancel(m.ctx)
 	t := &Task{

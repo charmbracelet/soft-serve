@@ -64,7 +64,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 		return nil, err
 	}
 
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	// Clean up the repo directory if the transaction fails — git.Init
 	// creates OS files that the DB rollback cannot undo, which would leave
@@ -164,7 +164,7 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 		return nil, err
 	}
 
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	if d.manager == nil {
 		return nil, fmt.Errorf("import repository: no manager configured")
@@ -179,7 +179,9 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 	// manager.Add. The task manager's LoadOrStore provides atomic dedup for
 	// concurrent callers, so this is safe for correctness; the stat check is
 	// advisory only.
-	if _, err := os.Stat(rp); err == nil || errors.Is(err, fs.ErrExist) {
+	// os.Stat returns nil (path exists) or fs.ErrNotExist (absent). It never
+	// returns fs.ErrExist, so the only relevant check is err == nil.
+	if _, err := os.Stat(rp); err == nil {
 		return nil, proto.ErrRepoExist
 	}
 
@@ -331,7 +333,7 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 // It implements backend.Backend.
 func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	name = utils.SanitizeRepo(name)
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	user := proto.UserFromContext(ctx)
 	r, err := d.Repository(ctx, name)
@@ -475,8 +477,8 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 		return nil
 	}
 
-	op := filepath.Join(d.repoPath(oldName))
-	np := filepath.Join(d.repoPath(newName))
+	op := d.repoPath(oldName)
+	np := d.repoPath(newName)
 	if _, err := os.Stat(op); err != nil {
 		return proto.ErrRepoNotFound
 	}
@@ -540,7 +542,7 @@ func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) 
 			for _, m := range ms {
 				r := &repo{
 					name: m.Name,
-					path: filepath.Join(d.repoPath(m.Name)),
+					path: d.repoPath(m.Name),
 					repo: m,
 				}
 				d.cache.Set(m.Name, r)
@@ -569,7 +571,7 @@ func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository
 		return r, nil
 	}
 
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 	if _, err := os.Stat(rp); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			d.logger.Errorf("failed to stat repository path: %v", err)
@@ -704,7 +706,7 @@ func (d *Backend) SetHidden(ctx context.Context, name string, hidden bool) error
 func (d *Backend) SetDescription(ctx context.Context, name string, desc string) error {
 	name = utils.SanitizeRepo(name)
 	desc = utils.Sanitize(desc)
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	// Delete cache
 	d.cache.Delete(name)
@@ -724,7 +726,7 @@ func (d *Backend) SetDescription(ctx context.Context, name string, desc string) 
 // It implements backend.Backend.
 func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) error {
 	name = utils.SanitizeRepo(name)
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	// Capture the old visibility before updating.
 	oldRepo, err := d.Repository(ctx, name)

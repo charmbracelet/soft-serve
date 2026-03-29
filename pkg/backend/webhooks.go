@@ -238,7 +238,7 @@ func (b *Backend) ListWebhookDeliveries(ctx context.Context, repo proto.Reposito
 
 		return nil
 	}); err != nil {
-		return nil, db.WrapError(err)
+		return nil, err
 	}
 
 	ds := make([]webhook.Delivery, len(deliveries))
