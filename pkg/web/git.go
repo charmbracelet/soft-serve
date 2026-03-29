@@ -500,16 +500,19 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// maxReceivePackSize is the maximum size of a git-receive-pack request body (10 GiB).
-	// git-upload-pack is left uncapped — for read-only fetches this is acceptable since
-	// the client only negotiates which objects to send; the upload-pack protocol does not
-	// receive user-controlled blobs.
 	const maxReceivePackSize = 10 * 1024 * 1024 * 1024
+
+	// maxUploadPackSize limits upload-pack request bodies. upload-pack only receives
+	// "want" and "have" lines (no actual object data), so 256 MiB is generous.
+	const maxUploadPackSize = 256 * 1024 * 1024
 
 	var reader io.ReadCloser
 
-	// For receive-pack, cap the body to prevent unbounded uploads.
+	// Cap the body for both services to prevent unbounded reads.
 	if service == git.ReceivePackService {
 		r.Body = http.MaxBytesReader(w, r.Body, maxReceivePackSize)
+	} else {
+		r.Body = http.MaxBytesReader(w, r.Body, maxUploadPackSize)
 	}
 
 	// Handle gzip encoding
@@ -526,7 +529,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		if service == git.ReceivePackService {
 			reader = io.NopCloser(io.LimitReader(gzReader, maxReceivePackSize))
 		} else {
-			reader = gzReader
+			reader = io.NopCloser(io.LimitReader(gzReader, maxUploadPackSize))
 		}
 	}
 

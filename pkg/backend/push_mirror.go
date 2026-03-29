@@ -90,6 +90,8 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			defer func() { <-sem }() // release
 			mirrorCtx, cancel := context.WithTimeout(ctx, mirrorPushTimeout)
 			defer cancel()
+			// m.RemoteURL is passed as a positional argument to exec.Command (not shell-expanded),
+			// so there is no shell injection risk. SSRF validation has already run above.
 			cmd := exec.CommandContext(mirrorCtx, "git", "push", "--mirror", m.RemoteURL)
 			cmd.Dir = repoPath
 			// Note: HOME and PATH are sourced from the current process environment.

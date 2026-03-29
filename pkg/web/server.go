@@ -90,7 +90,9 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
 	h = securityHeadersMiddleware(cfg)(h)
-	h = newRateLimitMiddleware(httpLimiter, cfg.HTTP.TrustProxyHeaders)(h)
+	if cfg.HTTP.RateLimit > 0 {
+		h = newRateLimitMiddleware(httpLimiter, cfg.HTTP.TrustProxyHeaders)(h)
+	}
 
 	// Note: CORS middleware wraps the rate limiter, so OPTIONS preflight requests
 	// receive CORS headers without consuming rate-limit tokens. This is intentional
