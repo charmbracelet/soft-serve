@@ -153,17 +153,20 @@ func (b *Backend) UpdateWebhook(ctx context.Context, repo proto.Repository, id i
 			return db.WrapError(err)
 		}
 
+		// Build a set of current events for O(1) lookups.
+		currentSet := make(map[int]int64, len(currentEvents))
+		for _, e := range currentEvents {
+			currentSet[e.Event] = e.ID
+		}
+
 		// Delete events that are no longer in the list.
+		updatedSet := make(map[webhook.Event]bool, len(updatedEvents))
+		for _, e := range updatedEvents {
+			updatedSet[e] = true
+		}
 		toBeDeleted := make([]int64, 0)
 		for _, e := range currentEvents {
-			found := false
-			for _, ne := range updatedEvents {
-				if int(ne) == e.Event {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if !updatedSet[webhook.Event(e.Event)] {
 				toBeDeleted = append(toBeDeleted, e.ID)
 			}
 		}
@@ -175,14 +178,7 @@ func (b *Backend) UpdateWebhook(ctx context.Context, repo proto.Repository, id i
 		// Prune events that are already in the list.
 		newEvents := make([]int, 0)
 		for _, e := range updatedEvents {
-			found := false
-			for _, ne := range currentEvents {
-				if int(e) == ne.Event {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if _, exists := currentSet[int(e)]; !exists {
 				newEvents = append(newEvents, int(e))
 			}
 		}

@@ -73,6 +73,7 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	router.PathPrefix("/").HandlerFunc(renderNotFound)
 
 	cfg := config.FromContext(ctx)
+	// TODO: expose HTTP rate-limit parameters in HTTPConfig for operator tuning
 	httpLimiter := ratelimit.New(rate.Limit(100), 200, 10*time.Minute)
 
 	// Context handler

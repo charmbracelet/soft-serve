@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -61,6 +62,25 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			if ssrfErr := ssrf.ValidateURL(m.RemoteURL); ssrfErr != nil {
 				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
 				continue
+			}
+		} else if err == nil && u.Scheme == "ssh" {
+			// Validate ssh:// scheme URLs against SSRF.
+			if ssrfErr := ssrf.ValidateHost(u.Hostname()); ssrfErr != nil {
+				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
+				continue
+			}
+		} else if err != nil || u.Scheme == "" {
+			// SCP-style remote (e.g. git@host:repo) — extract host before ':'.
+			raw := m.RemoteURL
+			if at := strings.LastIndex(raw, "@"); at != -1 {
+				raw = raw[at+1:]
+			}
+			if colon := strings.Index(raw, ":"); colon != -1 {
+				host := raw[:colon]
+				if ssrfErr := ssrf.ValidateHost(host); ssrfErr != nil {
+					b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
+					continue
+				}
 			}
 		}
 		sem <- struct{}{} // acquire

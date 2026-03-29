@@ -333,7 +333,9 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	// partial error, so we need to skip existing objects.
 	if _, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), oid); err == nil {
 		// Object exists, skip request
-		io.Copy(io.Discard, r.Body) //nolint: errcheck
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			logger.Debug("discard existing LFS object body", "err", err)
+		}
 		renderStatus(http.StatusOK)(w, nil)
 		return
 	} else if !errors.Is(err, db.ErrRecordNotFound) {

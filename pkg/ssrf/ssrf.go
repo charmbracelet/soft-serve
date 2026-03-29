@@ -162,6 +162,8 @@ func ValidateURL(rawURL string) error {
 		return nil
 	}
 
+	// Note: context.Background() is used for DNS resolution; caller's context cancellation
+	// does not propagate here. This is acceptable for short-lived validation calls.
 	ips, err := net.DefaultResolver.LookupIPAddr(context.Background(), hostname)
 	if err != nil {
 		return fmt.Errorf("%w: cannot resolve hostname: %v", ErrInvalidURL, err)
@@ -182,6 +184,39 @@ func ValidateIPBeforeDial(ip net.IP) error {
 	if isPrivateOrInternal(ip) {
 		return ErrPrivateIP
 	}
+	return nil
+}
+
+// ValidateHost resolves host and checks that none of the resolved IPs are
+// private or internal. Use this for non-HTTP schemes (e.g. ssh://) where
+// ValidateURL cannot be used.
+func ValidateHost(host string) error {
+	if host == "" {
+		return fmt.Errorf("%w: missing hostname", ErrInvalidURL)
+	}
+
+	if isLocalhost(host) {
+		return ErrPrivateIP
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		if isPrivateOrInternal(ip) {
+			return ErrPrivateIP
+		}
+		return nil
+	}
+
+	ips, err := net.DefaultResolver.LookupIPAddr(context.Background(), host)
+	if err != nil {
+		return fmt.Errorf("%w: cannot resolve hostname: %v", ErrInvalidURL, err)
+	}
+
+	if slices.ContainsFunc(ips, func(addr net.IPAddr) bool {
+		return isPrivateOrInternal(addr.IP)
+	}) {
+		return ErrPrivateIP
+	}
+
 	return nil
 }
 
