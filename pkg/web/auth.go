@@ -65,7 +65,7 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		}
 
 		// Dummy bcrypt to equalize timing regardless of user-found vs user-not-found
-		_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(""))
+		_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
 
 		// Try to authenticate using access token as the password
 		user, err = be.UserByAccessToken(ctx, password)
