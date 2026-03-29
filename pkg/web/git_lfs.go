@@ -86,6 +86,17 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Cap the number of objects per batch request to prevent a single
+	// request from triggering thousands of sequential DB + FS round-trips.
+	// 1 000 matches the GitHub LFS limit and is sufficient for real clients.
+	const maxBatchObjects = 1000
+	if len(batchRequest.Objects) > maxBatchObjects {
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+			Message: fmt.Sprintf("batch request exceeds maximum object count of %d", maxBatchObjects),
+		})
+		return
+	}
+
 	name := mux.Vars(r)["repo"]
 	repo := proto.RepositoryFromContext(ctx)
 	if repo == nil {
@@ -484,9 +495,7 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 			renderJSON(w, r, http.StatusOK, map[string]string{"message": "verified"})
 			return
 		}
-		renderJSON(w, r, http.StatusUnprocessableEntity, struct {
-			Message string `json:"message"`
-		}{"size mismatch"})
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{Message: "size mismatch"})
 		return
 	} else if errors.Is(err, fs.ErrNotExist) {
 		logger.Error("file not found", "oid", pointer.Oid)

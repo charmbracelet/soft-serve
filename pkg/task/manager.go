@@ -123,6 +123,12 @@ func (m *Manager) Run(id string, done chan<- error) {
 	select {
 	case <-m.ctx.Done():
 		done <- m.ctx.Err()
+		// The p.fn goroutine may still be running. Drain errc in the background
+		// so it does not block forever on the send; p.cancel() (deferred above)
+		// signals p.fn to stop. The id is deleted from the map by the deferred
+		// m.m.Delete, so no new task with the same id can reuse this Task until
+		// p.fn has sent on errc and this goroutine has exited.
+		go func() { <-errc }()
 	case err := <-errc:
 		p.mu.Lock()
 		p.err = err
