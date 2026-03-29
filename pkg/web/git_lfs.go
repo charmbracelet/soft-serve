@@ -375,7 +375,7 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	// connection on a PUT as a successful upload.
 	if _, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), oid); err == nil {
 		// Object exists, skip request.
-		renderStatus(http.StatusOK)(w, nil)
+		renderStatus(http.StatusOK)(w, r)
 		return
 	} else if !errors.Is(err, db.ErrRecordNotFound) {
 		logger.Error("error getting object", "oid", oid, "err", err)

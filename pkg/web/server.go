@@ -18,6 +18,11 @@ import (
 // realClientIP extracts the real client IP from the request.
 // When trustProxyHeaders is true it uses the leftmost value of
 // X-Forwarded-For; otherwise it falls back to RemoteAddr (with port stripped).
+//
+// WARNING: Only enable trustProxyHeaders when the server is behind a single
+// trusted reverse proxy that overwrites (not appends to) X-Forwarded-For.
+// If clients or untrusted proxies can set this header, the leftmost IP can
+// be spoofed, defeating rate-limiting and audit-logging based on client IP.
 func realClientIP(r *http.Request, trustProxyHeaders bool) string {
 	if trustProxyHeaders {
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {

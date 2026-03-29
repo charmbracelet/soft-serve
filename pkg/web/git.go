@@ -342,15 +342,19 @@ func withAccess(next http.Handler) http.HandlerFunc {
 
 			fallthrough
 		case service == git.UploadPackService || service == git.UploadArchiveService:
+			// Return 404 for missing repos regardless of any credential error to
+			// prevent repository enumeration: an unauthenticated client must not
+			// be able to distinguish "repo doesn't exist" from "access denied".
 			if repo == nil {
-				// If the repo doesn't exist, return 404
 				renderNotFound(w, r)
 				return
-			} else if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
-				// return 403 when bad credentials are provided
+			}
+			// Repo exists — now check credentials and access level.
+			if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
 				renderForbidden(w, r)
 				return
-			} else if accessLevel < access.ReadOnlyAccess {
+			}
+			if accessLevel < access.ReadOnlyAccess {
 				askCredentials(w, r)
 				renderUnauthorized(w, r)
 				return

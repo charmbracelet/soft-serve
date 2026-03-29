@@ -135,8 +135,9 @@ func isPrivateOrInternal(ip net.IP) bool {
 
 // ValidateURL validates that a URL is safe to make requests to.
 // It checks that the scheme is http/https, the hostname is not localhost,
-// and all resolved IPs are public.
-func ValidateURL(rawURL string) error {
+// and all resolved IPs are public. The provided context is used for the DNS
+// lookup; a 5-second sub-deadline is applied if the context has no deadline.
+func ValidateURL(ctx context.Context, rawURL string) error {
 	if rawURL == "" {
 		return ErrInvalidURL
 	}
@@ -166,7 +167,7 @@ func ValidateURL(rawURL string) error {
 		return nil
 	}
 
-	resolveCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	ips, err := net.DefaultResolver.LookupIPAddr(resolveCtx, hostname)
 	if err != nil {
@@ -193,8 +194,8 @@ func ValidateIPBeforeDial(ip net.IP) error {
 
 // ValidateHost resolves host and checks that none of the resolved IPs are
 // private or internal. Use this for non-HTTP schemes (e.g. ssh://) where
-// ValidateURL cannot be used.
-func ValidateHost(host string) error {
+// ValidateURL cannot be used. The provided context is used for the DNS lookup.
+func ValidateHost(ctx context.Context, host string) error {
 	if host == "" {
 		return fmt.Errorf("%w: missing hostname", ErrInvalidURL)
 	}
@@ -210,9 +211,9 @@ func ValidateHost(host string) error {
 		return nil
 	}
 
-	resolveCtx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel2()
-	ips, err := net.DefaultResolver.LookupIPAddr(resolveCtx2, host)
+	resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	ips, err := net.DefaultResolver.LookupIPAddr(resolveCtx, host)
 	if err != nil {
 		return fmt.Errorf("%w: cannot resolve hostname: %v", ErrInvalidURL, err)
 	}
