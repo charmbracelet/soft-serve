@@ -280,6 +280,7 @@ func (d *Backend) CreateUser(ctx context.Context, username string, opts proto.Us
 //
 // It implements backend.Backend.
 func (d *Backend) DeleteUser(ctx context.Context, username string) error {
+	username = utils.Sanitize(username)
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
 		return err
@@ -378,6 +379,7 @@ func (d *Backend) SetUsername(ctx context.Context, username string, newUsername 
 //
 // It implements backend.Backend.
 func (d *Backend) SetAdmin(ctx context.Context, username string, admin bool) error {
+	username = utils.Sanitize(username)
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
 		return err

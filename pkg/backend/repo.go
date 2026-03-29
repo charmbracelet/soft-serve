@@ -19,6 +19,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/hooks"
 	"github.com/charmbracelet/soft-serve/pkg/lfs"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/ssrf"
 	"github.com/charmbracelet/soft-serve/pkg/storage"
 	"github.com/charmbracelet/soft-serve/pkg/task"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
@@ -29,6 +30,12 @@ func validateImportRemote(remote string) error {
 	endpoint, err := lfs.NewEndpoint(remote)
 	if err != nil || endpoint.Host == "" {
 		return proto.ErrInvalidRemote
+	}
+
+	if endpoint.Scheme == "http" || endpoint.Scheme == "https" {
+		if err := ssrf.ValidateURL(remote); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -95,7 +102,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 			}
 		}
 
-		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(opts.Description), fs.ModePerm); err != nil {
+		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(opts.Description), 0o644); err != nil {
 			d.logger.Error("failed to write description", "repo", name, "err", err)
 			return err
 		}
@@ -285,9 +292,6 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	}
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		// Delete repo from cache
-		defer d.cache.Delete(name)
-
 		repom, dberr := d.store.GetRepoByName(ctx, tx, name)
 		_, ferr := os.Stat(rp)
 		if dberr != nil && ferr != nil {
@@ -332,6 +336,8 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 
 		return db.WrapError(err)
 	}
+
+	d.cache.Delete(name)
 
 	return webhook.SendEvent(ctx, wh)
 }
@@ -615,7 +621,7 @@ func (d *Backend) SetDescription(ctx context.Context, name string, desc string) 
 	d.cache.Delete(name)
 
 	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(desc), fs.ModePerm); err != nil {
+		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(desc), 0o644); err != nil {
 			d.logger.Error("failed to write description", "repo", name, "err", err)
 			return err
 		}

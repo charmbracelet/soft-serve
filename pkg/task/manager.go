@@ -42,17 +42,16 @@ func NewManager(ctx context.Context) *Manager {
 // Add adds a task to the manager.
 // If the process already exists, it is a no-op.
 func (m *Manager) Add(id string, fn func(context.Context) error) {
-	if m.Exists(id) {
-		return
-	}
-
 	ctx, cancel := context.WithCancel(m.ctx)
-	m.m.Store(id, &Task{
+	t := &Task{
 		id:     id,
 		fn:     fn,
 		ctx:    ctx,
 		cancel: cancel,
-	})
+	}
+	if _, loaded := m.m.LoadOrStore(id, t); loaded {
+		cancel()
+	}
 }
 
 // Stop stops the task and removes it from the manager.
