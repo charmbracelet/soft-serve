@@ -185,11 +185,16 @@ func (*webhookStore) GetWebhooksByRepoIDWhereEvent(ctx context.Context, h db.Han
 	return whs, err
 }
 
+// maxListWebhookDeliveries caps the number of rows returned by
+// ListWebhookDeliveriesByWebhookID to prevent unbounded memory use for
+// high-volume webhooks. Callers that need more deliveries should paginate.
+const maxListWebhookDeliveries = 100
+
 // ListWebhookDeliveriesByWebhookID implements store.WebhookStore.
 func (*webhookStore) ListWebhookDeliveriesByWebhookID(ctx context.Context, h db.Handler, webhookID int64) ([]models.WebhookDelivery, error) {
-	query := h.Rebind(`SELECT id, response_status, event FROM webhook_deliveries WHERE webhook_id = ?;`)
+	query := h.Rebind(`SELECT id, response_status, event FROM webhook_deliveries WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ?;`)
 	var whds []models.WebhookDelivery
-	err := h.SelectContext(ctx, &whds, query, webhookID)
+	err := h.SelectContext(ctx, &whds, query, webhookID, maxListWebhookDeliveries)
 	return whds, err
 }
 

@@ -99,6 +99,8 @@ const (
 data=$(cat)
 exitcodes=""
 hookname=$(basename "$0")
+# $0 is set by git to the path of the hook script itself — not from user input.
+# The command substitution $(dirname "$0") is therefore safe.
 GIT_DIR=${GIT_DIR:-$(dirname "$0")/..}
 for hook in ${GIT_DIR}/hooks/${hookname}.d/*; do
   # Avoid running non-executable hooks

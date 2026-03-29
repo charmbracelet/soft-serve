@@ -27,10 +27,18 @@ func realClientIP(r *http.Request, trustProxyHeaders bool) string {
 	if trustProxyHeaders {
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 			// The leftmost IP is the original client.
+			var candidate string
 			if idx := strings.IndexByte(xff, ','); idx != -1 {
-				return strings.TrimSpace(xff[:idx])
+				candidate = strings.TrimSpace(xff[:idx])
+			} else {
+				candidate = strings.TrimSpace(xff)
 			}
-			return strings.TrimSpace(xff)
+			// Validate that the candidate is a real IP address before using it
+			// as the rate-limit key. An attacker who can set X-Forwarded-For
+			// could otherwise bypass per-IP limiting with arbitrary strings.
+			if net.ParseIP(candidate) != nil {
+				return candidate
+			}
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)

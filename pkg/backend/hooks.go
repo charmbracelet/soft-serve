@@ -58,10 +58,12 @@ func (d *Backend) syncRepoMeta(ctx context.Context, repo string, user proto.User
 		return
 	}
 
-	// Trigger push mirrors synchronously. PushMirrors will be interrupted
-	// if ctx expires (30-second default), so slow mirrors may not complete.
-	// TODO: run push mirrors with their own context and a longer timeout.
-	d.PushMirrors(ctx, r)
+	// Run push mirrors with a separate context derived from the backend's root
+	// context so they are not limited by the 30-second syncCtx. Each mirror
+	// goroutine inside PushMirrors creates its own per-push timeout via
+	// mirrorPushTimeout; using the backend root context here lets that inner
+	// timeout operate at full duration.
+	d.PushMirrors(d.ctx, r)
 
 	gr, err := r.Open()
 	if err != nil {

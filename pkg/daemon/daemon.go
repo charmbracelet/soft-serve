@@ -344,11 +344,8 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 					d.logger.Warnf("git: ignoring unknown extra param key %q", k)
 					continue
 				}
-				sk, ok := sanitizeParamValue(k)
-				if !ok {
-					d.logger.Warnf("git: dropping extra param with unsafe key %q", k)
-					continue
-				}
+				// k is already confirmed to be "version" (ASCII-safe); only
+				// the value needs sanitization for control-character injection.
 				sv, ok := sanitizeParamValue(v)
 				if !ok {
 					d.logger.Warnf("git: dropping extra param with unsafe value for key %q", k)
@@ -357,7 +354,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 				if len(gitProto) > 0 {
 					gitProto += ":"
 				}
-				gitProto += sk + "=" + sv
+				gitProto += k + "=" + sv
 			}
 			if gitProto != "" {
 				envs = append(envs, "GIT_PROTOCOL="+gitProto)

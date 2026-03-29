@@ -333,11 +333,11 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 			return proto.ErrRepoNotFound
 		}
 
-		// If the repo is not in the database but the directory exists, remove it
-		if dberr != nil && ferr == nil {
+		// If the repo is not in the database but the directory exists, remove it.
+		// The previous guard (dberr!=nil && ferr!=nil) already returned, so
+		// the only remaining dberr!=nil case here is dberr!=nil && ferr==nil.
+		if dberr != nil {
 			return os.RemoveAll(rp)
-		} else if dberr != nil {
-			return db.WrapError(dberr)
 		}
 
 		repoID := strconv.FormatInt(repom.ID, 10)

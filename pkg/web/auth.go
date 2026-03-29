@@ -47,6 +47,8 @@ var errInvalidPassword = errors.New("invalid password")
 
 // dummyHash is a bcrypt hash used to equalize timing when user doesn't exist.
 // This prevents username enumeration via timing differences.
+// The value is intentionally public — it is never compared against a real
+// secret; it exists solely to force the bcrypt cost to be paid on every path.
 const dummyHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
 
 func parseUsernamePassword(ctx context.Context, username, password string) (proto.User, error) {

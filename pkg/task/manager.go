@@ -102,25 +102,27 @@ func (m *Manager) Run(id string, done chan<- error) {
 		// completing, Stop() may cancel the context and delete the map entry —
 		// that is safe because p.ctx.Done() still fires and p is still reachable
 		// through the local pointer.
+		// Block until the task's context is done. The winner calls p.cancel()
+		// via defer AFTER writing p.err and storing p.completed=true, so by
+		// the time <-p.ctx.Done() returns, both writes are visible (Go memory
+		// model: the defer executes after the preceding statements, providing
+		// happens-before from the stores to the channel close).
 		<-p.ctx.Done()
-		p.mu.Lock()
-		err := p.err
-		p.mu.Unlock()
-		if err != nil {
+
+		// Check completed first: if true, the task finished normally and p.err
+		// holds the authoritative result (nil or non-nil). We must read p.err
+		// under the mutex to synchronise with the write in the winner path.
+		if p.completed.Load() {
+			p.mu.Lock()
+			err := p.err
+			p.mu.Unlock()
 			done <- err
 			return
 		}
 
-		if p.completed.Load() {
-			// Task completed with a nil error; p.cancel() fired via defer
-			// after the result was stored. Return nil (success).
-			done <- nil
-			return
-		}
-
-		// Context was cancelled before the task finished (Stop() was called
-		// or the manager shut down). Return the context error so callers
-		// can detect the stop signal rather than mistaking it for success.
+		// completed is false: p.cancel() was called by Stop() or the manager
+		// shutting down before the task finished. Return the context error so
+		// callers can distinguish a premature stop from a task error.
 		done <- p.ctx.Err()
 		return
 	}
