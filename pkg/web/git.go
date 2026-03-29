@@ -280,8 +280,8 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		user, err := authenticate(r)
 		if err != nil {
 			switch {
-			case errors.Is(err, errInvalidToken):
-			case errors.Is(err, errInvalidPassword):
+			case errors.Is(err, ErrInvalidToken):
+			case errors.Is(err, ErrInvalidPassword):
 			case errors.Is(err, proto.ErrUserNotFound):
 			default:
 				logger.Error("failed to authenticate", "err", err)
@@ -354,7 +354,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				return
 			}
 			// Repo exists — now check credentials and access level.
-			if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
+			if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
 				renderForbidden(w, r)
 				return
 			}
@@ -417,7 +417,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 					renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 						Message: "repository not found",
 					})
-				} else if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
+				} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
 					renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 						Message: "bad credentials",
 					})
@@ -439,7 +439,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 			// regular (404) response. This is an accepted trade-off for go module
 			// discoverability.
 			break
-		case errors.Is(err, errInvalidToken), errors.Is(err, errInvalidPassword):
+		case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrInvalidPassword):
 			// return 403 when bad credentials are provided
 			renderForbidden(w, r)
 			return
