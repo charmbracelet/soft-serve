@@ -28,6 +28,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// lfsOidPattern matches a valid Git LFS OID in the form "sha256:<64 hex chars>".
+// Compiled once at package init to avoid per-request regexp allocation in LFS
+// handlers (verify, download validation).
+var lfsOidPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
 // serviceLfsBatch handles a Git LFS batch requests.
 // https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md
 // TODO: support refname
@@ -268,6 +273,12 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate OID explicitly even though the route regex already constrains it,
+	// to guard against future route-regex relaxation.
+	if !lfsOidPattern.MatchString("sha256:" + oid) {
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{Message: "invalid oid format"})
+		return
+	}
 	pointer := lfs.Pointer{Oid: oid}
 	f, err := strg.Open(path.Join("objects", pointer.RelativePath()))
 	if err != nil {
@@ -419,7 +430,7 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if matched, _ := regexp.MatchString(`^sha256:[0-9a-f]{64}$`, pointer.Oid); !matched {
+	if !lfsOidPattern.MatchString(pointer.Oid) {
 		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{Message: "invalid oid format"})
 		return
 	}
