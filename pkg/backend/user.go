@@ -313,6 +313,8 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 	// is enabled and a repo was public, it may be briefly accessible to anon
 	// users. This is a structural limitation; a future improvement would be
 	// to mark repos for deletion atomically inside the user-deletion transaction.
+	// Future improvement: set a soft-delete flag on repos inside the user-deletion
+	// transaction so they become invisible immediately before filesystem cleanup.
 	// Delete each repository outside the user-deletion transaction to avoid
 	// nested-transaction issues (especially on SQLite).
 	var errs []error

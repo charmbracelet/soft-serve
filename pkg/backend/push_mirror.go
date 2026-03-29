@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"os/exec"
@@ -63,8 +64,8 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
 				continue
 			}
-		} else if err == nil && u.Scheme == "ssh" {
-			// Validate ssh:// scheme URLs against SSRF.
+		} else if err == nil && (u.Scheme == "ssh" || u.Scheme == "git+ssh" || u.Scheme == "ssh+git") {
+			// Validate ssh:// / git+ssh:// / ssh+git:// scheme URLs against SSRF.
 			if ssrfErr := ssrf.ValidateHost(u.Hostname()); ssrfErr != nil {
 				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
 				continue
@@ -82,6 +83,11 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 					continue
 				}
 			}
+		} else {
+			// Block git:// and any other unrecognized scheme.
+			schemeErr := fmt.Errorf("push mirror: unsupported URL scheme %q", u.Scheme)
+			b.logger.Warn(schemeErr.Error(), "remote", m.RemoteURL)
+			continue
 		}
 		sem <- struct{}{} // acquire
 		wg.Add(1)

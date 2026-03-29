@@ -35,7 +35,9 @@ func GenerateToken() (string, error) {
 	return "ss_" + hex.EncodeToString(buf), nil
 }
 
-// HashToken hashes the token using sha256.
+// HashToken returns the SHA-256 hex digest of the token. The 20-byte (160-bit)
+// random token provides sufficient entropy to make rainbow-table attacks
+// impractical. A HMAC-with-server-secret scheme would be more defensive.
 func HashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
