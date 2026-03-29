@@ -17,10 +17,12 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/ratelimit"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"golang.org/x/time/rate"
 )
 
 var (
@@ -56,6 +58,7 @@ type GitDaemon struct {
 	done      atomic.Bool // indicates if the server has been closed
 	listeners []net.Listener
 	liMu      sync.Mutex
+	limiter   *ratelimit.IPLimiter
 }
 
 // NewGitDaemon returns a new Git daemon.
@@ -71,6 +74,7 @@ func NewGitDaemon(ctx context.Context) (*GitDaemon, error) {
 		conns:    connections{m: make(map[net.Conn]struct{})},
 		logger:   log.FromContext(ctx).WithPrefix("gitdaemon"),
 	}
+	d.limiter = ratelimit.New(rate.Limit(5), 10, 5*time.Minute)
 	return d, nil
 }
 
@@ -159,6 +163,13 @@ func sanitizeParamValue(s string) (string, bool) {
 
 // handleClient handles a git protocol client.
 func (d *GitDaemon) handleClient(conn net.Conn) {
+	ip := conn.RemoteAddr().String()
+	if !d.limiter.Allow(ip) {
+		d.logger.Warn("git daemon rate limited", "remote", ip)
+		conn.Close() //nolint: errcheck
+		return
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	idleTimeout := time.Duration(d.cfg.Git.IdleTimeout) * time.Second
 	c := &serverConn{

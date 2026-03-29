@@ -45,7 +45,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
 		logger.Errorf("error decoding json: %s", err)
 		renderJSON(w, http.StatusUnprocessableEntity, lfs.ErrorResponse{
-			Message: "validation error in request: " + err.Error(),
+			Message: "invalid request body",
 		})
 		return
 	}
@@ -391,7 +391,7 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&pointer); err != nil {
 		logger.Error("error decoding json", "err", err)
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request: " + err.Error(),
+			Message: "invalid request body",
 		})
 		return
 	}
@@ -470,7 +470,7 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding json", "err", err)
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request: " + err.Error(),
+			Message: "invalid request body",
 		})
 		return
 	}
@@ -762,7 +762,7 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding request", "err", err)
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request: " + err.Error(),
+			Message: "invalid request body",
 		})
 		return
 	}
@@ -868,7 +868,7 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding request", "err", err)
 		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request: " + err.Error(),
+			Message: "invalid request body",
 		})
 		return
 	}

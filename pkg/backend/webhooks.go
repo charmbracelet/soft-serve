@@ -20,6 +20,11 @@ func (b *Backend) CreateWebhook(ctx context.Context, repo proto.Repository, url 
 	datastore := store.FromContext(ctx)
 	url = utils.Sanitize(url)
 
+	if secret == "" {
+		logger := log.FromContext(ctx)
+		logger.Warn("webhook created without a secret — deliveries will not be signed and cannot be verified by the receiver", "url", url)
+	}
+
 	// Validate webhook URL to prevent SSRF attacks
 	if err := webhook.ValidateWebhookURL(url); err != nil {
 		return err //nolint:wrapcheck

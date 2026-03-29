@@ -17,11 +17,13 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
+	"github.com/charmbracelet/soft-serve/pkg/ratelimit"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/ssh"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gossh "golang.org/x/crypto/ssh"
+	"golang.org/x/time/rate"
 )
 
 var (
@@ -48,11 +50,12 @@ type tokenAuthUserIDKey struct{}
 
 // SSHServer is a SSH server that implements the git protocol.
 type SSHServer struct { //nolint: revive
-	srv    *ssh.Server
-	cfg    *config.Config
-	be     *backend.Backend
-	ctx    context.Context
-	logger *log.Logger
+	srv     *ssh.Server
+	cfg     *config.Config
+	be      *backend.Backend
+	ctx     context.Context
+	logger  *log.Logger
+	limiter *ratelimit.IPLimiter
 }
 
 // NewSSHServer returns a new SSHServer.
@@ -70,6 +73,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		be:     be,
 		logger: logger,
 	}
+	s.limiter = ratelimit.New(rate.Limit(10), 20, 5*time.Minute)
 
 	mw := []wish.Middleware{
 		rm.MiddlewareWithLogger(
@@ -100,7 +104,13 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 
 	opts := []ssh.Option{
 		ssh.PublicKeyAuth(s.PublicKeyHandler),
-		ssh.KeyboardInteractiveAuth(s.KeyboardInteractiveHandler),
+		ssh.KeyboardInteractiveAuth(func(ctx ssh.Context, challenge gossh.KeyboardInteractiveChallenge) bool {
+			if !s.limiter.Allow(ctx.RemoteAddr().String()) {
+				s.logger.Warn("SSH keyboard-interactive rate limited", "remote", ctx.RemoteAddr())
+				return false
+			}
+			return s.KeyboardInteractiveHandler(ctx, challenge)
+		}),
 		wish.WithAddress(cfg.SSH.ListenAddr),
 		wish.WithHostKeyPath(cfg.SSH.KeyPath),
 		wish.WithMiddleware(mw...),
