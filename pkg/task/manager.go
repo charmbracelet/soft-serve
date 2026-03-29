@@ -125,7 +125,7 @@ func (m *Manager) Run(id string, done chan<- error) {
 		p.mu.Lock()
 		p.err = err
 		p.mu.Unlock()
-		m.m.Store(id, p)
+		// No re-store: m.m already holds p and defer m.m.Delete(id) runs next.
 		done <- err
 	}
 }
