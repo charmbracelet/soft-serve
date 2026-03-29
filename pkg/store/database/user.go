@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -15,6 +17,19 @@ import (
 type userStore struct{}
 
 var _ store.UserStore = (*userStore)(nil)
+
+// validateBcryptHash ensures the password is a valid bcrypt hash.
+// This prevents plaintext password storage at the database layer.
+func validateBcryptHash(password string) error {
+	// Bcrypt hashes are approximately 60 characters and start with $2a$ or $2b$
+	if len(password) != 60 {
+		return fmt.Errorf("password must be bcrypt hashed (expected 60 characters, got %d)", len(password))
+	}
+	if !strings.HasPrefix(password, "$2a$") && !strings.HasPrefix(password, "$2b$") {
+		return errors.New("password must be bcrypt hashed")
+	}
+	return nil
+}
 
 // AddPublicKeyByUsername implements store.UserStore.
 func (*userStore) AddPublicKeyByUsername(ctx context.Context, tx db.Handler, username string, pk ssh.PublicKey) error {
@@ -224,6 +239,9 @@ func (*userStore) SetUsernameByUsername(ctx context.Context, tx db.Handler, user
 
 // SetUserPassword implements store.UserStore.
 func (*userStore) SetUserPassword(ctx context.Context, tx db.Handler, userID int64, password string) error {
+	if err := validateBcryptHash(password); err != nil {
+		return err
+	}
 	query := tx.Rebind(`UPDATE users SET password = ? WHERE id = ?;`)
 	_, err := tx.ExecContext(ctx, query, password, userID)
 	return err
@@ -233,6 +251,10 @@ func (*userStore) SetUserPassword(ctx context.Context, tx db.Handler, userID int
 func (*userStore) SetUserPasswordByUsername(ctx context.Context, tx db.Handler, username string, password string) error {
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
+		return err
+	}
+
+	if err := validateBcryptHash(password); err != nil {
 		return err
 	}
 
