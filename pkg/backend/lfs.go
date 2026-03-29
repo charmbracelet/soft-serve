@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
+	"github.com/charmbracelet/soft-serve/pkg/db/models"
 	"github.com/charmbracelet/soft-serve/pkg/lfs"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/storage"
@@ -53,10 +54,27 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 
 	const lfsBatchSize = 20
 	var batch []lfs.Pointer
+	var lookupOids []string
+	var objMap = make(map[string]*models.LFSObject)
+
 	for pointer := range pointerChan {
-		obj, err := store.GetLFSObjectByOid(ctx, dbx, repo.ID(), pointer.Oid)
-		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-			return db.WrapError(err)
+		lookupOids = append(lookupOids, pointer.Oid)
+	}
+
+	// Batch fetch all objects to eliminate N+1 query
+	objects, err := store.GetLFSObjectsByOids(ctx, dbx, repo.ID(), lookupOids)
+	if err != nil {
+		return db.WrapError(err)
+	}
+	for _, obj := range objects {
+		objMap[obj.Oid] = &obj
+	}
+
+	for pointer := range pointerChan {
+		obj, exists := objMap[pointer.Oid]
+		if !exists {
+			// Object not found in DB — skip (shouldn't happen if scanner worked correctly)
+			continue
 		}
 
 		exist, err := strg.Exists(path.Join("objects", pointer.RelativePath()))
