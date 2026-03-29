@@ -285,13 +285,37 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 		return err
 	}
 
-	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		if err := d.store.DeleteUserByUsername(ctx, tx, username); err != nil {
+	// Collect the user's repo names and delete the user record in one transaction.
+	var repoNames []string
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		u, err := d.store.FindUserByUsername(ctx, tx, username)
+		if err != nil {
 			return db.WrapError(err)
 		}
 
-		return d.DeleteUserRepositories(ctx, username)
-	})
+		repos, err := d.store.GetUserRepos(ctx, tx, u.ID)
+		if err != nil {
+			return db.WrapError(err)
+		}
+
+		for _, r := range repos {
+			repoNames = append(repoNames, r.Name)
+		}
+
+		return db.WrapError(d.store.DeleteUserByUsername(ctx, tx, username))
+	}); err != nil {
+		return err
+	}
+
+	// Delete each repository outside the user-deletion transaction to avoid
+	// nested-transaction issues (especially on SQLite).
+	for _, name := range repoNames {
+		if err := d.DeleteRepository(ctx, name); err != nil {
+			d.logger.Error("error deleting user repo", "repo", name, "err", err)
+		}
+	}
+
+	return nil
 }
 
 // RemovePublicKey removes a public key from a user.
