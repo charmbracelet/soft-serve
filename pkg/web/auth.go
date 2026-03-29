@@ -45,6 +45,9 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		if err != nil {
 			// Run a dummy bcrypt comparison to prevent username enumeration via timing.
 			_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
+			// Also attempt token lookup so the not-found and wrong-password paths
+			// do the same amount of work.
+			_, _ = be.UserByAccessToken(ctx, password)
 			return nil, errInvalidPassword
 		}
 		if user != nil && backend.VerifyPassword(password, user.Password()) {

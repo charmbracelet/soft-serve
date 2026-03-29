@@ -443,7 +443,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if service == git.ReceivePackService {
-		gitHttpReceiveCounter.WithLabelValues(repoName)
+		gitHttpReceiveCounter.WithLabelValues(repoName).Inc()
 	}
 
 	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-result", service))
@@ -743,7 +743,7 @@ const oneYearSeconds = 31536000
 func hdrCacheForever(w http.ResponseWriter) {
 	now := time.Now().Unix()
 	expires := now + oneYearSeconds
-	w.Header().Set("Date", fmt.Sprintf("%d", now))
-	w.Header().Set("Expires", fmt.Sprintf("%d", expires))
+	w.Header().Set("Date", time.Unix(now, 0).UTC().Format(http.TimeFormat))
+	w.Header().Set("Expires", time.Unix(expires, 0).UTC().Format(http.TimeFormat))
 	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", oneYearSeconds))
 }

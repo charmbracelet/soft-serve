@@ -295,6 +295,9 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 
 // PUT: /<repo>.git/info/lfs/objects/basic/<oid>
 func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
+	const maxLFSObjectSize = 5 << 30 // 5 GiB
+	r.Body = http.MaxBytesReader(w, r.Body, maxLFSObjectSize)
+
 	if !isBinary(r) {
 		renderJSON(w, http.StatusUnsupportedMediaType, lfs.ErrorResponse{
 			Message: "invalid content type",
@@ -337,9 +340,6 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	const maxLFSObjectSize = 5 << 30 // 5 GiB
-	r.Body = http.MaxBytesReader(w, r.Body, maxLFSObjectSize)
 
 	pointer := lfs.Pointer{Oid: oid}
 	n, err := strg.Put(path.Join("objects", pointer.RelativePath()), r.Body)
@@ -892,6 +892,13 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "lock not found",
 		})
+		return
+	}
+
+	if lock.RepoID != repo.ID() {
+		renderJSON(w, http.StatusNotFound, struct {
+			Message string `json:"message"`
+		}{"lock not found"})
 		return
 	}
 

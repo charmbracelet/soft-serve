@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -98,7 +99,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 		headers.Add("X-SoftServe-Signature", "sha256="+hex.EncodeToString(sig.Sum(nil)))
 	}
 
-	res, reqErr := do(ctx, w.URL, http.MethodPost, headers, &buf)
+	res, reqErr := do(ctx, w.URL, http.MethodPost, headers, strings.NewReader(reqBody))
 	var reqHeaders string
 	for k, v := range headers {
 		reqHeaders += k + ": " + v[0] + "\n"

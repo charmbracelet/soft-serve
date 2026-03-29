@@ -65,7 +65,11 @@ func (il *IPLimiter) Allow(ip string) bool {
 }
 
 func (il *IPLimiter) cleanup() {
-	ticker := time.NewTicker(time.Minute)
+	cleanupInterval := il.ttl / 5
+	if cleanupInterval < time.Minute {
+		cleanupInterval = time.Minute
+	}
+	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 	for {
 		select {
