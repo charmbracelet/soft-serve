@@ -154,7 +154,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 				})
 
 				// If the object doesn't exist in the database, create it
-				if exist && obj.ID == 0 {
+				if exist && objNotFound {
 					if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), o.Oid, o.Size); err != nil {
 						logger.Error("error creating object in datastore", "oid", o.Oid, "repo", name, "err", err)
 						renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{

@@ -101,16 +101,16 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 	}
 
 	res, reqErr := do(ctx, w.URL, http.MethodPost, headers, strings.NewReader(reqBody))
-	var reqHeaders string
 	headerKeys := make([]string, 0, len(headers))
 	for k := range headers {
 		headerKeys = append(headerKeys, k)
 	}
 	sort.Strings(headerKeys)
+	var reqHeadersB strings.Builder
 	for _, k := range headerKeys {
-		v := headers[k]
-		reqHeaders += k + ": " + strings.Join(v, ", ") + "\n"
+		reqHeadersB.WriteString(k + ": " + strings.Join(headers[k], ", ") + "\n")
 	}
+	reqHeaders := reqHeadersB.String()
 
 	resStatus := 0
 	resHeaders := ""
@@ -118,9 +118,11 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 
 	if res != nil {
 		resStatus = res.StatusCode
+		var resHeadersB strings.Builder
 		for k, v := range res.Header {
-			resHeaders += k + ": " + strings.Join(v, ", ") + "\n"
+			resHeadersB.WriteString(k + ": " + strings.Join(v, ", ") + "\n")
 		}
+		resHeaders = resHeadersB.String()
 
 		if res.Body != nil {
 			defer res.Body.Close() //nolint: errcheck
