@@ -38,6 +38,13 @@ func validateImportRemote(remote string) error {
 		}
 	}
 
+	switch endpoint.Scheme {
+	case "ssh", "git+ssh", "ssh+git":
+		if err := ssrf.ValidateHost(endpoint.Host); err != nil {
+			return fmt.Errorf("import remote: %w", err)
+		}
+	}
+
 	return nil
 }
 

@@ -118,6 +118,13 @@ type HTTPConfig struct {
 	// for client IP resolution. Only enable this when the server sits behind a
 	// trusted reverse proxy. Default is false.
 	TrustProxyHeaders bool `env:"SOFT_SERVE_HTTP_TRUST_PROXY_HEADERS" yaml:"trust_proxy_headers"`
+
+	// RateLimit is the maximum number of HTTP requests per second per IP.
+	// Set to 0 to disable rate limiting.
+	RateLimit float64 `env:"RATE_LIMIT" yaml:"rate_limit"`
+
+	// RateBurst is the maximum burst size for the HTTP rate limiter.
+	RateBurst int `env:"RATE_BURST" yaml:"rate_burst"`
 }
 
 // StatsConfig is the configuration for the stats server.
@@ -430,6 +437,8 @@ func DefaultConfig() *Config {
 			Enabled:    true,
 			ListenAddr: ":23232",
 			PublicURL:  "http://localhost:23232",
+			RateLimit:  10,
+			RateBurst:  30,
 			CORS: CORSConfig{
 				AllowedHeaders: []string{"Accept", "Accept-Language", "Content-Language", "Content-Type", "Origin", "X-Requested-With", "User-Agent", "Authorization", "Access-Control-Request-Method", "Access-Control-Allow-Origin"},
 				AllowedMethods: []string{"GET", "HEAD", "POST", "PUT", "OPTIONS"},

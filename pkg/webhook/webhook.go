@@ -145,12 +145,15 @@ func SendEvent(ctx context.Context, payload EventPayload) error {
 		return db.WrapError(err)
 	}
 
+	var errs []error
 	for _, w := range webhooks {
 		if err := SendWebhook(ctx, w, payload.Event(), payload); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
-
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	return nil
 }
 
