@@ -131,9 +131,8 @@ func withParams(next http.Handler) http.Handler {
 		vars := mux.Vars(r)
 		repo := vars["repo"]
 
-		// Note: vars["file"] is computed using the raw repo segment (before .git stripping)
-		// which is intentional — the file path is relative to the full URL path including
-		// the .git suffix. SanitizeRepo is applied to repo only for backend lookups below.
+		// repo still has the .git suffix here; vars["file"] is the path component after /<repo>/.
+		// SanitizeRepo (applied below) strips the .git suffix from vars["repo"] only.
 		// Construct "file" param from path
 		vars["file"] = strings.TrimPrefix(r.URL.Path, "/"+repo+"/")
 
@@ -424,7 +423,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		}
 
 		switch {
-		case r.URL.Query().Get("go-get") == "1" && (accessLevel >= access.ReadOnlyAccess || cfg.AllowPublicGoGet):
+		case r.URL.Query().Get("go-get") == "1" && repo != nil && (accessLevel >= access.ReadOnlyAccess || cfg.AllowPublicGoGet):
 			// Allow go-get requests to passthrough.
 			break
 		case errors.Is(err, errInvalidToken), errors.Is(err, errInvalidPassword):
@@ -554,7 +553,7 @@ type flushResponseWriter struct {
 	http.ResponseWriter
 }
 
-const flushBufSize = 1024
+const flushBufSize = 32 * 1024
 
 func (f *flushResponseWriter) ReadFrom(r io.Reader) (int64, error) {
 	flusher := http.NewResponseController(f.ResponseWriter)
