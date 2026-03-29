@@ -71,10 +71,10 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 			return user, nil
 		}
 
-		// Dummy bcrypt to equalize timing regardless of user-found vs user-not-found.
-		// Both the "user not found" path (above) and this "user found, wrong password"
-		// path perform one bcrypt comparison and one UserByAccessToken call, so
-		// timing is equalized across both paths.
+		// Second bcrypt to equalize timing: the "user not found" path above performs
+		// one dummy bcrypt + one UserByAccessToken. This "user found, wrong password"
+		// path already ran one REAL bcrypt inside VerifyPassword, so this second call
+		// makes both paths total two bcrypt operations.
 		_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
 
 		// Try to authenticate using access token as the password.

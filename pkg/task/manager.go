@@ -79,6 +79,10 @@ func (m *Manager) Exists(id string) bool {
 // task to complete and delivers its result to done.
 // Callers MUST ensure done has capacity >= 1 (buffered) to avoid a panic
 // if the caller returns before the task delivers its result.
+//
+// If Stop() is called while a second goroutine is waiting on an already-started
+// task, done receives context.Canceled. Callers should treat context.Canceled as
+// "task was stopped or the manager shut down", not necessarily as a task error.
 func (m *Manager) Run(id string, done chan<- error) {
 	v, ok := m.m.Load(id)
 	if !ok {
