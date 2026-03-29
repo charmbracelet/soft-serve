@@ -87,14 +87,12 @@ func (m *Manager) Run(id string, done chan<- error) {
 	}
 
 	p := v.(*Task)
-	if p.started.Load() {
-		// Wait for the already-running task to finish. Note: between
-		// started.Load() returning true and <-p.ctx.Done() completing,
-		// Stop() may call p.cancel() and delete the task from the map.
-		// That is safe — p.ctx.Done() still fires — but p.err may be nil
-		// if p.fn is still running when the context is cancelled. In that
-		// case we fall through to returning p.ctx.Err() (context.Canceled),
-		// which is the correct signal to the caller.
+	if !p.started.CompareAndSwap(false, true) {
+		// Task is already running (or was already completed). Wait for it.
+		// Note: between CompareAndSwap returning false and <-p.ctx.Done()
+		// completing, Stop() may cancel the context and delete the map entry —
+		// that is safe because p.ctx.Done() still fires and p is still reachable
+		// through the local pointer.
 		<-p.ctx.Done()
 		p.mu.Lock()
 		err := p.err
@@ -108,7 +106,7 @@ func (m *Manager) Run(id string, done chan<- error) {
 		return
 	}
 
-	p.started.Store(true)
+	// We won the CAS: we are the sole goroutine responsible for running p.fn.
 	// m.m already holds p from Add; no re-store needed here.
 	defer p.cancel()
 	defer m.m.Delete(id)

@@ -127,7 +127,10 @@ func (d *Backend) PreReceive(_ context.Context, _ io.Writer, _ io.Writer, repo s
 func (d *Backend) Update(ctx context.Context, _ io.Writer, _ io.Writer, repo string, arg hooks.HookArg) {
 	d.logger.Debug("update hook called", "repo", repo, "arg", arg)
 
-	// Find user
+	// Find user from hook environment variables. These are process-global but
+	// safe because each hook invocation is run in a separate subprocess (see
+	// pkg/hooks/gen.go); concurrent pushes in the same server process never
+	// share the hook subprocess's environment.
 	var user proto.User
 	if pubkey := os.Getenv("SOFT_SERVE_PUBLIC_KEY"); pubkey != "" {
 		pk, _, err := sshutils.ParseAuthorizedKey(pubkey)
