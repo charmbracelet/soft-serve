@@ -104,6 +104,8 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			}
 			if sshCmd := os.Getenv("GIT_SSH_COMMAND"); sshCmd != "" {
 				cmd.Env = append(cmd.Env, "GIT_SSH_COMMAND="+sshCmd)
+			} else if sockPath := os.Getenv("SSH_AUTH_SOCK"); sockPath != "" {
+				cmd.Env = append(cmd.Env, "SSH_AUTH_SOCK="+sockPath)
 			}
 			if out, err := cmd.CombinedOutput(); err != nil {
 				b.logger.Warn("push-mirror: push failed", "repo", repo.Name(), "mirror", m.Name, "err", err, "output", string(out))
