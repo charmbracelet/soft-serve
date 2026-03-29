@@ -493,14 +493,13 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 // It implements backend.Backend.
 func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) {
 	// Use singleflight to coalesce concurrent calls and prevent cache stampede.
-	// The context is intentionally not forwarded into Do() because singleflight
-	// shares a single in-flight call across all callers; cancelling one caller's
-	// context would abort the shared work for all. We bound the work via the
-	// database transaction deadline instead.
+	// The lambda uses d.ctx (backend root context) rather than the caller's ctx
+	// so that one caller cancelling does not abort the shared in-flight query
+	// for all other waiters.
 	v, err, _ := d.reposSFG.Do("all", func() (interface{}, error) {
 		repos := make([]proto.Repository, 0)
-		if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-			ms, err := d.store.GetAllRepos(ctx, tx)
+		if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
+			ms, err := d.store.GetAllRepos(d.ctx, tx)
 			if err != nil {
 				return err
 			}

@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -121,17 +122,29 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			}
 			if sshCmd := os.Getenv("GIT_SSH_COMMAND"); sshCmd != "" {
 				cmd.Env = append(cmd.Env, "GIT_SSH_COMMAND="+sshCmd)
-			} else if sockPath := os.Getenv("SSH_AUTH_SOCK"); sockPath != "" {
-				// SSH_AUTH_SOCK is a Unix socket path from the process environment.
-				// It is not influenced by user input (mirror URLs are validated
-				// separately), so forwarding it here is safe. A newline in this
-				// value would malform the env block; os.Getenv strips NUL bytes
-				// but not newlines — reject the value if it contains one.
-				if strings.ContainsAny(sockPath, "\n\r\x00") {
-					b.logger.Warn("push-mirror: SSH_AUTH_SOCK contains unsafe characters, skipping agent forwarding")
-				} else {
-					cmd.Env = append(cmd.Env, "SSH_AUTH_SOCK="+sockPath)
+			} else {
+				// Build a default GIT_SSH_COMMAND that pins host fingerprints into a
+				// per-server known_hosts file. StrictHostKeyChecking=accept-new records
+				// the fingerprint on first connection and rejects changes thereafter,
+				// narrowing the DNS rebinding window: an attacker who swaps the DNS
+				// record after the initial SSRF check will be blocked by the pinned key.
+				// This is a best-effort mitigation — it does not eliminate the window
+				// between SSRF validation and the first SSH handshake.
+				knownHostsFile := filepath.Join(b.cfg.DataPath, "mirror_known_hosts")
+				sshCommand := "ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=" + knownHostsFile
+				if sockPath := os.Getenv("SSH_AUTH_SOCK"); sockPath != "" {
+					// SSH_AUTH_SOCK is a Unix socket path from the process environment.
+					// It is not influenced by user input (mirror URLs are validated
+					// separately), so forwarding it here is safe. A newline in this
+					// value would malform the env block; os.Getenv strips NUL bytes
+					// but not newlines — reject the value if it contains one.
+					if strings.ContainsAny(sockPath, "\n\r\x00") {
+						b.logger.Warn("push-mirror: SSH_AUTH_SOCK contains unsafe characters, skipping agent forwarding")
+					} else {
+						cmd.Env = append(cmd.Env, "SSH_AUTH_SOCK="+sockPath)
+					}
 				}
+				cmd.Env = append(cmd.Env, "GIT_SSH_COMMAND="+sshCommand)
 			}
 			if out, err := cmd.CombinedOutput(); err != nil {
 				b.logger.Warn("push-mirror: push failed", "repo", repo.Name(), "mirror", m.Name, "err", err, "output", string(out))

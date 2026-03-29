@@ -181,7 +181,7 @@ func (b *Backend) UpdateWebhook(ctx context.Context, repo proto.Repository, id i
 		}
 
 		// Prune events that are already in the list.
-		newEvents := make([]int, 0)
+		var newEvents []int
 		for _, e := range updatedEvents {
 			if _, exists := currentSet[int(e)]; !exists {
 				newEvents = append(newEvents, int(e))
