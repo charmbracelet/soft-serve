@@ -11,6 +11,7 @@ import (
 type LFSStore interface {
 	CreateLFSObject(ctx context.Context, h db.Handler, repoID int64, oid string, size int64) error
 	GetLFSObjectByOid(ctx context.Context, h db.Handler, repoID int64, oid string) (models.LFSObject, error)
+	GetLFSObjectsByOids(ctx context.Context, h db.Handler, repoID int64, oids []string) ([]models.LFSObject, error)
 	GetLFSObjects(ctx context.Context, h db.Handler, repoID int64) ([]models.LFSObject, error)
 	GetLFSObjectsByName(ctx context.Context, h db.Handler, name string) ([]models.LFSObject, error)
 	DeleteLFSObjectByOid(ctx context.Context, h db.Handler, repoID int64, oid string) error

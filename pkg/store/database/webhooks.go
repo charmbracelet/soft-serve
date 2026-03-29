@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"strings"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
@@ -41,15 +42,24 @@ func (*webhookStore) CreateWebhookDelivery(ctx context.Context, h db.Handler, id
 
 // CreateWebhookEvents implements store.WebhookStore.
 func (*webhookStore) CreateWebhookEvents(ctx context.Context, h db.Handler, webhookID int64, events []int) error {
-	query := h.Rebind(`INSERT INTO webhook_events (webhook_id, event)
-			VALUES (?, ?);`)
-	for _, event := range events {
-		_, err := h.ExecContext(ctx, query, webhookID, event)
-		if err != nil {
-			return err
-		}
+	if len(events) == 0 {
+		return nil
 	}
-	return nil
+	// Bulk INSERT to avoid N round-trips for webhooks with many events.
+	// Use strings.Builder to build the placeholder list without intermediate
+	// string allocations from strings.Join over a []string.
+	var pb strings.Builder
+	args := make([]interface{}, 0, len(events)*2)
+	for i, event := range events {
+		if i > 0 {
+			pb.WriteString(", ")
+		}
+		pb.WriteString("(?, ?)")
+		args = append(args, webhookID, event)
+	}
+	query := h.Rebind(`INSERT INTO webhook_events (webhook_id, event) VALUES ` + pb.String())
+	_, err := h.ExecContext(ctx, query, args...)
+	return err
 }
 
 // DeleteWebhookByID implements store.WebhookStore.
@@ -73,7 +83,7 @@ func (*webhookStore) DeleteWebhookDeliveryByID(ctx context.Context, h db.Handler
 	return err
 }
 
-// DeleteWebhookEventsByWebhookID implements store.WebhookStore.
+// DeleteWebhookEventsByID implements store.WebhookStore.
 func (*webhookStore) DeleteWebhookEventsByID(ctx context.Context, h db.Handler, ids []int64) error {
 	query, args, err := sqlx.In(`DELETE FROM webhook_events WHERE id IN (?);`, ids)
 	if err != nil {
@@ -94,8 +104,10 @@ func (*webhookStore) GetWebhookByID(ctx context.Context, h db.Handler, repoID in
 }
 
 // GetWebhookDeliveriesByWebhookID implements store.WebhookStore.
+// Returns the most recent 100 deliveries to prevent unbounded memory use.
+// Callers that need older deliveries should use a paginated query.
 func (*webhookStore) GetWebhookDeliveriesByWebhookID(ctx context.Context, h db.Handler, webhookID int64) ([]models.WebhookDelivery, error) {
-	query := h.Rebind(`SELECT * FROM webhook_deliveries WHERE webhook_id = ?;`)
+	query := h.Rebind(`SELECT * FROM webhook_deliveries WHERE webhook_id = ? ORDER BY created_at DESC LIMIT 100;`)
 	var whds []models.WebhookDelivery
 	err := h.SelectContext(ctx, &whds, query, webhookID)
 	return whds, err
@@ -125,26 +137,46 @@ func (*webhookStore) GetWebhookEventsByWebhookID(ctx context.Context, h db.Handl
 	return whes, err
 }
 
+// sqliteMaxPlaceholders is the maximum number of placeholders SQLite allows in
+// a single query (SQLITE_MAX_VARIABLE_NUMBER, default 999). We batch queries
+// larger than this to stay within the limit on both SQLite and PostgreSQL.
+const sqliteMaxPlaceholders = 999
+
 // GetWebhookEventsByWebhookIDs implements store.WebhookStore.
 func (*webhookStore) GetWebhookEventsByWebhookIDs(ctx context.Context, h db.Handler, webhookIDs []int64) ([]models.WebhookEvent, error) {
 	if len(webhookIDs) == 0 {
 		return nil, nil
 	}
-	query, args, err := sqlx.In(`SELECT * FROM webhook_events WHERE webhook_id IN (?);`, webhookIDs)
-	if err != nil {
-		return nil, err
+	var all []models.WebhookEvent
+	for i := 0; i < len(webhookIDs); i += sqliteMaxPlaceholders {
+		end := i + sqliteMaxPlaceholders
+		if end > len(webhookIDs) {
+			end = len(webhookIDs)
+		}
+		batch := webhookIDs[i:end]
+		query, args, err := sqlx.In(`SELECT * FROM webhook_events WHERE webhook_id IN (?);`, batch)
+		if err != nil {
+			return nil, err
+		}
+		query = h.Rebind(query)
+		var whes []models.WebhookEvent
+		if err := h.SelectContext(ctx, &whes, query, args...); err != nil {
+			return nil, err
+		}
+		all = append(all, whes...)
 	}
-	query = h.Rebind(query)
-	var whes []models.WebhookEvent
-	err = h.SelectContext(ctx, &whes, query, args...)
-	return whes, err
+	return all, nil
 }
+
+// maxWebhooksPerRepo caps the number of webhooks returned per repository to
+// prevent unbounded memory use for repos with many configured webhooks.
+const maxWebhooksPerRepo = 100
 
 // GetWebhooksByRepoID implements store.WebhookStore.
 func (*webhookStore) GetWebhooksByRepoID(ctx context.Context, h db.Handler, repoID int64) ([]models.Webhook, error) {
-	query := h.Rebind(`SELECT * FROM webhooks WHERE repo_id = ?;`)
+	query := h.Rebind(`SELECT * FROM webhooks WHERE repo_id = ? LIMIT ?;`)
 	var whs []models.Webhook
-	err := h.SelectContext(ctx, &whs, query, repoID)
+	err := h.SelectContext(ctx, &whs, query, repoID, maxWebhooksPerRepo)
 	return whs, err
 }
 
@@ -164,11 +196,16 @@ func (*webhookStore) GetWebhooksByRepoIDWhereEvent(ctx context.Context, h db.Han
 	return whs, err
 }
 
+// maxListWebhookDeliveries caps the number of rows returned by
+// ListWebhookDeliveriesByWebhookID to prevent unbounded memory use for
+// high-volume webhooks. Callers that need more deliveries should paginate.
+const maxListWebhookDeliveries = 100
+
 // ListWebhookDeliveriesByWebhookID implements store.WebhookStore.
 func (*webhookStore) ListWebhookDeliveriesByWebhookID(ctx context.Context, h db.Handler, webhookID int64) ([]models.WebhookDelivery, error) {
-	query := h.Rebind(`SELECT id, response_status, event FROM webhook_deliveries WHERE webhook_id = ?;`)
+	query := h.Rebind(`SELECT id, response_status, event FROM webhook_deliveries WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ?;`)
 	var whds []models.WebhookDelivery
-	err := h.SelectContext(ctx, &whds, query, webhookID)
+	err := h.SelectContext(ctx, &whds, query, webhookID, maxListWebhookDeliveries)
 	return whds, err
 }
 

@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // authenticate authenticates the user from the request.
@@ -20,13 +20,7 @@ func authenticate(r *http.Request) (proto.User, error) {
 	// Prefer the Authorization header
 	user, err := parseAuthHdr(r)
 	if err != nil || user == nil {
-		if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
-			return nil, err
-		}
-		if err != nil && !errors.Is(err, errInvalidHeader) {
-			// Transient backend error (e.g. DB failure) — propagate rather than
-			// masking as ErrUserNotFound so callers can distinguish auth failures
-			// from infrastructure errors.
+		if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
 			return nil, err
 		}
 		return nil, proto.ErrUserNotFound
@@ -35,12 +29,8 @@ func authenticate(r *http.Request) (proto.User, error) {
 	return user, nil
 }
 
-// errInvalidPassword is returned when the password is invalid.
-var errInvalidPassword = errors.New("invalid password")
-
-// dummyHash is a bcrypt hash used to equalize timing when user doesn't exist.
-// This prevents username enumeration via timing differences.
-const dummyHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+// ErrInvalidPassword is returned when the password is invalid.
+var ErrInvalidPassword = errors.New("invalid password")
 
 func parseUsernamePassword(ctx context.Context, username, password string) (proto.User, error) {
 	logger := log.FromContext(ctx)
@@ -48,24 +38,9 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 
 	if username != "" && password != "" {
 		user, err := be.User(ctx, username)
-		if err != nil {
-			// Run a dummy bcrypt comparison to prevent username enumeration via timing.
-			_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
-			// Timing equalization is best-effort: both the "user found" and "user not found"
-			// paths perform one DB lookup and one bcrypt comparison. However, DB query latency
-			// is variable and not constant-time, so this does not provide strong enumeration
-			// resistance — it only reduces the bcrypt-timing gap.
-			// Also attempt token lookup so the not-found and wrong-password paths
-			// do the same amount of work.
-			_, _ = be.UserByAccessToken(ctx, password) //nolint:errcheck // intentionally discarded for timing equalization
-			return nil, errInvalidPassword
-		}
-		if user != nil && backend.VerifyPassword(password, user.Password()) {
+		if err == nil && user != nil && backend.VerifyPassword(password, user.Password()) {
 			return user, nil
 		}
-
-		// Dummy bcrypt to equalize timing regardless of user-found vs user-not-found
-		_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
 
 		// Try to authenticate using access token as the password
 		user, err = be.UserByAccessToken(ctx, password)
@@ -73,49 +48,38 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 			return user, nil
 		}
 
-		logUsername := username
-		if len(logUsername) > 20 {
-			logUsername = logUsername[:20] + "…"
-		}
-		logger.Debug("invalid credentials", "username", logUsername, "err", err)
-		return nil, errInvalidPassword
+		logger.Error("invalid password or token", "username", username, "err", err)
+		return nil, ErrInvalidPassword
 	} else if username != "" {
 		// Try to authenticate using access token as the username
-		logUser := username
-		if len(logUser) > 8 {
-			logUser = logUser[:8] + "…"
-		}
-		logger.Debug("trying to authenticate using access token as username", "username", logUser)
+		logger.Debug("trying to authenticate using access token as username", "username", username)
 		user, err := be.UserByAccessToken(ctx, username)
-		if errors.Is(err, proto.ErrTokenExpired) {
-			return nil, errInvalidToken
-		}
 		if err == nil {
 			return user, nil
 		}
 
-		logger.Debug("failed to get user", "err", err)
-		return nil, errInvalidToken
+		logger.Error("failed to get user", "err", err)
+		return nil, ErrInvalidToken
 	}
 
 	return nil, proto.ErrUserNotFound
 }
 
-// errInvalidHeader is returned when the authorization header is invalid.
-var errInvalidHeader = errors.New("invalid authorization header")
+// ErrInvalidHeader is returned when the authorization header is invalid.
+var ErrInvalidHeader = errors.New("invalid authorization header")
 
 func parseAuthHdr(r *http.Request) (proto.User, error) {
 	// Check for auth header
 	header := r.Header.Get("Authorization")
 	if header == "" {
-		return nil, errInvalidHeader
+		return nil, ErrInvalidHeader
 	}
 
 	ctx := r.Context()
 	logger := log.FromContext(ctx).WithPrefix("http.auth")
 	be := backend.FromContext(ctx)
 
-	logger.Debug("authorization auth header", "scheme", strings.SplitN(header, " ", 2)[0])
+	logger.Debug("authorization auth header", "header", header)
 
 	parts := strings.SplitN(header, " ", 2)
 	if len(parts) != 2 {
@@ -160,15 +124,15 @@ func parseAuthHdr(r *http.Request) (proto.User, error) {
 	default:
 		username, password, ok := r.BasicAuth()
 		if !ok {
-			return nil, errInvalidHeader
+			return nil, ErrInvalidHeader
 		}
 
 		return parseUsernamePassword(ctx, username, password)
 	}
 }
 
-// errInvalidToken is returned when a token is invalid.
-var errInvalidToken = errors.New("invalid token")
+// ErrInvalidToken is returned when a token is invalid.
+var ErrInvalidToken = errors.New("invalid token")
 
 func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error) {
 	cfg := config.FromContext(ctx)
@@ -196,13 +160,50 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 	)
 	if err != nil {
 		logger.Error("failed to parse jwt", "err", err)
-		return nil, errInvalidToken
+		return nil, ErrInvalidToken
 	}
 
 	claims, ok := token.Claims.(*jwt.RegisteredClaims)
 	if !token.Valid || !ok {
-		return nil, errInvalidToken
+		return nil, ErrInvalidToken
+	}
+
+	// Validate JWT claims before accepting.
+	// Prevents not-before, issuer, and audience attacks.
+	if err := validateJWTClaims(ctx, cfg, claims); err != nil {
+		return nil, ErrInvalidToken
 	}
 
 	return claims, nil
+}
+
+// validateJWTClaims validates JWT claims for security.
+// Prevents not-before, issuer, and audience attacks.
+func validateJWTClaims(ctx context.Context, cfg *config.Config, claims *jwt.RegisteredClaims) error {
+	// Validate expiration time if set
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
+		return errors.New("token expired")
+	}
+
+	// Validate not-before time if set
+	if claims.NotBefore != nil && claims.NotBefore.Time.After(time.Now()) {
+		return errors.New("token not yet valid")
+	}
+
+	// Validate issuer
+	if claims.Issuer != cfg.HTTP.PublicURL {
+		return errors.New("invalid token issuer")
+	}
+
+	// Validate audience - audience is optional but if set must match public URL
+	// jwt.ClaimStrings is a slice of strings
+	if len(claims.Audience) > 0 {
+		for _, audience := range claims.Audience {
+			if !strings.HasPrefix(audience, cfg.HTTP.PublicURL) {
+				return errors.New("invalid token audience")
+			}
+		}
+	}
+
+	return nil
 }

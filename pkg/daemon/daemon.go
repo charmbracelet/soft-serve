@@ -116,8 +116,9 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 			return err
 		}
 
-		// Close connection if there are too many open connections.
-		if d.conns.Size()+1 >= d.cfg.Git.MaxConnections {
+		// Close connection if we are already at the configured limit.
+		// Using >= (not >) ensures MaxConnections is the inclusive cap.
+		if d.conns.Size() >= d.cfg.Git.MaxConnections {
 			d.logger.Debugf("git: max connections reached, closing %s", conn.RemoteAddr())
 			d.fatal(conn, git.ErrMaxConnections)
 			continue
@@ -140,9 +141,23 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 
 		d.wg.Add(1)
 		go func() {
-			defer atomic.AddInt32(ipCount, -1)
+			defer d.wg.Done()
+			defer func() {
+				// Decrement the per-IP counter and remove the map entry when it
+				// reaches zero so ipConns does not grow without bound over time.
+				// CompareAndDelete is a no-op if another connection from the same IP
+				// already stored a new counter pointer via LoadOrStore.
+				//
+				// Known limitation: there is a brief window between AddInt32
+				// returning 0 and CompareAndDelete completing. A new connection in
+				// that window reuses the stale pointer and may find its map entry
+				// deleted, temporarily bypassing the per-IP cap. The global
+				// d.conns limit still guards against DoS.
+				if atomic.AddInt32(ipCount, -1) == 0 {
+					d.ipConns.CompareAndDelete(remoteIP, ipCount)
+				}
+			}()
 			d.handleClient(conn)
-			d.wg.Done()
 		}()
 	}
 }
@@ -244,7 +259,15 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		host := strings.TrimPrefix(string(opts[1]), "host=")
+		rawHost := strings.TrimPrefix(string(opts[1]), "host=")
+		// Sanitize host value for control characters before it enters the
+		// process environment (newlines in env blocks corrupt other vars).
+		host, hostOK := sanitizeParamValue(rawHost)
+		if !hostOK {
+			d.logger.Warnf("git: rejecting connection with invalid host value %q", rawHost)
+			d.fatal(c, git.ErrInvalidRequest)
+			return
+		}
 		extraParams := map[string]string{}
 
 		if len(opts) > 2 {
@@ -291,10 +314,10 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		}
 
 		if _, err := d.be.Repository(ctx, repo); err != nil {
-			// Note: returning ErrInvalidRepo for non-existent repos leaks repo names to
-			// unauthenticated clients. A future improvement would return a uniform
-			// ErrNotAuthed regardless of whether the repo exists.
-			d.fatal(c, git.ErrInvalidRepo)
+			// Return ErrNotAuthed (not ErrInvalidRepo) so that the response is
+			// indistinguishable from an access-denial. Returning ErrInvalidRepo
+			// would let unauthenticated clients enumerate which repositories exist.
+			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
 
@@ -321,11 +344,8 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 					d.logger.Warnf("git: ignoring unknown extra param key %q", k)
 					continue
 				}
-				sk, ok := sanitizeParamValue(k)
-				if !ok {
-					d.logger.Warnf("git: dropping extra param with unsafe key %q", k)
-					continue
-				}
+				// k is already confirmed to be "version" (ASCII-safe); only
+				// the value needs sanitization for control-character injection.
 				sv, ok := sanitizeParamValue(v)
 				if !ok {
 					d.logger.Warnf("git: dropping extra param with unsafe value for key %q", k)
@@ -334,7 +354,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 				if len(gitProto) > 0 {
 					gitProto += ":"
 				}
-				gitProto += sk + "=" + sv
+				gitProto += k + "=" + sv
 			}
 			if gitProto != "" {
 				envs = append(envs, "GIT_PROTOCOL="+gitProto)

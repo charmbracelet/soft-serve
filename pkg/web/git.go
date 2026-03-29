@@ -77,6 +77,10 @@ var (
 // without the .git suffix when cfg.HTTP.StripGitSuffix is true.
 // It inserts ".git" before any recognised git sub-path so that all
 // downstream handlers continue to see the canonical /<name>.git/... form.
+// gitSuffixMiddleware handles the StripGitSuffix config option. When enabled,
+// it INSERTS ".git" into URL paths for clients that omit the suffix — the
+// flag name describes the client-side behaviour (clients may strip ".git")
+// while this middleware normalises paths to the canonical ".git"-suffixed form.
 func gitSuffixMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 	// Known sub-paths that immediately follow the repo segment.
 	gitSubPaths := []string{
@@ -276,7 +280,8 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		user, err := authenticate(r)
 		if err != nil {
 			switch {
-			case errors.Is(err, errInvalidToken):
+			case errors.Is(err, ErrInvalidToken):
+			case errors.Is(err, ErrInvalidPassword):
 			case errors.Is(err, proto.ErrUserNotFound):
 			default:
 				logger.Error("failed to authenticate", "err", err)
@@ -315,9 +320,9 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		// - git-lfs
 		//
 		// Routes that carry no service var and no info/lfs prefix (e.g. the raw
-		// blob endpoint, go-get) intentionally fall through this switch with no
-		// case matched. They are then subject to the catch-all access check below
-		// (lines ~359-371) which enforces ReadOnlyAccess via renderNotFound.
+		// blob endpoint, go-get) have no matching case in this switch (no default
+		// case). They fall through to the catch-all access check below which
+		// enforces ReadOnlyAccess via renderNotFound.
 		switch {
 		case service == git.ReceivePackService:
 			if accessLevel < access.ReadWriteAccess {
@@ -341,15 +346,19 @@ func withAccess(next http.Handler) http.HandlerFunc {
 
 			fallthrough
 		case service == git.UploadPackService || service == git.UploadArchiveService:
+			// Return 404 for missing repos regardless of any credential error to
+			// prevent repository enumeration: an unauthenticated client must not
+			// be able to distinguish "repo doesn't exist" from "access denied".
 			if repo == nil {
-				// If the repo doesn't exist, return 404
 				renderNotFound(w, r)
 				return
-			} else if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
-				// return 403 when bad credentials are provided
+			}
+			// Repo exists — now check credentials and access level.
+			if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
 				renderForbidden(w, r)
 				return
-			} else if accessLevel < access.ReadOnlyAccess {
+			}
+			if accessLevel < access.ReadOnlyAccess {
 				askCredentials(w, r)
 				renderUnauthorized(w, r)
 				return
@@ -408,7 +417,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 					renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 						Message: "repository not found",
 					})
-				} else if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
+				} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
 					renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 						Message: "bad credentials",
 					})
@@ -424,9 +433,13 @@ func withAccess(next http.Handler) http.HandlerFunc {
 
 		switch {
 		case r.URL.Query().Get("go-get") == "1" && repo != nil && (accessLevel >= access.ReadOnlyAccess || cfg.AllowPublicGoGet):
-			// Allow go-get requests to passthrough.
+			// Allow go-get requests to pass through.
+			// Note: when AllowPublicGoGet is true, unauthenticated clients can
+			// learn that a private repo exists by comparing go-get (200) vs a
+			// regular (404) response. This is an accepted trade-off for go module
+			// discoverability.
 			break
-		case errors.Is(err, errInvalidToken), errors.Is(err, errInvalidPassword):
+		case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrInvalidPassword):
 			// return 403 when bad credentials are provided
 			renderForbidden(w, r)
 			return
@@ -455,12 +468,6 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	if service == git.ReceivePackService {
 		gitHttpReceiveCounter.WithLabelValues(repoName).Inc()
 	}
-
-	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-result", service))
-	w.Header().Set("Connection", "Keep-Alive")
-	w.Header().Set("Transfer-Encoding", "chunked")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(http.StatusOK)
 
 	gitProtocol := r.Header.Get("Git-Protocol")
 	// Sanitize: reject any control characters to prevent env var injection.
@@ -515,7 +522,8 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, maxUploadPackSize)
 	}
 
-	// Handle gzip encoding
+	// Handle gzip encoding before committing to 200 OK so we can still
+	// return an error status if the gzip stream is malformed.
 	reader = r.Body
 	switch r.Header.Get("Content-Encoding") {
 	case "gzip":
@@ -532,6 +540,14 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 			reader = io.NopCloser(io.LimitReader(gzReader, maxUploadPackSize))
 		}
 	}
+
+	// WriteHeader is deferred until after all request parsing so that
+	// parsing errors (e.g. bad gzip stream above) can return a non-200 status.
+	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-result", service))
+	w.Header().Set("Connection", "Keep-Alive")
+	w.Header().Set("Transfer-Encoding", "chunked")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusOK)
 
 	cmd.Stdin = reader
 	cmd.Stdout = &flushResponseWriter{w}
@@ -650,10 +666,13 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		hdrNocache(w)
 		w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", service))
 		w.WriteHeader(http.StatusOK)
+		// Use flushResponseWriter so that the pktline header and ref
+		// advertisement are flushed through buffering proxies promptly.
+		fw := &flushResponseWriter{w}
 		if version < 2 {
-			git.WritePktline(w, "# service="+service.String()) //nolint: errcheck
+			git.WritePktline(fw, "# service="+service.String()) //nolint: errcheck
 		}
-		w.Write(refs.Bytes()) //nolint: errcheck
+		fw.Write(refs.Bytes()) //nolint: errcheck
 	} else {
 		// Dumb HTTP
 		updateServerInfo(ctx, dir) //nolint: errcheck
@@ -702,16 +721,39 @@ func sendFile(contentType string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, err := os.Stat(reqFile)
+	// Use Lstat to detect symlinks before opening. A narrow TOCTOU window
+	// remains between Lstat and Open; it is acceptable because git repository
+	// internals are server-controlled and not writable by pushing users.
+	fi, err := os.Lstat(reqFile)
 	if os.IsNotExist(err) {
 		renderNotFound(w, r)
 		return
 	}
+	if err != nil {
+		renderInternalServerError(w, r)
+		return
+	}
+	if fi.Mode()&os.ModeSymlink != 0 {
+		renderNotFound(w, r)
+		return
+	}
+
+	// Open the file ourselves and serve via http.ServeContent to avoid the
+	// second internal os.Open that http.ServeFile performs (which follows
+	// symlinks). This narrows the TOCTOU window to the Lstat→Open interval.
+	fd, fdErr := os.Open(reqFile)
+	if fdErr != nil {
+		if os.IsNotExist(fdErr) {
+			renderNotFound(w, r)
+		} else {
+			renderInternalServerError(w, r)
+		}
+		return
+	}
+	defer fd.Close() //nolint:errcheck
 
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", f.Size()))
-	w.Header().Set("Last-Modified", f.ModTime().Format(http.TimeFormat))
-	http.ServeFile(w, r, reqFile)
+	http.ServeContent(w, r, reqFile, fi.ModTime(), fd)
 }
 
 func getServiceType(r *http.Request) git.Service {

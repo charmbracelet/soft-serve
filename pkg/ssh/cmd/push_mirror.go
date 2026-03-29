@@ -44,6 +44,12 @@ func pushMirrorAddCommand() *cobra.Command {
 				return err
 			}
 
+			// Warn when the remote uses plain HTTP — credentials and content
+			// will be sent in the clear over the network.
+			if u, err := url.Parse(remoteURL); err == nil && strings.EqualFold(u.Scheme, "http") {
+				fmt.Fprintln(cmd.ErrOrStderr(), "warning: push mirror uses plain HTTP — credentials and data are not encrypted in transit; consider using HTTPS or SSH")
+			}
+
 			repo, err := be.Repository(ctx, args[0])
 			if err != nil {
 				return err
@@ -81,7 +87,9 @@ func validateMirrorURL(rawURL string) error {
 		return fmt.Errorf("invalid mirror URL: %w", err)
 	}
 	switch strings.ToLower(u.Scheme) {
-	case "https", "http", "ssh":
+	case "https", "http", "ssh", "git+ssh", "ssh+git":
+		// git+ssh:// and ssh+git:// are aliases for ssh://, supported by the
+		// push engine in pkg/backend/push_mirror.go.
 		return nil
 	case "":
 		// SCP-style SSH remotes (git@host:path) are allowed.

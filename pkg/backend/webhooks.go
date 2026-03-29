@@ -26,7 +26,7 @@ func (b *Backend) CreateWebhook(ctx context.Context, repo proto.Repository, url 
 	}
 
 	// Validate webhook URL to prevent SSRF attacks
-	if err := webhook.ValidateWebhookURL(url); err != nil {
+	if err := webhook.ValidateWebhookURL(ctx, url); err != nil {
 		return err //nolint:wrapcheck
 	}
 
@@ -138,8 +138,10 @@ func (b *Backend) UpdateWebhook(ctx context.Context, repo proto.Repository, id i
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 
-	// Validate webhook URL to prevent SSRF attacks
-	if err := webhook.ValidateWebhookURL(url); err != nil {
+	// Sanitize and validate webhook URL — mirrors CreateWebhook which also
+	// calls utils.Sanitize before ValidateWebhookURL.
+	url = utils.Sanitize(url)
+	if err := webhook.ValidateWebhookURL(ctx, url); err != nil {
 		return err
 	}
 
@@ -164,27 +166,32 @@ func (b *Backend) UpdateWebhook(ctx context.Context, repo proto.Repository, id i
 		for _, e := range updatedEvents {
 			updatedSet[e] = true
 		}
-		toBeDeleted := make([]int64, 0)
+		var toBeDeleted []int64
 		for _, e := range currentEvents {
 			if !updatedSet[webhook.Event(e.Event)] {
 				toBeDeleted = append(toBeDeleted, e.ID)
 			}
 		}
 
-		if err := datastore.DeleteWebhookEventsByID(ctx, tx, toBeDeleted); err != nil {
-			return db.WrapError(err)
+		// Guard the delete call: sqlx.In returns an error for empty slices.
+		if len(toBeDeleted) > 0 {
+			if err := datastore.DeleteWebhookEventsByID(ctx, tx, toBeDeleted); err != nil {
+				return db.WrapError(err)
+			}
 		}
 
 		// Prune events that are already in the list.
-		newEvents := make([]int, 0)
+		var newEvents []int
 		for _, e := range updatedEvents {
 			if _, exists := currentSet[int(e)]; !exists {
 				newEvents = append(newEvents, int(e))
 			}
 		}
 
-		if err := datastore.CreateWebhookEvents(ctx, tx, id, newEvents); err != nil {
-			return db.WrapError(err)
+		if len(newEvents) > 0 {
+			if err := datastore.CreateWebhookEvents(ctx, tx, id, newEvents); err != nil {
+				return db.WrapError(err)
+			}
 		}
 
 		return nil
@@ -231,7 +238,7 @@ func (b *Backend) ListWebhookDeliveries(ctx context.Context, repo proto.Reposito
 
 		return nil
 	}); err != nil {
-		return nil, db.WrapError(err)
+		return nil, err
 	}
 
 	ds := make([]webhook.Delivery, len(deliveries))
@@ -270,7 +277,7 @@ func (b *Backend) RedeliverWebhookDelivery(ctx context.Context, repo proto.Repos
 		return db.WrapError(err)
 	}
 
-	b.logger.Infof("redelivering webhook delivery %s for webhook %d\n\n%s\n\n", delID, id, delivery.RequestBody)
+	b.logger.Infof("redelivering webhook delivery %s for webhook %d", delID, id)
 
 	var payload json.RawMessage
 	if err := json.Unmarshal([]byte(delivery.RequestBody), &payload); err != nil {

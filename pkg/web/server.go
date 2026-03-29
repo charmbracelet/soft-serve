@@ -18,14 +18,27 @@ import (
 // realClientIP extracts the real client IP from the request.
 // When trustProxyHeaders is true it uses the leftmost value of
 // X-Forwarded-For; otherwise it falls back to RemoteAddr (with port stripped).
+//
+// WARNING: Only enable trustProxyHeaders when the server is behind a single
+// trusted reverse proxy that overwrites (not appends to) X-Forwarded-For.
+// If clients or untrusted proxies can set this header, the leftmost IP can
+// be spoofed, defeating rate-limiting and audit-logging based on client IP.
 func realClientIP(r *http.Request, trustProxyHeaders bool) string {
 	if trustProxyHeaders {
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 			// The leftmost IP is the original client.
+			var candidate string
 			if idx := strings.IndexByte(xff, ','); idx != -1 {
-				return strings.TrimSpace(xff[:idx])
+				candidate = strings.TrimSpace(xff[:idx])
+			} else {
+				candidate = strings.TrimSpace(xff)
 			}
-			return strings.TrimSpace(xff)
+			// Validate that the candidate is a real IP address before using it
+			// as the rate-limit key. An attacker who can set X-Forwarded-For
+			// could otherwise bypass per-IP limiting with arbitrary strings.
+			if net.ParseIP(candidate) != nil {
+				return candidate
+			}
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -80,7 +93,12 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	router.PathPrefix("/").HandlerFunc(renderNotFound)
 
 	cfg := config.FromContext(ctx)
-	httpLimiter := ratelimit.New(rate.Limit(cfg.HTTP.RateLimit), cfg.HTTP.RateBurst, 10*time.Minute)
+	// Only create the rate limiter (and its background cleanup goroutine) when
+	// rate limiting is actually enabled. Callers handle a nil limiter.
+	var httpLimiter *ratelimit.IPLimiter
+	if cfg.HTTP.RateLimit > 0 {
+		httpLimiter = ratelimit.New(rate.Limit(cfg.HTTP.RateLimit), cfg.HTTP.RateBurst, 10*time.Minute)
+	}
 
 	// Context handler
 	// Adds context to the request
@@ -94,6 +112,24 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	// preflights receive CORS headers even when rate-limited (the browser needs
 	// those headers to understand the 429 response). All request methods,
 	// including OPTIONS, consume rate-limit tokens.
+	//
+	// AllowCredentials is explicitly NOT set (defaults to false). Wildcard
+	// AllowedOrigins ("*") is incompatible with credential-carrying requests;
+	// browsers reject Access-Control-Allow-Credentials: true when the origin
+	// is "*". Operators who need credentialed cross-origin access must specify
+	// explicit origins in the CORS config.
+	for _, origin := range cfg.HTTP.CORS.AllowedOrigins {
+		if origin == "*" {
+			for _, header := range cfg.HTTP.CORS.AllowedHeaders {
+				if strings.EqualFold(header, "Authorization") {
+					logger.Warn("CORS: wildcard AllowedOrigins with Authorization in AllowedHeaders — " +
+						"any origin can trigger credentialless requests; consider restricting AllowedOrigins")
+					break
+				}
+			}
+			break
+		}
+	}
 	h = handlers.CORS(handlers.AllowedHeaders(cfg.HTTP.CORS.AllowedHeaders),
 		handlers.AllowedOrigins(cfg.HTTP.CORS.AllowedOrigins),
 		handlers.AllowedMethods(cfg.HTTP.CORS.AllowedMethods),

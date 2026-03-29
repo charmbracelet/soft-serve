@@ -49,6 +49,9 @@ func NewWorkPool(ctx context.Context, workers int, opts ...WorkPoolOption) *Work
 }
 
 // Run starts the workers and waits for them to finish.
+// Jobs added via Add while Run is already executing are not guaranteed to be
+// picked up by the current invocation — they will be processed on the next
+// call to Run. Each job is deleted from the pool when it completes.
 func (wq *WorkPool) Run() {
 	var wg sync.WaitGroup
 
@@ -75,12 +78,10 @@ func (wq *WorkPool) Run() {
 }
 
 // Add adds a new job to the pool.
-// If the job already exists, it is a no-op.
+// If the job already exists, it is a no-op. LoadOrStore is used to make
+// the check-and-store atomic and safe for concurrent callers.
 func (wq *WorkPool) Add(id string, fn func()) {
-	if _, ok := wq.work.Load(id); ok {
-		return
-	}
-	wq.work.Store(id, fn)
+	wq.work.LoadOrStore(id, fn)
 }
 
 // Status checks if a job is in the queue.
