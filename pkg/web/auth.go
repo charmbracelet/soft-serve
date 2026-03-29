@@ -95,7 +95,11 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		logger.Debug("invalid credentials", "username", logUsername, "err", tokenErr)
 		return nil, errInvalidPassword
 	} else if username != "" {
-		// Try to authenticate using access token as the username
+		// Some clients (e.g. git credential helpers) supply only a username
+		// and no password when using token-based auth. In that case the
+		// username field carries the access token. This is a supported but
+		// non-standard path; the preferred method is the "Token <token>"
+		// Authorization header scheme.
 		logUser := username
 		if runes := []rune(logUser); len(runes) > maxLogUsernameRunes {
 			logUser = string(runes[:maxLogUsernameRunes]) + "…"

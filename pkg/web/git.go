@@ -77,12 +77,10 @@ var (
 // without the .git suffix when cfg.HTTP.StripGitSuffix is true.
 // It inserts ".git" before any recognised git sub-path so that all
 // downstream handlers continue to see the canonical /<name>.git/... form.
-// gitSuffixMiddleware handles the StripGitSuffix config option. Despite the
-// flag name "StripGitSuffix", this middleware INSERTS ".git" into the URL
-// path for clients that omit it. The name refers to the client-side
-// perspective: clients may strip ".git" from the clone URL and still reach
-// the server correctly. The middleware re-adds it so downstream handlers see
-// the canonical ".git"-suffixed path.
+// gitSuffixMiddleware handles the StripGitSuffix config option. When enabled,
+// it INSERTS ".git" into URL paths for clients that omit the suffix — the
+// flag name describes the client-side behaviour (clients may strip ".git")
+// while this middleware normalises paths to the canonical ".git"-suffixed form.
 func gitSuffixMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 	// Known sub-paths that immediately follow the repo segment.
 	gitSubPaths := []string{
@@ -723,23 +721,39 @@ func sendFile(contentType string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Use Lstat to avoid following symlinks. Symlinks inside a git
-	// repository's info/ or objects/ directories are unexpected and
-	// could point outside the repository root.
-	f, err := os.Lstat(reqFile)
+	// Use Lstat to detect symlinks before opening. A narrow TOCTOU window
+	// remains between Lstat and Open; it is acceptable because git repository
+	// internals are server-controlled and not writable by pushing users.
+	fi, err := os.Lstat(reqFile)
 	if os.IsNotExist(err) {
 		renderNotFound(w, r)
 		return
 	}
-	if f.Mode()&os.ModeSymlink != 0 {
+	if err != nil {
+		renderInternalServerError(w, r)
+		return
+	}
+	if fi.Mode()&os.ModeSymlink != 0 {
 		renderNotFound(w, r)
 		return
 	}
 
+	// Open the file ourselves and serve via http.ServeContent to avoid the
+	// second internal os.Open that http.ServeFile performs (which follows
+	// symlinks). This narrows the TOCTOU window to the Lstat→Open interval.
+	fd, fdErr := os.Open(reqFile)
+	if fdErr != nil {
+		if os.IsNotExist(fdErr) {
+			renderNotFound(w, r)
+		} else {
+			renderInternalServerError(w, r)
+		}
+		return
+	}
+	defer fd.Close() //nolint:errcheck
+
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", f.Size()))
-	w.Header().Set("Last-Modified", f.ModTime().Format(http.TimeFormat))
-	http.ServeFile(w, r, reqFile)
+	http.ServeContent(w, r, reqFile, fi.ModTime(), fd)
 }
 
 func getServiceType(r *http.Request) git.Service {

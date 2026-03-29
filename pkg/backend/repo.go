@@ -492,33 +492,37 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 //
 // It implements backend.Backend.
 func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) {
-	repos := make([]proto.Repository, 0)
-
-	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		ms, err := d.store.GetAllRepos(ctx, tx)
-		if err != nil {
-			return err
-		}
-
-		for _, m := range ms {
-			r := &repo{
-				name: m.Name,
-				path: filepath.Join(d.repoPath(m.Name)),
-				repo: m,
+	// Use singleflight to coalesce concurrent calls and prevent cache stampede.
+	// The context is intentionally not forwarded into Do() because singleflight
+	// shares a single in-flight call across all callers; cancelling one caller's
+	// context would abort the shared work for all. We bound the work via the
+	// database transaction deadline instead.
+	v, err, _ := d.reposSFG.Do("all", func() (interface{}, error) {
+		repos := make([]proto.Repository, 0)
+		if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+			ms, err := d.store.GetAllRepos(ctx, tx)
+			if err != nil {
+				return err
 			}
-
-			// Cache repositories
-			d.cache.Set(m.Name, r)
-
-			repos = append(repos, r)
+			for _, m := range ms {
+				r := &repo{
+					name: m.Name,
+					path: filepath.Join(d.repoPath(m.Name)),
+					repo: m,
+				}
+				d.cache.Set(m.Name, r)
+				repos = append(repos, r)
+			}
+			return nil
+		}); err != nil {
+			return nil, db.WrapError(err)
 		}
-
-		return nil
-	}); err != nil {
-		return nil, db.WrapError(err)
+		return repos, nil
+	})
+	if err != nil {
+		return nil, err
 	}
-
-	return repos, nil
+	return v.([]proto.Repository), nil
 }
 
 // Repository returns a repository by name.
