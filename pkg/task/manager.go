@@ -22,6 +22,7 @@ type Task struct {
 	started atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	mu      sync.Mutex
 	err     error
 }
 
@@ -86,8 +87,11 @@ func (m *Manager) Run(id string, done chan<- error) {
 	p := v.(*Task)
 	if p.started.Load() {
 		<-p.ctx.Done()
-		if p.err != nil {
-			done <- p.err
+		p.mu.Lock()
+		err := p.err
+		p.mu.Unlock()
+		if err != nil {
+			done <- err
 			return
 		}
 
@@ -108,7 +112,9 @@ func (m *Manager) Run(id string, done chan<- error) {
 	case <-m.ctx.Done():
 		done <- m.ctx.Err()
 	case err := <-errc:
+		p.mu.Lock()
 		p.err = err
+		p.mu.Unlock()
 		m.m.Store(id, p)
 		done <- err
 	}

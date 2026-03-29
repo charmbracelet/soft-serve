@@ -111,6 +111,9 @@ func (l *LocalStorage) Rename(oldName, newName string) error {
 // fixPath resolves the storage-relative path and verifies it stays within the root.
 // Replace all slashes with the OS-specific separator.
 func (l LocalStorage) fixPath(path string) (string, error) {
+	if l.root == "" {
+		return "", fmt.Errorf("storage: empty root path")
+	}
 	path = strings.ReplaceAll(path, "/", string(os.PathSeparator))
 	p := filepath.Join(l.root, path)
 	// Ensure the resolved path is within the storage root.

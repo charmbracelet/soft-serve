@@ -82,11 +82,14 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		}
 		logger.Debug("trying to authenticate using access token as username", "username", logUser)
 		user, err := be.UserByAccessToken(ctx, username)
+		if errors.Is(err, proto.ErrTokenExpired) {
+			return nil, errInvalidToken
+		}
 		if err == nil {
 			return user, nil
 		}
 
-		logger.Error("failed to get user", "err", err)
+		logger.Debug("failed to get user", "err", err)
 		return nil, errInvalidToken
 	}
 
