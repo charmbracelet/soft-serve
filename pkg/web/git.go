@@ -490,6 +490,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
 	}...)
 	if user != nil {
+		// user.Username() is validated by ValidateUsername (letters/digits/hyphens only) — no injection risk.
 		cmd.Env = append(cmd.Env, []string{
 			"SOFT_SERVE_USERNAME=" + user.Username(),
 		}...)
@@ -623,6 +624,7 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 			"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
 		}...)
 		if user != nil {
+			// user.Username() is validated by ValidateUsername (letters/digits/hyphens only) — no injection risk.
 			cmd.Env = append(cmd.Env, []string{
 				"SOFT_SERVE_USERNAME=" + user.Username(),
 			}...)
