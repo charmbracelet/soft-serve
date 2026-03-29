@@ -113,6 +113,11 @@ type HTTPConfig struct {
 	// When true, both /<name> and /<name>.git are accepted.
 	// Default is false for backward compatibility.
 	StripGitSuffix bool `env:"STRIP_GIT_SUFFIX" yaml:"strip_git_suffix"`
+
+	// TrustProxyHeaders controls whether the X-Forwarded-For header is trusted
+	// for client IP resolution. Only enable this when the server sits behind a
+	// trusted reverse proxy. Default is false.
+	TrustProxyHeaders bool `env:"SOFT_SERVE_HTTP_TRUST_PROXY_HEADERS" yaml:"trust_proxy_headers"`
 }
 
 // StatsConfig is the configuration for the stats server.

@@ -75,19 +75,10 @@ func (d *Backend) syncRepoMeta(ctx context.Context, repo string) {
 		return
 	}
 
-	// Only admins may change visibility — look up the pushing user
+	// Only admins may change visibility — look up the pushing user from context.
 	var isAdmin bool
-	if pubkey := os.Getenv("SOFT_SERVE_PUBLIC_KEY"); pubkey != "" {
-		pk, _, pkErr := sshutils.ParseAuthorizedKey(pubkey)
-		if pkErr == nil {
-			if u, uErr := d.UserByPublicKey(ctx, pk); uErr == nil {
-				isAdmin = u.IsAdmin()
-			}
-		}
-	} else if username := os.Getenv("SOFT_SERVE_USERNAME"); username != "" {
-		if u, uErr := d.User(ctx, username); uErr == nil {
-			isAdmin = u.IsAdmin()
-		}
+	if u := proto.UserFromContext(ctx); u != nil {
+		isAdmin = u.IsAdmin()
 	}
 
 	if meta.Description != "" {

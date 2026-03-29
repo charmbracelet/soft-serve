@@ -631,6 +631,13 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 	name = utils.SanitizeRepo(name)
 	rp := filepath.Join(d.repoPath(name))
 
+	// Capture the old visibility before updating.
+	oldRepo, err := d.Repository(ctx, name)
+	if err != nil {
+		return err
+	}
+	oldPrivate := oldRepo.IsPrivate()
+
 	// Delete cache
 	d.cache.Delete(name)
 
@@ -663,7 +670,7 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 		return err
 	}
 
-	if repo.IsPrivate() != !private {
+	if oldPrivate != private {
 		wh, err := webhook.NewRepositoryEvent(ctx, user, repo, webhook.RepositoryEventActionVisibilityChange)
 		if err != nil {
 			return err

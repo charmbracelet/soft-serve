@@ -363,15 +363,22 @@ func withAccess(next http.Handler) http.HandlerFunc {
 			switch {
 			case strings.HasPrefix(file, "info/lfs/locks"):
 				switch {
-				case strings.HasSuffix(file, "lfs/locks"), strings.HasSuffix(file, "/unlock") && r.Method == http.MethodPost:
-					// Create lock, list locks, and delete lock require write access
-					fallthrough
-				case strings.HasSuffix(file, "lfs/locks/verify"):
-					// Locks verify requires write access
+				case strings.HasSuffix(file, "lfs/locks") && r.Method == http.MethodPost,
+					strings.HasSuffix(file, "/unlock") && r.Method == http.MethodPost,
+					strings.HasSuffix(file, "lfs/locks/verify"):
+					// Create lock, delete lock, and verify require write access.
 					// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md#unauthorized-response-2
 					if accessLevel < access.ReadWriteAccess {
 						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
 							Message: "write access required",
+						})
+						return
+					}
+				case strings.HasSuffix(file, "lfs/locks") && r.Method == http.MethodGet:
+					// List locks only requires read access.
+					if accessLevel < access.ReadOnlyAccess {
+						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+							Message: "read access required",
 						})
 						return
 					}
