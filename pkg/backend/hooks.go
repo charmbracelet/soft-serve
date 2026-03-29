@@ -171,8 +171,9 @@ func (d *Backend) Update(ctx context.Context, _ io.Writer, _ io.Writer, repo str
 		return
 	}
 
-	// TODO: run this async
-	// This would probably need something like an RPC server to communicate with the hook process.
+	// Webhook delivery runs synchronously in the update hook subprocess.
+	// Async dispatch would require an IPC channel between the hook process
+	// and the main server; not currently implemented.
 	if git.IsZeroHash(arg.OldSha) || git.IsZeroHash(arg.NewSha) {
 		wh, err := webhook.NewBranchTagEvent(ctx, user, r, arg.RefName, arg.OldSha, arg.NewSha)
 		if err != nil {

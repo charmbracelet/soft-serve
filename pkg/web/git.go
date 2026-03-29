@@ -662,10 +662,13 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		hdrNocache(w)
 		w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", service))
 		w.WriteHeader(http.StatusOK)
+		// Use flushResponseWriter so that the pktline header and ref
+		// advertisement are flushed through buffering proxies promptly.
+		fw := &flushResponseWriter{w}
 		if version < 2 {
-			git.WritePktline(w, "# service="+service.String()) //nolint: errcheck
+			git.WritePktline(fw, "# service="+service.String()) //nolint: errcheck
 		}
-		w.Write(refs.Bytes()) //nolint: errcheck
+		fw.Write(refs.Bytes()) //nolint: errcheck
 	} else {
 		// Dumb HTTP
 		updateServerInfo(ctx, dir) //nolint: errcheck
