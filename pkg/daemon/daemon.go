@@ -307,10 +307,10 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		}
 
 		if _, err := d.be.Repository(ctx, repo); err != nil {
-			// Note: returning ErrInvalidRepo for non-existent repos leaks repo names to
-			// unauthenticated clients. A future improvement would return a uniform
-			// ErrNotAuthed regardless of whether the repo exists.
-			d.fatal(c, git.ErrInvalidRepo)
+			// Return ErrNotAuthed (not ErrInvalidRepo) so that the response is
+			// indistinguishable from an access-denial. Returning ErrInvalidRepo
+			// would let unauthenticated clients enumerate which repositories exist.
+			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
 
