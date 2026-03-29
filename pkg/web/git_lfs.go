@@ -143,11 +143,6 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 				download := &lfs.Link{
 					Href: fmt.Sprintf("%s/%s", baseHref, o.Oid),
 				}
-				if auth := r.Header.Get("Authorization"); auth != "" {
-					download.Header = map[string]string{
-						"Authorization": auth,
-					}
-				}
 
 				objects = append(objects, &lfs.ObjectResponse{
 					Pointer: o,
@@ -209,12 +204,6 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 				}
 				verify := &lfs.Link{
 					Href: fmt.Sprintf("%s/verify", baseHref),
-				}
-				if auth := r.Header.Get("Authorization"); auth != "" {
-					upload.Header["Authorization"] = auth
-					verify.Header = map[string]string{
-						"Authorization": auth,
-					}
 				}
 
 				objects = append(objects, &lfs.ObjectResponse{
@@ -438,7 +427,8 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if pointer.IsValid() && stat.Size() == pointer.Size {
-			renderStatus(http.StatusOK)(w, nil)
+			w.Header().Set("Content-Type", "application/vnd.git-lfs+json")
+			renderJSON(w, http.StatusOK, map[string]string{"message": "verified"})
 			return
 		}
 	} else if errors.Is(err, fs.ErrNotExist) {

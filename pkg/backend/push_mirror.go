@@ -59,6 +59,15 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 				b.logger.Warn("push mirror: blocked file:// URL", "url", m.RemoteURL)
 				continue // skip this mirror
 			}
+			if scheme == "git" {
+				b.logger.Warn("push mirror: blocked git:// URL", "url", m.RemoteURL)
+				continue // skip this mirror
+			}
+			host := u.Hostname()
+			if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+				b.logger.Warn("push mirror: blocked loopback address", "url", m.RemoteURL)
+				continue // skip this mirror
+			}
 		}
 		sem <- struct{}{} // acquire
 		go func(m models.PushMirror) {
