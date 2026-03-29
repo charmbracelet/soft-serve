@@ -92,6 +92,10 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			defer cancel()
 			cmd := exec.CommandContext(mirrorCtx, "git", "push", "--mirror", m.RemoteURL)
 			cmd.Dir = repoPath
+			// Note: HOME and PATH are sourced from the current process environment.
+			// If soft-serve runs as a system service with a restricted environment,
+			// these may be empty; in that case, git push may fail. Ensure the service
+			// environment includes a valid PATH (e.g., /usr/bin:/usr/local/bin).
 			cmd.Env = []string{
 				"HOME=" + os.Getenv("HOME"),
 				"PATH=" + os.Getenv("PATH"),
