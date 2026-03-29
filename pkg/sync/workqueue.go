@@ -49,6 +49,9 @@ func NewWorkPool(ctx context.Context, workers int, opts ...WorkPoolOption) *Work
 }
 
 // Run starts the workers and waits for them to finish.
+// Jobs added via Add while Run is already executing are not guaranteed to be
+// picked up by the current invocation — they will be processed on the next
+// call to Run. Each job is deleted from the pool when it completes.
 func (wq *WorkPool) Run() {
 	var wg sync.WaitGroup
 

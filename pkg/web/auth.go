@@ -75,10 +75,11 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 
 		// Try to authenticate using access token as the password.
 		// This call also serves timing equalization (mirrors the token lookup in the
-		// user-not-found path above).
-		user, err = be.UserByAccessToken(ctx, password) //nolint:errcheck // timing equalization
-		if err == nil {
-			return user, nil
+		// user-not-found path above). Use distinct variables to avoid reassigning
+		// the outer user on failure.
+		tokenUser, tokenErr := be.UserByAccessToken(ctx, password)
+		if tokenErr == nil {
+			return tokenUser, nil
 		}
 
 		logUsername := username

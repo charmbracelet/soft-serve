@@ -140,7 +140,15 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 
 		d.wg.Add(1)
 		go func() {
-			defer atomic.AddInt32(ipCount, -1)
+			defer func() {
+				// Decrement the per-IP counter and remove the map entry when it
+				// reaches zero so ipConns does not grow without bound over time.
+				// CompareAndDelete is a no-op if another connection from the same IP
+				// already stored a new counter pointer via LoadOrStore.
+				if atomic.AddInt32(ipCount, -1) == 0 {
+					d.ipConns.CompareAndDelete(remoteIP, ipCount)
+				}
+			}()
 			d.handleClient(conn)
 			d.wg.Done()
 		}()

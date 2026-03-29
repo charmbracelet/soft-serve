@@ -88,6 +88,13 @@ func (m *Manager) Run(id string, done chan<- error) {
 
 	p := v.(*Task)
 	if p.started.Load() {
+		// Wait for the already-running task to finish. Note: between
+		// started.Load() returning true and <-p.ctx.Done() completing,
+		// Stop() may call p.cancel() and delete the task from the map.
+		// That is safe — p.ctx.Done() still fires — but p.err may be nil
+		// if p.fn is still running when the context is cancelled. In that
+		// case we fall through to returning p.ctx.Err() (context.Canceled),
+		// which is the correct signal to the caller.
 		<-p.ctx.Done()
 		p.mu.Lock()
 		err := p.err
