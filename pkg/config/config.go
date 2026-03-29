@@ -120,7 +120,7 @@ type HTTPConfig struct {
 	TrustProxyHeaders bool `env:"SOFT_SERVE_HTTP_TRUST_PROXY_HEADERS" yaml:"trust_proxy_headers"`
 
 	// RateLimit is the maximum number of HTTP requests per second per IP.
-	// Set to 0 to disable rate limiting.
+	// Set to 0 to disable HTTP rate limiting.
 	RateLimit float64 `env:"RATE_LIMIT" yaml:"rate_limit"`
 
 	// RateBurst is the maximum burst size for the HTTP rate limiter.

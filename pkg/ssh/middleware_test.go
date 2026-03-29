@@ -139,6 +139,7 @@ func TestAuthenticationBypass(t *testing.T) {
 		is.Equal(authenticatedUser.Username(), "testattacker")
 		is.True(!authenticatedUser.IsAdmin())
 
+		// TODO: add integration test that exercises AuthenticationMiddleware directly
 		// In this simulation the mock context still holds the admin user because
 		// AuthenticationMiddleware has NOT been invoked — only the raw backend lookup
 		// above was exercised. In production, AuthenticationMiddleware re-looks up the

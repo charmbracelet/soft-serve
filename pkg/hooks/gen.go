@@ -60,9 +60,9 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 
 		switch hook {
 		case UpdateHook:
-			args = "$1 $2 $3"
+			args = `"$1" "$2" "$3"`
 		case PostUpdateHook:
-			args = "$@"
+			args = `"$@"`
 		}
 
 		if err := hooksTmpl.Execute(&data, struct {
