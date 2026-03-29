@@ -4,8 +4,8 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 
-	"charm.land/log/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -26,14 +26,13 @@ func VerifyPassword(password, hash string) bool {
 }
 
 // GenerateToken returns a random unique token.
-func GenerateToken() string {
+func GenerateToken() (string, error) {
 	buf := make([]byte, 20)
 	if _, err := rand.Read(buf); err != nil {
-		log.Error("unable to generate access token")
-		return ""
+		return "", fmt.Errorf("generate access token: %w", err)
 	}
 
-	return "ss_" + hex.EncodeToString(buf)
+	return "ss_" + hex.EncodeToString(buf), nil
 }
 
 // HashToken hashes the token using sha256.

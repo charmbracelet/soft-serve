@@ -17,19 +17,22 @@ type HTTPServer struct {
 	ctx context.Context
 	cfg *config.Config
 
-	Server *http.Server
+	Server      *http.Server
+	httpLimiter interface{ Close() }
 }
 
 // NewHTTPServer creates a new HTTP server.
 func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx)
+	router, limiter := NewRouter(ctx)
 	s := &HTTPServer{
-		ctx: ctx,
-		cfg: cfg,
+		ctx:         ctx,
+		cfg:         cfg,
+		httpLimiter: limiter,
 		Server: &http.Server{
 			Addr:              cfg.HTTP.ListenAddr,
-			Handler:           NewRouter(ctx),
+			Handler:           router,
 			ReadHeaderTimeout: time.Second * 10,
 			// WriteTimeout and ReadTimeout are intentionally not set: git pack-objects
 			// streams can take hours for large repositories, and a fixed deadline would
@@ -52,6 +55,9 @@ func (s *HTTPServer) SetTLSConfig(tlsConfig *tls.Config) {
 
 // Close closes the HTTP server.
 func (s *HTTPServer) Close() error {
+	if s.httpLimiter != nil {
+		s.httpLimiter.Close()
+	}
 	return s.Server.Close()
 }
 
@@ -89,5 +95,8 @@ func (s *HTTPServer) ListenAndServe() error {
 
 // Shutdown gracefully shuts down the HTTP server.
 func (s *HTTPServer) Shutdown(ctx context.Context) error {
+	if s.httpLimiter != nil {
+		s.httpLimiter.Close()
+	}
 	return s.Server.Shutdown(ctx)
 }

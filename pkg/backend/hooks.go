@@ -27,21 +27,28 @@ type repoMetaConfig struct {
 // PostReceive is called by the git post-receive hook. It implements Hooks.
 // Metadata sync (.soft-serve.yaml) is performed asynchronously so the push
 // response is not blocked by DB writes or git tree reads.
-func (d *Backend) PostReceive(_ context.Context, _ io.Writer, _ io.Writer, repo string, args []hooks.HookArg) {
+func (d *Backend) PostReceive(ctx context.Context, _ io.Writer, _ io.Writer, repo string, args []hooks.HookArg) {
 	d.logger.Debug("post-receive hook called", "repo", repo, "args", args)
+
+	// Capture the pushing user before the goroutine is launched so that the
+	// caller's context (which may be cancelled after the push completes) does
+	// not need to remain valid inside the goroutine.
+	user := proto.UserFromContext(ctx)
 
 	// Sync .soft-serve.yaml metadata asynchronously so the push
 	// response is not blocked by DB writes or git tree reads.
 	go func() {
 		syncCtx, cancel := context.WithTimeout(d.ctx, 30*time.Second)
 		defer cancel()
-		d.syncRepoMeta(syncCtx, repo)
+		d.syncRepoMeta(syncCtx, repo, user)
 	}()
 }
 
 // syncRepoMeta reads .soft-serve.yaml from HEAD and applies non-zero fields
 // to the repository backend. Private and hidden require admin access.
-func (d *Backend) syncRepoMeta(ctx context.Context, repo string) {
+// user is the pushing user captured from the caller's context before the
+// goroutine was launched.
+func (d *Backend) syncRepoMeta(ctx context.Context, repo string, user proto.User) {
 	r, err := d.Repository(ctx, repo)
 	if err != nil {
 		d.logger.Warn("post-receive: failed to find repository", "repo", repo, "err", err)
@@ -75,10 +82,12 @@ func (d *Backend) syncRepoMeta(ctx context.Context, repo string) {
 		return
 	}
 
-	// Only admins may change visibility — look up the pushing user from context.
+	// Only admins may change visibility. Use the user captured from the
+	// caller's context rather than looking it up from d.ctx, which would
+	// return nil because d.ctx has no user attached.
 	var isAdmin bool
-	if u := proto.UserFromContext(ctx); u != nil {
-		isAdmin = u.IsAdmin()
+	if user != nil {
+		isAdmin = user.IsAdmin()
 	}
 
 	if meta.Description != "" {

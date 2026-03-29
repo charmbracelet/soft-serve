@@ -58,8 +58,9 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// NewRouter returns a new HTTP router.
-func NewRouter(ctx context.Context) http.Handler {
+// NewRouter returns a new HTTP router and the rate limiter that must be closed
+// when the server shuts down.
+func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	logger := log.FromContext(ctx).WithPrefix("http")
 	router := mux.NewRouter()
 
@@ -84,10 +85,12 @@ func NewRouter(ctx context.Context) http.Handler {
 	h = securityHeadersMiddleware(h)
 	h = newRateLimitMiddleware(httpLimiter, cfg.HTTP.TrustProxyHeaders)(h)
 
+	// CORS wraps the rate limiter so that OPTIONS preflight requests receive
+	// CORS headers before potentially being rate-limited.
 	h = handlers.CORS(handlers.AllowedHeaders(cfg.HTTP.CORS.AllowedHeaders),
 		handlers.AllowedOrigins(cfg.HTTP.CORS.AllowedOrigins),
 		handlers.AllowedMethods(cfg.HTTP.CORS.AllowedMethods),
 	)(h)
 
-	return h
+	return h, httpLimiter
 }
