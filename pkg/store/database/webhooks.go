@@ -163,11 +163,15 @@ func (*webhookStore) GetWebhookEventsByWebhookIDs(ctx context.Context, h db.Hand
 	return all, nil
 }
 
+// maxWebhooksPerRepo caps the number of webhooks returned per repository to
+// prevent unbounded memory use for repos with many configured webhooks.
+const maxWebhooksPerRepo = 100
+
 // GetWebhooksByRepoID implements store.WebhookStore.
 func (*webhookStore) GetWebhooksByRepoID(ctx context.Context, h db.Handler, repoID int64) ([]models.Webhook, error) {
-	query := h.Rebind(`SELECT * FROM webhooks WHERE repo_id = ?;`)
+	query := h.Rebind(`SELECT * FROM webhooks WHERE repo_id = ? LIMIT ?;`)
 	var whs []models.Webhook
-	err := h.SelectContext(ctx, &whs, query, repoID)
+	err := h.SelectContext(ctx, &whs, query, repoID, maxWebhooksPerRepo)
 	return whs, err
 }
 

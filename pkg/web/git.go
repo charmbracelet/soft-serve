@@ -77,6 +77,12 @@ var (
 // without the .git suffix when cfg.HTTP.StripGitSuffix is true.
 // It inserts ".git" before any recognised git sub-path so that all
 // downstream handlers continue to see the canonical /<name>.git/... form.
+// gitSuffixMiddleware handles the StripGitSuffix config option. Despite the
+// flag name "StripGitSuffix", this middleware INSERTS ".git" into the URL
+// path for clients that omit it. The name refers to the client-side
+// perspective: clients may strip ".git" from the clone URL and still reach
+// the server correctly. The middleware re-adds it so downstream handlers see
+// the canonical ".git"-suffixed path.
 func gitSuffixMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 	// Known sub-paths that immediately follow the repo segment.
 	gitSubPaths := []string{

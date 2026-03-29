@@ -349,6 +349,7 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 			return db.WrapError(err)
 		}
 
+		var lfsErrs []error
 		for _, obj := range objs {
 			p := lfs.Pointer{
 				Oid:  obj.Oid,
@@ -358,7 +359,11 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 			d.logger.Debug("deleting lfs object", "repo", name, "oid", obj.Oid)
 			if err := strg.Delete(path.Join("objects", p.RelativePath())); err != nil {
 				d.logger.Error("failed to delete lfs object", "repo", name, "err", err, "oid", obj.Oid)
+				lfsErrs = append(lfsErrs, err)
 			}
+		}
+		if len(lfsErrs) > 0 {
+			return errors.Join(lfsErrs...)
 		}
 
 		if err := d.store.DeleteRepoByName(ctx, tx, name); err != nil {

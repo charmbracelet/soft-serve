@@ -134,6 +134,10 @@ func (m *Manager) Run(id string, done chan<- error) {
 
 	errc := make(chan error, 1)
 	go func(ctx context.Context) {
+		// If p.fn panics, the deferred recover fires before errc<-p.fn(ctx)
+		// produces a value (a panic unwinds the call stack without returning),
+		// so the recover-path send on errc cannot race with the normal-path send.
+		// If p.fn returns normally, recover() returns nil and the if is skipped.
 		defer func() {
 			if r := recover(); r != nil {
 				errc <- fmt.Errorf("task panicked: %v", r)

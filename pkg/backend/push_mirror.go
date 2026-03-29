@@ -101,7 +101,9 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 				continue
 			}
 		} else {
-			// Block git:// and any other unrecognized scheme.
+			// Block git://, file://, and any other unrecognized scheme.
+			// file:// could allow access to local filesystem paths and is
+			// blocked here even though it does not carry a network host.
 			schemeErr := fmt.Errorf("push mirror: unsupported URL scheme %q", u.Scheme)
 			b.logger.Warn(schemeErr.Error(), "remote", m.RemoteURL)
 			continue
