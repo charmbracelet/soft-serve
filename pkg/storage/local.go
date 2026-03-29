@@ -117,6 +117,9 @@ func (l LocalStorage) fixPath(path string) (string, error) {
 	path = strings.ReplaceAll(path, "/", string(os.PathSeparator))
 	p := filepath.Join(l.root, path)
 	// Ensure the resolved path is within the storage root.
+	// Note: filepath.Join (used to build p) already resolves ".." sequences,
+	// so path traversal via ".." is not possible. The HasPrefix check guards
+	// against any residual escapes.
 	root := l.root + string(filepath.Separator)
 	if !strings.HasPrefix(p, root) && p != l.root {
 		return "", fmt.Errorf("storage: path %q escapes root", path)

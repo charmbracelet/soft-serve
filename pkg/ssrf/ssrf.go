@@ -162,9 +162,9 @@ func ValidateURL(rawURL string) error {
 		return nil
 	}
 
-	// Note: context.Background() is used for DNS resolution; caller's context cancellation
-	// does not propagate here. This is acceptable for short-lived validation calls.
-	ips, err := net.DefaultResolver.LookupIPAddr(context.Background(), hostname)
+	resolveCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ips, err := net.DefaultResolver.LookupIPAddr(resolveCtx, hostname)
 	if err != nil {
 		return fmt.Errorf("%w: cannot resolve hostname: %v", ErrInvalidURL, err)
 	}
@@ -206,7 +206,9 @@ func ValidateHost(host string) error {
 		return nil
 	}
 
-	ips, err := net.DefaultResolver.LookupIPAddr(context.Background(), host)
+	resolveCtx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel2()
+	ips, err := net.DefaultResolver.LookupIPAddr(resolveCtx2, host)
 	if err != nil {
 		return fmt.Errorf("%w: cannot resolve hostname: %v", ErrInvalidURL, err)
 	}
