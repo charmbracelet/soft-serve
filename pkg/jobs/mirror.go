@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/git"
@@ -20,6 +21,8 @@ import (
 func init() {
 	Register("mirror-pull", mirrorPull{})
 }
+
+const mirrorPullTimeout = 30 * time.Minute
 
 type mirrorPull struct{}
 
@@ -94,7 +97,7 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 						// in ImportRepository already sets Timeout: -1 for the
 						// same reason. git-module RunInDirWithOptions only applies
 						// a deadline when timeout > 0, so -1 is safe here.
-						cmd := git.NewCommand(args...).WithContext(ctx).WithTimeout(30 * 60)
+						cmd := git.NewCommand(args...).WithContext(ctx).WithTimeout(mirrorPullTimeout)
 						cmd.AddEnvs(sshEnv)
 
 						if _, err := cmd.RunInDir(r.Path); err != nil {

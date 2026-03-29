@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+	"fmt"
+	"path"
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -13,15 +15,23 @@ type lfsStore struct{}
 
 var _ store.LFSStore = (*lfsStore)(nil)
 
-func sanitizePath(path string) string {
-	path = strings.TrimSpace(path)
-	path = strings.TrimPrefix(path, "/")
-	return path
+func sanitizePath(p string) (string, error) {
+	p = strings.TrimSpace(p)
+	p = strings.TrimPrefix(p, "/")
+	p = path.Clean(p)
+	if strings.HasPrefix(p, "..") {
+		return "", fmt.Errorf("invalid lock path: %q", p)
+	}
+	return p, nil
 }
 
 // CreateLFSLockForUser implements store.LFSStore.
 func (*lfsStore) CreateLFSLockForUser(ctx context.Context, tx db.Handler, repoID int64, userID int64, path string, refname string) error {
-	path = sanitizePath(path)
+	var err error
+	path, err = sanitizePath(path)
+	if err != nil {
+		return err
+	}
 	query := tx.Rebind(`INSERT INTO lfs_locks (repo_id, user_id, path, refname, updated_at)
 		VALUES (
 			?,
@@ -31,7 +41,7 @@ func (*lfsStore) CreateLFSLockForUser(ctx context.Context, tx db.Handler, repoID
 			CURRENT_TIMESTAMP
 		);
 	`)
-	_, err := tx.ExecContext(ctx, query, repoID, userID, path, refname)
+	_, err = tx.ExecContext(ctx, query, repoID, userID, path, refname)
 	return db.WrapError(err)
 }
 
@@ -87,27 +97,35 @@ func (*lfsStore) GetLFSLocksForUser(ctx context.Context, tx db.Handler, repoID i
 
 // GetLFSLocksForPath implements store.LFSStore.
 func (*lfsStore) GetLFSLockForPath(ctx context.Context, tx db.Handler, repoID int64, path string) (models.LFSLock, error) {
-	path = sanitizePath(path)
+	var err error
+	path, err = sanitizePath(path)
+	if err != nil {
+		return models.LFSLock{}, err
+	}
 	var lock models.LFSLock
 	query := tx.Rebind(`
 		SELECT *
 		FROM lfs_locks
 		WHERE repo_id = ? AND path = ?;
 	`)
-	err := tx.GetContext(ctx, &lock, query, repoID, path)
+	err = tx.GetContext(ctx, &lock, query, repoID, path)
 	return lock, db.WrapError(err)
 }
 
 // GetLFSLockForUserPath implements store.LFSStore.
 func (*lfsStore) GetLFSLockForUserPath(ctx context.Context, tx db.Handler, repoID int64, userID int64, path string) (models.LFSLock, error) {
-	path = sanitizePath(path)
+	var err error
+	path, err = sanitizePath(path)
+	if err != nil {
+		return models.LFSLock{}, err
+	}
 	var lock models.LFSLock
 	query := tx.Rebind(`
 		SELECT *
 		FROM lfs_locks
 		WHERE repo_id = ? AND user_id = ? AND path = ?;
 	`)
-	err := tx.GetContext(ctx, &lock, query, repoID, userID, path)
+	err = tx.GetContext(ctx, &lock, query, repoID, userID, path)
 	return lock, db.WrapError(err)
 }
 

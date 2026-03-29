@@ -110,5 +110,8 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			}
 		}(m)
 	}
+	// wg.Wait blocks until all concurrency-bounded pushes complete.
+	// PushMirrors itself is called from a goroutine in syncRepoMeta,
+	// so blocking here does not delay the push response to the git client.
 	wg.Wait()
 }

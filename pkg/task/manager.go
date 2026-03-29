@@ -75,8 +75,10 @@ func (m *Manager) Exists(id string) bool {
 	return ok
 }
 
-// Run starts the task if it exists.
-// Otherwise, it waits for the process to finish.
+// Run starts the task if not already started, or waits for the already-running
+// task to complete and delivers its result to done.
+// Callers MUST ensure done has capacity >= 1 (buffered) to avoid a panic
+// if the caller returns before the task delivers its result.
 func (m *Manager) Run(id string, done chan<- error) {
 	v, ok := m.m.Load(id)
 	if !ok {
