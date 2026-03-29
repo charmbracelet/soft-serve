@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"net/url"
 	"os/exec"
 	"sync"
 	"time"
@@ -54,9 +55,12 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 		if !m.Enabled {
 			continue
 		}
-		if err := ssrf.ValidateURL(m.RemoteURL); err != nil {
-			b.logger.Warn("push mirror: blocked URL", "url", m.RemoteURL, "err", err)
-			continue // skip this mirror
+		u, err := url.Parse(m.RemoteURL)
+		if err == nil && (u.Scheme == "http" || u.Scheme == "https") {
+			if ssrfErr := ssrf.ValidateURL(m.RemoteURL); ssrfErr != nil {
+				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
+				continue
+			}
 		}
 		sem <- struct{}{} // acquire
 		wg.Add(1)

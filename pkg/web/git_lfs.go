@@ -39,6 +39,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var batchRequest lfs.BatchRequest
 	defer r.Body.Close() //nolint: errcheck
 	if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
@@ -377,6 +378,7 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var pointer lfs.Pointer
 	ctx := r.Context()
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
@@ -470,6 +472,7 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	ctx := r.Context()
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-locks")
 
@@ -765,6 +768,7 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req lfs.LockVerifyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding request", "err", err)
@@ -871,6 +875,7 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req lfs.LockDeleteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding request", "err", err)

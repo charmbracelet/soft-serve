@@ -102,7 +102,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 	res, reqErr := do(ctx, w.URL, http.MethodPost, headers, strings.NewReader(reqBody))
 	var reqHeaders string
 	for k, v := range headers {
-		reqHeaders += k + ": " + v[0] + "\n"
+		reqHeaders += k + ": " + strings.Join(v, ", ") + "\n"
 	}
 
 	resStatus := 0
