@@ -90,6 +90,12 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			}
 			host := raw[:colon]
 			host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
+			// Strip IPv6 zone identifier (e.g. "::1%eth0" -> "::1") before
+			// validation. Some platforms resolve scoped addresses successfully,
+			// which could let ::1%zone bypass the loopback check in ValidateHost.
+			if z := strings.IndexByte(host, '%'); z != -1 {
+				host = host[:z]
+			}
 			if ssrfErr := ssrf.ValidateHost(ctx, host); ssrfErr != nil {
 				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
 				continue

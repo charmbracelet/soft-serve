@@ -20,7 +20,11 @@ type Task struct {
 	id        string
 	fn        func(context.Context) error
 	started   atomic.Bool
-	completed atomic.Bool // set true after p.err is written, before p.cancel fires
+	// completed must be stored only AFTER p.err is written and p.mu is
+	// unlocked. A concurrent waiter observing completed==true via its own
+	// p.mu.Lock() is then guaranteed to see the final value of p.err.
+	// Never move this Store before p.mu.Unlock() or the ordering guarantee breaks.
+	completed atomic.Bool
 	ctx       context.Context
 	cancel    context.CancelFunc
 	mu        sync.Mutex

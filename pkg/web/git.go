@@ -429,7 +429,11 @@ func withAccess(next http.Handler) http.HandlerFunc {
 
 		switch {
 		case r.URL.Query().Get("go-get") == "1" && repo != nil && (accessLevel >= access.ReadOnlyAccess || cfg.AllowPublicGoGet):
-			// Allow go-get requests to passthrough.
+			// Allow go-get requests to pass through.
+			// Note: when AllowPublicGoGet is true, unauthenticated clients can
+			// learn that a private repo exists by comparing go-get (200) vs a
+			// regular (404) response. This is an accepted trade-off for go module
+			// discoverability.
 			break
 		case errors.Is(err, errInvalidToken), errors.Is(err, errInvalidPassword):
 			// return 403 when bad credentials are provided

@@ -147,6 +147,12 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 				// reaches zero so ipConns does not grow without bound over time.
 				// CompareAndDelete is a no-op if another connection from the same IP
 				// already stored a new counter pointer via LoadOrStore.
+				//
+				// Known limitation: there is a brief window between AddInt32
+				// returning 0 and CompareAndDelete completing. A new connection in
+				// that window reuses the stale pointer and may find its map entry
+				// deleted, temporarily bypassing the per-IP cap. The global
+				// d.conns limit still guards against DoS.
 				if atomic.AddInt32(ipCount, -1) == 0 {
 					d.ipConns.CompareAndDelete(remoteIP, ipCount)
 				}

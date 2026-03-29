@@ -85,7 +85,12 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	router.PathPrefix("/").HandlerFunc(renderNotFound)
 
 	cfg := config.FromContext(ctx)
-	httpLimiter := ratelimit.New(rate.Limit(cfg.HTTP.RateLimit), cfg.HTTP.RateBurst, 10*time.Minute)
+	// Only create the rate limiter (and its background cleanup goroutine) when
+	// rate limiting is actually enabled. Callers handle a nil limiter.
+	var httpLimiter *ratelimit.IPLimiter
+	if cfg.HTTP.RateLimit > 0 {
+		httpLimiter = ratelimit.New(rate.Limit(cfg.HTTP.RateLimit), cfg.HTTP.RateBurst, 10*time.Minute)
+	}
 
 	// Context handler
 	// Adds context to the request
