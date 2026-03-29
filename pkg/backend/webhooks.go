@@ -166,15 +166,18 @@ func (b *Backend) UpdateWebhook(ctx context.Context, repo proto.Repository, id i
 		for _, e := range updatedEvents {
 			updatedSet[e] = true
 		}
-		toBeDeleted := make([]int64, 0)
+		var toBeDeleted []int64
 		for _, e := range currentEvents {
 			if !updatedSet[webhook.Event(e.Event)] {
 				toBeDeleted = append(toBeDeleted, e.ID)
 			}
 		}
 
-		if err := datastore.DeleteWebhookEventsByID(ctx, tx, toBeDeleted); err != nil {
-			return db.WrapError(err)
+		// Guard the delete call: sqlx.In returns an error for empty slices.
+		if len(toBeDeleted) > 0 {
+			if err := datastore.DeleteWebhookEventsByID(ctx, tx, toBeDeleted); err != nil {
+				return db.WrapError(err)
+			}
 		}
 
 		// Prune events that are already in the list.

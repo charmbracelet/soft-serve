@@ -73,7 +73,7 @@ func (*webhookStore) DeleteWebhookDeliveryByID(ctx context.Context, h db.Handler
 	return err
 }
 
-// DeleteWebhookEventsByWebhookID implements store.WebhookStore.
+// DeleteWebhookEventsByID implements store.WebhookStore.
 func (*webhookStore) DeleteWebhookEventsByID(ctx context.Context, h db.Handler, ids []int64) error {
 	query, args, err := sqlx.In(`DELETE FROM webhook_events WHERE id IN (?);`, ids)
 	if err != nil {
