@@ -60,13 +60,17 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 		}
 		u, err := url.Parse(m.RemoteURL)
 		if err == nil && (u.Scheme == "http" || u.Scheme == "https") {
-			if ssrfErr := ssrf.ValidateURL(m.RemoteURL); ssrfErr != nil {
+			if ssrfErr := ssrf.ValidateURL(ctx, m.RemoteURL); ssrfErr != nil {
 				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
 				continue
 			}
 		} else if err == nil && (u.Scheme == "ssh" || u.Scheme == "git+ssh" || u.Scheme == "ssh+git") {
 			// Validate ssh:// / git+ssh:// / ssh+git:// scheme URLs against SSRF.
-			if ssrfErr := ssrf.ValidateHost(u.Hostname()); ssrfErr != nil {
+			// Note: unlike the HTTP client (NewSecureClient), the SSH mirror uses
+			// the git subprocess which re-resolves the hostname at dial time —
+			// there is a DNS rebinding window between this check and the actual
+			// connection. Mitigate by ensuring the host resolves to a public IP.
+			if ssrfErr := ssrf.ValidateHost(ctx, u.Hostname()); ssrfErr != nil {
 				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
 				continue
 			}
@@ -86,7 +90,7 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			}
 			host := raw[:colon]
 			host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
-			if ssrfErr := ssrf.ValidateHost(host); ssrfErr != nil {
+			if ssrfErr := ssrf.ValidateHost(ctx, host); ssrfErr != nil {
 				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
 				continue
 			}

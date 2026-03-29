@@ -17,13 +17,14 @@ var (
 
 // Task is a task that can be started and stopped.
 type Task struct {
-	id      string
-	fn      func(context.Context) error
-	started atomic.Bool
-	ctx     context.Context
-	cancel  context.CancelFunc
-	mu      sync.Mutex
-	err     error
+	id        string
+	fn        func(context.Context) error
+	started   atomic.Bool
+	completed atomic.Bool // set true after p.err is written, before p.cancel fires
+	ctx       context.Context
+	cancel    context.CancelFunc
+	mu        sync.Mutex
+	err       error
 }
 
 // Manager manages tasks.
@@ -106,10 +107,17 @@ func (m *Manager) Run(id string, done chan<- error) {
 			return
 		}
 
-		// p.err == nil: task completed successfully; p.cancel() fired after fn
-		// returned. Return nil so callers distinguish clean completion from a
-		// context cancellation caused by Stop() or manager shutdown.
-		done <- nil
+		if p.completed.Load() {
+			// Task completed with a nil error; p.cancel() fired via defer
+			// after the result was stored. Return nil (success).
+			done <- nil
+			return
+		}
+
+		// Context was cancelled before the task finished (Stop() was called
+		// or the manager shut down). Return the context error so callers
+		// can detect the stop signal rather than mistaking it for success.
+		done <- p.ctx.Err()
 		return
 	}
 
@@ -136,6 +144,10 @@ func (m *Manager) Run(id string, done chan<- error) {
 		p.mu.Lock()
 		p.err = err
 		p.mu.Unlock()
+		// Mark completed BEFORE p.cancel() fires (via defer) so that any
+		// concurrent waiter on <-p.ctx.Done() sees completed=true and
+		// returns nil rather than ctx.Err() for a successfully-finished task.
+		p.completed.Store(true)
 		// No re-store: m.m already holds p; delete after storing the result.
 		m.m.Delete(id)
 		done <- err

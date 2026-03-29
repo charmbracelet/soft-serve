@@ -10,9 +10,10 @@ import (
 const ZeroID = git.EmptyID
 
 // zeroHashPattern matches an all-zero SHA-1 (40 hex zeros) or SHA-256
-// (64 hex zeros) object ID. Compiled once at package init to avoid repeated
-// allocations in hot paths such as webhook delivery and hook arg processing.
-var zeroHashPattern = regexp.MustCompile(`^0{40,}$`)
+// (64 hex zeros) object ID. The alternation prevents matching lengths that
+// are not valid hash sizes (e.g. 50 zeros). Compiled once at package init to
+// avoid repeated allocations in hot paths such as webhook delivery.
+var zeroHashPattern = regexp.MustCompile(`^(0{40}|0{64})$`)
 
 // IsZeroHash returns whether the hash is a zero hash.
 func IsZeroHash(h string) bool {

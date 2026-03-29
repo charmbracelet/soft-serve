@@ -59,10 +59,9 @@ func (d *Backend) syncRepoMeta(ctx context.Context, repo string, user proto.User
 		return
 	}
 
-	// Trigger push mirrors asynchronously.
-	// TODO: PushMirrors runs synchronously and may be cancelled by the
-	// caller's 30-second context before a slow mirror completes.
-	// Consider giving push mirrors their own context with a longer timeout.
+	// Trigger push mirrors synchronously. PushMirrors will be interrupted
+	// if ctx expires (30-second default), so slow mirrors may not complete.
+	// TODO: run push mirrors with their own context and a longer timeout.
 	d.PushMirrors(ctx, r)
 
 	gr, err := r.Open()

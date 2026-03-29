@@ -26,21 +26,28 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 )
 
-func validateImportRemote(remote string) error {
+// shellQuote returns s wrapped in POSIX single-quotes with any embedded
+// single-quote characters properly escaped as '\''. This is safe to embed
+// inside GIT_SSH_COMMAND values that are evaluated by the shell git invokes.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+func validateImportRemote(ctx context.Context, remote string) error {
 	endpoint, err := lfs.NewEndpoint(remote)
 	if err != nil || endpoint.Host == "" {
 		return proto.ErrInvalidRemote
 	}
 
 	if endpoint.Scheme == "http" || endpoint.Scheme == "https" {
-		if err := ssrf.ValidateURL(remote); err != nil {
+		if err := ssrf.ValidateURL(ctx, remote); err != nil {
 			return err
 		}
 	}
 
 	switch endpoint.Scheme {
 	case "ssh", "git+ssh", "ssh+git":
-		if err := ssrf.ValidateHost(endpoint.Host); err != nil {
+		if err := ssrf.ValidateHost(ctx, endpoint.Host); err != nil {
 			return fmt.Errorf("import remote: %w", err)
 		}
 	}
@@ -145,7 +152,7 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 	}
 
 	remote = utils.Sanitize(remote)
-	if err := validateImportRemote(remote); err != nil {
+	if err := validateImportRemote(ctx, remote); err != nil {
 		return nil, err
 	}
 
@@ -186,9 +193,12 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 				Timeout: -1,
 				Context: ctx,
 				Envs: []string{
-					fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=accept-new -i "%s"`,
-						filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
-						d.cfg.SSH.ClientKeyPath,
+					// Use shellQuote (POSIX single-quote wrapping) for both paths
+					// to prevent shell metacharacter expansion. GIT_SSH_COMMAND is
+					// interpreted by the shell that git invokes for the ssh call.
+					fmt.Sprintf("GIT_SSH_COMMAND=ssh -o UserKnownHostsFile=%s -o StrictHostKeyChecking=accept-new -i %s",
+						shellQuote(filepath.Join(d.cfg.DataPath, "ssh", "known_hosts")),
+						shellQuote(d.cfg.SSH.ClientKeyPath),
 					),
 				},
 			},

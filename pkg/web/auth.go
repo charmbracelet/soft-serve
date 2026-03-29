@@ -90,7 +90,7 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		if runes := []rune(logUsername); len(runes) > maxLogUsernameRunes {
 			logUsername = string(runes[:maxLogUsernameRunes]) + "…"
 		}
-		logger.Debug("invalid credentials", "username", logUsername, "err", err)
+		logger.Debug("invalid credentials", "username", logUsername, "err", tokenErr)
 		return nil, errInvalidPassword
 	} else if username != "" {
 		// Try to authenticate using access token as the username
