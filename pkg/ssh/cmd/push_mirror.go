@@ -44,6 +44,12 @@ func pushMirrorAddCommand() *cobra.Command {
 				return err
 			}
 
+			// Warn when the remote uses plain HTTP — credentials and content
+			// will be sent in the clear over the network.
+			if u, err := url.Parse(remoteURL); err == nil && strings.EqualFold(u.Scheme, "http") {
+				fmt.Fprintln(cmd.ErrOrStderr(), "warning: push mirror uses plain HTTP — credentials and data are not encrypted in transit; consider using HTTPS or SSH")
+			}
+
 			repo, err := be.Repository(ctx, args[0])
 			if err != nil {
 				return err

@@ -38,9 +38,9 @@ func (d *Backend) PostReceive(ctx context.Context, _ io.Writer, _ io.Writer, rep
 	// response is not blocked by DB writes or git tree reads.
 	go func() {
 		// The 30-second timeout covers metadata sync (DB writes, YAML parse).
-		// Push mirrors (PushMirrors) run with their own per-push timeout and are
-		// called from syncRepoMeta; they will be cancelled early if this ctx expires
-		// before they complete. Extend this timeout if long-running mirrors are expected.
+		// PushMirrors is called from syncRepoMeta with d.ctx (the backend root
+		// context, not syncCtx), so mirror pushes are NOT constrained by this
+		// timeout — they run with their own per-push mirrorPushTimeout.
 		syncCtx, cancel := context.WithTimeout(d.ctx, 30*time.Second)
 		defer cancel()
 		d.syncRepoMeta(syncCtx, repo, user)

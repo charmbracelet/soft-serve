@@ -46,13 +46,18 @@ func (*webhookStore) CreateWebhookEvents(ctx context.Context, h db.Handler, webh
 		return nil
 	}
 	// Bulk INSERT to avoid N round-trips for webhooks with many events.
-	placeholders := make([]string, len(events))
+	// Use strings.Builder to build the placeholder list without intermediate
+	// string allocations from strings.Join over a []string.
+	var pb strings.Builder
 	args := make([]interface{}, 0, len(events)*2)
 	for i, event := range events {
-		placeholders[i] = "(?, ?)"
+		if i > 0 {
+			pb.WriteString(", ")
+		}
+		pb.WriteString("(?, ?)")
 		args = append(args, webhookID, event)
 	}
-	query := h.Rebind(`INSERT INTO webhook_events (webhook_id, event) VALUES ` + strings.Join(placeholders, ", "))
+	query := h.Rebind(`INSERT INTO webhook_events (webhook_id, event) VALUES ` + pb.String())
 	_, err := h.ExecContext(ctx, query, args...)
 	return err
 }

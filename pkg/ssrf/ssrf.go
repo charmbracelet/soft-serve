@@ -81,6 +81,10 @@ func NewSecureClient() *http.Client {
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
 		},
+		// Refuse all HTTP redirects. For webhooks this prevents SSRF via a
+		// redirect to an internal host. For LFS this is safe because the LFS
+		// batch API returns explicit download/upload href values; the LFS client
+		// calls those URLs directly and does not rely on server-issued redirects.
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},

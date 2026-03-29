@@ -40,6 +40,12 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 			}
 
 			defer content.Close() //nolint: errcheck
+			// Disk-ahead-of-DB invariant: strg.Put writes the object to the
+			// filesystem; CreateLFSObject writes the DB row. If strg.Put succeeds
+			// but the DB transaction rolls back, the object file remains on disk
+			// without a corresponding DB row. The re-registration path below
+			// (obj != nil && obj.ID == 0) handles this case on the next download
+			// attempt by re-inserting the DB row without re-downloading the data.
 			return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 				if err := store.CreateLFSObject(ctx, tx, repo.ID(), p.Oid, p.Size); err != nil {
 					return db.WrapError(err)

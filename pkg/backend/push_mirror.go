@@ -125,7 +125,14 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 				"GIT_CONFIG_COUNT=0",
 			}
 			if sshCmd := os.Getenv("GIT_SSH_COMMAND"); sshCmd != "" {
-				cmd.Env = append(cmd.Env, "GIT_SSH_COMMAND="+sshCmd)
+				// Apply the same safety check used for SSH_AUTH_SOCK: a newline
+				// or NUL in an env var value would malform the env block passed
+				// to the subprocess.
+				if strings.ContainsAny(sshCmd, "\n\r\x00") {
+					b.logger.Warn("push-mirror: GIT_SSH_COMMAND contains unsafe characters, ignoring operator override")
+				} else {
+					cmd.Env = append(cmd.Env, "GIT_SSH_COMMAND="+sshCmd)
+				}
 			} else {
 				// Build a default GIT_SSH_COMMAND that pins host fingerprints into a
 				// per-server known_hosts file. StrictHostKeyChecking=accept-new records

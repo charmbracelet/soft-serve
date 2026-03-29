@@ -97,10 +97,18 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 			return err
 		}
 
-		rr, err := git.Init(rp, true)
+		// Skip git.Init when the directory is already a valid git repository
+		// (e.g. populated by git.Clone inside ImportRepository). Calling
+		// git.Init on an existing bare clone overwrites the config file,
+		// stripping mirror-specific settings (mirror=true, fetch refspecs).
+		rr, err := git.Open(rp)
 		if err != nil {
-			d.logger.Debug("failed to create repository", "err", err)
-			return err
+			// Directory not yet a git repo — initialize it.
+			rr, err = git.Init(rp, true)
+			if err != nil {
+				d.logger.Debug("failed to create repository", "err", err)
+				return err
+			}
 		}
 
 		if user != nil && user.Username() != "" {
@@ -338,6 +346,11 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 		return err
 	}
 
+	// removeDir is set to true inside the transaction only after all DB changes
+	// have succeeded. The actual filesystem removal happens after the transaction
+	// commits so that a DB commit failure cannot leave us with a missing directory
+	// and a stale DB row.
+	var removeDir bool
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		repom, dberr := d.store.GetRepoByName(ctx, tx, name)
 		_, ferr := os.Stat(rp)
@@ -345,13 +358,12 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 			return proto.ErrRepoNotFound
 		}
 
-		// If the repo is not in the database but the directory exists, remove it.
-		// The previous guard (dberr!=nil && ferr!=nil) already returned, so
-		// the only remaining dberr!=nil case here is dberr!=nil && ferr==nil.
-		// os.RemoveAll is idempotent: a transaction retry after a prior
-		// successful removal returns nil safely.
+		// If the repo is not in the database but the directory exists, mark it
+		// for removal after the transaction. The previous guard already returned
+		// when both are missing, so here dberr!=nil implies ferr==nil.
 		if dberr != nil {
-			return os.RemoveAll(rp)
+			removeDir = true
+			return nil
 		}
 
 		repoID := strconv.FormatInt(repom.ID, 10)
@@ -382,13 +394,28 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 			return db.WrapError(err)
 		}
 
-		return os.RemoveAll(rp)
+		// Mark for post-commit removal. The directory is only removed after the
+		// transaction commits so that a DB commit failure cannot leave us with
+		// the directory missing but the DB row still present.
+		removeDir = true
+		return nil
 	}); err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return proto.ErrRepoNotFound
 		}
 
 		return db.WrapError(err)
+	}
+
+	// The transaction has committed — it is now safe to remove the directory.
+	// os.RemoveAll is idempotent: if the directory is already absent (e.g. from
+	// a prior partial delete), this is a no-op.
+	if removeDir {
+		if err := os.RemoveAll(rp); err != nil {
+			// Non-fatal: DB row is already gone. Log and continue — the orphan
+			// directory will be cleaned up on the next delete attempt.
+			d.logger.Error("failed to remove repository directory after delete", "path", rp, "err", err)
+		}
 	}
 
 	d.cache.Delete(name)
@@ -498,6 +525,11 @@ func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) 
 	// The lambda uses d.ctx (backend root context) rather than the caller's ctx
 	// so that one caller cancelling does not abort the shared in-flight query
 	// for all other waiters.
+	//
+	// Note: the result is a snapshot at query time and is populated into d.cache
+	// (per-repo entries) without an expiry. High-churn environments (frequent
+	// create/delete) should be aware that Repositories() reflects the state at
+	// the time of the most recent coalesced query until the next call.
 	v, err, _ := d.reposSFG.Do("all", func() (interface{}, error) {
 		repos := make([]proto.Repository, 0)
 		if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {

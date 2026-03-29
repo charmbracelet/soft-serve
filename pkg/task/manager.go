@@ -47,7 +47,14 @@ func NewManager(ctx context.Context) *Manager {
 }
 
 // Add adds a task to the manager.
-// If the process already exists, it is a no-op.
+// If a task with the same id already exists, Add is a no-op (the existing
+// task is not replaced and fn is discarded).
+//
+// Callers must not call Add for the same id again until they have observed
+// either a Stop() call or a completion result from Run(). During the brief
+// window after Run() returns (manager-shutdown path) and before the map entry
+// is removed by the cleanup goroutine, a subsequent Add will be silently
+// dropped. Use Stop() followed by Add() to reliably replace a task.
 func (m *Manager) Add(id string, fn func(context.Context) error) {
 	ctx, cancel := context.WithCancel(m.ctx)
 	t := &Task{
