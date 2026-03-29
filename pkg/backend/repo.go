@@ -298,10 +298,23 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 	// path Run sends to done before p.fn has had a chance to send to repoc;
 	// blocking on <-repoc first would deadlock until the import goroutine
 	// eventually completes. Use select to handle whichever arrives first.
+	//
+	// When done fires with a nil error (e.g. context cancelled after the
+	// import succeeded), drain repoc non-blocking so the caller still gets
+	// the repository value that was already produced.
 	select {
 	case r := <-repoc:
 		return r, <-done
 	case err := <-done:
+		if err == nil {
+			// Import may have completed just before the context fired;
+			// return the repository if available.
+			select {
+			case r := <-repoc:
+				return r, nil
+			default:
+			}
+		}
 		return nil, err
 	}
 }

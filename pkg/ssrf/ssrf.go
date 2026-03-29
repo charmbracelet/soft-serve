@@ -48,12 +48,19 @@ func NewSecureClient() *http.Client {
 					if len(addrs) == 0 {
 						return nil, fmt.Errorf("no IP addresses found for host: %s", host)
 					}
+					// Reject if ANY resolved IP is private/internal.
+					// Select the first public IP for dialing so that DNS
+					// round-robin cannot swap in a private address on retry.
+					var selectedIP net.IP
 					for _, addr := range addrs {
 						if isPrivateOrInternal(addr.IP) {
 							return nil, fmt.Errorf("%w", ErrPrivateIP)
 						}
+						if selectedIP == nil {
+							selectedIP = addr.IP
+						}
 					}
-					ip = addrs[0].IP
+					ip = selectedIP
 				}
 				if isPrivateOrInternal(ip) {
 					return nil, fmt.Errorf("%w", ErrPrivateIP)

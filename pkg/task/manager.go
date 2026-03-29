@@ -152,6 +152,10 @@ func (m *Manager) Run(id string, done chan<- error) {
 		// Delay map deletion until the p.fn goroutine has fully exited so that
 		// a concurrent Add(id, ...) + Run(id, ...) cannot start a new task for
 		// the same id while the old goroutine is still executing p.fn.
+		//
+		// Callers must not re-Add a task with the same id until they have
+		// observed a Stop() or a completion result from Run(), otherwise the
+		// new Add() will silently no-op (LoadOrStore sees the stale entry).
 		go func() {
 			<-errc
 			m.m.Delete(id)

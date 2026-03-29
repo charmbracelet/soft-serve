@@ -77,24 +77,10 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 		} else if err != nil || u.Scheme == "" {
 			// SCP-style remote (e.g. git@host:repo) — url.Parse either fails or
 			// produces an empty scheme. Both cases require manual host extraction.
-			raw := m.RemoteURL
-			if at := strings.LastIndex(raw, "@"); at != -1 {
-				raw = raw[at+1:]
-			}
-			colon := strings.LastIndex(raw, ":")
-			if colon == -1 {
-				// No colon means we cannot extract a host — reject to avoid
-				// bypassing SSRF validation on malformed remote URLs.
-				b.logger.Warn("push mirror: cannot extract host from SCP-style remote (no colon)", "remote", m.RemoteURL)
+			host, scpErr := extractSCPHost(m.RemoteURL)
+			if scpErr != nil {
+				b.logger.Warn("push mirror: cannot extract host from SCP-style remote", "remote", m.RemoteURL, "err", scpErr)
 				continue
-			}
-			host := raw[:colon]
-			host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
-			// Strip IPv6 zone identifier (e.g. "::1%eth0" -> "::1") before
-			// validation. Some platforms resolve scoped addresses successfully,
-			// which could let ::1%zone bypass the loopback check in ValidateHost.
-			if z := strings.IndexByte(host, '%'); z != -1 {
-				host = host[:z]
 			}
 			if ssrfErr := ssrf.ValidateHost(ctx, host); ssrfErr != nil {
 				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
@@ -158,4 +144,25 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 	// PushMirrors itself is called from a goroutine in syncRepoMeta,
 	// so blocking here does not delay the push response to the git client.
 	wg.Wait()
+}
+
+// extractSCPHost parses the host from an SCP-style git remote URL
+// (e.g. git@host:repo or host:repo). Returns an error if no host can be
+// determined. Strips IPv6 brackets and zone identifiers before returning.
+func extractSCPHost(raw string) (string, error) {
+	if at := strings.LastIndex(raw, "@"); at != -1 {
+		raw = raw[at+1:]
+	}
+	colon := strings.LastIndex(raw, ":")
+	if colon == -1 {
+		return "", fmt.Errorf("cannot extract host from SCP-style remote (no colon): %q", raw)
+	}
+	host := raw[:colon]
+	host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
+	// Strip IPv6 zone identifier (e.g. "::1%eth0" -> "::1") to prevent
+	// scoped addresses from bypassing the loopback check in ValidateHost.
+	if z := strings.IndexByte(host, '%'); z != -1 {
+		host = host[:z]
+	}
+	return host, nil
 }
