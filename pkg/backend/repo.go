@@ -175,12 +175,14 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 				err = errors.Join(err, rerr)
 			}
 
+			repoc <- nil
 			return err
 		}
 
 		r, err := d.CreateRepository(ctx, name, user, opts)
 		if err != nil {
 			d.logger.Error("failed to create repository", "err", err, "name", name)
+			repoc <- nil
 			return err
 		}
 
@@ -195,6 +197,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		rr, err := r.Open()
 		if err != nil {
 			d.logger.Error("failed to open repository", "err", err, "path", rp)
+			repoc <- nil
 			return err
 		}
 
@@ -320,6 +323,9 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 
 // DeleteUserRepositories deletes all user repositories.
 func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) error {
+	// Collect repo names inside a transaction, then delete outside it to avoid
+	// nested-transaction deadlock on SQLite.
+	var names []string
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		user, err := d.store.FindUserByUsername(ctx, tx, username)
 		if err != nil {
@@ -332,14 +338,18 @@ func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) e
 		}
 
 		for _, repo := range repos {
-			if err := d.DeleteRepository(ctx, repo.Name); err != nil {
-				return err
-			}
+			names = append(names, repo.Name)
 		}
 
 		return nil
 	}); err != nil {
 		return db.WrapError(err)
+	}
+
+	for _, name := range names {
+		if err := d.DeleteRepository(ctx, name); err != nil {
+			d.logger.Error("error deleting user repo", "repo", name, "err", err)
+		}
 	}
 
 	return nil

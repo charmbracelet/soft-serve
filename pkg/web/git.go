@@ -527,11 +527,13 @@ type flushResponseWriter struct {
 	http.ResponseWriter
 }
 
+const flushBufSize = 1024
+
 func (f *flushResponseWriter) ReadFrom(r io.Reader) (int64, error) {
 	flusher := http.NewResponseController(f.ResponseWriter)
 
 	var n int64
-	p := make([]byte, 1024)
+	p := make([]byte, flushBufSize)
 	for {
 		// Read first, then check error — a Read may return n > 0 bytes AND
 		// io.EOF simultaneously (per the io.Reader contract), so we must
@@ -736,10 +738,12 @@ func hdrNocache(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-cache, max-age=0, must-revalidate")
 }
 
+const oneYearSeconds = 31536000
+
 func hdrCacheForever(w http.ResponseWriter) {
 	now := time.Now().Unix()
-	expires := now + 31536000
+	expires := now + oneYearSeconds
 	w.Header().Set("Date", fmt.Sprintf("%d", now))
 	w.Header().Set("Expires", fmt.Sprintf("%d", expires))
-	w.Header().Set("Cache-Control", "public, max-age=31536000")
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", oneYearSeconds))
 }

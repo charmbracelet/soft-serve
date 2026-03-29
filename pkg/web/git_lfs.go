@@ -114,7 +114,8 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 			}
 
 			obj, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), o.Oid)
-			if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
+			objNotFound := errors.Is(err, db.ErrRecordNotFound)
+			if err != nil && !objNotFound {
 				logger.Error("error getting object from database", "oid", o.Oid, "repo", name, "err", err)
 				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
 					Message: "internal server error",
@@ -130,7 +131,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 						Message: "object not found",
 					},
 				})
-			} else if obj.Size != o.Size {
+			} else if !objNotFound && obj.Size != o.Size {
 				objects = append(objects, &lfs.ObjectResponse{
 					Pointer: o,
 					Error: &lfs.ObjectError{

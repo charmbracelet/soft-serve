@@ -125,6 +125,21 @@ func (*webhookStore) GetWebhookEventsByWebhookID(ctx context.Context, h db.Handl
 	return whes, err
 }
 
+// GetWebhookEventsByWebhookIDs implements store.WebhookStore.
+func (*webhookStore) GetWebhookEventsByWebhookIDs(ctx context.Context, h db.Handler, webhookIDs []int64) ([]models.WebhookEvent, error) {
+	if len(webhookIDs) == 0 {
+		return nil, nil
+	}
+	query, args, err := sqlx.In(`SELECT * FROM webhook_events WHERE webhook_id IN (?);`, webhookIDs)
+	if err != nil {
+		return nil, err
+	}
+	query = h.Rebind(query)
+	var whes []models.WebhookEvent
+	err = h.SelectContext(ctx, &whes, query, args...)
+	return whes, err
+}
+
 // GetWebhooksByRepoID implements store.WebhookStore.
 func (*webhookStore) GetWebhooksByRepoID(ctx context.Context, h db.Handler, repoID int64) ([]models.Webhook, error) {
 	query := h.Rebind(`SELECT * FROM webhooks WHERE repo_id = ?;`)

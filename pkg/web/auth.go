@@ -65,7 +65,11 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		return nil, ErrInvalidPassword
 	} else if username != "" {
 		// Try to authenticate using access token as the username
-		logger.Debug("trying to authenticate using access token as username", "username", username)
+		logUser := username
+		if len(logUser) > 8 {
+			logUser = logUser[:8] + "…"
+		}
+		logger.Debug("trying to authenticate using access token as username", "username", logUser)
 		user, err := be.UserByAccessToken(ctx, username)
 		if err == nil {
 			return user, nil

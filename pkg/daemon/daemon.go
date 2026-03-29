@@ -366,11 +366,11 @@ func (d *GitDaemon) closeListener() error {
 	if d.done.Load() {
 		return ErrServerClosed
 	}
-	var err error
+	var errs []error
 	d.liMu.Lock()
 	for _, l := range d.listeners {
-		if err = l.Close(); err != nil {
-			err = errors.Join(err, fmt.Errorf("close listener %s: %w", l.Addr(), err))
+		if err := l.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("close listener %s: %w", l.Addr(), err))
 		}
 	}
 	d.listeners = d.listeners[:0]
@@ -379,7 +379,7 @@ func (d *GitDaemon) closeListener() error {
 		d.done.Store(true)
 		close(d.finished)
 	})
-	return err
+	return errors.Join(errs...)
 }
 
 // Shutdown gracefully shuts down the daemon.

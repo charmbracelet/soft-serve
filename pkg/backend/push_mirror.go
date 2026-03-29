@@ -63,7 +63,7 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 		sem <- struct{}{} // acquire
 		go func(m models.PushMirror) {
 			defer func() { <-sem }() // release
-			mirrorCtx, cancel := context.WithTimeout(context.Background(), mirrorPushTimeout)
+			mirrorCtx, cancel := context.WithTimeout(ctx, mirrorPushTimeout)
 			defer cancel()
 			cmd := exec.CommandContext(mirrorCtx, "git", "push", "--mirror", m.RemoteURL)
 			cmd.Dir = repoPath
