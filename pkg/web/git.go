@@ -501,6 +501,9 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Handle gzip encoding
+	// Note: git-upload-pack body is not capped by MaxBytesReader — for read-only fetches this is
+	// acceptable since the client only negotiates which objects to send; the upload-pack protocol
+	// does not receive user-controlled blobs.
 	reader = r.Body
 	switch r.Header.Get("Content-Encoding") {
 	case "gzip":

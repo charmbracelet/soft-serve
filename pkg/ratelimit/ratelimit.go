@@ -14,12 +14,13 @@ import (
 
 // IPLimiter tracks one token-bucket limiter per source IP address.
 type IPLimiter struct {
-	mu      sync.Mutex
-	entries map[string]*ipEntry
-	r       rate.Limit
-	burst   int
-	ttl     time.Duration
-	done    chan struct{}
+	mu         sync.Mutex
+	entries    map[string]*ipEntry
+	r          rate.Limit
+	burst      int
+	ttl        time.Duration
+	done       chan struct{}
+	closeOnce  sync.Once
 }
 
 type ipEntry struct {
@@ -43,7 +44,7 @@ func New(r rate.Limit, burst int, ttl time.Duration) *IPLimiter {
 
 // Close stops the background cleanup goroutine.
 func (il *IPLimiter) Close() {
-	close(il.done)
+	il.closeOnce.Do(func() { close(il.done) })
 }
 
 // Allow returns true if the source IP is within its rate limit.
