@@ -15,7 +15,6 @@ import (
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/access"
-	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
@@ -308,23 +307,14 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	oid := mux.Vars(r)["oid"]
 	cfg := config.FromContext(ctx)
-	be := backend.FromContext(ctx)
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
 	repo := proto.RepositoryFromContext(ctx)
 	repoID := strconv.FormatInt(repo.ID(), 10)
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
-	name := mux.Vars(r)["repo"]
 
 	defer r.Body.Close() //nolint: errcheck
-	repo, err := be.Repository(ctx, name)
-	if err != nil {
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
-		return
-	}
 
 	// NOTE: Git LFS client will retry uploading the same object if there was a
 	// partial error, so we need to skip existing objects.

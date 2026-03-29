@@ -2,14 +2,14 @@ package backend
 
 import (
 	"context"
-	"net/url"
 	"os/exec"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/ssrf"
 )
 
 // AddPushMirror adds a push mirror to a repository.
@@ -49,28 +49,19 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 	const mirrorPushTimeout = 10 * time.Minute
 	const maxConcurrentPushes = 5
 	sem := make(chan struct{}, maxConcurrentPushes)
+	var wg sync.WaitGroup
 	for _, m := range mirrors {
 		if !m.Enabled {
 			continue
 		}
-		if u, err := url.Parse(m.RemoteURL); err == nil {
-			scheme := strings.ToLower(u.Scheme)
-			if scheme == "file" {
-				b.logger.Warn("push mirror: blocked file:// URL", "url", m.RemoteURL)
-				continue // skip this mirror
-			}
-			if scheme == "git" {
-				b.logger.Warn("push mirror: blocked git:// URL", "url", m.RemoteURL)
-				continue // skip this mirror
-			}
-			host := u.Hostname()
-			if host == "localhost" || host == "127.0.0.1" || host == "::1" {
-				b.logger.Warn("push mirror: blocked loopback address", "url", m.RemoteURL)
-				continue // skip this mirror
-			}
+		if err := ssrf.ValidateURL(m.RemoteURL); err != nil {
+			b.logger.Warn("push mirror: blocked URL", "url", m.RemoteURL, "err", err)
+			continue // skip this mirror
 		}
 		sem <- struct{}{} // acquire
+		wg.Add(1)
 		go func(m models.PushMirror) {
+			defer wg.Done()
 			defer func() { <-sem }() // release
 			mirrorCtx, cancel := context.WithTimeout(ctx, mirrorPushTimeout)
 			defer cancel()
@@ -83,4 +74,5 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			}
 		}(m)
 	}
+	wg.Wait()
 }

@@ -46,7 +46,12 @@ func NewSecureClient() *http.Client {
 					if len(ips) == 0 {
 						return nil, fmt.Errorf("no IP addresses found for host: %s", host)
 					}
-					ip = ips[0] // Use the first resolved IP address
+					for _, candidate := range ips {
+						if isPrivateOrInternal(candidate) {
+							return nil, fmt.Errorf("%w", ErrPrivateIP)
+						}
+					}
+					ip = ips[0]
 				}
 				if isPrivateOrInternal(ip) {
 					return nil, fmt.Errorf("%w", ErrPrivateIP)

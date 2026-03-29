@@ -2,7 +2,9 @@ package web
 
 import (
 	"context"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"charm.land/log/v2"
@@ -13,10 +15,28 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// realClientIP extracts the real client IP from the request.
+// It uses the leftmost value of X-Forwarded-For when present,
+// otherwise falls back to RemoteAddr (with port stripped).
+func realClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		// The leftmost IP is the original client.
+		if idx := strings.IndexByte(xff, ','); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
 func newRateLimitMiddleware(limiter *ratelimit.IPLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !limiter.Allow(r.RemoteAddr) {
+			if !limiter.Allow(realClientIP(r)) {
 				http.Error(w, "too many requests", http.StatusTooManyRequests)
 				return
 			}

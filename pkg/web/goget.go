@@ -94,7 +94,7 @@ func GoGetHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		goGetCounter.WithLabelValues(repo).Inc()
+		goGetCounter.WithLabelValues(sanitized).Inc()
 		return
 	}
 
