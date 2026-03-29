@@ -676,6 +676,10 @@ func sendFile(contentType string, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	if rel, err := filepath.Rel(dir, reqFile); err != nil || strings.HasPrefix(rel, "..") {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
 
 	f, err := os.Stat(reqFile)
 	if os.IsNotExist(err) {

@@ -50,6 +50,8 @@ func NewWorkPool(ctx context.Context, workers int, opts ...WorkPoolOption) *Work
 
 // Run starts the workers and waits for them to finish.
 func (wq *WorkPool) Run() {
+	var wg sync.WaitGroup
+
 	wq.work.Range(func(key, value any) bool {
 		id := key.(string)
 		fn := value.(func())
@@ -58,7 +60,9 @@ func (wq *WorkPool) Run() {
 			return false
 		}
 
+		wg.Add(1)
 		go func(id string, fn func()) {
+			defer wg.Done()
 			defer wq.sem.Release(1)
 			fn()
 			wq.work.Delete(id)
@@ -67,9 +71,7 @@ func (wq *WorkPool) Run() {
 		return true
 	})
 
-	if err := wq.sem.Acquire(wq.ctx, int64(wq.workers)); err != nil {
-		wq.logf("workpool: %v", err)
-	}
+	wg.Wait()
 }
 
 // Add adds a new job to the pool.

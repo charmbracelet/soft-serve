@@ -33,7 +33,7 @@ func (d *Backend) PostReceive(_ context.Context, _ io.Writer, _ io.Writer, repo 
 	// Sync .soft-serve.yaml metadata asynchronously so the push
 	// response is not blocked by DB writes or git tree reads.
 	go func() {
-		syncCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		syncCtx, cancel := context.WithTimeout(d.ctx, 30*time.Second)
 		defer cancel()
 		d.syncRepoMeta(syncCtx, repo)
 	}()

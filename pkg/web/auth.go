@@ -64,7 +64,8 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		if len(logUsername) > 20 {
 			logUsername = logUsername[:20] + "…"
 		}
-		logger.Error("invalid password or token", "username", logUsername, "err", err)
+		logger.Debug("invalid password or token detail", "username", logUsername, "err", err)
+		logger.Error("invalid credentials", "username", logUsername)
 		return nil, errInvalidPassword
 	} else if username != "" {
 		// Try to authenticate using access token as the username
