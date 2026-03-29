@@ -308,6 +308,9 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 		return err
 	}
 
+	// The user record is deleted in one transaction; repo deletions happen
+	// outside that transaction. There is a brief window where repos exist
+	// without an owner. This is accepted as a structural limitation.
 	// Delete each repository outside the user-deletion transaction to avoid
 	// nested-transaction issues (especially on SQLite).
 	var errs []error

@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"net/url"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -71,6 +72,13 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			defer cancel()
 			cmd := exec.CommandContext(mirrorCtx, "git", "push", "--mirror", m.RemoteURL)
 			cmd.Dir = repoPath
+			cmd.Env = []string{
+				"HOME=" + os.Getenv("HOME"),
+				"PATH=" + os.Getenv("PATH"),
+			}
+			if sshCmd := os.Getenv("GIT_SSH_COMMAND"); sshCmd != "" {
+				cmd.Env = append(cmd.Env, "GIT_SSH_COMMAND="+sshCmd)
+			}
 			if out, err := cmd.CombinedOutput(); err != nil {
 				b.logger.Warn("push-mirror: push failed", "repo", repo.Name(), "mirror", m.Name, "err", err, "output", string(out))
 			} else {

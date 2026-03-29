@@ -131,7 +131,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 
 // ImportRepository imports a repository from remote.
 // XXX: This a expensive operation and should be run in a goroutine.
-func (d *Backend) ImportRepository(_ context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
+func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
 		return nil, err
@@ -153,6 +153,10 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		return nil, task.ErrAlreadyStarted
 	}
 
+	// Note: there is a TOCTOU between the Exists check, filesystem stat, and
+	// manager.Add. The task manager's LoadOrStore provides atomic dedup for
+	// concurrent callers, so this is safe for correctness; the stat check is
+	// advisory only.
 	if _, err := os.Stat(rp); err == nil || os.IsExist(err) {
 		return nil, proto.ErrRepoExist
 	}
@@ -160,8 +164,12 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 	done := make(chan error, 1)
 	repoc := make(chan proto.Repository, 1)
 	d.logger.Info("importing repository", "name", name, "remote", remote, "path", rp)
-	d.manager.Add(tid, func(ctx context.Context) (err error) {
-		ctx = proto.WithUserContext(ctx, user)
+	// Use context.WithoutCancel so the import task outlives the HTTP request
+	// that initiated it, but still inherits values (e.g. logger, config) from
+	// the caller's context.
+	importCtx := context.WithoutCancel(ctx)
+	d.manager.Add(tid, func(_ context.Context) (err error) {
+		ctx := proto.WithUserContext(importCtx, user)
 
 		copts := git.CloneOptions{
 			Bare:   true,

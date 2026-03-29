@@ -12,7 +12,13 @@ import (
 
 // CreateAccessToken creates an access token for user.
 func (b *Backend) CreateAccessToken(ctx context.Context, user proto.User, name string, expiresAt time.Time) (string, error) {
-	token := GenerateToken()
+	token, err := GenerateToken()
+	if err != nil {
+		return "", err
+	}
+	if token == "" {
+		return "", errors.New("generated token is empty")
+	}
 	tokenHash := HashToken(token)
 	name = utils.Sanitize(name)
 

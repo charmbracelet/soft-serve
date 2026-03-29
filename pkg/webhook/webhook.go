@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/git"
@@ -101,7 +102,13 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 
 	res, reqErr := do(ctx, w.URL, http.MethodPost, headers, strings.NewReader(reqBody))
 	var reqHeaders string
-	for k, v := range headers {
+	headerKeys := make([]string, 0, len(headers))
+	for k := range headers {
+		headerKeys = append(headerKeys, k)
+	}
+	sort.Strings(headerKeys)
+	for _, k := range headerKeys {
+		v := headers[k]
 		reqHeaders += k + ": " + strings.Join(v, ", ") + "\n"
 	}
 
