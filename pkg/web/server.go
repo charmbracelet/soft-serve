@@ -13,16 +13,16 @@ import (
 	"golang.org/x/time/rate"
 )
 
-var httpLimiter = ratelimit.New(rate.Limit(100), 200, 10*time.Minute)
-
-func rateLimitMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !httpLimiter.Allow(r.RemoteAddr) {
-			http.Error(w, "too many requests", http.StatusTooManyRequests)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+func newRateLimitMiddleware(limiter *ratelimit.IPLimiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !limiter.Allow(r.RemoteAddr) {
+				http.Error(w, "too many requests", http.StatusTooManyRequests)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // securityHeadersMiddleware sets defensive HTTP response headers.
@@ -50,6 +50,7 @@ func NewRouter(ctx context.Context) http.Handler {
 	router.PathPrefix("/").HandlerFunc(renderNotFound)
 
 	cfg := config.FromContext(ctx)
+	httpLimiter := ratelimit.New(rate.Limit(100), 200, 10*time.Minute)
 
 	// Context handler
 	// Adds context to the request
@@ -58,8 +59,8 @@ func NewRouter(ctx context.Context) http.Handler {
 	h = gitSuffixMiddleware(cfg)(h)
 	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
-	h = rateLimitMiddleware(h)
 	h = securityHeadersMiddleware(h)
+	h = newRateLimitMiddleware(httpLimiter)(h)
 
 	h = handlers.CORS(handlers.AllowedHeaders(cfg.HTTP.CORS.AllowedHeaders),
 		handlers.AllowedOrigins(cfg.HTTP.CORS.AllowedOrigins),

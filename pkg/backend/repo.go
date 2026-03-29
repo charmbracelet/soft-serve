@@ -186,26 +186,23 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 			return err
 		}
 
-		defer func() {
-			if err != nil {
-				if rerr := d.DeleteRepository(ctx, name); rerr != nil {
-					d.logger.Error("failed to delete repository", "err", rerr, "name", name)
-				}
-			}
-		}()
-
 		rr, err := r.Open()
 		if err != nil {
 			d.logger.Error("failed to open repository", "err", err, "path", rp)
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
 			repoc <- nil
 			return err
 		}
 
-		repoc <- r
-
 		rcfg, err := rr.Config()
 		if err != nil {
 			d.logger.Error("failed to get repository config", "err", err, "path", rp)
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
+			repoc <- nil
 			return err
 		}
 
@@ -218,26 +215,40 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 
 		if err := rr.SetConfig(rcfg); err != nil {
 			d.logger.Error("failed to set repository config", "err", err, "path", rp)
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
+			repoc <- nil
 			return err
 		}
 
 		ep, err := lfs.NewEndpoint(endpoint)
 		if err != nil {
 			d.logger.Error("failed to create lfs endpoint", "err", err, "path", rp)
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
+			repoc <- nil
 			return err
 		}
 
 		client := lfs.NewClient(ep)
 		if client == nil {
 			d.logger.Warn("failed to create lfs client: unsupported endpoint", "endpoint", endpoint)
+			repoc <- r
 			return nil
 		}
 
 		if err := StoreRepoMissingLFSObjects(ctx, r, d.db, d.store, client); err != nil {
 			d.logger.Error("failed to store missing lfs objects", "err", err, "path", rp)
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
+			repoc <- nil
 			return err
 		}
 
+		repoc <- r
 		return nil
 	})
 

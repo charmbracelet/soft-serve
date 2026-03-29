@@ -282,8 +282,18 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var size int64
+	if obj.ID != 0 {
+		size = obj.Size
+	} else {
+		if stat, err := strg.Stat(path.Join("objects", pointer.RelativePath())); err == nil {
+			size = stat.Size()
+		}
+	}
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Length", strconv.FormatInt(obj.Size, 10))
+	if size > 0 {
+		w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	}
 	defer f.Close() //nolint: errcheck
 	if _, err := io.Copy(w, f); err != nil {
 		logger.Error("error copying object to response", "oid", oid, "err", err)
