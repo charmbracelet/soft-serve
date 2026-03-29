@@ -137,6 +137,10 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 
 	rp := filepath.Join(d.repoPath(name))
 
+	if d.manager == nil {
+		return nil, fmt.Errorf("import repository: no manager configured")
+	}
+
 	tid := "import:" + name
 	if d.manager.Exists(tid) {
 		return nil, task.ErrAlreadyStarted

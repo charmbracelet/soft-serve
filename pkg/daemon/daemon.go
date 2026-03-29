@@ -59,6 +59,7 @@ type GitDaemon struct {
 	listeners []net.Listener
 	liMu      sync.Mutex
 	limiter   *ratelimit.IPLimiter
+	ipConns   sync.Map // map[string]*int32 — active connections per IP
 }
 
 // NewGitDaemon returns a new Git daemon.
@@ -135,8 +136,24 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 			continue
 		}
 
+		// Per-IP connection cap: reject IPs with >= 10 concurrent connections.
+		const maxConnsPerIP = 10
+		remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+		if remoteIP == "" {
+			remoteIP = conn.RemoteAddr().String()
+		}
+		val, _ := d.ipConns.LoadOrStore(remoteIP, new(int32))
+		ipCount := val.(*int32)
+		if atomic.AddInt32(ipCount, 1) > maxConnsPerIP {
+			atomic.AddInt32(ipCount, -1)
+			d.logger.Debugf("git: per-IP connection limit reached, closing %s", conn.RemoteAddr())
+			d.fatal(conn, git.ErrMaxConnections)
+			continue
+		}
+
 		d.wg.Add(1)
 		go func() {
+			defer atomic.AddInt32(ipCount, -1)
 			d.handleClient(conn)
 			d.wg.Done()
 		}()

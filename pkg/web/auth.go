@@ -20,7 +20,7 @@ func authenticate(r *http.Request) (proto.User, error) {
 	// Prefer the Authorization header
 	user, err := parseAuthHdr(r)
 	if err != nil || user == nil {
-		if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+		if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
 			return nil, err
 		}
 		return nil, proto.ErrUserNotFound
@@ -29,8 +29,8 @@ func authenticate(r *http.Request) (proto.User, error) {
 	return user, nil
 }
 
-// ErrInvalidPassword is returned when the password is invalid.
-var ErrInvalidPassword = errors.New("invalid password")
+// errInvalidPassword is returned when the password is invalid.
+var errInvalidPassword = errors.New("invalid password")
 
 // dummyHash is a bcrypt hash used to equalize timing when user doesn't exist.
 // This prevents username enumeration via timing differences.
@@ -45,7 +45,7 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		if err != nil {
 			// Run a dummy bcrypt comparison to prevent username enumeration via timing.
 			_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
-			return nil, ErrInvalidPassword
+			return nil, errInvalidPassword
 		}
 		if user != nil && backend.VerifyPassword(password, user.Password()) {
 			return user, nil
@@ -62,7 +62,7 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 			logUsername = logUsername[:20] + "…"
 		}
 		logger.Error("invalid password or token", "username", logUsername, "err", err)
-		return nil, ErrInvalidPassword
+		return nil, errInvalidPassword
 	} else if username != "" {
 		// Try to authenticate using access token as the username
 		logUser := username
@@ -76,20 +76,20 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		}
 
 		logger.Error("failed to get user", "err", err)
-		return nil, ErrInvalidToken
+		return nil, errInvalidToken
 	}
 
 	return nil, proto.ErrUserNotFound
 }
 
-// ErrInvalidHeader is returned when the authorization header is invalid.
-var ErrInvalidHeader = errors.New("invalid authorization header")
+// errInvalidHeader is returned when the authorization header is invalid.
+var errInvalidHeader = errors.New("invalid authorization header")
 
 func parseAuthHdr(r *http.Request) (proto.User, error) {
 	// Check for auth header
 	header := r.Header.Get("Authorization")
 	if header == "" {
-		return nil, ErrInvalidHeader
+		return nil, errInvalidHeader
 	}
 
 	ctx := r.Context()
@@ -141,15 +141,15 @@ func parseAuthHdr(r *http.Request) (proto.User, error) {
 	default:
 		username, password, ok := r.BasicAuth()
 		if !ok {
-			return nil, ErrInvalidHeader
+			return nil, errInvalidHeader
 		}
 
 		return parseUsernamePassword(ctx, username, password)
 	}
 }
 
-// ErrInvalidToken is returned when a token is invalid.
-var ErrInvalidToken = errors.New("invalid token")
+// errInvalidToken is returned when a token is invalid.
+var errInvalidToken = errors.New("invalid token")
 
 func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error) {
 	cfg := config.FromContext(ctx)
@@ -177,12 +177,12 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 	)
 	if err != nil {
 		logger.Error("failed to parse jwt", "err", err)
-		return nil, ErrInvalidToken
+		return nil, errInvalidToken
 	}
 
 	claims, ok := token.Claims.(*jwt.RegisteredClaims)
 	if !token.Valid || !ok {
-		return nil, ErrInvalidToken
+		return nil, errInvalidToken
 	}
 
 	return claims, nil

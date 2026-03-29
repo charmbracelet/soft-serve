@@ -274,7 +274,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		user, err := authenticate(r)
 		if err != nil {
 			switch {
-			case errors.Is(err, ErrInvalidToken):
+			case errors.Is(err, errInvalidToken):
 			case errors.Is(err, proto.ErrUserNotFound):
 			default:
 				logger.Error("failed to authenticate", "err", err)
@@ -343,7 +343,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				// If the repo doesn't exist, return 404
 				renderNotFound(w, r)
 				return
-			} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+			} else if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
 				// return 403 when bad credentials are provided
 				renderForbidden(w, r)
 				return
@@ -398,7 +398,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 					renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
 						Message: "repository not found",
 					})
-				} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+				} else if errors.Is(err, errInvalidToken) || errors.Is(err, errInvalidPassword) {
 					renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
 						Message: "bad credentials",
 					})
@@ -416,7 +416,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		case r.URL.Query().Get("go-get") == "1" && (accessLevel >= access.ReadOnlyAccess || cfg.AllowPublicGoGet):
 			// Allow go-get requests to passthrough.
 			break
-		case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrInvalidPassword):
+		case errors.Is(err, errInvalidToken), errors.Is(err, errInvalidPassword):
 			// return 403 when bad credentials are provided
 			renderForbidden(w, r)
 			return
