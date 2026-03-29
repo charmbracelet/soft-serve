@@ -105,6 +105,18 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	// browsers reject Access-Control-Allow-Credentials: true when the origin
 	// is "*". Operators who need credentialed cross-origin access must specify
 	// explicit origins in the CORS config.
+	for _, origin := range cfg.HTTP.CORS.AllowedOrigins {
+		if origin == "*" {
+			for _, header := range cfg.HTTP.CORS.AllowedHeaders {
+				if strings.EqualFold(header, "Authorization") {
+					logger.Warn("CORS: wildcard AllowedOrigins with Authorization in AllowedHeaders — " +
+						"any origin can trigger credentialless requests; consider restricting AllowedOrigins")
+					break
+				}
+			}
+			break
+		}
+	}
 	h = handlers.CORS(handlers.AllowedHeaders(cfg.HTTP.CORS.AllowedHeaders),
 		handlers.AllowedOrigins(cfg.HTTP.CORS.AllowedOrigins),
 		handlers.AllowedMethods(cfg.HTTP.CORS.AllowedMethods),

@@ -150,7 +150,8 @@ func parseAuthHdr(r *http.Request) (proto.User, error) {
 			return nil, err
 		}
 
-		// Find the user
+		// Find the user. Subject is "<username>#<id>"; the '#' separator is
+		// safe because ValidateUsername disallows '#' in usernames.
 		parts := strings.SplitN(claims.Subject, "#", 2)
 		if len(parts) != 2 {
 			logger.Error("invalid jwt subject", "subject", claims.Subject)

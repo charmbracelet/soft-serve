@@ -707,8 +707,15 @@ func sendFile(contentType string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, err := os.Stat(reqFile)
+	// Use Lstat to avoid following symlinks. Symlinks inside a git
+	// repository's info/ or objects/ directories are unexpected and
+	// could point outside the repository root.
+	f, err := os.Lstat(reqFile)
 	if os.IsNotExist(err) {
+		renderNotFound(w, r)
+		return
+	}
+	if f.Mode()&os.ModeSymlink != 0 {
 		renderNotFound(w, r)
 		return
 	}
