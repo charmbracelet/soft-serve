@@ -138,7 +138,9 @@ func (b *Backend) UpdateWebhook(ctx context.Context, repo proto.Repository, id i
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 
-	// Validate webhook URL to prevent SSRF attacks
+	// Sanitize and validate webhook URL — mirrors CreateWebhook which also
+	// calls utils.Sanitize before ValidateWebhookURL.
+	url = utils.Sanitize(url)
 	if err := webhook.ValidateWebhookURL(url); err != nil {
 		return err
 	}

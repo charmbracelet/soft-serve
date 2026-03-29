@@ -348,6 +348,10 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	datastore := store.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
 	repo := proto.RepositoryFromContext(ctx)
+	if repo == nil {
+		renderStatus(http.StatusNotFound)(w, r)
+		return
+	}
 	repoID := strconv.FormatInt(repo.ID(), 10)
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
 
