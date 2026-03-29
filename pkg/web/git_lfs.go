@@ -54,9 +54,16 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close() //nolint: errcheck
 	if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
 		logger.Errorf("error decoding json: %s", err)
-		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{
-			Message: "invalid request body",
-		})
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			renderJSON(w, r, http.StatusRequestEntityTooLarge, lfs.ErrorResponse{
+				Message: "request body too large",
+			})
+		} else {
+			renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+				Message: "invalid request body",
+			})
+		}
 		return
 	}
 
