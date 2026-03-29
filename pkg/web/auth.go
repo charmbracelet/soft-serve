@@ -139,7 +139,8 @@ func parseAuthHdr(r *http.Request) (proto.User, error) {
 	case "token":
 		user, err := be.UserByAccessToken(ctx, parts[1])
 		if err != nil {
-			logger.Error("failed to get user", "err", err)
+			// Use Debug to avoid logging token material at Error level.
+			logger.Debug("failed to get user by access token", "err", err)
 			return nil, err
 		}
 

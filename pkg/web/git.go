@@ -465,12 +465,6 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		gitHttpReceiveCounter.WithLabelValues(repoName).Inc()
 	}
 
-	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-result", service))
-	w.Header().Set("Connection", "Keep-Alive")
-	w.Header().Set("Transfer-Encoding", "chunked")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(http.StatusOK)
-
 	gitProtocol := r.Header.Get("Git-Protocol")
 	// Sanitize: reject any control characters to prevent env var injection.
 	for _, c := range gitProtocol {
@@ -524,7 +518,8 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, maxUploadPackSize)
 	}
 
-	// Handle gzip encoding
+	// Handle gzip encoding before committing to 200 OK so we can still
+	// return an error status if the gzip stream is malformed.
 	reader = r.Body
 	switch r.Header.Get("Content-Encoding") {
 	case "gzip":
@@ -541,6 +536,14 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 			reader = io.NopCloser(io.LimitReader(gzReader, maxUploadPackSize))
 		}
 	}
+
+	// WriteHeader is deferred until after all request parsing so that
+	// parsing errors (e.g. bad gzip stream above) can return a non-200 status.
+	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-result", service))
+	w.Header().Set("Connection", "Keep-Alive")
+	w.Header().Set("Transfer-Encoding", "chunked")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusOK)
 
 	cmd.Stdin = reader
 	cmd.Stdout = &flushResponseWriter{w}

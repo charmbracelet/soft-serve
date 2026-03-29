@@ -130,19 +130,35 @@ func (*webhookStore) GetWebhookEventsByWebhookID(ctx context.Context, h db.Handl
 	return whes, err
 }
 
+// sqliteMaxPlaceholders is the maximum number of placeholders SQLite allows in
+// a single query (SQLITE_MAX_VARIABLE_NUMBER, default 999). We batch queries
+// larger than this to stay within the limit on both SQLite and PostgreSQL.
+const sqliteMaxPlaceholders = 999
+
 // GetWebhookEventsByWebhookIDs implements store.WebhookStore.
 func (*webhookStore) GetWebhookEventsByWebhookIDs(ctx context.Context, h db.Handler, webhookIDs []int64) ([]models.WebhookEvent, error) {
 	if len(webhookIDs) == 0 {
 		return nil, nil
 	}
-	query, args, err := sqlx.In(`SELECT * FROM webhook_events WHERE webhook_id IN (?);`, webhookIDs)
-	if err != nil {
-		return nil, err
+	var all []models.WebhookEvent
+	for i := 0; i < len(webhookIDs); i += sqliteMaxPlaceholders {
+		end := i + sqliteMaxPlaceholders
+		if end > len(webhookIDs) {
+			end = len(webhookIDs)
+		}
+		batch := webhookIDs[i:end]
+		query, args, err := sqlx.In(`SELECT * FROM webhook_events WHERE webhook_id IN (?);`, batch)
+		if err != nil {
+			return nil, err
+		}
+		query = h.Rebind(query)
+		var whes []models.WebhookEvent
+		if err := h.SelectContext(ctx, &whes, query, args...); err != nil {
+			return nil, err
+		}
+		all = append(all, whes...)
 	}
-	query = h.Rebind(query)
-	var whes []models.WebhookEvent
-	err = h.SelectContext(ctx, &whes, query, args...)
-	return whes, err
+	return all, nil
 }
 
 // GetWebhooksByRepoID implements store.WebhookStore.

@@ -152,8 +152,11 @@ func (m *Manager) Run(id string, done chan<- error) {
 		// concurrent waiter on <-p.ctx.Done() sees completed=true and
 		// returns nil rather than ctx.Err() for a successfully-finished task.
 		p.completed.Store(true)
-		// No re-store: m.m already holds p; delete after storing the result.
-		m.m.Delete(id)
+		// Deliver the result first, then remove from map. A concurrent
+		// Run() arriving between Delete and done<-err would get ErrNotFound;
+		// by deleting after the send, any such caller simply misses this task
+		// (it has already completed) rather than observing an inconsistent state.
 		done <- err
+		m.m.Delete(id)
 	}
 }
