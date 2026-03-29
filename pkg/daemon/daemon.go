@@ -174,7 +174,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(d.ctx)
 	idleTimeout := time.Duration(d.cfg.Git.IdleTimeout) * time.Second
 	c := &serverConn{
 		Conn:          conn,
@@ -291,6 +291,9 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		}
 
 		if _, err := d.be.Repository(ctx, repo); err != nil {
+			// Note: returning ErrInvalidRepo for non-existent repos leaks repo names to
+			// unauthenticated clients. A future improvement would return a uniform
+			// ErrNotAuthed regardless of whether the repo exists.
 			d.fatal(c, git.ErrInvalidRepo)
 			return
 		}

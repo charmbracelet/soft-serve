@@ -119,7 +119,7 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 	if res != nil {
 		resStatus = res.StatusCode
 		for k, v := range res.Header {
-			resHeaders += k + ": " + v[0] + "\n"
+			resHeaders += k + ": " + strings.Join(v, ", ") + "\n"
 		}
 
 		if res.Body != nil {
