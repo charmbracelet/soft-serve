@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/charmbracelet/soft-serve/git"
@@ -194,19 +193,9 @@ func (d *Backend) Update(ctx context.Context, _ io.Writer, _ io.Writer, repo str
 func (d *Backend) PostUpdate(ctx context.Context, _ io.Writer, _ io.Writer, repo string, args ...string) {
 	d.logger.Debug("post-update hook called", "repo", repo, "args", args)
 
-	var wg sync.WaitGroup
-
-	// Populate last-modified file.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := populateLastModified(ctx, d, repo); err != nil {
-			d.logger.Error("error populating last-modified", "repo", repo, "err", err)
-			return
-		}
-	}()
-
-	wg.Wait()
+	if err := populateLastModified(ctx, d, repo); err != nil {
+		d.logger.Error("error populating last-modified", "repo", repo, "err", err)
+	}
 }
 
 func populateLastModified(ctx context.Context, d *Backend, name string) error {

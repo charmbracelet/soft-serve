@@ -116,8 +116,9 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 			return err
 		}
 
-		// Close connection if there are too many open connections.
-		if d.conns.Size()+1 >= d.cfg.Git.MaxConnections {
+		// Close connection if we are already at the configured limit.
+		// Using >= (not >) ensures MaxConnections is the inclusive cap.
+		if d.conns.Size() >= d.cfg.Git.MaxConnections {
 			d.logger.Debugf("git: max connections reached, closing %s", conn.RemoteAddr())
 			d.fatal(conn, git.ErrMaxConnections)
 			continue

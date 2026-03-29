@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"strings"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
@@ -41,15 +42,19 @@ func (*webhookStore) CreateWebhookDelivery(ctx context.Context, h db.Handler, id
 
 // CreateWebhookEvents implements store.WebhookStore.
 func (*webhookStore) CreateWebhookEvents(ctx context.Context, h db.Handler, webhookID int64, events []int) error {
-	query := h.Rebind(`INSERT INTO webhook_events (webhook_id, event)
-			VALUES (?, ?);`)
-	for _, event := range events {
-		_, err := h.ExecContext(ctx, query, webhookID, event)
-		if err != nil {
-			return err
-		}
+	if len(events) == 0 {
+		return nil
 	}
-	return nil
+	// Bulk INSERT to avoid N round-trips for webhooks with many events.
+	placeholders := make([]string, len(events))
+	args := make([]interface{}, 0, len(events)*2)
+	for i, event := range events {
+		placeholders[i] = "(?, ?)"
+		args = append(args, webhookID, event)
+	}
+	query := h.Rebind(`INSERT INTO webhook_events (webhook_id, event) VALUES ` + strings.Join(placeholders, ", "))
+	_, err := h.ExecContext(ctx, query, args...)
+	return err
 }
 
 // DeleteWebhookByID implements store.WebhookStore.
