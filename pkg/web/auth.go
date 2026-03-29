@@ -51,8 +51,10 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		if err != nil {
 			// Run a dummy bcrypt comparison to prevent username enumeration via timing.
 			_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
-			// Timing equalization is best-effort. The DB query has variable latency,
-			// so this is not a constant-time guarantee but reduces the timing gap.
+			// Timing equalization is best-effort: both the "user found" and "user not found"
+			// paths perform one DB lookup and one bcrypt comparison. However, DB query latency
+			// is variable and not constant-time, so this does not provide strong enumeration
+			// resistance — it only reduces the bcrypt-timing gap.
 			// Also attempt token lookup so the not-found and wrong-password paths
 			// do the same amount of work.
 			_, _ = be.UserByAccessToken(ctx, password)

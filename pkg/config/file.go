@@ -119,6 +119,12 @@ http:
   # Only enable this when the server sits behind a trusted reverse proxy.
   # trust_proxy_headers: false
 
+  # Maximum HTTP requests per second per IP address. Set to 0 to disable.
+  # rate_limit: 10
+
+  # Maximum burst size for the HTTP rate limiter.
+  # rate_burst: 30
+
   # The cross-origin request security options
   cors:
     # The allowed cross-origin headers

@@ -80,8 +80,7 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	router.PathPrefix("/").HandlerFunc(renderNotFound)
 
 	cfg := config.FromContext(ctx)
-	// TODO: expose HTTP rate-limit parameters in HTTPConfig for operator tuning
-	httpLimiter := ratelimit.New(rate.Limit(100), 200, 10*time.Minute)
+	httpLimiter := ratelimit.New(rate.Limit(cfg.HTTP.RateLimit), cfg.HTTP.RateBurst, 10*time.Minute)
 
 	// Context handler
 	// Adds context to the request
@@ -93,8 +92,9 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	h = securityHeadersMiddleware(cfg)(h)
 	h = newRateLimitMiddleware(httpLimiter, cfg.HTTP.TrustProxyHeaders)(h)
 
-	// CORS wraps the rate limiter so that OPTIONS preflight requests receive
-	// CORS headers before potentially being rate-limited.
+	// Note: CORS middleware wraps the rate limiter, so OPTIONS preflight requests
+	// receive CORS headers without consuming rate-limit tokens. This is intentional
+	// to avoid throttling legitimate browsers, but means OPTIONS flood is not limited.
 	h = handlers.CORS(handlers.AllowedHeaders(cfg.HTTP.CORS.AllowedHeaders),
 		handlers.AllowedOrigins(cfg.HTTP.CORS.AllowedOrigins),
 		handlers.AllowedMethods(cfg.HTTP.CORS.AllowedMethods),

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"mime"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -121,10 +122,10 @@ func getRawBlob(w http.ResponseWriter, r *http.Request) {
 	// block must itself be safe to serve without further sanitisation.
 	if r.Header.Get("Accept") == "application/octet-stream" {
 		contentType = "application/octet-stream"
-		// Build a safe filename for Content-Disposition per RFC 6266 §4.3:
-		//  - strip ASCII control characters (0x00-0x1F, 0x7F) to prevent
-		//    response-header injection via crafted filenames
-		//  - escape embedded double-quotes
+		// Build a safe filename for Content-Disposition per RFC 6266 §4.3 and
+		// RFC 5987: strip ASCII control characters to prevent header injection,
+		// then emit both filename= (ASCII fallback) and filename*= (RFC 5987)
+		// forms so all clients get the correct name.
 		rawName := filepath.Base(filePath)
 		safeName := strings.Map(func(r rune) rune {
 			if r < 0x20 || r == 0x7F {
@@ -132,8 +133,26 @@ func getRawBlob(w http.ResponseWriter, r *http.Request) {
 			}
 			return r
 		}, rawName)
-		safeName = strings.ReplaceAll(safeName, `"`, `\"`)
-		w.Header().Set("Content-Disposition", `attachment; filename="`+safeName+`"`)
+		asciiName := strings.ReplaceAll(safeName, `"`, `\"`)
+		// Check whether the name is pure ASCII (no code point above 0x7E).
+		isASCII := true
+		for _, r := range safeName {
+			if r > 0x7E {
+				isASCII = false
+				break
+			}
+		}
+		if isASCII {
+			w.Header().Set("Content-Disposition", `attachment; filename="`+asciiName+`"`)
+		} else {
+			// RFC 5987 encoded filename: UTF-8''<percent-encoded>.
+			// url.PathEscape percent-encodes all non-unreserved characters except '/'.
+			// Replace any literal '/' that might appear in a segment (shouldn't
+			// after filepath.Base, but be safe).
+			encoded := strings.ReplaceAll(url.PathEscape(safeName), "/", "%2F")
+			w.Header().Set("Content-Disposition",
+				`attachment; filename="`+asciiName+`"; filename*=UTF-8''`+encoded)
+		}
 	}
 
 	// Mutable refs (branch names, tags) must not be cached by proxies.
