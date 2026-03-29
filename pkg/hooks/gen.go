@@ -3,11 +3,11 @@ package hooks
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"text/template"
 
-	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 )
@@ -35,6 +35,7 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 		return err
 	}
 
+	var errs []error
 	for _, hook := range []string{
 		PreReceiveHook,
 		UpdateHook,
@@ -49,13 +50,15 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 
 		// Write the hooks primary script
 		if err := os.WriteFile(hp, []byte(hookTemplate), os.ModePerm); err != nil { //nolint:gosec
-			return err
+			errs = append(errs, err)
+			continue
 		}
 
 		// Create ${hook}.d directory.
 		hp += ".d"
 		if err := os.MkdirAll(hp, os.ModePerm); err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 
 		switch hook {
@@ -74,20 +77,18 @@ func GenerateHooks(_ context.Context, cfg *config.Config, repo string) error {
 			Hook:       hook,
 			Args:       args,
 		}); err != nil {
-			log.WithPrefix("hooks").Error("failed to execute hook template", "err", err)
+			errs = append(errs, err)
 			continue
 		}
 
 		// Write the soft-serve hook inside ${hook}.d directory.
 		hp = filepath.Join(hp, "soft-serve")
-		err := os.WriteFile(hp, data.Bytes(), os.ModePerm) //nolint:gosec
-		if err != nil {
-			log.WithPrefix("hooks").Error("failed to write hook", "err", err)
-			continue
+		if err := os.WriteFile(hp, data.Bytes(), os.ModePerm); err != nil { //nolint:gosec
+			errs = append(errs, err)
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 const (

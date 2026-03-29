@@ -283,7 +283,17 @@ func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.
 		d.manager.Run(tid, done)
 	}()
 
-	return <-repoc, <-done
+	// Both channels are buffered (cap 1). In the normal path p.fn sends to
+	// repoc before returning, then Run delivers to done. In the cancellation
+	// path Run sends to done before p.fn has had a chance to send to repoc;
+	// blocking on <-repoc first would deadlock until the import goroutine
+	// eventually completes. Use select to handle whichever arrives first.
+	select {
+	case r := <-repoc:
+		return r, <-done
+	case err := <-done:
+		return nil, err
+	}
 }
 
 // DeleteRepository deletes a repository.
