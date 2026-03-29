@@ -28,7 +28,7 @@ func collabAddCommand() *cobra.Command {
 		Short:             "Add a collaborator to a repo",
 		Long:              "Add a collaborator to a repo. LEVEL can be one of: no-access, read-only, read-write, or admin-access. Defaults to read-write.",
 		Args:              cobra.RangeArgs(2, 3),
-		PersistentPreRunE: checkIfReadableAndCollab,
+		PersistentPreRunE: checkIfAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)

@@ -55,7 +55,7 @@ func GoGetHandler(w http.ResponseWriter, r *http.Request) {
 		repo := repo
 		importRoot, err := url.Parse(cfg.HTTP.PublicURL)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 

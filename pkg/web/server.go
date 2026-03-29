@@ -3,12 +3,27 @@ package web
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/config"
+	"github.com/charmbracelet/soft-serve/pkg/ratelimit"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"golang.org/x/time/rate"
 )
+
+var httpLimiter = ratelimit.New(rate.Limit(100), 200, 10*time.Minute)
+
+func rateLimitMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !httpLimiter.Allow(r.RemoteAddr) {
+			http.Error(w, "too many requests", http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 // securityHeadersMiddleware sets defensive HTTP response headers.
 func securityHeadersMiddleware(next http.Handler) http.Handler {
@@ -43,6 +58,7 @@ func NewRouter(ctx context.Context) http.Handler {
 	h = gitSuffixMiddleware(cfg)(h)
 	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
+	h = rateLimitMiddleware(h)
 	h = securityHeadersMiddleware(h)
 
 	h = handlers.CORS(handlers.AllowedHeaders(cfg.HTTP.CORS.AllowedHeaders),
