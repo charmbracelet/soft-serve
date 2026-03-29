@@ -335,6 +335,14 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	oid := mux.Vars(r)["oid"]
+
+	// Validate OID explicitly for defence-in-depth (route regex already
+	// constrains it, but this guards against future route-regex relaxation).
+	if !lfsOidPattern.MatchString(oid) {
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{Message: "invalid oid format"})
+		return
+	}
+
 	cfg := config.FromContext(ctx)
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)

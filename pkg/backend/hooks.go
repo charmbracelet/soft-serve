@@ -95,7 +95,12 @@ func (d *Backend) syncRepoMeta(ctx context.Context, repo string, user proto.User
 	}
 
 	if meta.Description != "" {
-		if err := d.SetDescription(ctx, repo, meta.Description); err != nil {
+		const maxDescLen = 2048
+		desc := meta.Description
+		if runes := []rune(desc); len(runes) > maxDescLen {
+			desc = string(runes[:maxDescLen])
+		}
+		if err := d.SetDescription(ctx, repo, desc); err != nil {
 			d.logger.Warnf("post-receive: set description: %v", err)
 		}
 	}
