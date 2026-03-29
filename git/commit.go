@@ -9,10 +9,14 @@ import (
 // ZeroID is the zero hash.
 const ZeroID = git.EmptyID
 
+// zeroHashPattern matches an all-zero SHA-1 (40 hex zeros) or SHA-256
+// (64 hex zeros) object ID. Compiled once at package init to avoid repeated
+// allocations in hot paths such as webhook delivery and hook arg processing.
+var zeroHashPattern = regexp.MustCompile(`^0{40,}$`)
+
 // IsZeroHash returns whether the hash is a zero hash.
 func IsZeroHash(h string) bool {
-	pattern := regexp.MustCompile(`^0{40,}$`)
-	return pattern.MatchString(h)
+	return zeroHashPattern.MatchString(h)
 }
 
 // Commit is a wrapper around git.Commit with helper methods.

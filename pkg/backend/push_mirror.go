@@ -70,8 +70,22 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
 				continue
 			}
-		} else if err != nil || u.Scheme == "" {
-			// SCP-style remote (e.g. git@host:repo) — extract host before ':'.
+		} else if err != nil {
+			// url.Parse returned an error — treat as SCP-style remote.
+			raw := m.RemoteURL
+			if at := strings.LastIndex(raw, "@"); at != -1 {
+				raw = raw[at+1:]
+			}
+			if colon := strings.LastIndex(raw, ":"); colon != -1 {
+				host := raw[:colon]
+				host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
+				if ssrfErr := ssrf.ValidateHost(host); ssrfErr != nil {
+					b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
+					continue
+				}
+			}
+		} else if u.Scheme == "" {
+			// No scheme — treat as SCP-style remote (e.g. git@host:repo).
 			raw := m.RemoteURL
 			if at := strings.LastIndex(raw, "@"); at != -1 {
 				raw = raw[at+1:]

@@ -109,7 +109,7 @@ func (m *Manager) Run(id string, done chan<- error) {
 	}
 
 	p.started.Store(true)
-	m.m.Store(id, p)
+	// m.m already holds p from Add; no re-store needed here.
 	defer p.cancel()
 	defer m.m.Delete(id)
 
