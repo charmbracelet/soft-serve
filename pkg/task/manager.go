@@ -106,7 +106,10 @@ func (m *Manager) Run(id string, done chan<- error) {
 			return
 		}
 
-		done <- p.ctx.Err()
+		// p.err == nil: task completed successfully; p.cancel() fired after fn
+		// returned. Return nil so callers distinguish clean completion from a
+		// context cancellation caused by Stop() or manager shutdown.
+		done <- nil
 		return
 	}
 

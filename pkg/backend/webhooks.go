@@ -188,8 +188,10 @@ func (b *Backend) UpdateWebhook(ctx context.Context, repo proto.Repository, id i
 			}
 		}
 
-		if err := datastore.CreateWebhookEvents(ctx, tx, id, newEvents); err != nil {
-			return db.WrapError(err)
+		if len(newEvents) > 0 {
+			if err := datastore.CreateWebhookEvents(ctx, tx, id, newEvents); err != nil {
+				return db.WrapError(err)
+			}
 		}
 
 		return nil

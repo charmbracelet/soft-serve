@@ -140,6 +140,7 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 
 		d.wg.Add(1)
 		go func() {
+			defer d.wg.Done()
 			defer func() {
 				// Decrement the per-IP counter and remove the map entry when it
 				// reaches zero so ipConns does not grow without bound over time.
@@ -150,7 +151,6 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 				}
 			}()
 			d.handleClient(conn)
-			d.wg.Done()
 		}()
 	}
 }

@@ -105,7 +105,7 @@ for hook in ${GIT_DIR}/hooks/${hookname}.d/*; do
   test -x "${hook}" && test -f "${hook}" || continue
 
   # Run the actual hook
-  echo "${data}" | "${hook}" "$@"
+  printf '%s' "${data}" | "${hook}" "$@"
 
   # Store the exit code for later use
   exitcodes="${exitcodes} $?"

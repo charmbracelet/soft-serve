@@ -39,19 +39,21 @@ func NewSecureClient() *http.Client {
 
 				ip := net.ParseIP(host)
 				if ip == nil {
-					ips, err := net.LookupIP(host) //nolint
+					// Use the context-aware resolver so the lookup respects
+					// cancellation and deadlines from the caller.
+					addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
 					if err != nil {
 						return nil, fmt.Errorf("DNS resolution failed for host %s: %v", host, err)
 					}
-					if len(ips) == 0 {
+					if len(addrs) == 0 {
 						return nil, fmt.Errorf("no IP addresses found for host: %s", host)
 					}
-					for _, candidate := range ips {
-						if isPrivateOrInternal(candidate) {
+					for _, addr := range addrs {
+						if isPrivateOrInternal(addr.IP) {
 							return nil, fmt.Errorf("%w", ErrPrivateIP)
 						}
 					}
-					ip = ips[0]
+					ip = addrs[0].IP
 				}
 				if isPrivateOrInternal(ip) {
 					return nil, fmt.Errorf("%w", ErrPrivateIP)
