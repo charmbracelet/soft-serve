@@ -15,6 +15,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// maxLogUsernameRunes is the maximum number of runes used when logging a
+// username to avoid leaking long credential strings in log output.
+const maxLogUsernameRunes = 20
+
 // authenticate authenticates the user from the request.
 func authenticate(r *http.Request) (proto.User, error) {
 	// Prefer the Authorization header
@@ -83,16 +87,16 @@ func parseUsernamePassword(ctx context.Context, username, password string) (prot
 		}
 
 		logUsername := username
-		if runes := []rune(logUsername); len(runes) > 20 {
-			logUsername = string(runes[:20]) + "…"
+		if runes := []rune(logUsername); len(runes) > maxLogUsernameRunes {
+			logUsername = string(runes[:maxLogUsernameRunes]) + "…"
 		}
 		logger.Debug("invalid credentials", "username", logUsername, "err", err)
 		return nil, errInvalidPassword
 	} else if username != "" {
 		// Try to authenticate using access token as the username
 		logUser := username
-		if runes := []rune(logUser); len(runes) > 8 {
-			logUser = string(runes[:8]) + "…"
+		if runes := []rune(logUser); len(runes) > maxLogUsernameRunes {
+			logUser = string(runes[:maxLogUsernameRunes]) + "…"
 		}
 		logger.Debug("trying to authenticate using access token as username", "username", logUser)
 		user, err := be.UserByAccessToken(ctx, username)

@@ -77,13 +77,18 @@ func (b *Backend) PushMirrors(ctx context.Context, repo proto.Repository) {
 			if at := strings.LastIndex(raw, "@"); at != -1 {
 				raw = raw[at+1:]
 			}
-			if colon := strings.LastIndex(raw, ":"); colon != -1 {
-				host := raw[:colon]
-				host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
-				if ssrfErr := ssrf.ValidateHost(host); ssrfErr != nil {
-					b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
-					continue
-				}
+			colon := strings.LastIndex(raw, ":")
+			if colon == -1 {
+				// No colon means we cannot extract a host — reject to avoid
+				// bypassing SSRF validation on malformed remote URLs.
+				b.logger.Warn("push mirror: cannot extract host from SCP-style remote (no colon)", "remote", m.RemoteURL)
+				continue
+			}
+			host := raw[:colon]
+			host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
+			if ssrfErr := ssrf.ValidateHost(host); ssrfErr != nil {
+				b.logger.Warn("push mirror: SSRF check failed", "remote", m.RemoteURL, "err", ssrfErr)
+				continue
 			}
 		} else {
 			// Block git:// and any other unrecognized scheme.
