@@ -277,6 +277,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		if err != nil {
 			switch {
 			case errors.Is(err, errInvalidToken):
+			case errors.Is(err, errInvalidPassword):
 			case errors.Is(err, proto.ErrUserNotFound):
 			default:
 				logger.Error("failed to authenticate", "err", err)
