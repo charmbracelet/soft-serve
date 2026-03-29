@@ -182,7 +182,7 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 func validateJWTClaims(ctx context.Context, cfg *config.Config, claims *jwt.RegisteredClaims) error {
 	// Validate expiration time if set
 	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
-		return errors.New("token expired")
+		return proto.ErrTokenExpired
 	}
 
 	// Validate not-before time if set
