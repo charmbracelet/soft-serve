@@ -218,7 +218,7 @@ func LoggingMiddleware(sh ssh.Handler) ssh.Handler {
 		if config.IsVerbose() {
 			safeEnvs := make([]string, 0, len(s.Environ()))
 			for _, e := range s.Environ() {
-				if strings.HasPrefix(e, "GIT_") || strings.HasPrefix(e, "GIT_PROTOCOL") || e == "TERM" || e == "LANG" || strings.HasPrefix(e, "LC_") {
+				if strings.HasPrefix(e, "GIT_") || e == "TERM" || e == "LANG" || strings.HasPrefix(e, "LC_") {
 					safeEnvs = append(safeEnvs, e)
 				}
 			}
