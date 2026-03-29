@@ -51,6 +51,7 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 		})
 	}
 
+	const lfsBatchSize = 20
 	var batch []lfs.Pointer
 	for pointer := range pointerChan {
 		obj, err := store.GetLFSObjectByOid(ctx, dbx, repo.ID(), pointer.Oid)
@@ -69,14 +70,20 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 			}
 		} else {
 			batch = append(batch, pointer.Pointer)
-			// Limit batch requests to 20 objects
-			if len(batch) >= 20 {
+			// Limit batch requests to lfsBatchSize objects
+			if len(batch) >= lfsBatchSize {
 				if err := download(batch); err != nil {
 					return err
 				}
 
 				batch = nil
 			}
+		}
+	}
+
+	if len(batch) > 0 {
+		if err := download(batch); err != nil {
+			return err
 		}
 	}
 

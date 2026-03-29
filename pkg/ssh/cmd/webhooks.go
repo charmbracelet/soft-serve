@@ -278,12 +278,16 @@ func webhookDeliveriesListCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
+			repo, err := be.Repository(ctx, args[0])
+			if err != nil {
+				return fmt.Errorf("repository not found: %w", err)
+			}
 			id, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid webhook ID: %w", err)
 			}
 
-			dels, err := be.ListWebhookDeliveries(ctx, id)
+			dels, err := be.ListWebhookDeliveries(ctx, repo, id)
 			if err != nil {
 				return err
 			}

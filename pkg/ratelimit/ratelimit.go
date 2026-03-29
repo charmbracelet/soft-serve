@@ -19,6 +19,7 @@ type IPLimiter struct {
 	r       rate.Limit
 	burst   int
 	ttl     time.Duration
+	done    chan struct{}
 }
 
 type ipEntry struct {
@@ -34,9 +35,15 @@ func New(r rate.Limit, burst int, ttl time.Duration) *IPLimiter {
 		r:       r,
 		burst:   burst,
 		ttl:     ttl,
+		done:    make(chan struct{}),
 	}
 	go il.cleanup()
 	return il
+}
+
+// Close stops the background cleanup goroutine.
+func (il *IPLimiter) Close() {
+	close(il.done)
 }
 
 // Allow returns true if the source IP is within its rate limit.
@@ -60,13 +67,18 @@ func (il *IPLimiter) Allow(ip string) bool {
 func (il *IPLimiter) cleanup() {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
-	for range ticker.C {
-		il.mu.Lock()
-		for ip, e := range il.entries {
-			if time.Since(e.lastSeen) > il.ttl {
-				delete(il.entries, ip)
+	for {
+		select {
+		case <-ticker.C:
+			il.mu.Lock()
+			for ip, e := range il.entries {
+				if time.Since(e.lastSeen) > il.ttl {
+					delete(il.entries, ip)
+				}
 			}
+			il.mu.Unlock()
+		case <-il.done:
+			return
 		}
-		il.mu.Unlock()
 	}
 }
