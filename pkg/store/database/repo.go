@@ -150,3 +150,19 @@ func (*repoStore) SetRepoProjectNameByName(ctx context.Context, tx db.Handler, n
 	_, err := tx.ExecContext(ctx, query, projectName, name)
 	return db.WrapError(err)
 }
+
+// SetReposUserIDByName implements store.RepositoryStore.
+// Soft-deletes repositories owned by a user by setting user_id to NULL.
+// This is used during user deletion to avoid race conditions where orphaned
+// repos could be accessed before filesystem cleanup completes.
+func (*repoStore) SetReposUserIDByName(ctx context.Context, tx db.Handler, repoNames []string) error {
+	for _, name := range repoNames {
+		name = utils.SanitizeRepo(name)
+		query := tx.Rebind("UPDATE repos SET user_id = NULL WHERE name = ?;")
+		_, err := tx.ExecContext(ctx, query, name)
+		if err != nil {
+			return db.WrapError(err)
+		}
+	}
+	return nil
+}
