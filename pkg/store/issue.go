@@ -1,0 +1,28 @@
+package store
+
+import (
+	"context"
+
+	"github.com/charmbracelet/soft-serve/pkg/db"
+	"github.com/charmbracelet/soft-serve/pkg/db/models"
+)
+
+// IssueStore is an interface for managing issues.
+type IssueStore interface {
+	// GetIssueByID retrieves an issue by its ID.
+	GetIssueByID(ctx context.Context, h db.Handler, id int64) (models.Issue, error)
+	// GetIssuesByRepoID retrieves all issues for a repository.
+	GetIssuesByRepoID(ctx context.Context, h db.Handler, repoID int64, status string) ([]models.Issue, error)
+	// CreateIssue creates a new issue.
+	CreateIssue(ctx context.Context, h db.Handler, repoID, userID int64, title, body string) (int64, error)
+	// UpdateIssue updates an issue's title and body.
+	UpdateIssue(ctx context.Context, h db.Handler, id int64, title, body string) error
+	// CloseIssue closes an issue.
+	CloseIssue(ctx context.Context, h db.Handler, id, closedBy int64) error
+	// ReopenIssue reopens a closed issue.
+	ReopenIssue(ctx context.Context, h db.Handler, id int64) error
+	// DeleteIssue deletes an issue by its ID.
+	DeleteIssue(ctx context.Context, h db.Handler, id int64) error
+	// CountIssues counts issues for a repository.
+	CountIssues(ctx context.Context, h db.Handler, repoID int64, status string) (int64, error)
+}

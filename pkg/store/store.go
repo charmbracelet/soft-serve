@@ -10,4 +10,5 @@ type Store interface {
 	AccessTokenStore
 	WebhookStore
 	PushMirrorStore
+	IssueStore
 }

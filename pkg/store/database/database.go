@@ -23,6 +23,7 @@ type datastore struct {
 	*accessTokenStore
 	*webhookStore
 	*pushMirrorStore
+	*issueStore
 }
 
 // New returns a new store.Store database.
@@ -44,6 +45,7 @@ func New(ctx context.Context, db *db.DB) store.Store {
 		accessTokenStore: &accessTokenStore{},
 		webhookStore:     &webhookStore{},
 		pushMirrorStore:  &pushMirrorStore{},
+		issueStore:       &issueStore{},
 	}
 
 	return s
