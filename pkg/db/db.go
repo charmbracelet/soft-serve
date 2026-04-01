@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -14,7 +15,14 @@ import (
 	_ "modernc.org/sqlite" // sqlite driver
 )
 
-// DB is the interface for a Soft Serve database.
+// Connection pool defaults applied during Open.
+const (
+	defaultMaxOpenConns    = 25
+	defaultMaxIdleConns    = 10
+	defaultConnMaxLifetime = 30 * time.Minute
+)
+
+// DB is a Soft Serve database.
 type DB struct {
 	*sqlx.DB
 	logger *log.Logger
@@ -32,6 +40,10 @@ func Open(ctx context.Context, driverName string, dsn string) (*DB, error) {
 			return nil, fmt.Errorf("enable WAL mode: %w", err)
 		}
 	}
+
+	db.SetMaxOpenConns(defaultMaxOpenConns)
+	db.SetMaxIdleConns(defaultMaxIdleConns)
+	db.SetConnMaxLifetime(defaultConnMaxLifetime)
 
 	d := &DB{
 		DB: db,

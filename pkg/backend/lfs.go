@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path"
 	"path/filepath"
 	"strconv"
+	"sync"
 
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -17,6 +17,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/storage"
 	"github.com/charmbracelet/soft-serve/pkg/store"
+	"golang.org/x/sync/errgroup"
 )
 
 // StoreRepoMissingLFSObjects stores missing LFS objects for a repository.
@@ -57,13 +58,13 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 			}
 			return dbx.TransactionContext(ctx, func(tx *db.Tx) error {
 				if err := store.CreateLFSObject(ctx, tx, repo.ID(), p.Oid, p.Size); err != nil {
-												// DB insert failed — clean up on-disk file to avoid orphan.
-								if rmErr := os.Remove(objPath); rmErr != nil {
-									return errors.Join(err, rmErr)
-								}
-							return nil // os.Remove succeeded, propagate DB error
-						
-					return err
+					// DB insert failed — clean up on-disk file to avoid orphan.
+					// Use strg.Delete so the path is resolved relative to lfsRoot,
+					// not the process working directory.
+					if rmErr := strg.Delete(objPath); rmErr != nil {
+						return errors.Join(err, rmErr)
+					}
+					return err // strg.Delete succeeded, propagate DB error
 				}
 				return nil
 			})
@@ -73,10 +74,14 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 	const lfsBatchSize = 20
 	var batch []lfs.Pointer
 	var lookupOids []string
+	var pointerBlobs []lfs.PointerBlob
 	var objMap = make(map[string]*models.LFSObject)
 
+	// Drain the channel once, collecting both OIDs and blobs.
+	// A second range over a closed channel would iterate zero times.
 	for pointer := range pointerChan {
 		lookupOids = append(lookupOids, pointer.Oid)
+		pointerBlobs = append(pointerBlobs, pointer)
 	}
 
 	// Batch fetch all objects to eliminate N+1 query
@@ -88,17 +93,35 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 		objMap[obj.Oid] = &obj
 	}
 
-	for pointer := range pointerChan {
+	// Pre-fetch filesystem existence for all pointer blobs concurrently.
+	existsByOid := make(map[string]bool, len(pointerBlobs))
+	var existsMu sync.Mutex
+	existsGroup, _ := errgroup.WithContext(ctx)
+	for _, pointer := range pointerBlobs {
+		pointer := pointer
+		existsGroup.Go(func() error {
+			exist, err := strg.Exists(path.Join("objects", pointer.RelativePath()))
+			if err != nil {
+				return err
+			}
+			existsMu.Lock()
+			existsByOid[pointer.Oid] = exist
+			existsMu.Unlock()
+			return nil
+		})
+	}
+	if err := existsGroup.Wait(); err != nil {
+		return err
+	}
+
+	for _, pointer := range pointerBlobs {
 		obj, exists := objMap[pointer.Oid]
 		if !exists {
 			// Object not found in DB — skip (shouldn't happen if scanner worked correctly)
 			continue
 		}
 
-		exist, err := strg.Exists(path.Join("objects", pointer.RelativePath()))
-		if err != nil {
-			return err
-		}
+		exist := existsByOid[pointer.Oid]
 
 		if exist && obj.ID != 0 {
 			// fully synced — skip

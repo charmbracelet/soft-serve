@@ -65,20 +65,23 @@ func (*lfsStore) GetLFSLocks(ctx context.Context, tx db.Handler, repoID int64, p
 }
 
 func (s *lfsStore) GetLFSLocksWithCount(ctx context.Context, tx db.Handler, repoID int64, page int, limit int) ([]models.LFSLock, int64, error) {
-	locks, err := s.GetLFSLocks(ctx, tx, repoID, page, limit)
-	if err != nil {
-		return nil, 0, err
+	if page <= 0 {
+		page = 1
 	}
 
 	var count int64
-	query := tx.Rebind(`
-		SELECT COUNT(*)
-		FROM lfs_locks
-		WHERE repo_id = ?;
-	`)
-	err = tx.GetContext(ctx, &count, query, repoID)
-	if err != nil {
+	countQuery := tx.Rebind(`SELECT COUNT(*) FROM lfs_locks WHERE repo_id = ?;`)
+	if err := tx.GetContext(ctx, &count, countQuery, repoID); err != nil {
 		return nil, 0, db.WrapError(err)
+	}
+
+	if count == 0 {
+		return nil, 0, nil
+	}
+
+	locks, err := s.GetLFSLocks(ctx, tx, repoID, page, limit)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	return locks, count, nil

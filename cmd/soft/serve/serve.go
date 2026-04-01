@@ -56,7 +56,7 @@ var (
 				// Generate update hook example without executable permissions
 				hookPath := filepath.Join(customHooksPath, "update.sample")
 				//nolint: gosec
-				if err := os.WriteFile(hookPath, []byte(updateHookExample), 0o744); err != nil {
+				if err := os.WriteFile(hookPath, []byte(updateHookExample), 0o644); err != nil {
 					return fmt.Errorf("failed to generate update hook example: %w", err)
 				}
 			}

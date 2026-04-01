@@ -36,7 +36,7 @@ func (*collabStore) AddCollabByUsernameAndRepo(ctx context.Context, tx db.Handle
 				CURRENT_TIMESTAMP
 			);`)
 	_, err := tx.ExecContext(ctx, query, level, username, repo)
-	return err
+	return db.WrapError(err)
 }
 
 // GetCollabByUsernameAndRepo implements store.CollaboratorStore.
@@ -61,7 +61,7 @@ func (*collabStore) GetCollabByUsernameAndRepo(ctx context.Context, tx db.Handle
 			users.username = ? AND repos.name = ?
 	`), username, repo)
 
-	return m, err
+	return m, db.WrapError(err)
 }
 
 // ListCollabsByRepo implements store.CollaboratorStore.
@@ -80,7 +80,7 @@ func (*collabStore) ListCollabsByRepo(ctx context.Context, tx db.Handler, repo s
 	`)
 
 	err := tx.SelectContext(ctx, &m, query, repo)
-	return m, err
+	return m, db.WrapError(err)
 }
 
 // ListCollabsByRepoAsUsers implements store.CollaboratorStore.
@@ -100,7 +100,7 @@ func (*collabStore) ListCollabsByRepoAsUsers(ctx context.Context, tx db.Handler,
 	`)
 
 	err := tx.SelectContext(ctx, &m, query, repo)
-	return m, err
+	return m, db.WrapError(err)
 }
 
 // RemoveCollabByUsernameAndRepo implements store.CollaboratorStore.
@@ -122,5 +122,5 @@ func (*collabStore) RemoveCollabByUsernameAndRepo(ctx context.Context, tx db.Han
 			)
 	`)
 	_, err := tx.ExecContext(ctx, query, username, repo)
-	return err
+	return db.WrapError(err)
 }

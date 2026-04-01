@@ -144,6 +144,10 @@ func TestScript(t *testing.T) {
 			// This will disable the default lipgloss renderer colors
 			e.Setenv("SOFT_SERVE_NO_COLOR", "1")
 
+			// Disable SSRF protection in tests so that imports/mirrors work
+			// in environments where DNS resolves public hostnames to CGNAT IPs.
+			e.Setenv("SOFT_SERVE_SSRF_ALLOW_PRIVATE_NETS", "true")
+
 			// Soft Serve debug environment variables
 			for _, env := range []string{
 				"SOFT_SERVE_DEBUG",

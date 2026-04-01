@@ -27,7 +27,7 @@ import (
 )
 
 // shellQuote returns s wrapped in POSIX single-quotes with any embedded
-// single-quote characters properly escaped as '\''. This is safe to embed
+// single-quote characters properly escaped as '\”. This is safe to embed
 // inside GIT_SSH_COMMAND values that are evaluated by the shell git invokes.
 func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
@@ -53,6 +53,20 @@ func validateImportRemote(ctx context.Context, remote string) error {
 	}
 
 	return nil
+}
+
+func (d *Backend) lfsS3Config() *storage.S3Config {
+	if d.cfg == nil || !d.cfg.LFS.S3.Enabled {
+		return nil
+	}
+	return &storage.S3Config{
+		Endpoint:  d.cfg.LFS.S3.Endpoint,
+		Region:    d.cfg.LFS.S3.Region,
+		Bucket:    d.cfg.LFS.S3.Bucket,
+		Prefix:    d.cfg.LFS.S3.Prefix,
+		AccessKey: d.cfg.LFS.S3.AccessKey,
+		SecretKey: d.cfg.LFS.S3.SecretKey,
+	}
 }
 
 // CreateRepository creates a new repository.
@@ -369,7 +383,7 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 		}
 
 		repoID := strconv.FormatInt(repom.ID, 10)
-		strg := storage.NewLocalStorage(filepath.Join(d.cfg.DataPath, "lfs", repoID))
+		strg := storage.GetLFSStorage(d.cfg.DataPath, repoID, d.lfsS3Config())
 		objs, err := d.store.GetLFSObjectsByName(ctx, tx, name)
 		if err != nil {
 			return db.WrapError(err)
@@ -421,6 +435,7 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	}
 
 	d.cache.Delete(name)
+	storage.DeleteLFSStorage(d.cfg.DataPath, strconv.FormatInt(r.ID(), 10), d.lfsS3Config())
 
 	return webhook.SendEvent(ctx, wh)
 }
@@ -487,23 +502,30 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 		return proto.ErrRepoExist
 	}
 
+	var renameDir bool
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		// Delete cache
-		defer d.cache.Delete(oldName)
-
 		if err := d.store.SetRepoNameByName(ctx, tx, oldName, newName); err != nil {
 			return err
 		}
 
-		// Make sure the new repository parent directory exists.
 		if err := os.MkdirAll(filepath.Dir(np), os.ModePerm); err != nil {
 			return err
 		}
 
-		return os.Rename(op, np)
+		renameDir = true
+		return nil
 	}); err != nil {
 		return db.WrapError(err)
 	}
+
+	if renameDir {
+		if err := os.Rename(op, np); err != nil {
+			d.logger.Error("failed to rename repository directory after db update", "old", op, "new", np, "err", err)
+		}
+	}
+
+	d.cache.Delete(oldName)
+	d.cache.Delete(newName)
 
 	user := proto.UserFromContext(ctx)
 	repo, err := d.Repository(ctx, newName)
@@ -596,94 +618,39 @@ func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository
 		repo: m,
 	}
 
-	// Add to cache
 	d.cache.Set(name, r)
 
 	return r, nil
 }
 
-// Description returns the description of a repository.
-//
-// It implements backend.Backend.
 func (d *Backend) Description(ctx context.Context, name string) (string, error) {
 	name = utils.SanitizeRepo(name)
-	var desc string
-	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		var err error
-		desc, err = d.store.GetRepoDescriptionByName(ctx, tx, name)
-		return err
-	}); err != nil {
-		return "", db.WrapError(err)
-	}
-
-	return desc, nil
+	desc, err := d.store.GetRepoDescriptionByName(ctx, d.db, name)
+	return desc, db.WrapError(err)
 }
 
-// IsMirror returns true if the repository is a mirror.
-//
-// It implements backend.Backend.
 func (d *Backend) IsMirror(ctx context.Context, name string) (bool, error) {
 	name = utils.SanitizeRepo(name)
-	var mirror bool
-	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		var err error
-		mirror, err = d.store.GetRepoIsMirrorByName(ctx, tx, name)
-		return err
-	}); err != nil {
-		return false, db.WrapError(err)
-	}
-	return mirror, nil
+	mirror, err := d.store.GetRepoIsMirrorByName(ctx, d.db, name)
+	return mirror, db.WrapError(err)
 }
 
-// IsPrivate returns true if the repository is private.
-//
-// It implements backend.Backend.
 func (d *Backend) IsPrivate(ctx context.Context, name string) (bool, error) {
 	name = utils.SanitizeRepo(name)
-	var private bool
-	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		var err error
-		private, err = d.store.GetRepoIsPrivateByName(ctx, tx, name)
-		return err
-	}); err != nil {
-		return false, db.WrapError(err)
-	}
-
-	return private, nil
+	private, err := d.store.GetRepoIsPrivateByName(ctx, d.db, name)
+	return private, db.WrapError(err)
 }
 
-// IsHidden returns true if the repository is hidden.
-//
-// It implements backend.Backend.
 func (d *Backend) IsHidden(ctx context.Context, name string) (bool, error) {
 	name = utils.SanitizeRepo(name)
-	var hidden bool
-	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		var err error
-		hidden, err = d.store.GetRepoIsHiddenByName(ctx, tx, name)
-		return err
-	}); err != nil {
-		return false, db.WrapError(err)
-	}
-
-	return hidden, nil
+	hidden, err := d.store.GetRepoIsHiddenByName(ctx, d.db, name)
+	return hidden, db.WrapError(err)
 }
 
-// ProjectName returns the project name of a repository.
-//
-// It implements backend.Backend.
 func (d *Backend) ProjectName(ctx context.Context, name string) (string, error) {
 	name = utils.SanitizeRepo(name)
-	var pname string
-	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		var err error
-		pname, err = d.store.GetRepoProjectNameByName(ctx, tx, name)
-		return err
-	}); err != nil {
-		return "", db.WrapError(err)
-	}
-
-	return pname, nil
+	pname, err := d.store.GetRepoProjectNameByName(ctx, d.db, name)
+	return pname, db.WrapError(err)
 }
 
 // SetHidden sets the hidden flag of a repository.

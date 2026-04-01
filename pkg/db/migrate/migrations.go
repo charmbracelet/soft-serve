@@ -19,6 +19,7 @@ var migrations = []Migration{
 	webhooks,
 	migrateLfsObjects,
 	pushMirrors,
+	addIndexes,
 }
 
 func execMigration(ctx context.Context, tx *db.Tx, version int, name string, down bool) error {

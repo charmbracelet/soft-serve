@@ -313,7 +313,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		if _, err := d.be.Repository(ctx, repo); err != nil {
+		if _, err := d.be.Repository(ctx, name); err != nil {
 			// Return ErrNotAuthed (not ErrInvalidRepo) so that the response is
 			// indistinguishable from an access-denial. Returning ErrInvalidRepo
 			// would let unauthenticated clients enumerate which repositories exist.

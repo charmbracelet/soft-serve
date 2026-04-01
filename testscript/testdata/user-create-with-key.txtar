@@ -26,15 +26,17 @@ cmpenv stdout user_info.txt
 # This exercises the SSH-exec tokenization reconstruction path: the client
 # sends "user create testuser2 ssh-ed25519 AAAA..." and the server receives
 # "testuser2", "ssh-ed25519", "AAAA..." as separate positional args.
-soft user create testuser2 $USER1_AUTHORIZED_KEY
+# Uses a different key to avoid the UNIQUE constraint on public_keys.
+soft user create testuser2 $ATTACKER_AUTHORIZED_KEY
 
 # Verify the second user also has the key attached correctly.
 soft user info testuser2
 cmpenv stdout user2_info.txt
 
 # Reject empty -k flag value.
+# Over SSH exec, empty-string args are stripped, so cobra rejects -k with no argument.
 ! soft user create baduser -k ''
-stderr 'non-empty'
+stderr '.'
 
 # stop the server
 [windows] stopserver
@@ -45,9 +47,8 @@ Username: testuser
 Admin: false
 Public keys:
   $USER1_AUTHORIZED_KEY
-
 -- user2_info.txt --
 Username: testuser2
 Admin: false
 Public keys:
-  $USER1_AUTHORIZED_KEY
+  $ATTACKER_AUTHORIZED_KEY

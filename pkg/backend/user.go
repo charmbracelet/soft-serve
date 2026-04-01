@@ -286,7 +286,9 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 		return err
 	}
 
-	// Collect the user's repo names and delete the user record in one transaction.
+	// Collect user's repo names, soft-delete repos, and delete user record in one transaction.
+	// This prevents race conditions where orphaned repos could be accessed after user
+	// deletion completes but before filesystem cleanup.
 	var repoNames []string
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		u, err := d.store.FindUserByUsername(ctx, tx, username)
@@ -303,16 +305,19 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 			repoNames = append(repoNames, r.Name)
 		}
 
+		// Soft-delete repos by setting user_id to NULL before deleting user record.
+		// This makes repos immediately invisible without nested transactions.
+		if err := d.store.SetReposUserIDByName(ctx, tx, repoNames); err != nil {
+			return db.WrapError(err)
+		}
+
 		return db.WrapError(d.store.DeleteUserByUsername(ctx, tx, username))
 	}); err != nil {
 		return err
 	}
 
-	// NOTE: There is a window between the user-record deletion and repository
-	// deletions below where orphaned repos have no owner. A future improvement
-	// would be to soft-delete repos atomically inside the user-deletion transaction
-	// so they become invisible immediately before filesystem cleanup.
-	// Repos are deleted outside the transaction to avoid nested-transaction issues.
+	// Delete repos from filesystem outside transaction.
+	// Repos with user_id = NULL will be filtered out by most operations.
 	var errs []error
 	for _, name := range repoNames {
 		if err := d.DeleteRepository(ctx, name); err != nil {

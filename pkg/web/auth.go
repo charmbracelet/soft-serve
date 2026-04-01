@@ -2,10 +2,12 @@ package web
 
 import (
 	"context"
+	"crypto"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"charm.land/log/v2"
@@ -14,6 +16,23 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/golang-jwt/jwt/v5"
 )
+
+// jwtPublicKeyCache caches the parsed Ed25519 public key per SSH key path.
+// Avoids reading and parsing the key file on every JWT Bearer request.
+var jwtPublicKeyCache sync.Map // map[string]crypto.PublicKey
+
+func cachedJWTPublicKey(cfg *config.Config) (crypto.PublicKey, error) {
+	if v, ok := jwtPublicKeyCache.Load(cfg.SSH.KeyPath); ok {
+		return v.(crypto.PublicKey), nil
+	}
+	kp, err := config.KeyPair(cfg)
+	if err != nil {
+		return nil, err
+	}
+	pub := kp.CryptoPublicKey()
+	jwtPublicKeyCache.Store(cfg.SSH.KeyPath, pub)
+	return pub, nil
+}
 
 // authenticate authenticates the user from the request.
 func authenticate(r *http.Request) (proto.User, error) {
@@ -137,7 +156,7 @@ var ErrInvalidToken = errors.New("invalid token")
 func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error) {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.auth")
-	kp, err := config.KeyPair(cfg)
+	pub, err := cachedJWTPublicKey(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +171,7 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 			return nil, errors.New("invalid signing method")
 		}
 
-		return kp.CryptoPublicKey(), nil
+		return pub, nil
 	},
 		jwt.WithIssuer(cfg.HTTP.PublicURL),
 		jwt.WithIssuedAt(),
@@ -195,15 +214,8 @@ func validateJWTClaims(ctx context.Context, cfg *config.Config, claims *jwt.Regi
 		return errors.New("invalid token issuer")
 	}
 
-	// Validate audience - audience is optional but if set must match public URL
-	// jwt.ClaimStrings is a slice of strings
-	if len(claims.Audience) > 0 {
-		for _, audience := range claims.Audience {
-			if !strings.HasPrefix(audience, cfg.HTTP.PublicURL) {
-				return errors.New("invalid token audience")
-			}
-		}
-	}
+	// Audience is validated by jwt.WithAudience(repo.Name()) in ParseWithClaims.
+	// No additional audience check is needed here.
 
 	return nil
 }

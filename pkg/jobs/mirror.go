@@ -78,9 +78,9 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 					}
 
 					// Build the SSH env once; reused for every git command below.
-					sshEnv := fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=accept-new -i "%s"`,
-						filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
-						cfg.SSH.ClientKeyPath,
+					sshEnv := fmt.Sprintf("GIT_SSH_COMMAND=ssh -o UserKnownHostsFile=%s -o StrictHostKeyChecking=accept-new -i %s",
+						shellQuote(filepath.Join(cfg.DataPath, "ssh", "known_hosts")),
+						shellQuote(cfg.SSH.ClientKeyPath),
 					)
 
 					syncOK := true
@@ -147,4 +147,10 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 
 		wq.Run()
 	}
+}
+
+// shellQuote wraps s in POSIX single-quotes, escaping any embedded single-quotes.
+// Used to safely embed filesystem paths in GIT_SSH_COMMAND values.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }

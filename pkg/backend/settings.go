@@ -33,20 +33,18 @@ func (c *cachedBool) get(ttl time.Duration, fetch func() (bool, error)) (bool, e
 
 const settingsCacheTTL = 30 * time.Second
 
-var (
-	allowKeylessCache cachedBool
-	anonAccessCache   struct {
-		mu        sync.Mutex
-		val       access.AccessLevel
-		expiresAt time.Time
-	}
-)
+// cachedAccessLevel is a simple time-based cache for an AccessLevel value.
+type cachedAccessLevel struct {
+	mu        sync.Mutex
+	val       access.AccessLevel
+	expiresAt time.Time
+}
 
 // AllowKeyless returns whether or not keyless access is allowed.
 //
 // It implements backend.Backend.
 func (b *Backend) AllowKeyless(ctx context.Context) bool {
-	val, err := allowKeylessCache.get(settingsCacheTTL, func() (bool, error) {
+	val, err := b.allowKeylessCache.get(settingsCacheTTL, func() (bool, error) {
 		var allow bool
 		if err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			var err error
@@ -73,9 +71,9 @@ func (b *Backend) SetAllowKeyless(ctx context.Context, allow bool) error {
 		return err
 	}
 	// Invalidate cache on write.
-	allowKeylessCache.mu.Lock()
-	allowKeylessCache.expiresAt = time.Time{}
-	allowKeylessCache.mu.Unlock()
+	b.allowKeylessCache.mu.Lock()
+	b.allowKeylessCache.expiresAt = time.Time{}
+	b.allowKeylessCache.mu.Unlock()
 	return nil
 }
 
@@ -83,10 +81,10 @@ func (b *Backend) SetAllowKeyless(ctx context.Context, allow bool) error {
 //
 // It implements backend.Backend.
 func (b *Backend) AnonAccess(ctx context.Context) access.AccessLevel {
-	anonAccessCache.mu.Lock()
-	defer anonAccessCache.mu.Unlock()
-	if time.Now().Before(anonAccessCache.expiresAt) {
-		return anonAccessCache.val
+	b.anonAccessCache.mu.Lock()
+	defer b.anonAccessCache.mu.Unlock()
+	if time.Now().Before(b.anonAccessCache.expiresAt) {
+		return b.anonAccessCache.val
 	}
 	var level access.AccessLevel
 	if err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
@@ -96,8 +94,8 @@ func (b *Backend) AnonAccess(ctx context.Context) access.AccessLevel {
 	}); err != nil {
 		return access.NoAccess
 	}
-	anonAccessCache.val = level
-	anonAccessCache.expiresAt = time.Now().Add(settingsCacheTTL)
+	b.anonAccessCache.val = level
+	b.anonAccessCache.expiresAt = time.Now().Add(settingsCacheTTL)
 	return level
 }
 
@@ -111,8 +109,8 @@ func (b *Backend) SetAnonAccess(ctx context.Context, level access.AccessLevel) e
 		return err
 	}
 	// Invalidate cache on write.
-	anonAccessCache.mu.Lock()
-	anonAccessCache.expiresAt = time.Time{}
-	anonAccessCache.mu.Unlock()
+	b.anonAccessCache.mu.Lock()
+	b.anonAccessCache.expiresAt = time.Time{}
+	b.anonAccessCache.mu.Unlock()
 	return nil
 }

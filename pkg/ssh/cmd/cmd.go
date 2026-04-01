@@ -198,6 +198,13 @@ func checkIfCollab(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func checkIfReadableAndAdmin(cmd *cobra.Command, args []string) error {
+	if err := checkIfReadable(cmd, args); err != nil {
+		return err
+	}
+	return checkIfAdmin(cmd, args)
+}
+
 func checkIfReadableAndCollab(cmd *cobra.Command, args []string) error {
 	if err := checkIfReadable(cmd, args); err != nil {
 		return err

@@ -93,6 +93,11 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	router.PathPrefix("/").HandlerFunc(renderNotFound)
 
 	cfg := config.FromContext(ctx)
+
+	if cfg.HTTP.TrustProxyHeaders {
+		logger.Warn("TrustProxyHeaders is enabled — ensure the server sits behind a single trusted reverse proxy that overwrites (not appends to) X-Forwarded-For, otherwise rate limiting can be bypassed")
+	}
+
 	// Only create the rate limiter (and its background cleanup goroutine) when
 	// rate limiting is actually enabled. Callers handle a nil limiter.
 	var httpLimiter *ratelimit.IPLimiter

@@ -152,11 +152,11 @@ cmpenv stdout goget.txt
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <meta http-equiv="refresh" content="0; url=https://godoc.org/localhost:$HTTP_PORT/repo2">
+    <meta http-equiv="refresh" content="0; url=https://pkg.go.dev/localhost:$HTTP_PORT/repo2">
     <meta name="go-import" content="localhost:$HTTP_PORT/repo2 git http://localhost:$HTTP_PORT/repo2.git">
 </head>
 <body>
-Redirecting to docs at <a href="https://godoc.org/localhost:$HTTP_PORT/repo2">godoc.org/localhost:$HTTP_PORT/repo2</a>...
+Redirecting to docs at <a href="https://pkg.go.dev/localhost:$HTTP_PORT/repo2">pkg.go.dev/localhost:$HTTP_PORT/repo2</a>...
 </body>
 </html>
 -- gitclone.txt --

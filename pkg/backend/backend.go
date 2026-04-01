@@ -22,6 +22,9 @@ type Backend struct {
 	cache    *cache
 	manager  *task.Manager
 	reposSFG singleflight.Group // deduplicate concurrent Repositories() calls
+
+	allowKeylessCache cachedBool
+	anonAccessCache   cachedAccessLevel
 }
 
 // New returns a new Soft Serve backend.

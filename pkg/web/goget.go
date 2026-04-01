@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"html/template"
+	"text/template"
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
@@ -35,22 +35,14 @@ Redirecting to docs at <a href="https://pkg.go.dev/{{ .ImportRoot }}/{{ .Repo }}
 </html>
 `))
 
-// GoGetHandler handles go get requests.
 func GoGetHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	cfg := config.FromContext(ctx)
 	be := backend.FromContext(ctx)
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithPrefix("http.go-get")
+
 	repo := mux.Vars(r)["repo"]
 
-	// Handle go get requests.
-	//
-	// Always return a 200 status code, even if the repo path doesn't exist.
-	// It will try to find the repo by walking up the path until it finds one.
-	// If it can't find one, it will return a 404.
-	//
-	// https://golang.org/cmd/go/#hdr-Remote_import_paths
-	// https://go.dev/ref/mod#vcs-branch
 	if r.URL.Query().Get("go-get") == "1" {
 		repo := repo
 		importRoot, err := url.Parse(cfg.HTTP.PublicURL)
@@ -59,7 +51,6 @@ func GoGetHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// find the repo
 		for {
 			if _, err := be.Repository(ctx, repo); err == nil {
 				break
@@ -80,12 +71,10 @@ func GoGetHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := repoIndexHTMLTpl.Execute(w, struct {
 			Repo       string
-			Config     *config.Config
 			ImportRoot string
 			CloneURL   string
 		}{
 			Repo:       sanitized,
-			Config:     cfg,
 			ImportRoot: importRoot.Host,
 			CloneURL:   cloneURL,
 		}); err != nil {

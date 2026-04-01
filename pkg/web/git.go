@@ -9,9 +9,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"charm.land/log/v2"
@@ -432,13 +434,38 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		}
 
 		switch {
-		case r.URL.Query().Get("go-get") == "1" && repo != nil && (accessLevel >= access.ReadOnlyAccess || cfg.AllowPublicGoGet):
-			// Allow go-get requests to pass through.
-			// Note: when AllowPublicGoGet is true, unauthenticated clients can
-			// learn that a private repo exists by comparing go-get (200) vs a
-			// regular (404) response. This is an accepted trade-off for go module
-			// discoverability.
-			break
+		case r.URL.Query().Get("go-get") == "1":
+			// Check for invalid credentials first
+			if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+				renderForbidden(w, r)
+				return
+			}
+			// For go-get requests, walk up the path looking for a valid repo.
+			// This supports go module subpackages (e.g., /repo.git/subpackage).
+			foundRepo := false
+			checkRepo := repoName
+			for checkRepo != "" && checkRepo != "." && checkRepo != "/" {
+				if parentRepo, err := be.Repository(ctx, checkRepo); err == nil {
+					// Found a valid repo, check access
+					al := be.AccessLevelForUser(ctx, checkRepo, user)
+					if al >= access.ReadOnlyAccess || cfg.AllowPublicGoGet {
+						// Update context with the found repo and allow the request
+						ctx = proto.WithRepositoryContext(ctx, parentRepo)
+						r = r.WithContext(ctx)
+						foundRepo = true
+						break
+					}
+				}
+				checkRepo = path.Dir(checkRepo)
+			}
+			if foundRepo {
+				// Allow the request to pass through
+				next.ServeHTTP(w, r)
+				return
+			}
+			// No valid repo found with access, render 404
+			renderNotFound(w, r)
+			return
 		case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrInvalidPassword):
 			// return 403 when bad credentials are provided
 			renderForbidden(w, r)
@@ -572,11 +599,16 @@ type flushResponseWriter struct {
 
 const flushBufSize = 32 * 1024
 
+var flushBufPool = sync.Pool{
+	New: func() interface{} { return make([]byte, flushBufSize) },
+}
+
 func (f *flushResponseWriter) ReadFrom(r io.Reader) (int64, error) {
 	flusher := http.NewResponseController(f.ResponseWriter)
 
+	p := flushBufPool.Get().([]byte)
+	defer flushBufPool.Put(p)
 	var n int64
-	p := make([]byte, flushBufSize)
 	for {
 		// Read first, then check error — a Read may return n > 0 bytes AND
 		// io.EOF simultaneously (per the io.Reader contract), so we must
@@ -670,7 +702,10 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		// advertisement are flushed through buffering proxies promptly.
 		fw := &flushResponseWriter{w}
 		if version < 2 {
-			git.WritePktline(fw, "# service="+service.String()) //nolint: errcheck
+			if err := git.WritePktline(fw, "# service="+service.String()); err != nil {
+				log.FromContext(ctx).Error("failed to write pktline header", "err", err)
+				return
+			}
 		}
 		fw.Write(refs.Bytes()) //nolint: errcheck
 	} else {
@@ -758,11 +793,13 @@ func sendFile(contentType string, w http.ResponseWriter, r *http.Request) {
 
 func getServiceType(r *http.Request) git.Service {
 	service := r.FormValue("service")
-	if !strings.HasPrefix(service, "git-") {
+	s := git.Service(service)
+	switch s {
+	case git.UploadPackService, git.ReceivePackService, git.UploadArchiveService:
+		return s
+	default:
 		return ""
 	}
-
-	return git.Service(service)
 }
 
 func isSmart(r *http.Request, service git.Service) bool {

@@ -7,10 +7,17 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"slices"
 	"strings"
 	"time"
 )
+
+var ssrfDisabled bool
+
+func init() {
+	ssrfDisabled = os.Getenv("SOFT_SERVE_SSRF_ALLOW_PRIVATE_NETS") == "true"
+}
 
 var (
 	// ErrPrivateIP is returned when a connection to a private or internal IP is blocked.
@@ -32,6 +39,11 @@ func NewSecureClient() *http.Client {
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				if ssrfDisabled {
+					d := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+					return d.DialContext(ctx, network, addr)
+				}
+
 				host, port, err := net.SplitHostPort(addr)
 				if err != nil {
 					return nil, err //nolint:wrapcheck
@@ -167,6 +179,10 @@ func ValidateURL(ctx context.Context, rawURL string) error {
 		return ErrInvalidScheme
 	}
 
+	if ssrfDisabled {
+		return nil
+	}
+
 	hostname := u.Hostname()
 	if hostname == "" {
 		return fmt.Errorf("%w: missing hostname", ErrInvalidURL)
@@ -219,6 +235,10 @@ func ValidateIPBeforeDial(ip net.IP) error {
 func ValidateHost(ctx context.Context, host string) error {
 	if host == "" {
 		return fmt.Errorf("%w: missing hostname", ErrInvalidURL)
+	}
+
+	if ssrfDisabled {
+		return nil
 	}
 
 	if isLocalhost(host) {

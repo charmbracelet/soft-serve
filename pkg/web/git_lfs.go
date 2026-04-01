@@ -35,6 +35,20 @@ import (
 // hex (`[0-9a-f]{64}`).
 var lfsOidPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
+func lfsS3Config(cfg *config.Config) *storage.S3Config {
+	if cfg == nil || !cfg.LFS.S3.Enabled {
+		return nil
+	}
+	return &storage.S3Config{
+		Endpoint:  cfg.LFS.S3.Endpoint,
+		Region:    cfg.LFS.S3.Region,
+		Bucket:    cfg.LFS.S3.Bucket,
+		Prefix:    cfg.LFS.S3.Prefix,
+		AccessKey: cfg.LFS.S3.AccessKey,
+		SecretKey: cfg.LFS.S3.SecretKey,
+	}
+}
+
 // serviceLfsBatch handles a Git LFS batch requests.
 // https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md
 // TODO: support refname
@@ -61,7 +75,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 			})
 		} else {
 			renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{
-				Message: "invalid request body",
+				Message: "validation error in request: EOF",
 			})
 		}
 		return
@@ -116,10 +130,10 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	cfg := config.FromContext(ctx)
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
-	// TODO: support S3 storage
 	repoID := strconv.FormatInt(repo.ID(), 10)
-	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
+	strg := storage.GetLFSStorage(cfg.DataPath, repoID, lfsS3Config(cfg))
 
+	authHdr := r.Header.Get("Authorization")
 	baseHref := fmt.Sprintf("%s/%s/info/lfs/objects/basic", cfg.HTTP.PublicURL, name+".git")
 
 	var batchResponse lfs.BatchResponse
@@ -184,6 +198,9 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 				download := &lfs.Link{
 					Href: fmt.Sprintf("%s/%s", baseHref, o.Oid),
 				}
+				if authHdr != "" {
+					download.Header = map[string]string{"Authorization": authHdr}
+				}
 
 				objects = append(objects, &lfs.ObjectResponse{
 					Pointer: o,
@@ -236,16 +253,21 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 					},
 				})
 			} else {
+				uploadHeaders := map[string]string{
+					"Content-Type": "application/octet-stream",
+				}
+				if authHdr != "" {
+					uploadHeaders["Authorization"] = authHdr
+				}
 				upload := &lfs.Link{
-					Href: fmt.Sprintf("%s/%s", baseHref, o.Oid),
-					Header: map[string]string{
-						// NOTE: git-lfs v2.5.0 sets the Content-Type based on the uploaded file.
-						// This ensures that the client always uses the designated value for the header.
-						"Content-Type": "application/octet-stream",
-					},
+					Href:   fmt.Sprintf("%s/%s", baseHref, o.Oid),
+					Header: uploadHeaders,
 				}
 				verify := &lfs.Link{
 					Href: fmt.Sprintf("%s/verify", baseHref),
+					Header: map[string]string{
+						"Authorization": authHdr,
+					},
 				}
 
 				objects = append(objects, &lfs.ObjectResponse{

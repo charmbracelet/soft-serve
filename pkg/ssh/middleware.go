@@ -189,7 +189,6 @@ func LoggingMiddleware(sh ssh.Handler) ssh.Handler {
 		ctx := s.Context()
 		logger := log.FromContext(ctx).WithPrefix("ssh")
 		ct := time.Now()
-		hpk := sshutils.MarshalAuthorizedKey(s.PublicKey())
 		ptyReq, _, isPty := s.Pty()
 		addr := s.RemoteAddr().String()
 		user := proto.UserFromContext(ctx)
@@ -223,7 +222,7 @@ func LoggingMiddleware(sh ssh.Handler) ssh.Handler {
 				}
 			}
 			logArgs = append(logArgs,
-				"key", hpk,
+				"key", sshutils.MarshalAuthorizedKey(s.PublicKey()),
 				"envs", safeEnvs,
 			)
 		}

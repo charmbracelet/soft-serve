@@ -162,12 +162,20 @@ type DBConfig struct {
 
 // LFSConfig is the configuration for Git LFS.
 type LFSConfig struct {
-	// Enabled is whether or not Git LFS is enabled.
-	Enabled bool `env:"ENABLED" yaml:"enabled"`
-
-	// SSHEnabled is whether or not Git LFS over SSH is enabled.
-	// This is only used if LFS is enabled.
+	Enabled    bool `env:"ENABLED" yaml:"enabled"`
 	SSHEnabled bool `env:"SSH_ENABLED" yaml:"ssh_enabled"`
+
+	S3 LFSS3Config `envPrefix:"S3_" yaml:"s3"`
+}
+
+type LFSS3Config struct {
+	Enabled   bool   `env:"ENABLED" yaml:"enabled"`
+	Endpoint  string `env:"ENDPOINT" yaml:"endpoint"`
+	Bucket    string `env:"BUCKET" yaml:"bucket"`
+	AccessKey string `env:"ACCESS_KEY" yaml:"access_key"`
+	SecretKey string `env:"SECRET_KEY" yaml:"secret_key"`
+	Prefix    string `env:"PREFIX" yaml:"prefix"`
+	Region    string `env:"REGION" yaml:"region"`
 }
 
 // MirrorPullJobConfig is the configuration for the mirror pull cron job.
@@ -280,9 +288,13 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_LOG_FORMAT=%s", c.Log.Format),
 		fmt.Sprintf("SOFT_SERVE_LOG_TIME_FORMAT=%s", c.Log.TimeFormat),
 		fmt.Sprintf("SOFT_SERVE_DB_DRIVER=%s", c.DB.Driver),
-		fmt.Sprintf("SOFT_SERVE_DB_DATA_SOURCE=%s", c.DB.DataSource),
 		fmt.Sprintf("SOFT_SERVE_LFS_ENABLED=%t", c.LFS.Enabled),
 		fmt.Sprintf("SOFT_SERVE_LFS_SSH_ENABLED=%t", c.LFS.SSHEnabled),
+		fmt.Sprintf("SOFT_SERVE_LFS_S3_ENABLED=%t", c.LFS.S3.Enabled),
+		fmt.Sprintf("SOFT_SERVE_LFS_S3_ENDPOINT=%s", c.LFS.S3.Endpoint),
+		fmt.Sprintf("SOFT_SERVE_LFS_S3_REGION=%s", c.LFS.S3.Region),
+		fmt.Sprintf("SOFT_SERVE_LFS_S3_BUCKET=%s", c.LFS.S3.Bucket),
+		fmt.Sprintf("SOFT_SERVE_LFS_S3_PREFIX=%s", c.LFS.S3.Prefix),
 		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL_ENABLED=%t", c.Jobs.MirrorPull.Enabled),
 		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL_SCHEDULE=%s", c.Jobs.MirrorPull.Schedule),
 		fmt.Sprintf("SOFT_SERVE_ALLOW_PUBLIC_GO_GET=%t", c.AllowPublicGoGet),
@@ -367,7 +379,7 @@ func writeConfig(cfg *Config, path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o644) //nolint: errcheck, gosec
+	return os.WriteFile(path, []byte(newConfigFile(cfg)), 0o600)
 }
 
 // WriteConfig writes the configuration to the default file.
@@ -421,9 +433,9 @@ func DefaultConfig() *Config {
 			PublicURL:        "ssh://localhost:23231",
 			KeyPath:          filepath.Join("ssh", "soft_serve_host_ed25519"),
 			AllowMouseEvents: true,
-			ClientKeyPath: filepath.Join("ssh", "soft_serve_client_ed25519"),
-			MaxTimeout:    0,
-			IdleTimeout:   10 * 60, // 10 minutes
+			ClientKeyPath:    filepath.Join("ssh", "soft_serve_client_ed25519"),
+			MaxTimeout:       0,
+			IdleTimeout:      10 * 60, // 10 minutes
 		},
 		Git: GitConfig{
 			Enabled:        true,
@@ -539,11 +551,10 @@ func (c *Config) Validate() error {
 
 // parseAuthKeys parses authorized keys from either file paths or string authorized_keys.
 func parseAuthKeys(aks []string) []ssh.PublicKey {
-	exist := make(map[string]struct{}, 0)
-	pks := make([]ssh.PublicKey, 0)
+	var pks []ssh.PublicKey
+	exist := make(map[string]struct{})
 	for _, key := range aks {
 		if bts, err := os.ReadFile(key); err == nil {
-			// key is a file
 			key = strings.TrimSpace(string(bts))
 		}
 
@@ -552,6 +563,8 @@ func parseAuthKeys(aks []string) []ssh.PublicKey {
 				pks = append(pks, pk)
 				exist[key] = struct{}{}
 			}
+		} else {
+			fmt.Fprintf(os.Stderr, "warning: skipped malformed admin key in initial_admin_keys: %q\n", key)
 		}
 	}
 	return pks
