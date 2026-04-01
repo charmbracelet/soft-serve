@@ -1,0 +1,26 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix info.txt
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create user with split key args (unquoted authorized key)
+soft user create split -k $USER1_AUTHORIZED_KEY
+
+# verify user info shows the key
+soft user info split
+cmpenv stdout info.txt
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+-- info.txt --
+Username: split
+Admin: false
+Public keys:
+  $USER1_AUTHORIZED_KEY
