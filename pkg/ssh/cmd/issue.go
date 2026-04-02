@@ -26,6 +26,7 @@ func issueCommand() *cobra.Command {
 		issueReopenCommand(),
 		issueEditCommand(),
 		issueDeleteCommand(),
+		issueCommentCommand(),
 	)
 
 	return cmd
@@ -345,6 +346,235 @@ func issueDeleteCommand() *cobra.Command {
 	}
 
 	return cmd
+}
+
+// issueCommentCommand returns a command for managing issue comments.
+func issueCommentCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "comment",
+		Short: "Manage issue comments",
+	}
+
+	cmd.AddCommand(
+		issueCommentAddCommand(),
+		issueCommentListCommand(),
+		issueCommentEditCommand(),
+		issueCommentDeleteCommand(),
+	)
+
+	return cmd
+}
+
+// issueCommentAddCommand adds a comment to an issue.
+func issueCommentAddCommand() *cobra.Command {
+	var body string
+
+	cmd := &cobra.Command{
+		Use:               "add REPOSITORY ISSUE_ID",
+		Short:             "Add a comment to an issue",
+		Args:              cobra.ExactArgs(2),
+		PersistentPreRunE: checkIfReadable,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			repoName := args[0]
+			issueID, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid issue ID: %s", args[1])
+			}
+
+			issue, _, err := getIssueAndVerifyRepo(cmd, be, repoName, issueID)
+			if err != nil {
+				return err
+			}
+
+			user := proto.UserFromContext(ctx)
+			if user == nil {
+				return fmt.Errorf("user not found")
+			}
+
+			comment, err := be.AddIssueComment(ctx, issue.ID(), user.ID(), body)
+			if err != nil {
+				return err
+			}
+
+			cmd.Printf("Comment #%d added to issue #%d\n", comment.ID(), issue.ID())
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&body, "body", "b", "", "Comment body (required)")
+	_ = cmd.MarkFlagRequired("body")
+
+	return cmd
+}
+
+// issueCommentListCommand lists all comments on an issue.
+func issueCommentListCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "list REPOSITORY ISSUE_ID",
+		Aliases:           []string{"ls"},
+		Short:             "List comments on an issue",
+		Args:              cobra.ExactArgs(2),
+		PersistentPreRunE: checkIfReadable,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			repoName := args[0]
+			issueID, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid issue ID: %s", args[1])
+			}
+
+			issue, _, err := getIssueAndVerifyRepo(cmd, be, repoName, issueID)
+			if err != nil {
+				return err
+			}
+
+			comments, err := be.GetIssueComments(ctx, issue.ID())
+			if err != nil {
+				return err
+			}
+
+			if len(comments) == 0 {
+				cmd.Println("No comments found")
+				return nil
+			}
+
+			for _, c := range comments {
+				author, _ := be.UserByID(ctx, c.UserID())
+				authorName := "unknown"
+				if author != nil {
+					authorName = author.Username()
+				}
+				cmd.Printf("Comment #%d by %s on %s\n", c.ID(), authorName, c.CreatedAt().Format("2006-01-02 15:04:05"))
+				cmd.Println(c.Body())
+				cmd.Println()
+			}
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+// issueCommentEditCommand edits the body of a comment.
+func issueCommentEditCommand() *cobra.Command {
+	var body string
+
+	cmd := &cobra.Command{
+		Use:               "edit REPOSITORY ISSUE_ID COMMENT_ID",
+		Short:             "Edit a comment",
+		Args:              cobra.ExactArgs(3),
+		PersistentPreRunE: checkIfReadable,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			repoName := args[0]
+			issueID, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid issue ID: %s", args[1])
+			}
+			commentID, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid comment ID: %s", args[2])
+			}
+
+			issue, _, err := getIssueAndVerifyRepo(cmd, be, repoName, issueID)
+			if err != nil {
+				return err
+			}
+
+			comment, err := getCommentAndVerifyIssue(be, cmd, issue.ID(), commentID)
+			if err != nil {
+				return err
+			}
+
+			user := proto.UserFromContext(ctx)
+			if user == nil {
+				return fmt.Errorf("user not found")
+			}
+			if user.ID() != comment.UserID() {
+				if be.AccessLevelForUser(ctx, repoName, user) < access.AdminAccess {
+					return fmt.Errorf("permission denied: only the comment author or an admin can edit this comment")
+				}
+			}
+
+			if err := be.UpdateIssueComment(ctx, commentID, body); err != nil {
+				return err
+			}
+
+			cmd.Printf("Comment #%d updated\n", commentID)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&body, "body", "b", "", "New comment body (required)")
+	_ = cmd.MarkFlagRequired("body")
+
+	return cmd
+}
+
+// issueCommentDeleteCommand deletes a comment.
+func issueCommentDeleteCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "delete REPOSITORY ISSUE_ID COMMENT_ID",
+		Short:             "Delete a comment",
+		Args:              cobra.ExactArgs(3),
+		PersistentPreRunE: checkIfReadable,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			repoName := args[0]
+			issueID, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid issue ID: %s", args[1])
+			}
+			commentID, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid comment ID: %s", args[2])
+			}
+
+			issue, _, err := getIssueAndVerifyRepo(cmd, be, repoName, issueID)
+			if err != nil {
+				return err
+			}
+
+			comment, err := getCommentAndVerifyIssue(be, cmd, issue.ID(), commentID)
+			if err != nil {
+				return err
+			}
+
+			user := proto.UserFromContext(ctx)
+			if user == nil {
+				return fmt.Errorf("user not found")
+			}
+			if user.ID() != comment.UserID() {
+				if be.AccessLevelForUser(ctx, repoName, user) < access.AdminAccess {
+					return fmt.Errorf("permission denied: only the comment author or an admin can delete this comment")
+				}
+			}
+
+			if err := be.DeleteIssueComment(ctx, commentID); err != nil {
+				return err
+			}
+
+			cmd.Printf("Comment #%d deleted\n", commentID)
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+// getCommentAndVerifyIssue fetches a comment and verifies it belongs to the given issue.
+// Returns a uniform "not found" error to avoid leaking global comment IDs.
+func getCommentAndVerifyIssue(be *backend.Backend, cmd *cobra.Command, issueID, commentID int64) (proto.IssueComment, error) {
+	comment, err := be.GetIssueComment(cmd.Context(), commentID)
+	if err != nil || comment.IssueID() != issueID {
+		return nil, fmt.Errorf("comment #%d not found in issue #%d", commentID, issueID)
+	}
+	return comment, nil
 }
 
 // getIssueAndVerifyRepo fetches an issue and verifies it belongs to the given repository.

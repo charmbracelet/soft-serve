@@ -28,7 +28,7 @@ func setupIssueBackend(t *testing.T) issueTestEnv {
 	cfg := config.DefaultConfig()
 	cfg.DataPath = dp
 	cfg.DB.Driver = "sqlite"
-	cfg.DB.DataSource = dp + "/test.db"
+	cfg.DB.DataSource = dp + "/test.db?_pragma=foreign_keys(1)"
 
 	ctx := context.Background()
 	ctx = config.WithContext(ctx, cfg)

@@ -11,4 +11,5 @@ type Store interface {
 	WebhookStore
 	PushMirrorStore
 	IssueStore
+	IssueCommentStore
 }
