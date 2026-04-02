@@ -26,6 +26,7 @@ type datastore struct {
 	*issueStore
 	*issueCommentStore
 	*labelStore
+	*assigneeStore
 }
 
 // New returns a new store.Store database.
@@ -50,6 +51,7 @@ func New(ctx context.Context, db *db.DB) store.Store {
 		issueStore:        &issueStore{},
 		issueCommentStore: &issueCommentStore{},
 		labelStore:        &labelStore{},
+		assigneeStore:     &assigneeStore{},
 	}
 
 	return s

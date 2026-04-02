@@ -30,6 +30,7 @@ func issueCommand() *cobra.Command {
 		issueDeleteCommand(),
 		issueCommentCommand(),
 		issueLabelCommand(),
+		issueAssigneeCommand(),
 	)
 
 	return cmd
@@ -178,6 +179,14 @@ func issueViewCommand() *cobra.Command {
 					names[i] = l.Name()
 				}
 				cmd.Printf("Labels: %s\n", strings.Join(names, ", "))
+			}
+			assignees, _ := be.GetIssueAssignees(ctx, issue.ID())
+			if len(assignees) > 0 {
+				names := make([]string, len(assignees))
+				for i, a := range assignees {
+					names[i] = a.Username()
+				}
+				cmd.Printf("Assignees: %s\n", strings.Join(names, ", "))
 			}
 			cmd.Println()
 			if issue.Body() != "" {

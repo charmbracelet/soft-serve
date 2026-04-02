@@ -23,6 +23,7 @@ var migrations = []Migration{
 	createIssuesTable,
 	createIssueCommentsTable,
 	createLabelsTable,
+	createAssigneesTable,
 }
 
 func execMigration(ctx context.Context, tx *db.Tx, version int, name string, down bool) error {

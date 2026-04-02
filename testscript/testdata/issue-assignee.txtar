@@ -1,0 +1,70 @@
+# vi: set ft=conf
+
+# End-to-end tests for the issue assignee CLI commands.
+# Covers: add, remove, view shows assignees, permission check, cascade on issue delete.
+
+exec soft serve &
+ensureserverrunning SSH_PORT
+
+soft user create alice -k $USER1_AUTHORIZED_KEY
+
+soft repo create testrepo
+soft repo issue create testrepo -t First-issue
+stdout 'Issue #1 created'
+soft repo issue create testrepo -t Second-issue
+stdout 'Issue #2 created'
+
+# ── ADD ASSIGNEE ──────────────────────────────────────────────────────────────
+
+# Admin assigns themselves to issue #1.
+soft repo issue assignee add testrepo 1 admin
+stdout 'User "admin" assigned to issue #1'
+
+# Adding same assignee again is idempotent.
+soft repo issue assignee add testrepo 1 admin
+stdout 'User "admin" assigned to issue #1'
+
+# Non-existent user fails.
+! soft repo issue assignee add testrepo 1 ghost
+stderr 'not found'
+
+# Alice (read-only) cannot add assignees.
+! usoft repo issue assignee add testrepo 1 admin
+stderr 'unauthorized'
+
+# ── VIEW SHOWS ASSIGNEES ──────────────────────────────────────────────────────
+
+# Issue #1 shows assignees.
+soft repo issue view testrepo 1
+stdout 'Assignees: admin'
+
+# Issue #2 has no assignees.
+soft repo issue view testrepo 2
+! stdout 'Assignees:'
+
+# ── REMOVE ASSIGNEE ───────────────────────────────────────────────────────────
+
+soft repo issue assignee remove testrepo 1 admin
+stdout 'User "admin" unassigned from issue #1'
+
+soft repo issue view testrepo 1
+! stdout 'Assignees:'
+
+# Alice (read-only) cannot remove assignees.
+soft repo issue assignee add testrepo 1 admin
+stdout 'User "admin" assigned to issue #1'
+
+! usoft repo issue assignee remove testrepo 1 admin
+stderr 'unauthorized'
+
+# ── CASCADE ON ISSUE DELETE ───────────────────────────────────────────────────
+
+# Assignee is still set from previous step; delete the issue.
+soft repo issue delete testrepo 1
+stdout 'Issue #1 deleted'
+
+# Issue is gone.
+! soft repo issue view testrepo 1
+stderr 'not found'
+
+[windows] stopserver
