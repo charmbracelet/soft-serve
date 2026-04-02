@@ -87,6 +87,9 @@ func NewRouter(ctx context.Context) (http.Handler, *ratelimit.IPLimiter) {
 	// Health routes
 	HealthController(ctx, router)
 
+	// Issue API routes
+	IssueAPIController(ctx, router)
+
 	// Git routes
 	GitController(ctx, router)
 
