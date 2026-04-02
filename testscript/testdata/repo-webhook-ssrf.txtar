@@ -2,6 +2,9 @@
 
 # Test SSRF protection in webhook creation
 
+# Disable the test-suite-wide SSRF bypass so this test can verify SSRF protection.
+env SOFT_SERVE_SSRF_ALLOW_PRIVATE_NETS=
+
 # start soft serve
 exec soft serve &
 # wait for SSH server to start
