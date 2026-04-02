@@ -31,6 +31,7 @@ func issueCommand() *cobra.Command {
 		issueCommentCommand(),
 		issueLabelCommand(),
 		issueAssigneeCommand(),
+		issueMilestoneCommand(),
 	)
 
 	return cmd
@@ -80,6 +81,7 @@ func issueListCommand() *cobra.Command {
 	var search string
 	var page int
 	var limit int
+	var milestoneID int64
 
 	cmd := &cobra.Command{
 		Use:               "list REPOSITORY",
@@ -93,11 +95,12 @@ func issueListCommand() *cobra.Command {
 			repoName := args[0]
 
 			filter := store.IssueFilter{
-				Status:    status,
-				Search:    search,
-				LabelName: labelName,
-				Page:      page,
-				Limit:     limit,
+				Status:      status,
+				Search:      search,
+				LabelName:   labelName,
+				MilestoneID: milestoneID,
+				Page:        page,
+				Limit:       limit,
 			}
 
 			issues, err := be.GetIssuesByRepository(ctx, repoName, filter)
@@ -128,6 +131,7 @@ func issueListCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&search, "search", "q", "", "Search keyword matched against title and body")
 	cmd.Flags().IntVarP(&page, "page", "p", 1, "Page number (1-based)")
 	cmd.Flags().IntVarP(&limit, "limit", "n", 0, fmt.Sprintf("Results per page (default %d)", store.DefaultIssueLimit))
+	cmd.Flags().Int64VarP(&milestoneID, "milestone", "m", 0, "Filter by milestone ID")
 
 	return cmd
 }
@@ -187,6 +191,10 @@ func issueViewCommand() *cobra.Command {
 					names[i] = a.Username()
 				}
 				cmd.Printf("Assignees: %s\n", strings.Join(names, ", "))
+			}
+			ms, _ := be.GetIssueMilestone(ctx, issue.ID())
+			if ms != nil {
+				cmd.Printf("Milestone: #%d %s\n", ms.ID(), ms.Title())
 			}
 			cmd.Println()
 			if issue.Body() != "" {

@@ -12,11 +12,12 @@ const DefaultIssueLimit = 25
 
 // IssueFilter controls which issues are returned by GetIssuesByRepoID / CountIssues.
 type IssueFilter struct {
-	Status    string // "open", "closed", "all", "" (same as "all")
-	Search    string // keyword matched against title and body (LIKE)
-	LabelName string // filter by label name (join with labels table)
-	Page      int    // 1-based page number; <=1 means page 1
-	Limit     int    // results per page; <=0 means DefaultIssueLimit
+	Status      string // "open", "closed", "all", "" (same as "all")
+	Search      string // keyword matched against title and body (LIKE)
+	LabelName   string // filter by label name (join with labels table)
+	MilestoneID int64  // filter by milestone ID (0 = no filter)
+	Page        int    // 1-based page number; <=1 means page 1
+	Limit       int    // results per page; <=0 means DefaultIssueLimit
 }
 
 // IssueStore is an interface for managing issues.

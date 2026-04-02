@@ -14,4 +14,5 @@ type Store interface {
 	IssueCommentStore
 	LabelStore
 	AssigneeStore
+	MilestoneStore
 }

@@ -15,6 +15,7 @@ type Issue struct {
 	Status    string         `db:"status"`
 	CreatedAt time.Time      `db:"created_at"`
 	UpdatedAt time.Time      `db:"updated_at"`
-	ClosedAt  sql.NullTime   `db:"closed_at"`
-	ClosedBy  sql.NullInt64  `db:"closed_by"`
+	ClosedAt    sql.NullTime  `db:"closed_at"`
+	ClosedBy    sql.NullInt64 `db:"closed_by"`
+	MilestoneID sql.NullInt64 `db:"milestone_id"`
 }

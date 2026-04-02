@@ -48,6 +48,11 @@ func buildIssueWhere(repoID int64, filter store.IssueFilter) (joins string, cond
 		args = append(args, pattern, pattern)
 	}
 
+	if filter.MilestoneID != 0 {
+		conditions = append(conditions, "issues.milestone_id = ?")
+		args = append(args, filter.MilestoneID)
+	}
+
 	return joins, conditions, args
 }
 

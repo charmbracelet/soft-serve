@@ -24,6 +24,8 @@ var migrations = []Migration{
 	createIssueCommentsTable,
 	createLabelsTable,
 	createAssigneesTable,
+	createMilestonesTable,
+	addMilestoneIDToIssues,
 }
 
 func execMigration(ctx context.Context, tx *db.Tx, version int, name string, down bool) error {
