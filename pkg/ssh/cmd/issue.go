@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
@@ -27,6 +28,7 @@ func issueCommand() *cobra.Command {
 		issueEditCommand(),
 		issueDeleteCommand(),
 		issueCommentCommand(),
+		issueLabelCommand(),
 	)
 
 	return cmd
@@ -72,6 +74,7 @@ func issueCreateCommand() *cobra.Command {
 // issueListCommand returns a command for listing issues.
 func issueListCommand() *cobra.Command {
 	var status string
+	var labelName string
 
 	cmd := &cobra.Command{
 		Use:               "list REPOSITORY",
@@ -84,7 +87,15 @@ func issueListCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			repoName := args[0]
 
-			issues, err := be.GetIssuesByRepository(ctx, repoName, status)
+			var (
+				issues []proto.Issue
+				err    error
+			)
+			if cmd.Flags().Changed("label") {
+				issues, err = be.GetIssuesByRepositoryAndLabel(ctx, repoName, labelName, status)
+			} else {
+				issues, err = be.GetIssuesByRepository(ctx, repoName, status)
+			}
 			if err != nil {
 				return err
 			}
@@ -108,6 +119,7 @@ func issueListCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&status, "status", "s", "open", "Filter by status (open, closed, or all)")
+	cmd.Flags().StringVarP(&labelName, "label", "l", "", "Filter by label name")
 
 	return cmd
 }
@@ -151,6 +163,14 @@ func issueViewCommand() *cobra.Command {
 					closerName = closer.Username()
 				}
 				cmd.Printf("Closed by: %s on %s\n", closerName, issue.ClosedAt().Format("2006-01-02 15:04:05"))
+			}
+			labels, _ := be.GetIssueLabels(ctx, issue.ID())
+			if len(labels) > 0 {
+				names := make([]string, len(labels))
+				for i, l := range labels {
+					names[i] = l.Name()
+				}
+				cmd.Printf("Labels: %s\n", strings.Join(names, ", "))
 			}
 			cmd.Println()
 			if issue.Body() != "" {

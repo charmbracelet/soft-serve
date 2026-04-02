@@ -30,6 +30,7 @@ func RepoCommand() *cobra.Command {
 		hiddenCommand(),
 		importCommand(),
 		issueCommand(),
+		labelCommand(),
 		listCommand(),
 		mirrorCommand(),
 		privateCommand(),

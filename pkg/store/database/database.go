@@ -25,6 +25,7 @@ type datastore struct {
 	*pushMirrorStore
 	*issueStore
 	*issueCommentStore
+	*labelStore
 }
 
 // New returns a new store.Store database.
@@ -48,6 +49,7 @@ func New(ctx context.Context, db *db.DB) store.Store {
 		pushMirrorStore:  &pushMirrorStore{},
 		issueStore:        &issueStore{},
 		issueCommentStore: &issueCommentStore{},
+		labelStore:        &labelStore{},
 	}
 
 	return s

@@ -12,4 +12,5 @@ type Store interface {
 	PushMirrorStore
 	IssueStore
 	IssueCommentStore
+	LabelStore
 }
