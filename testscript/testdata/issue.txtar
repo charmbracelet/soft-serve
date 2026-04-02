@@ -1,0 +1,183 @@
+# vi: set ft=conf
+
+# End-to-end tests for the issue management CLI commands.
+# Covers: create, list, view, close, reopen, edit, delete, and permission checks.
+#
+# Issue IDs are global auto-increment. The expected sequence for this script is:
+#   #1 - Admin's "First issue"          (created in CREATE section)
+#   #2 - Alice's "Alice issue"          (created in CREATE section)
+#   #3 - Admin's "Admin second issue"   (created in DELETE section)
+
+exec soft serve &
+ensureserverrunning SSH_PORT
+
+# Create a user for non-admin testing.
+soft user create alice -k $USER1_AUTHORIZED_KEY
+
+# Create a test repository (public, so alice has read access by default).
+soft repo create testrepo
+
+# ── CREATE ────────────────────────────────────────────────────────────────────
+
+# Admin creates issue #1.
+soft repo issue create testrepo -t 'First issue' -b 'Admin body'
+stdout 'Issue #1 created'
+
+# Alice (read-only) can also create an issue (#2).
+usoft repo issue create testrepo -t 'Alice issue'
+stdout 'Issue #2 created'
+
+# title flag is required; missing it must fail.
+! soft repo issue create testrepo -b 'body only'
+stderr 'required'
+
+# ── LIST ─────────────────────────────────────────────────────────────────────
+
+# Default --status=open; both open issues should appear.
+soft repo issue list testrepo
+stdout 'First issue'
+stdout 'Alice issue'
+! stdout 'No issues found'
+
+# Filter open explicitly.
+soft repo issue list testrepo --status open
+stdout 'First issue'
+stdout 'Alice issue'
+
+# --status all also returns all.
+soft repo issue list testrepo --status all
+stdout 'First issue'
+stdout 'Alice issue'
+
+# No closed issues yet.
+soft repo issue list testrepo --status closed
+stdout 'No issues found'
+
+# Invalid status string returns an error.
+! soft repo issue list testrepo --status badvalue
+stderr 'invalid status'
+
+# ── VIEW ─────────────────────────────────────────────────────────────────────
+
+soft repo issue view testrepo 1
+stdout 'Issue #1: First issue'
+stdout 'Status: open'
+stdout 'Admin body'
+
+# View from alice's perspective also works (read access).
+usoft repo issue view testrepo 2
+stdout 'Issue #2: Alice issue'
+stdout 'Status: open'
+
+# Viewing a valid ID that belongs to a different (or nonexistent) repo must
+# return a uniform "not found" to avoid leaking global issue IDs.
+! soft repo issue view testrepo 9999
+stderr 'not found'
+
+# ── CLOSE / REOPEN ────────────────────────────────────────────────────────────
+
+# Close issue #1.
+soft repo issue close testrepo 1
+stdout 'Issue #1 closed'
+
+# View shows "Closed by" line after close.
+soft repo issue view testrepo 1
+stdout 'Status: closed'
+stdout 'Closed by:'
+
+# Closed issue now appears only in the closed list.
+soft repo issue list testrepo --status closed
+stdout 'First issue'
+
+soft repo issue list testrepo --status open
+! stdout 'First issue'
+
+# Closing again returns "already closed".
+! soft repo issue close testrepo 1
+stderr 'already closed'
+
+# Reopen it.
+soft repo issue reopen testrepo 1
+stdout 'Issue #1 reopened'
+
+# Verify it is open again.
+soft repo issue view testrepo 1
+stdout 'Status: open'
+
+# Reopening an open issue returns "already open".
+! soft repo issue reopen testrepo 1
+stderr 'already open'
+
+# Alice cannot close admin's issue (read-only, not a collaborator).
+! usoft repo issue close testrepo 1
+stderr 'unauthorized'
+
+# ── EDIT ─────────────────────────────────────────────────────────────────────
+
+# Admin edits their own issue #1: title only — body must be preserved.
+soft repo issue edit testrepo 1 -t 'First issue updated'
+stdout 'Issue #1 updated'
+
+soft repo issue view testrepo 1
+stdout 'First issue updated'
+stdout 'Admin body'
+
+# Admin edits their own issue #1: body only — title must be preserved.
+soft repo issue edit testrepo 1 -b 'Updated body'
+stdout 'Issue #1 updated'
+
+soft repo issue view testrepo 1
+stdout 'First issue updated'
+stdout 'Updated body'
+
+# Alice edits her own issue #2 (title).
+usoft repo issue edit testrepo 2 -t 'Alice issue updated'
+stdout 'Issue #2 updated'
+
+# Alice cannot edit admin's issue #1 (not the author, not an admin).
+! usoft repo issue edit testrepo 1 -t 'Stolen title'
+stderr 'permission denied'
+
+# After failed edit, admin's title must be unchanged.
+soft repo issue view testrepo 1
+stdout 'First issue updated'
+
+# Admin can edit any issue (admin access overrides ownership check).
+soft repo issue edit testrepo 2 -t 'Admin overrides alice'
+stdout 'Issue #2 updated'
+
+# ── DELETE ────────────────────────────────────────────────────────────────────
+
+# Alice deletes her own issue #2.
+usoft repo issue delete testrepo 2
+stdout 'Issue #2 deleted'
+
+# Issue #2 is gone — view must return "not found".
+! soft repo issue view testrepo 2
+stderr 'not found'
+
+# Issue #2 no longer appears in list.
+soft repo issue list testrepo --status all
+! stdout 'Admin overrides alice'
+stdout 'First issue updated'
+
+# Alice cannot delete admin's issue #1 (not the author, not an admin).
+# Create a new issue for this test (#3).
+soft repo issue create testrepo -t 'Admin second issue'
+stdout 'Issue #3 created'
+
+! usoft repo issue delete testrepo 3
+stderr 'permission denied'
+
+# Issue #3 must still exist.
+soft repo issue view testrepo 3
+stdout 'Admin second issue'
+
+# Admin can delete any issue.
+soft repo issue delete testrepo 3
+stdout 'Issue #3 deleted'
+
+! soft repo issue view testrepo 3
+stderr 'not found'
+
+[windows] stopserver

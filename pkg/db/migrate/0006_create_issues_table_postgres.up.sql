@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS issues (
-    id SERIAL PRIMARY KEY,
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     repo_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     title TEXT NOT NULL,
@@ -14,7 +14,5 @@ CREATE TABLE IF NOT EXISTS issues (
     FOREIGN KEY (closed_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_issues_repo_id ON issues(repo_id);
 CREATE INDEX IF NOT EXISTS idx_issues_user_id ON issues(user_id);
-CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
-CREATE INDEX IF NOT EXISTS idx_issues_created_at ON issues(created_at);
+CREATE INDEX IF NOT EXISTS idx_issues_repo_status_created ON issues(repo_id, status, created_at DESC);

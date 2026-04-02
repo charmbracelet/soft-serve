@@ -21,6 +21,7 @@ var migrations = []Migration{
 	pushMirrors,
 	addIndexes,
 	createIssuesTable,
+	createIssueCommentsTable,
 }
 
 func execMigration(ctx context.Context, tx *db.Tx, version int, name string, down bool) error {

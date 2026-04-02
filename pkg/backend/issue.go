@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
@@ -10,6 +11,10 @@ import (
 
 // CreateIssue creates a new issue in a repository.
 func (b *Backend) CreateIssue(ctx context.Context, repoName string, userID int64, title, body string) (proto.Issue, error) {
+	if title == "" {
+		return nil, fmt.Errorf("issue title cannot be empty")
+	}
+
 	repo, err := b.Repository(ctx, repoName)
 	if err != nil {
 		return nil, err
@@ -33,16 +38,10 @@ func (b *Backend) CreateIssue(ctx context.Context, repoName string, userID int64
 
 // GetIssue retrieves an issue by its ID.
 func (b *Backend) GetIssue(ctx context.Context, id int64) (proto.Issue, error) {
-	var issue models.Issue
-	err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		var err error
-		issue, err = b.store.GetIssueByID(ctx, tx, id)
-		return err
-	})
+	issue, err := b.store.GetIssueByID(ctx, b.db, id)
 	if err != nil {
 		return nil, err
 	}
-
 	return proto.NewIssue(issue), nil
 }
 
@@ -53,12 +52,7 @@ func (b *Backend) GetIssuesByRepository(ctx context.Context, repoName string, st
 		return nil, err
 	}
 
-	var issues []models.Issue
-	err = b.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		var err error
-		issues, err = b.store.GetIssuesByRepoID(ctx, tx, repo.ID(), status)
-		return err
-	})
+	issues, err := b.store.GetIssuesByRepoID(ctx, b.db, repo.ID(), status)
 	if err != nil {
 		return nil, err
 	}
@@ -70,31 +64,36 @@ func (b *Backend) GetIssuesByRepository(ctx context.Context, repoName string, st
 	return result, nil
 }
 
-// UpdateIssue updates an issue's title and body.
-func (b *Backend) UpdateIssue(ctx context.Context, id int64, title, body string) error {
+// UpdateIssue updates an issue's title and optionally its body.
+// A nil body means "do not change the existing body".
+func (b *Backend) UpdateIssue(ctx context.Context, id, repoID int64, title string, body *string) error {
+	if title == "" {
+		return fmt.Errorf("issue title cannot be empty")
+	}
+
 	return b.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		return b.store.UpdateIssue(ctx, tx, id, title, body)
+		return b.store.UpdateIssue(ctx, tx, id, repoID, title, body)
 	})
 }
 
 // CloseIssue closes an issue.
-func (b *Backend) CloseIssue(ctx context.Context, id, closedBy int64) error {
+func (b *Backend) CloseIssue(ctx context.Context, id, repoID, closedBy int64) error {
 	return b.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		return b.store.CloseIssue(ctx, tx, id, closedBy)
+		return b.store.CloseIssue(ctx, tx, id, repoID, closedBy)
 	})
 }
 
 // ReopenIssue reopens a closed issue.
-func (b *Backend) ReopenIssue(ctx context.Context, id int64) error {
+func (b *Backend) ReopenIssue(ctx context.Context, id, repoID int64) error {
 	return b.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		return b.store.ReopenIssue(ctx, tx, id)
+		return b.store.ReopenIssue(ctx, tx, id, repoID)
 	})
 }
 
 // DeleteIssue deletes an issue by its ID.
-func (b *Backend) DeleteIssue(ctx context.Context, id int64) error {
+func (b *Backend) DeleteIssue(ctx context.Context, id, repoID int64) error {
 	return b.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		return b.store.DeleteIssue(ctx, tx, id)
+		return b.store.DeleteIssue(ctx, tx, id, repoID)
 	})
 }
 
@@ -104,12 +103,5 @@ func (b *Backend) CountIssues(ctx context.Context, repoName string, status strin
 	if err != nil {
 		return 0, err
 	}
-
-	var count int64
-	err = b.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		var err error
-		count, err = b.store.CountIssues(ctx, tx, repo.ID(), status)
-		return err
-	})
-	return count, err
+	return b.store.CountIssues(ctx, b.db, repo.ID(), status)
 }

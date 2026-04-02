@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/spf13/cobra"
@@ -23,6 +24,8 @@ func issueCommand() *cobra.Command {
 		issueViewCommand(),
 		issueCloseCommand(),
 		issueReopenCommand(),
+		issueEditCommand(),
+		issueDeleteCommand(),
 	)
 
 	return cmd
@@ -37,15 +40,11 @@ func issueCreateCommand() *cobra.Command {
 		Use:               "create REPOSITORY",
 		Short:             "Create a new issue",
 		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfCollab,
+		PersistentPreRunE: checkIfReadable,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
 			repoName := args[0]
-
-			if title == "" {
-				return fmt.Errorf("title is required")
-			}
 
 			user := proto.UserFromContext(ctx)
 			if user == nil {
@@ -107,7 +106,7 @@ func issueListCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&status, "status", "s", "", "Filter by status (open, closed, or all)")
+	cmd.Flags().StringVarP(&status, "status", "s", "open", "Filter by status (open, closed, or all)")
 
 	return cmd
 }
@@ -128,19 +127,11 @@ func issueViewCommand() *cobra.Command {
 				return fmt.Errorf("invalid issue ID: %s", args[1])
 			}
 
-			issue, err := be.GetIssue(ctx, issueID)
+			issue, repo, err := getIssueAndVerifyRepo(cmd, be, repoName, issueID)
 			if err != nil {
 				return err
 			}
-
-			// Verify the issue belongs to the specified repository
-			repo, err := be.Repository(ctx, repoName)
-			if err != nil {
-				return err
-			}
-			if issue.RepoID() != repo.ID() {
-				return fmt.Errorf("issue #%d not found in repository %s", issueID, repoName)
-			}
+			_ = repo
 
 			author, _ := be.UserByID(ctx, issue.UserID())
 			authorName := "unknown"
@@ -190,18 +181,9 @@ func issueCloseCommand() *cobra.Command {
 				return fmt.Errorf("invalid issue ID: %s", args[1])
 			}
 
-			issue, err := be.GetIssue(ctx, issueID)
+			issue, _, err := getIssueAndVerifyRepo(cmd, be, repoName, issueID)
 			if err != nil {
 				return err
-			}
-
-			// Verify the issue belongs to the specified repository
-			repo, err := be.Repository(ctx, repoName)
-			if err != nil {
-				return err
-			}
-			if issue.RepoID() != repo.ID() {
-				return fmt.Errorf("issue #%d not found in repository %s", issueID, repoName)
 			}
 
 			if issue.IsClosed() {
@@ -213,7 +195,7 @@ func issueCloseCommand() *cobra.Command {
 				return fmt.Errorf("user not found")
 			}
 
-			if err := be.CloseIssue(ctx, issueID, user.ID()); err != nil {
+			if err := be.CloseIssue(ctx, issueID, issue.RepoID(), user.ID()); err != nil {
 				return err
 			}
 
@@ -241,25 +223,16 @@ func issueReopenCommand() *cobra.Command {
 				return fmt.Errorf("invalid issue ID: %s", args[1])
 			}
 
-			issue, err := be.GetIssue(ctx, issueID)
+			issue, _, err := getIssueAndVerifyRepo(cmd, be, repoName, issueID)
 			if err != nil {
 				return err
-			}
-
-			// Verify the issue belongs to the specified repository
-			repo, err := be.Repository(ctx, repoName)
-			if err != nil {
-				return err
-			}
-			if issue.RepoID() != repo.ID() {
-				return fmt.Errorf("issue #%d not found in repository %s", issueID, repoName)
 			}
 
 			if issue.IsOpen() {
 				return fmt.Errorf("issue #%d is already open", issueID)
 			}
 
-			if err := be.ReopenIssue(ctx, issueID); err != nil {
+			if err := be.ReopenIssue(ctx, issueID, issue.RepoID()); err != nil {
 				return err
 			}
 
@@ -269,4 +242,126 @@ func issueReopenCommand() *cobra.Command {
 	}
 
 	return cmd
+}
+
+// issueEditCommand returns a command for editing an issue.
+func issueEditCommand() *cobra.Command {
+	var title string
+	var body string
+
+	cmd := &cobra.Command{
+		Use:               "edit REPOSITORY ISSUE_ID",
+		Short:             "Edit an issue title or body",
+		Args:              cobra.ExactArgs(2),
+		PersistentPreRunE: checkIfReadable,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			repoName := args[0]
+			issueID, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid issue ID: %s", args[1])
+			}
+
+			issue, _, err := getIssueAndVerifyRepo(cmd, be, repoName, issueID)
+			if err != nil {
+				return err
+			}
+
+			// Only the issue author or an admin may edit.
+			user := proto.UserFromContext(ctx)
+			if user == nil {
+				return fmt.Errorf("user not found")
+			}
+			if user.ID() != issue.UserID() {
+				if be.AccessLevelForUser(ctx, repoName, user) < access.AdminAccess {
+					return fmt.Errorf("permission denied: only the issue author or an admin can edit this issue")
+				}
+			}
+
+			if !cmd.Flags().Changed("title") {
+				title = issue.Title()
+			}
+
+			var bodyPtr *string
+			if cmd.Flags().Changed("body") {
+				bodyPtr = &body
+			}
+
+			if err := be.UpdateIssue(ctx, issueID, issue.RepoID(), title, bodyPtr); err != nil {
+				return err
+			}
+
+			cmd.Printf("Issue #%d updated\n", issueID)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&title, "title", "t", "", "New issue title")
+	cmd.Flags().StringVarP(&body, "body", "b", "", "New issue body")
+
+	return cmd
+}
+
+// issueDeleteCommand returns a command for deleting an issue.
+func issueDeleteCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "delete REPOSITORY ISSUE_ID",
+		Short:             "Delete an issue",
+		Args:              cobra.ExactArgs(2),
+		PersistentPreRunE: checkIfReadable,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			be := backend.FromContext(ctx)
+			repoName := args[0]
+			issueID, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid issue ID: %s", args[1])
+			}
+
+			issue, _, err := getIssueAndVerifyRepo(cmd, be, repoName, issueID)
+			if err != nil {
+				return err
+			}
+
+			// Only the issue author or an admin may delete.
+			user := proto.UserFromContext(ctx)
+			if user == nil {
+				return fmt.Errorf("user not found")
+			}
+			if user.ID() != issue.UserID() {
+				if be.AccessLevelForUser(ctx, repoName, user) < access.AdminAccess {
+					return fmt.Errorf("permission denied: only the issue author or an admin can delete this issue")
+				}
+			}
+
+			if err := be.DeleteIssue(ctx, issueID, issue.RepoID()); err != nil {
+				return err
+			}
+
+			cmd.Printf("Issue #%d deleted\n", issueID)
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+// getIssueAndVerifyRepo fetches an issue and verifies it belongs to the given repository.
+// Returns a uniform "not found" error regardless of whether the issue doesn't exist
+// or simply belongs to a different repo, to avoid leaking global issue IDs.
+func getIssueAndVerifyRepo(cmd *cobra.Command, be *backend.Backend, repoName string, issueID int64) (proto.Issue, proto.Repository, error) {
+	ctx := cmd.Context()
+
+	repo, err := be.Repository(ctx, repoName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	issue, err := be.GetIssue(ctx, issueID)
+	if err != nil || issue.RepoID() != repo.ID() {
+		return nil, nil, fmt.Errorf("issue #%d not found in repository %s", issueID, repoName)
+	}
+
+	return issue, repo, nil
 }

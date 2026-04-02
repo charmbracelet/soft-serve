@@ -30,8 +30,3 @@ type Issue interface {
 	ClosedBy() int64
 }
 
-// IssueOptions are options for creating or updating an issue.
-type IssueOptions struct {
-	Title string
-	Body  string
-}
