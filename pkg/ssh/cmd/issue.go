@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/spf13/cobra"
 )
 
@@ -75,6 +76,9 @@ func issueCreateCommand() *cobra.Command {
 func issueListCommand() *cobra.Command {
 	var status string
 	var labelName string
+	var search string
+	var page int
+	var limit int
 
 	cmd := &cobra.Command{
 		Use:               "list REPOSITORY",
@@ -87,15 +91,15 @@ func issueListCommand() *cobra.Command {
 			be := backend.FromContext(ctx)
 			repoName := args[0]
 
-			var (
-				issues []proto.Issue
-				err    error
-			)
-			if cmd.Flags().Changed("label") {
-				issues, err = be.GetIssuesByRepositoryAndLabel(ctx, repoName, labelName, status)
-			} else {
-				issues, err = be.GetIssuesByRepository(ctx, repoName, status)
+			filter := store.IssueFilter{
+				Status:    status,
+				Search:    search,
+				LabelName: labelName,
+				Page:      page,
+				Limit:     limit,
 			}
+
+			issues, err := be.GetIssuesByRepository(ctx, repoName, filter)
 			if err != nil {
 				return err
 			}
@@ -120,6 +124,9 @@ func issueListCommand() *cobra.Command {
 
 	cmd.Flags().StringVarP(&status, "status", "s", "open", "Filter by status (open, closed, or all)")
 	cmd.Flags().StringVarP(&labelName, "label", "l", "", "Filter by label name")
+	cmd.Flags().StringVarP(&search, "search", "q", "", "Search keyword matched against title and body")
+	cmd.Flags().IntVarP(&page, "page", "p", 1, "Page number (1-based)")
+	cmd.Flags().IntVarP(&limit, "limit", "n", 0, fmt.Sprintf("Results per page (default %d)", store.DefaultIssueLimit))
 
 	return cmd
 }

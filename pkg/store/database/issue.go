@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
@@ -13,9 +14,6 @@ type issueStore struct{}
 
 var _ store.IssueStore = (*issueStore)(nil)
 
-// maxIssuesPerRepo caps the number of issues returned to prevent unbounded memory use.
-const maxIssuesPerRepo = 10000
-
 // validStatus returns an error if the given status string is not a recognised value.
 func validStatus(status string) error {
 	switch status {
@@ -23,6 +21,34 @@ func validStatus(status string) error {
 		return nil
 	}
 	return fmt.Errorf("invalid status %q: must be open, closed, or all", status)
+}
+
+// buildIssueWhere constructs the JOIN clause, WHERE conditions (without the "WHERE" keyword),
+// and argument list for a query scoped to repoID + filter.
+// The caller is responsible for appending ORDER BY / LIMIT / OFFSET as needed.
+func buildIssueWhere(repoID int64, filter store.IssueFilter) (joins string, conditions []string, args []interface{}) {
+	conditions = append(conditions, "issues.repo_id = ?")
+	args = append(args, repoID)
+
+	if filter.LabelName != "" {
+		joins = "JOIN issue_labels ON issues.id = issue_labels.issue_id " +
+			"JOIN labels ON issue_labels.label_id = labels.id"
+		conditions = append(conditions, "labels.name = ?")
+		args = append(args, filter.LabelName)
+	}
+
+	if filter.Status == "open" || filter.Status == "closed" {
+		conditions = append(conditions, "issues.status = ?")
+		args = append(args, filter.Status)
+	}
+
+	if filter.Search != "" {
+		conditions = append(conditions, "(issues.title LIKE ? OR issues.body LIKE ?)")
+		pattern := "%" + filter.Search + "%"
+		args = append(args, pattern, pattern)
+	}
+
+	return joins, conditions, args
 }
 
 // GetIssueByID implements store.IssueStore.
@@ -34,24 +60,37 @@ func (*issueStore) GetIssueByID(ctx context.Context, h db.Handler, id int64) (mo
 }
 
 // GetIssuesByRepoID implements store.IssueStore.
-func (*issueStore) GetIssuesByRepoID(ctx context.Context, h db.Handler, repoID int64, status string) ([]models.Issue, error) {
-	if err := validStatus(status); err != nil {
+func (*issueStore) GetIssuesByRepoID(ctx context.Context, h db.Handler, repoID int64, filter store.IssueFilter) ([]models.Issue, error) {
+	if err := validStatus(filter.Status); err != nil {
 		return nil, err
 	}
 
-	var issues []models.Issue
-	var query string
-	var args []interface{}
-
-	if status == "" || status == "all" {
-		query = h.Rebind("SELECT * FROM issues WHERE repo_id = ? ORDER BY created_at DESC LIMIT ?;")
-		args = []interface{}{repoID, maxIssuesPerRepo}
-	} else {
-		query = h.Rebind("SELECT * FROM issues WHERE repo_id = ? AND status = ? ORDER BY created_at DESC LIMIT ?;")
-		args = []interface{}{repoID, status, maxIssuesPerRepo}
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = store.DefaultIssueLimit
 	}
+	page := filter.Page
+	if page <= 1 {
+		page = 1
+	}
+	offset := (page - 1) * limit
 
-	err := h.SelectContext(ctx, &issues, query, args...)
+	joins, conditions, args := buildIssueWhere(repoID, filter)
+	where := strings.Join(conditions, " AND ")
+
+	var sb strings.Builder
+	sb.WriteString("SELECT issues.* FROM issues ")
+	if joins != "" {
+		sb.WriteString(joins)
+		sb.WriteString(" ")
+	}
+	sb.WriteString("WHERE ")
+	sb.WriteString(where)
+	sb.WriteString(" ORDER BY issues.created_at DESC LIMIT ? OFFSET ?;")
+	args = append(args, limit, offset)
+
+	var issues []models.Issue
+	err := h.SelectContext(ctx, &issues, h.Rebind(sb.String()), args...)
 	return issues, db.WrapError(err)
 }
 
@@ -100,23 +139,25 @@ func (*issueStore) DeleteIssue(ctx context.Context, h db.Handler, id, repoID int
 }
 
 // CountIssues implements store.IssueStore.
-func (*issueStore) CountIssues(ctx context.Context, h db.Handler, repoID int64, status string) (int64, error) {
-	if err := validStatus(status); err != nil {
+func (*issueStore) CountIssues(ctx context.Context, h db.Handler, repoID int64, filter store.IssueFilter) (int64, error) {
+	if err := validStatus(filter.Status); err != nil {
 		return 0, err
 	}
 
-	var count int64
-	var query string
-	var args []interface{}
+	joins, conditions, args := buildIssueWhere(repoID, filter)
+	where := strings.Join(conditions, " AND ")
 
-	if status == "" || status == "all" {
-		query = h.Rebind("SELECT COUNT(*) FROM issues WHERE repo_id = ?;")
-		args = []interface{}{repoID}
-	} else {
-		query = h.Rebind("SELECT COUNT(*) FROM issues WHERE repo_id = ? AND status = ?;")
-		args = []interface{}{repoID, status}
+	var sb strings.Builder
+	sb.WriteString("SELECT COUNT(*) FROM issues ")
+	if joins != "" {
+		sb.WriteString(joins)
+		sb.WriteString(" ")
 	}
+	sb.WriteString("WHERE ")
+	sb.WriteString(where)
+	sb.WriteString(";")
 
-	err := h.GetContext(ctx, &count, query, args...)
+	var count int64
+	err := h.GetContext(ctx, &count, h.Rebind(sb.String()), args...)
 	return count, db.WrapError(err)
 }

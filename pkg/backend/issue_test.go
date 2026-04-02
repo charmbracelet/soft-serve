@@ -96,16 +96,16 @@ func TestGetIssuesByRepository(t *testing.T) {
 	is.NoErr(e.be.CloseIssue(e.ctx, issue2.ID(), issue2.RepoID(), e.admin.ID()))
 
 	// default (empty) returns all
-	all, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", "")
+	all, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", store.IssueFilter{Status: ""})
 	is.NoErr(err)
 	is.Equal(len(all), 2)
 
-	open, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", "open")
+	open, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", store.IssueFilter{Status: "open"})
 	is.NoErr(err)
 	is.Equal(len(open), 1)
 	is.Equal(open[0].Title(), "Open issue")
 
-	closed, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", "closed")
+	closed, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", store.IssueFilter{Status: "closed"})
 	is.NoErr(err)
 	is.Equal(len(closed), 1)
 	is.Equal(closed[0].Title(), "To be closed")
@@ -118,7 +118,7 @@ func TestGetIssuesByRepository_InvalidStatus(t *testing.T) {
 	_, err := e.be.CreateRepository(e.ctx, "myrepo", e.admin, proto.RepositoryOptions{})
 	is.NoErr(err)
 
-	_, err = e.be.GetIssuesByRepository(e.ctx, "myrepo", "invalid")
+	_, err = e.be.GetIssuesByRepository(e.ctx, "myrepo", store.IssueFilter{Status: "invalid"})
 	is.True(err != nil)
 }
 
@@ -290,15 +290,15 @@ func TestCountIssues(t *testing.T) {
 	is.NoErr(err)
 	is.NoErr(e.be.CloseIssue(e.ctx, issue.ID(), issue.RepoID(), e.admin.ID()))
 
-	total, err := e.be.CountIssues(e.ctx, "myrepo", "")
+	total, err := e.be.CountIssues(e.ctx, "myrepo", store.IssueFilter{Status: ""})
 	is.NoErr(err)
 	is.Equal(total, int64(4))
 
-	open, err := e.be.CountIssues(e.ctx, "myrepo", "open")
+	open, err := e.be.CountIssues(e.ctx, "myrepo", store.IssueFilter{Status: "open"})
 	is.NoErr(err)
 	is.Equal(open, int64(3))
 
-	closed, err := e.be.CountIssues(e.ctx, "myrepo", "closed")
+	closed, err := e.be.CountIssues(e.ctx, "myrepo", store.IssueFilter{Status: "closed"})
 	is.NoErr(err)
 	is.Equal(closed, int64(1))
 }
@@ -310,7 +310,7 @@ func TestCountIssues_InvalidStatus(t *testing.T) {
 	_, err := e.be.CreateRepository(e.ctx, "myrepo", e.admin, proto.RepositoryOptions{})
 	is.NoErr(err)
 
-	_, err = e.be.CountIssues(e.ctx, "myrepo", "OPEN")
+	_, err = e.be.CountIssues(e.ctx, "myrepo", store.IssueFilter{Status: "OPEN"})
 	is.True(err != nil)
 }
 
@@ -407,7 +407,7 @@ func TestGetIssuesByRepository_RepoNotFound(t *testing.T) {
 	is := is.New(t)
 	e := setupIssueBackend(t)
 
-	_, err := e.be.GetIssuesByRepository(e.ctx, "nonexistent", "open")
+	_, err := e.be.GetIssuesByRepository(e.ctx, "nonexistent", store.IssueFilter{Status: "open"})
 	is.True(err != nil)
 }
 
@@ -426,11 +426,11 @@ func TestGetIssuesByRepository_StatusAll(t *testing.T) {
 	is.NoErr(e.be.CloseIssue(e.ctx, issue2.ID(), issue2.RepoID(), e.admin.ID()))
 
 	// "all" and "" must both return both issues.
-	all, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", "all")
+	all, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", store.IssueFilter{Status: "all"})
 	is.NoErr(err)
 	is.Equal(len(all), 2)
 
-	allEmpty, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", "")
+	allEmpty, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", store.IssueFilter{Status: ""})
 	is.NoErr(err)
 	is.Equal(len(allEmpty), 2)
 }
@@ -450,11 +450,11 @@ func TestCountIssues_StatusAll(t *testing.T) {
 	is.NoErr(e.be.CloseIssue(e.ctx, issue2.ID(), issue2.RepoID(), e.admin.ID()))
 
 	// "all" and "" must both return total count.
-	countAll, err := e.be.CountIssues(e.ctx, "myrepo", "all")
+	countAll, err := e.be.CountIssues(e.ctx, "myrepo", store.IssueFilter{Status: "all"})
 	is.NoErr(err)
 	is.Equal(countAll, int64(2))
 
-	countEmpty, err := e.be.CountIssues(e.ctx, "myrepo", "")
+	countEmpty, err := e.be.CountIssues(e.ctx, "myrepo", store.IssueFilter{Status: ""})
 	is.NoErr(err)
 	is.Equal(countEmpty, int64(2))
 }
@@ -473,12 +473,12 @@ func TestIssueIsolation_BetweenRepos(t *testing.T) {
 	_, err = e.be.CreateIssue(e.ctx, "repo2", e.admin.ID(), "repo2 issue", "")
 	is.NoErr(err)
 
-	repo1Issues, err := e.be.GetIssuesByRepository(e.ctx, "repo1", "")
+	repo1Issues, err := e.be.GetIssuesByRepository(e.ctx, "repo1", store.IssueFilter{Status: ""})
 	is.NoErr(err)
 	is.Equal(len(repo1Issues), 1)
 	is.Equal(repo1Issues[0].Title(), "repo1 issue")
 
-	repo2Issues, err := e.be.GetIssuesByRepository(e.ctx, "repo2", "")
+	repo2Issues, err := e.be.GetIssuesByRepository(e.ctx, "repo2", store.IssueFilter{Status: ""})
 	is.NoErr(err)
 	is.Equal(len(repo2Issues), 1)
 	is.Equal(repo2Issues[0].Title(), "repo2 issue")

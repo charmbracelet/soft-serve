@@ -17,8 +17,6 @@ type LabelStore interface {
 	GetLabelsByRepoID(ctx context.Context, h db.Handler, repoID int64) ([]models.Label, error)
 	// GetLabelsByIssueID retrieves all labels attached to an issue.
 	GetLabelsByIssueID(ctx context.Context, h db.Handler, issueID int64) ([]models.Label, error)
-	// GetIssuesByLabel retrieves issues for a repo filtered by label name and status.
-	GetIssuesByLabel(ctx context.Context, h db.Handler, repoID int64, labelName, status string) ([]models.Issue, error)
 	// CreateLabel creates a new label for a repository.
 	CreateLabel(ctx context.Context, h db.Handler, repoID int64, name, color, description string) (int64, error)
 	// UpdateLabel updates a label's name, color, and description.

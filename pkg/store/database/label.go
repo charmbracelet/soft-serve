@@ -47,32 +47,6 @@ func (*labelStore) GetLabelsByIssueID(ctx context.Context, h db.Handler, issueID
 	return labels, db.WrapError(err)
 }
 
-// GetIssuesByLabel implements store.LabelStore.
-func (*labelStore) GetIssuesByLabel(ctx context.Context, h db.Handler, repoID int64, labelName, status string) ([]models.Issue, error) {
-	var issues []models.Issue
-	var query string
-	var args []interface{}
-
-	if status == "" || status == "all" {
-		query = h.Rebind(`SELECT issues.* FROM issues
-			JOIN issue_labels ON issues.id = issue_labels.issue_id
-			JOIN labels ON issue_labels.label_id = labels.id
-			WHERE issues.repo_id = ? AND labels.name = ?
-			ORDER BY issues.created_at DESC;`)
-		args = []interface{}{repoID, labelName}
-	} else {
-		query = h.Rebind(`SELECT issues.* FROM issues
-			JOIN issue_labels ON issues.id = issue_labels.issue_id
-			JOIN labels ON issue_labels.label_id = labels.id
-			WHERE issues.repo_id = ? AND labels.name = ? AND issues.status = ?
-			ORDER BY issues.created_at DESC;`)
-		args = []interface{}{repoID, labelName, status}
-	}
-
-	err := h.SelectContext(ctx, &issues, query, args...)
-	return issues, db.WrapError(err)
-}
-
 // CreateLabel implements store.LabelStore.
 func (*labelStore) CreateLabel(ctx context.Context, h db.Handler, repoID int64, name, color, description string) (int64, error) {
 	var id int64

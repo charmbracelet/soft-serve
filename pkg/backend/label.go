@@ -168,25 +168,6 @@ func (b *Backend) RemoveLabelFromIssue(ctx context.Context, issueID, labelID int
 	})
 }
 
-// GetIssuesByRepositoryAndLabel returns issues for a repo filtered by label name and status.
-func (b *Backend) GetIssuesByRepositoryAndLabel(ctx context.Context, repoName, labelName, status string) ([]proto.Issue, error) {
-	repo, err := b.Repository(ctx, repoName)
-	if err != nil {
-		return nil, err
-	}
-
-	ms, err := store.FromContext(ctx).GetIssuesByLabel(ctx, b.db, repo.ID(), labelName, status)
-	if err != nil {
-		return nil, err
-	}
-
-	issues := make([]proto.Issue, len(ms))
-	for i, m := range ms {
-		issues[i] = proto.NewIssue(m)
-	}
-	return issues, nil
-}
-
 // getLabelByID is a helper for looking up a label by its database ID.
 func (b *Backend) getLabelByID(ctx context.Context, id int64) (proto.Label, error) {
 	m, err := store.FromContext(ctx).GetLabelByID(ctx, b.db, id)

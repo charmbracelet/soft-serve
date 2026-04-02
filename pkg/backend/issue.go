@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/store"
 )
 
 // CreateIssue creates a new issue in a repository.
@@ -45,14 +46,14 @@ func (b *Backend) GetIssue(ctx context.Context, id int64) (proto.Issue, error) {
 	return proto.NewIssue(issue), nil
 }
 
-// GetIssuesByRepository retrieves all issues for a repository.
-func (b *Backend) GetIssuesByRepository(ctx context.Context, repoName string, status string) ([]proto.Issue, error) {
+// GetIssuesByRepository retrieves issues for a repository filtered by the given IssueFilter.
+func (b *Backend) GetIssuesByRepository(ctx context.Context, repoName string, filter store.IssueFilter) ([]proto.Issue, error) {
 	repo, err := b.Repository(ctx, repoName)
 	if err != nil {
 		return nil, err
 	}
 
-	issues, err := b.store.GetIssuesByRepoID(ctx, b.db, repo.ID(), status)
+	issues, err := b.store.GetIssuesByRepoID(ctx, b.db, repo.ID(), filter)
 	if err != nil {
 		return nil, err
 	}
@@ -97,11 +98,11 @@ func (b *Backend) DeleteIssue(ctx context.Context, id, repoID int64) error {
 	})
 }
 
-// CountIssues counts issues for a repository.
-func (b *Backend) CountIssues(ctx context.Context, repoName string, status string) (int64, error) {
+// CountIssues counts issues for a repository filtered by the given IssueFilter.
+func (b *Backend) CountIssues(ctx context.Context, repoName string, filter store.IssueFilter) (int64, error) {
 	repo, err := b.Repository(ctx, repoName)
 	if err != nil {
 		return 0, err
 	}
-	return b.store.CountIssues(ctx, b.db, repo.ID(), status)
+	return b.store.CountIssues(ctx, b.db, repo.ID(), filter)
 }

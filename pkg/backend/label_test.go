@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/matryer/is"
 )
 
@@ -199,12 +200,12 @@ func TestGetIssuesByRepositoryAndLabel(t *testing.T) {
 	is.NoErr(e.be.AddLabelToIssue(e.ctx, issue1.ID(), bug.ID()))
 	is.NoErr(e.be.AddLabelToIssue(e.ctx, issue2.ID(), feat.ID()))
 
-	bugIssues, err := e.be.GetIssuesByRepositoryAndLabel(e.ctx, "myrepo", "bug", "open")
+	bugIssues, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", store.IssueFilter{Status: "open", LabelName: "bug"})
 	is.NoErr(err)
 	is.Equal(len(bugIssues), 1)
 	is.Equal(bugIssues[0].ID(), issue1.ID())
 
-	featIssues, err := e.be.GetIssuesByRepositoryAndLabel(e.ctx, "myrepo", "feature", "open")
+	featIssues, err := e.be.GetIssuesByRepository(e.ctx, "myrepo", store.IssueFilter{Status: "open", LabelName: "feature"})
 	is.NoErr(err)
 	is.Equal(len(featIssues), 1)
 	is.Equal(featIssues[0].ID(), issue2.ID())
