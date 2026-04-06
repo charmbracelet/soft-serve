@@ -19,7 +19,7 @@ require (
 	github.com/charmbracelet/ssh v0.0.0-20250826160808-ebfa259c7309
 	github.com/charmbracelet/x/ansi v0.11.6
 	github.com/dustin/go-humanize v1.0.1
-	github.com/go-git/go-git/v5 v5.17.1
+	github.com/go-git/go-git/v5 v5.17.2
 	github.com/go-jose/go-jose/v3 v3.0.5
 	github.com/gobwas/glob v0.2.3
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -29,7 +29,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/lib/pq v1.12.1
+	github.com/lib/pq v1.12.3
 	github.com/lrstanley/bubblezone/v2 v2.0.0
 	github.com/matryer/is v1.4.1
 	github.com/muesli/mango-cobra v1.3.0
@@ -44,7 +44,7 @@ require (
 	golang.org/x/crypto v0.49.0
 	golang.org/x/sync v0.20.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.48.0
+	modernc.org/sqlite v1.48.1
 )
 
 require (
