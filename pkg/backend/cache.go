@@ -30,6 +30,3 @@ func (c *cache) Delete(repo string) {
 	c.repos.Remove(repo)
 }
 
-func (c *cache) Len() int {
-	return c.repos.Len()
-}

@@ -73,6 +73,61 @@ var (
 	}, []string{"repo", "file"})
 )
 
+// gitSuffixMiddleware rewrites request paths so that repos are accessible
+// without the .git suffix when cfg.HTTP.StripGitSuffix is true.
+// It inserts ".git" before any recognised git sub-path so that all
+// downstream handlers continue to see the canonical /<name>.git/... form.
+// gitSuffixMiddleware handles the StripGitSuffix config option. When enabled,
+// it INSERTS ".git" into URL paths for clients that omit the suffix — the
+// flag name describes the client-side behaviour (clients may strip ".git")
+// while this middleware normalises paths to the canonical ".git"-suffixed form.
+func gitSuffixMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
+	// Known sub-paths that immediately follow the repo segment.
+	gitSubPaths := []string{
+		"/info/refs",
+		"/git-upload-pack",
+		"/git-receive-pack",
+		"/git-upload-archive",
+		"/HEAD",
+		"/objects/",
+		"/info/lfs/",
+		"/raw/",
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if cfg.HTTP.StripGitSuffix && !strings.Contains(r.URL.Path, ".git/") && !strings.HasSuffix(r.URL.Path, ".git") {
+				p := r.URL.Path
+				for _, sub := range gitSubPaths {
+					if idx := strings.Index(p, sub); idx > 0 {
+						// Insert .git before the sub-path.
+						newPath := p[:idx] + ".git" + p[idx:]
+						r2 := r.Clone(r.Context())
+						r2.URL.Path = newPath
+						if r.URL.RawPath != "" {
+							rawIdx := strings.Index(r.URL.RawPath, sub)
+							if rawIdx < 0 {
+								rawIdx = idx // fallback: decoded and encoded same length
+							}
+							r2.URL.RawPath = r.URL.RawPath[:rawIdx] + ".git" + r.URL.RawPath[rawIdx:]
+						}
+						next.ServeHTTP(w, r2)
+						return
+					}
+				}
+				// No sub-path found — path is bare /<repo> (e.g. go-get).
+				// Append .git so withParams can strip it back to the repo name.
+				if p != "/" {
+					r2 := r.Clone(r.Context())
+					r2.URL.Path = strings.TrimSuffix(p, "/") + ".git"
+					next.ServeHTTP(w, r2)
+					return
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func withParams(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -80,6 +135,8 @@ func withParams(next http.Handler) http.Handler {
 		vars := mux.Vars(r)
 		repo := vars["repo"]
 
+		// repo still has the .git suffix here; vars["file"] is the path component after /<repo>/.
+		// SanitizeRepo (applied below) strips the .git suffix from vars["repo"] only.
 		// Construct "file" param from path
 		vars["file"] = strings.TrimPrefix(r.URL.Path, "/"+repo+"/")
 
@@ -117,6 +174,14 @@ func GitController(_ context.Context, r *mux.Router) {
 }
 
 var gitRoutes = []GitRoute{
+	// Raw file content endpoint.
+	// Must be registered before the git-protocol routes so that
+	// /raw/... paths are not swallowed by the git object handlers.
+	{
+		method:  []string{http.MethodGet},
+		handler: getRawBlob,
+		path:    "/raw/{ref}/{filepath:.*}",
+	},
 	// Git services
 	// These routes don't handle authentication/authorization.
 	// This is handled through wrapping the handlers for each route.
@@ -216,6 +281,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		if err != nil {
 			switch {
 			case errors.Is(err, ErrInvalidToken):
+			case errors.Is(err, ErrInvalidPassword):
 			case errors.Is(err, proto.ErrUserNotFound):
 			default:
 				logger.Error("failed to authenticate", "err", err)
@@ -252,6 +318,11 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		// - git-upload-pack
 		// - git-receive-pack
 		// - git-lfs
+		//
+		// Routes that carry no service var and no info/lfs prefix (e.g. the raw
+		// blob endpoint, go-get) have no matching case in this switch (no default
+		// case). They fall through to the catch-all access check below which
+		// enforces ReadOnlyAccess via renderNotFound.
 		switch {
 		case service == git.ReceivePackService:
 			if accessLevel < access.ReadWriteAccess {
@@ -275,15 +346,19 @@ func withAccess(next http.Handler) http.HandlerFunc {
 
 			fallthrough
 		case service == git.UploadPackService || service == git.UploadArchiveService:
+			// Return 404 for missing repos regardless of any credential error to
+			// prevent repository enumeration: an unauthenticated client must not
+			// be able to distinguish "repo doesn't exist" from "access denied".
 			if repo == nil {
-				// If the repo doesn't exist, return 404
 				renderNotFound(w, r)
 				return
-			} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
-				// return 403 when bad credentials are provided
+			}
+			// Repo exists — now check credentials and access level.
+			if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
 				renderForbidden(w, r)
 				return
-			} else if accessLevel < access.ReadOnlyAccess {
+			}
+			if accessLevel < access.ReadOnlyAccess {
 				askCredentials(w, r)
 				renderUnauthorized(w, r)
 				return
@@ -299,15 +374,22 @@ func withAccess(next http.Handler) http.HandlerFunc {
 			switch {
 			case strings.HasPrefix(file, "info/lfs/locks"):
 				switch {
-				case strings.HasSuffix(file, "lfs/locks"), strings.HasSuffix(file, "/unlock") && r.Method == http.MethodPost:
-					// Create lock, list locks, and delete lock require write access
-					fallthrough
-				case strings.HasSuffix(file, "lfs/locks/verify"):
-					// Locks verify requires write access
+				case strings.HasSuffix(file, "lfs/locks") && r.Method == http.MethodPost,
+					strings.HasSuffix(file, "/unlock") && r.Method == http.MethodPost,
+					strings.HasSuffix(file, "lfs/locks/verify"):
+					// Create lock, delete lock, and verify require write access.
 					// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md#unauthorized-response-2
 					if accessLevel < access.ReadWriteAccess {
-						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+						renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 							Message: "write access required",
+						})
+						return
+					}
+				case strings.HasSuffix(file, "lfs/locks") && r.Method == http.MethodGet:
+					// List locks only requires read access.
+					if accessLevel < access.ReadOnlyAccess {
+						renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
+							Message: "read access required",
 						})
 						return
 					}
@@ -317,7 +399,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				case http.MethodPut:
 					// Basic upload
 					if accessLevel < access.ReadWriteAccess {
-						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+						renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 							Message: "write access required",
 						})
 						return
@@ -325,22 +407,23 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				case http.MethodGet:
 					// Basic download
 				case http.MethodPost:
-					// Basic verify
+					// No additional access check here — basic verify is a read-only metadata operation;
+					// auth is already enforced by the outer withAccess middleware.
 				}
 			}
 
 			if accessLevel < access.ReadOnlyAccess {
 				if repo == nil {
-					renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+					renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 						Message: "repository not found",
 					})
 				} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
-					renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+					renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 						Message: "bad credentials",
 					})
 				} else {
 					askCredentials(w, r)
-					renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
+					renderJSON(w, r, http.StatusUnauthorized, lfs.ErrorResponse{
 						Message: "credentials needed",
 					})
 				}
@@ -349,8 +432,12 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		}
 
 		switch {
-		case r.URL.Query().Get("go-get") == "1" && accessLevel >= access.ReadOnlyAccess:
-			// Allow go-get requests to passthrough.
+		case r.URL.Query().Get("go-get") == "1" && repo != nil && (accessLevel >= access.ReadOnlyAccess || cfg.AllowPublicGoGet):
+			// Allow go-get requests to pass through.
+			// Note: when AllowPublicGoGet is true, unauthenticated clients can
+			// learn that a private repo exists by comparing go-get (200) vs a
+			// regular (404) response. This is an accepted trade-off for go module
+			// discoverability.
 			break
 		case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrInvalidPassword):
 			// return 403 when bad credentials are provided
@@ -379,16 +466,17 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if service == git.ReceivePackService {
-		gitHttpReceiveCounter.WithLabelValues(repoName)
+		gitHttpReceiveCounter.WithLabelValues(repoName).Inc()
 	}
 
-	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-result", service))
-	w.Header().Set("Connection", "Keep-Alive")
-	w.Header().Set("Transfer-Encoding", "chunked")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(http.StatusOK)
-
-	version := r.Header.Get("Git-Protocol")
+	gitProtocol := r.Header.Get("Git-Protocol")
+	// Sanitize: reject any control characters to prevent env var injection.
+	for _, c := range gitProtocol {
+		if c < 0x20 || c == 0x7f {
+			gitProtocol = ""
+			break
+		}
+	}
 
 	var stdout bytes.Buffer
 	cmd := git.ServiceCommand{
@@ -409,33 +497,57 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 		"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
 	}...)
 	if user != nil {
+		// user.Username() is validated by ValidateUsername (letters/digits/hyphens only) — no injection risk.
 		cmd.Env = append(cmd.Env, []string{
 			"SOFT_SERVE_USERNAME=" + user.Username(),
 		}...)
 	}
-	if len(version) != 0 {
-		cmd.Env = append(cmd.Env, []string{
-			fmt.Sprintf("GIT_PROTOCOL=%s", version),
-		}...)
+	if gitProtocol != "" {
+		cmd.Env = append(cmd.Env, "GIT_PROTOCOL="+gitProtocol)
 	}
 
-	var (
-		err    error
-		reader io.ReadCloser
-	)
+	// maxReceivePackSize is the maximum size of a git-receive-pack request body (10 GiB).
+	const maxReceivePackSize = 10 * 1024 * 1024 * 1024
 
-	// Handle gzip encoding
+	// maxUploadPackSize limits upload-pack request bodies. upload-pack only receives
+	// "want" and "have" lines (no actual object data), so 256 MiB is generous.
+	const maxUploadPackSize = 256 * 1024 * 1024
+
+	var reader io.ReadCloser
+
+	// Cap the body for both services to prevent unbounded reads.
+	if service == git.ReceivePackService {
+		r.Body = http.MaxBytesReader(w, r.Body, maxReceivePackSize)
+	} else {
+		r.Body = http.MaxBytesReader(w, r.Body, maxUploadPackSize)
+	}
+
+	// Handle gzip encoding before committing to 200 OK so we can still
+	// return an error status if the gzip stream is malformed.
 	reader = r.Body
 	switch r.Header.Get("Content-Encoding") {
 	case "gzip":
-		reader, err = gzip.NewReader(reader)
-		if err != nil {
-			logger.Errorf("failed to create gzip reader: %v", err)
+		gzReader, gzErr := gzip.NewReader(reader)
+		if gzErr != nil {
+			logger.Errorf("failed to create gzip reader: %v", gzErr)
 			renderInternalServerError(w, r)
 			return
 		}
-		defer reader.Close() //nolint: errcheck
+		defer gzReader.Close() //nolint: errcheck
+		if service == git.ReceivePackService {
+			reader = io.NopCloser(io.LimitReader(gzReader, maxReceivePackSize))
+		} else {
+			reader = io.NopCloser(io.LimitReader(gzReader, maxUploadPackSize))
+		}
 	}
+
+	// WriteHeader is deferred until after all request parsing so that
+	// parsing errors (e.g. bad gzip stream above) can return a non-200 status.
+	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-result", service))
+	w.Header().Set("Connection", "Keep-Alive")
+	w.Header().Set("Transfer-Encoding", "chunked")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusOK)
 
 	cmd.Stdin = reader
 	cmd.Stdout = &flushResponseWriter{w}
@@ -458,27 +570,37 @@ type flushResponseWriter struct {
 	http.ResponseWriter
 }
 
+const flushBufSize = 32 * 1024
+
 func (f *flushResponseWriter) ReadFrom(r io.Reader) (int64, error) {
 	flusher := http.NewResponseController(f.ResponseWriter)
 
 	var n int64
-	p := make([]byte, 1024)
+	p := make([]byte, flushBufSize)
 	for {
-		nRead, err := r.Read(p)
-		if err == io.EOF {
+		// Read first, then check error — a Read may return n > 0 bytes AND
+		// io.EOF simultaneously (per the io.Reader contract), so we must
+		// write any bytes before acting on the error.
+		nRead, readErr := r.Read(p)
+		if nRead > 0 {
+			nWrite, err := f.ResponseWriter.Write(p[:nRead])
+			n += int64(nWrite)
+			if err != nil {
+				return n, err
+			}
+			if nWrite < nRead {
+				return n, io.ErrShortWrite
+			}
+			// ResponseWriter must support http.Flusher to handle buffered output.
+			if err := flusher.Flush(); err != nil {
+				return n, fmt.Errorf("error while flush: %w", err)
+			}
+		}
+		if readErr == io.EOF {
 			break
 		}
-		nWrite, err := f.ResponseWriter.Write(p[:nRead])
-		if err != nil {
-			return n, err
-		}
-		if nRead != nWrite {
-			return n, err
-		}
-		n += int64(nRead)
-		// ResponseWriter must support http.Flusher to handle buffered output.
-		if err := flusher.Flush(); err != nil {
-			return n, fmt.Errorf("%w: error while flush", err)
+		if readErr != nil {
+			return n, readErr
 		}
 	}
 
@@ -491,6 +613,13 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 	dir, repoName, file := mux.Vars(r)["dir"], mux.Vars(r)["repo"], mux.Vars(r)["file"]
 	service := getServiceType(r)
 	protocol := r.Header.Get("Git-Protocol")
+	// Sanitize: reject any control characters to prevent env var injection.
+	for _, c := range protocol {
+		if c < 0x20 || c == 0x7f {
+			protocol = ""
+			break
+		}
+	}
 
 	gitHttpUploadCounter.WithLabelValues(repoName, file).Inc()
 
@@ -511,12 +640,13 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 			"SOFT_SERVE_LOG_PATH=" + filepath.Join(cfg.DataPath, "log", "hooks.log"),
 		}...)
 		if user != nil {
+			// user.Username() is validated by ValidateUsername (letters/digits/hyphens only) — no injection risk.
 			cmd.Env = append(cmd.Env, []string{
 				"SOFT_SERVE_USERNAME=" + user.Username(),
 			}...)
 		}
-		if len(protocol) != 0 {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_PROTOCOL=%s", protocol))
+		if protocol != "" {
+			cmd.Env = append(cmd.Env, "GIT_PROTOCOL="+protocol)
 		}
 
 		var version int
@@ -536,10 +666,13 @@ func getInfoRefs(w http.ResponseWriter, r *http.Request) {
 		hdrNocache(w)
 		w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", service))
 		w.WriteHeader(http.StatusOK)
+		// Use flushResponseWriter so that the pktline header and ref
+		// advertisement are flushed through buffering proxies promptly.
+		fw := &flushResponseWriter{w}
 		if version < 2 {
-			git.WritePktline(w, "# service="+service.String()) //nolint: errcheck
+			git.WritePktline(fw, "# service="+service.String()) //nolint: errcheck
 		}
-		w.Write(refs.Bytes()) //nolint: errcheck
+		fw.Write(refs.Bytes()) //nolint: errcheck
 	} else {
 		// Dumb HTTP
 		updateServerInfo(ctx, dir) //nolint: errcheck
@@ -577,16 +710,50 @@ func sendFile(contentType string, w http.ResponseWriter, r *http.Request) {
 	dir, file := mux.Vars(r)["dir"], mux.Vars(r)["file"]
 	reqFile := filepath.Join(dir, file)
 
-	f, err := os.Stat(reqFile)
+	// Guard against path traversal.
+	root := dir + string(filepath.Separator)
+	if !strings.HasPrefix(reqFile, root) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	if rel, err := filepath.Rel(dir, reqFile); err != nil || strings.HasPrefix(rel, "..") {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	// Use Lstat to detect symlinks before opening. A narrow TOCTOU window
+	// remains between Lstat and Open; it is acceptable because git repository
+	// internals are server-controlled and not writable by pushing users.
+	fi, err := os.Lstat(reqFile)
 	if os.IsNotExist(err) {
 		renderNotFound(w, r)
 		return
 	}
+	if err != nil {
+		renderInternalServerError(w, r)
+		return
+	}
+	if fi.Mode()&os.ModeSymlink != 0 {
+		renderNotFound(w, r)
+		return
+	}
+
+	// Open the file ourselves and serve via http.ServeContent to avoid the
+	// second internal os.Open that http.ServeFile performs (which follows
+	// symlinks). This narrows the TOCTOU window to the Lstat→Open interval.
+	fd, fdErr := os.Open(reqFile)
+	if fdErr != nil {
+		if os.IsNotExist(fdErr) {
+			renderNotFound(w, r)
+		} else {
+			renderInternalServerError(w, r)
+		}
+		return
+	}
+	defer fd.Close() //nolint:errcheck
 
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", f.Size()))
-	w.Header().Set("Last-Modified", f.ModTime().Format(http.TimeFormat))
-	http.ServeFile(w, r, reqFile)
+	http.ServeContent(w, r, reqFile, fi.ModTime(), fd)
 }
 
 func getServiceType(r *http.Request) git.Service {
@@ -645,10 +812,12 @@ func hdrNocache(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-cache, max-age=0, must-revalidate")
 }
 
+const oneYearSeconds = 31536000
+
 func hdrCacheForever(w http.ResponseWriter) {
 	now := time.Now().Unix()
-	expires := now + 31536000
-	w.Header().Set("Date", fmt.Sprintf("%d", now))
-	w.Header().Set("Expires", fmt.Sprintf("%d", expires))
-	w.Header().Set("Cache-Control", "public, max-age=31536000")
+	expires := now + oneYearSeconds
+	w.Header().Set("Date", time.Unix(now, 0).UTC().Format(http.TimeFormat))
+	w.Header().Set("Expires", time.Unix(expires, 0).UTC().Format(http.TimeFormat))
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", oneYearSeconds))
 }

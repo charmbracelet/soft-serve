@@ -51,7 +51,7 @@ func EnsureWithin(reposDir string, repo string) error {
 	}
 
 	// ensure the repo is within the repos directory
-	if !strings.HasPrefix(absRepo, absRepos) {
+	if !strings.HasPrefix(absRepo, absRepos+string(filepath.Separator)) && absRepo != absRepos {
 		log.Debugf("repo path is outside of repos directory: %s", absRepo)
 		return ErrInvalidRepo
 	}

@@ -168,5 +168,7 @@ func runCommand(ctx context.Context, in io.Reader, out io.Writer, err io.Writer,
 	cmd.Stdin = in
 	cmd.Stdout = out
 	cmd.Stderr = err
+	cfg := config.FromContext(ctx)
+	cmd.Env = cfg.Environ()
 	return cmd.Run()
 }

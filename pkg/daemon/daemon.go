@@ -17,10 +17,12 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/ratelimit"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"golang.org/x/time/rate"
 )
 
 var (
@@ -56,6 +58,8 @@ type GitDaemon struct {
 	done      atomic.Bool // indicates if the server has been closed
 	listeners []net.Listener
 	liMu      sync.Mutex
+	limiter   *ratelimit.IPLimiter
+	ipConns   sync.Map // map[string]*int32 — active connections per IP
 }
 
 // NewGitDaemon returns a new Git daemon.
@@ -71,6 +75,7 @@ func NewGitDaemon(ctx context.Context) (*GitDaemon, error) {
 		conns:    connections{m: make(map[net.Conn]struct{})},
 		logger:   log.FromContext(ctx).WithPrefix("gitdaemon"),
 	}
+	d.limiter = ratelimit.New(rate.Limit(5), 10, 5*time.Minute)
 	return d, nil
 }
 
@@ -99,7 +104,6 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 	d.listeners = append(d.listeners, listener)
 	d.liMu.Unlock()
 
-	var tempDelay time.Duration
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -109,32 +113,51 @@ func (d *GitDaemon) Serve(listener net.Listener) error {
 			default:
 				d.logger.Debugf("git: error accepting connection: %v", err)
 			}
-			if ne, ok := err.(net.Error); ok && ne.Temporary() {
-				if tempDelay == 0 {
-					tempDelay = 5 * time.Millisecond
-				} else {
-					tempDelay *= 2
-				}
-				if max := 1 * time.Second; tempDelay > max { //nolint:revive
-					tempDelay = max
-				}
-				time.Sleep(tempDelay)
-				continue
-			}
 			return err
 		}
 
-		// Close connection if there are too many open connections.
-		if d.conns.Size()+1 >= d.cfg.Git.MaxConnections {
+		// Close connection if we are already at the configured limit.
+		// Using >= (not >) ensures MaxConnections is the inclusive cap.
+		if d.conns.Size() >= d.cfg.Git.MaxConnections {
 			d.logger.Debugf("git: max connections reached, closing %s", conn.RemoteAddr())
+			d.fatal(conn, git.ErrMaxConnections)
+			continue
+		}
+
+		// Per-IP connection cap: reject IPs with >= 10 concurrent connections.
+		const maxConnsPerIP = 10
+		remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+		if remoteIP == "" {
+			remoteIP = conn.RemoteAddr().String()
+		}
+		val, _ := d.ipConns.LoadOrStore(remoteIP, new(int32))
+		ipCount := val.(*int32)
+		if atomic.AddInt32(ipCount, 1) > maxConnsPerIP {
+			atomic.AddInt32(ipCount, -1)
+			d.logger.Debugf("git: per-IP connection limit reached, closing %s", conn.RemoteAddr())
 			d.fatal(conn, git.ErrMaxConnections)
 			continue
 		}
 
 		d.wg.Add(1)
 		go func() {
+			defer d.wg.Done()
+			defer func() {
+				// Decrement the per-IP counter and remove the map entry when it
+				// reaches zero so ipConns does not grow without bound over time.
+				// CompareAndDelete is a no-op if another connection from the same IP
+				// already stored a new counter pointer via LoadOrStore.
+				//
+				// Known limitation: there is a brief window between AddInt32
+				// returning 0 and CompareAndDelete completing. A new connection in
+				// that window reuses the stale pointer and may find its map entry
+				// deleted, temporarily bypassing the per-IP cap. The global
+				// d.conns limit still guards against DoS.
+				if atomic.AddInt32(ipCount, -1) == 0 {
+					d.ipConns.CompareAndDelete(remoteIP, ipCount)
+				}
+			}()
 			d.handleClient(conn)
-			d.wg.Done()
 		}()
 	}
 }
@@ -146,9 +169,27 @@ func (d *GitDaemon) fatal(c net.Conn, err error) {
 	}
 }
 
+// sanitizeParamValue rejects values containing newlines, nulls, or other
+// control characters that could corrupt the GIT_PROTOCOL env var.
+func sanitizeParamValue(s string) (string, bool) {
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return "", false
+		}
+	}
+	return s, true
+}
+
 // handleClient handles a git protocol client.
 func (d *GitDaemon) handleClient(conn net.Conn) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ip := conn.RemoteAddr().String()
+	if !d.limiter.Allow(ip) {
+		d.logger.Warn("git daemon rate limited", "remote", ip)
+		conn.Close() //nolint: errcheck
+		return
+	}
+
+	ctx, cancel := context.WithCancel(d.ctx)
 	idleTimeout := time.Duration(d.cfg.Git.IdleTimeout) * time.Second
 	c := &serverConn{
 		Conn:          conn,
@@ -218,7 +259,15 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		host := strings.TrimPrefix(string(opts[1]), "host=")
+		rawHost := strings.TrimPrefix(string(opts[1]), "host=")
+		// Sanitize host value for control characters before it enters the
+		// process environment (newlines in env blocks corrupt other vars).
+		host, hostOK := sanitizeParamValue(rawHost)
+		if !hostOK {
+			d.logger.Warnf("git: rejecting connection with invalid host value %q", rawHost)
+			d.fatal(c, git.ErrInvalidRequest)
+			return
+		}
 		extraParams := map[string]string{}
 
 		if len(opts) > 2 {
@@ -265,7 +314,10 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		}
 
 		if _, err := d.be.Repository(ctx, repo); err != nil {
-			d.fatal(c, git.ErrInvalidRepo)
+			// Return ErrNotAuthed (not ErrInvalidRepo) so that the response is
+			// indistinguishable from an access-denial. Returning ErrInvalidRepo
+			// would let unauthenticated clients enumerate which repositories exist.
+			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
 
@@ -284,15 +336,29 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		}
 
 		// Add git protocol environment variable.
+		// Only the "version" key is accepted; values are checked for control characters.
 		if len(extraParams) > 0 {
 			var gitProto string
 			for k, v := range extraParams {
+				if k != "version" {
+					d.logger.Warnf("git: ignoring unknown extra param key %q", k)
+					continue
+				}
+				// k is already confirmed to be "version" (ASCII-safe); only
+				// the value needs sanitization for control-character injection.
+				sv, ok := sanitizeParamValue(v)
+				if !ok {
+					d.logger.Warnf("git: dropping extra param with unsafe value for key %q", k)
+					continue
+				}
 				if len(gitProto) > 0 {
 					gitProto += ":"
 				}
-				gitProto += k + "=" + v
+				gitProto += k + "=" + sv
 			}
-			envs = append(envs, "GIT_PROTOCOL="+gitProto)
+			if gitProto != "" {
+				envs = append(envs, "GIT_PROTOCOL="+gitProto)
+			}
 		}
 
 		envs = append(envs, d.cfg.Environ()...)
@@ -311,7 +377,7 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 			return
 		}
 
-		counter.WithLabelValues(name)
+		counter.WithLabelValues(name).Inc()
 	}
 }
 
@@ -327,11 +393,11 @@ func (d *GitDaemon) closeListener() error {
 	if d.done.Load() {
 		return ErrServerClosed
 	}
-	var err error
+	var errs []error
 	d.liMu.Lock()
 	for _, l := range d.listeners {
-		if err = l.Close(); err != nil {
-			err = errors.Join(err, fmt.Errorf("close listener %s: %w", l.Addr(), err))
+		if err := l.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("close listener %s: %w", l.Addr(), err))
 		}
 	}
 	d.listeners = d.listeners[:0]
@@ -340,7 +406,7 @@ func (d *GitDaemon) closeListener() error {
 		d.done.Store(true)
 		close(d.finished)
 	})
-	return err
+	return errors.Join(errs...)
 }
 
 // Shutdown gracefully shuts down the daemon.

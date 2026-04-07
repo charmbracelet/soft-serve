@@ -4,16 +4,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 
-	"charm.land/log/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
-const saltySalt = "salty-soft-serve"
-
 // HashPassword hashes the password using bcrypt.
 func HashPassword(password string) (string, error) {
-	crypt, err := bcrypt.GenerateFromPassword([]byte(password+saltySalt), bcrypt.DefaultCost)
+	crypt, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
 	}
@@ -23,23 +21,24 @@ func HashPassword(password string) (string, error) {
 
 // VerifyPassword verifies the password against the hash.
 func VerifyPassword(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password+saltySalt))
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
 
 // GenerateToken returns a random unique token.
-func GenerateToken() string {
+func GenerateToken() (string, error) {
 	buf := make([]byte, 20)
 	if _, err := rand.Read(buf); err != nil {
-		log.Error("unable to generate access token")
-		return ""
+		return "", fmt.Errorf("generate access token: %w", err)
 	}
 
-	return "ss_" + hex.EncodeToString(buf)
+	return "ss_" + hex.EncodeToString(buf), nil
 }
 
-// HashToken hashes the token using sha256.
+// HashToken returns the SHA-256 hex digest of the token. The 20-byte (160-bit)
+// random token provides sufficient entropy to make rainbow-table attacks
+// impractical. A HMAC-with-server-secret scheme would be more defensive.
 func HashToken(token string) string {
-	sum := sha256.Sum256([]byte(token + saltySalt))
+	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
 }

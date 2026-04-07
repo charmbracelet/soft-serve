@@ -3,6 +3,8 @@ package web
 import (
 	"context"
 	"crypto/tls"
+	"errors"
+	"net"
 	"net/http"
 	"time"
 
@@ -15,21 +17,29 @@ type HTTPServer struct {
 	ctx context.Context
 	cfg *config.Config
 
-	Server *http.Server
+	Server      *http.Server
+	httpLimiter interface{ Close() }
 }
 
 // NewHTTPServer creates a new HTTP server.
 func NewHTTPServer(ctx context.Context) (*HTTPServer, error) {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx)
+	router, limiter := NewRouter(ctx)
 	s := &HTTPServer{
-		ctx: ctx,
-		cfg: cfg,
+		ctx:         ctx,
+		cfg:         cfg,
+		httpLimiter: limiter,
 		Server: &http.Server{
 			Addr:              cfg.HTTP.ListenAddr,
-			Handler:           NewRouter(ctx),
+			Handler:           router,
 			ReadHeaderTimeout: time.Second * 10,
-			IdleTimeout:       time.Second * 10,
+			// WriteTimeout and ReadTimeout are intentionally not set: git pack-objects
+			// streams can take hours for large repositories, and a fixed deadline would
+			// kill legitimate large clones/pushes. ReadHeaderTimeout is set instead to
+			// guard against slow-header attacks without breaking long-running git transfers.
+			// Connection idle timeouts are enforced by IdleTimeout.
+			IdleTimeout: time.Second * 10,
 			MaxHeaderBytes:    http.DefaultMaxHeaderBytes,
 			ErrorLog:          logger.StandardLog(log.StandardLogOptions{ForceLevel: log.ErrorLevel}),
 		},
@@ -45,12 +55,39 @@ func (s *HTTPServer) SetTLSConfig(tlsConfig *tls.Config) {
 
 // Close closes the HTTP server.
 func (s *HTTPServer) Close() error {
+	if s.httpLimiter != nil {
+		s.httpLimiter.Close()
+	}
 	return s.Server.Close()
+}
+
+// Serve accepts connections on l and serves HTTP requests.
+func (s *HTTPServer) Serve(l net.Listener) error {
+	if s.Server.TLSConfig != nil {
+		// ServeTLS with empty cert/key paths is only valid when at least
+		// one certificate source is set on the TLSConfig: Certificates,
+		// GetCertificate, or GetConfigForClient (which can supply a full
+		// tls.Config dynamically, e.g. for SNI-based routing).
+		tlsCfg := s.Server.TLSConfig
+		if len(tlsCfg.Certificates) == 0 &&
+			tlsCfg.GetCertificate == nil &&
+			tlsCfg.GetConfigForClient == nil {
+			return errors.New("TLS configured but no certificate source provided (set Certificates, GetCertificate, or GetConfigForClient)")
+		}
+		return s.Server.ServeTLS(l, "", "")
+	}
+	return s.Server.Serve(l)
 }
 
 // ListenAndServe starts the HTTP server.
 func (s *HTTPServer) ListenAndServe() error {
 	if s.Server.TLSConfig != nil {
+		tlsCfg := s.Server.TLSConfig
+		if len(tlsCfg.Certificates) == 0 &&
+			tlsCfg.GetCertificate == nil &&
+			tlsCfg.GetConfigForClient == nil {
+			return errors.New("TLS configured but no certificate source provided (set Certificates, GetCertificate, or GetConfigForClient)")
+		}
 		return s.Server.ListenAndServeTLS("", "")
 	}
 	return s.Server.ListenAndServe()
@@ -58,5 +95,8 @@ func (s *HTTPServer) ListenAndServe() error {
 
 // Shutdown gracefully shuts down the HTTP server.
 func (s *HTTPServer) Shutdown(ctx context.Context) error {
+	if s.httpLimiter != nil {
+		s.httpLimiter.Close()
+	}
 	return s.Server.Shutdown(ctx)
 }

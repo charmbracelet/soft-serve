@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -22,10 +23,15 @@ func TokenCommand() *cobra.Command {
 	}
 
 	var createExpiresIn string
+	var targetUsername string
 	createCmd := &cobra.Command{
 		Use:   "create NAME",
 		Short: "Create a new access token",
-		Args:  cobra.MinimumNArgs(1),
+		Long: `Create a new access token for the current user.
+
+Admins may supply --user <username> to create a token on behalf of
+another user, for example when provisioning CI/CD credentials.`,
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -34,6 +40,18 @@ func TokenCommand() *cobra.Command {
 			user := proto.UserFromContext(ctx)
 			if user == nil {
 				return proto.ErrUserNotFound
+			}
+
+			targetUser := user
+			if targetUsername != "" {
+				if !user.IsAdmin() {
+					return fmt.Errorf("only admins can create tokens for other users")
+				}
+				tu, err := be.User(ctx, targetUsername)
+				if err != nil {
+					return fmt.Errorf("user %q not found: %w", targetUsername, err)
+				}
+				targetUser = tu
 			}
 
 			var expiresAt time.Time
@@ -48,7 +66,7 @@ func TokenCommand() *cobra.Command {
 				expiresAt = time.Now().Add(d)
 			}
 
-			token, err := be.CreateAccessToken(ctx, user, name, expiresAt)
+			token, err := be.CreateAccessToken(ctx, targetUser, name, expiresAt)
 			if err != nil {
 				return err
 			}
@@ -66,6 +84,7 @@ func TokenCommand() *cobra.Command {
 	}
 
 	createCmd.Flags().StringVar(&createExpiresIn, "expires-in", "", "Token expiration time (e.g. 1y, 3mo, 2w, 5d4h, 1h30m)")
+	createCmd.Flags().StringVarP(&targetUsername, "user", "u", "", "create token for this user (admin only)")
 
 	listCmd := &cobra.Command{
 		Use:     "list",
