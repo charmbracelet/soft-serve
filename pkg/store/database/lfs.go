@@ -2,26 +2,37 @@ package database
 
 import (
 	"context"
+	"fmt"
+	"path"
 	"strings"
 
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
 	"github.com/charmbracelet/soft-serve/pkg/store"
+	"github.com/jmoiron/sqlx"
 )
 
 type lfsStore struct{}
 
 var _ store.LFSStore = (*lfsStore)(nil)
 
-func sanitizePath(path string) string {
-	path = strings.TrimSpace(path)
-	path = strings.TrimPrefix(path, "/")
-	return path
+func sanitizePath(p string) (string, error) {
+	p = strings.TrimSpace(p)
+	p = strings.TrimPrefix(p, "/")
+	p = path.Clean(p)
+	if strings.HasPrefix(p, "..") {
+		return "", fmt.Errorf("invalid lock path: %q", p)
+	}
+	return p, nil
 }
 
 // CreateLFSLockForUser implements store.LFSStore.
 func (*lfsStore) CreateLFSLockForUser(ctx context.Context, tx db.Handler, repoID int64, userID int64, path string, refname string) error {
-	path = sanitizePath(path)
+	var err error
+	path, err = sanitizePath(path)
+	if err != nil {
+		return err
+	}
 	query := tx.Rebind(`INSERT INTO lfs_locks (repo_id, user_id, path, refname, updated_at)
 		VALUES (
 			?,
@@ -31,7 +42,7 @@ func (*lfsStore) CreateLFSLockForUser(ctx context.Context, tx db.Handler, repoID
 			CURRENT_TIMESTAMP
 		);
 	`)
-	_, err := tx.ExecContext(ctx, query, repoID, userID, path, refname)
+	_, err = tx.ExecContext(ctx, query, repoID, userID, path, refname)
 	return db.WrapError(err)
 }
 
@@ -54,20 +65,23 @@ func (*lfsStore) GetLFSLocks(ctx context.Context, tx db.Handler, repoID int64, p
 }
 
 func (s *lfsStore) GetLFSLocksWithCount(ctx context.Context, tx db.Handler, repoID int64, page int, limit int) ([]models.LFSLock, int64, error) {
-	locks, err := s.GetLFSLocks(ctx, tx, repoID, page, limit)
-	if err != nil {
-		return nil, 0, err
+	if page <= 0 {
+		page = 1
 	}
 
 	var count int64
-	query := tx.Rebind(`
-		SELECT COUNT(*)
-		FROM lfs_locks
-		WHERE repo_id = ?;
-	`)
-	err = tx.GetContext(ctx, &count, query, repoID)
-	if err != nil {
+	countQuery := tx.Rebind(`SELECT COUNT(*) FROM lfs_locks WHERE repo_id = ?;`)
+	if err := tx.GetContext(ctx, &count, countQuery, repoID); err != nil {
 		return nil, 0, db.WrapError(err)
+	}
+
+	if count == 0 {
+		return nil, 0, nil
+	}
+
+	locks, err := s.GetLFSLocks(ctx, tx, repoID, page, limit)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	return locks, count, nil
@@ -87,27 +101,35 @@ func (*lfsStore) GetLFSLocksForUser(ctx context.Context, tx db.Handler, repoID i
 
 // GetLFSLocksForPath implements store.LFSStore.
 func (*lfsStore) GetLFSLockForPath(ctx context.Context, tx db.Handler, repoID int64, path string) (models.LFSLock, error) {
-	path = sanitizePath(path)
+	var err error
+	path, err = sanitizePath(path)
+	if err != nil {
+		return models.LFSLock{}, err
+	}
 	var lock models.LFSLock
 	query := tx.Rebind(`
 		SELECT *
 		FROM lfs_locks
 		WHERE repo_id = ? AND path = ?;
 	`)
-	err := tx.GetContext(ctx, &lock, query, repoID, path)
+	err = tx.GetContext(ctx, &lock, query, repoID, path)
 	return lock, db.WrapError(err)
 }
 
 // GetLFSLockForUserPath implements store.LFSStore.
 func (*lfsStore) GetLFSLockForUserPath(ctx context.Context, tx db.Handler, repoID int64, userID int64, path string) (models.LFSLock, error) {
-	path = sanitizePath(path)
+	var err error
+	path, err = sanitizePath(path)
+	if err != nil {
+		return models.LFSLock{}, err
+	}
 	var lock models.LFSLock
 	query := tx.Rebind(`
 		SELECT *
 		FROM lfs_locks
 		WHERE repo_id = ? AND user_id = ? AND path = ?;
 	`)
-	err := tx.GetContext(ctx, &lock, query, repoID, userID, path)
+	err = tx.GetContext(ctx, &lock, query, repoID, userID, path)
 	return lock, db.WrapError(err)
 }
 
@@ -175,6 +197,23 @@ func (*lfsStore) GetLFSObjectByOid(ctx context.Context, tx db.Handler, repoID in
 	query := tx.Rebind(`SELECT * FROM lfs_objects WHERE repo_id = ? AND oid = ?;`)
 	err := tx.GetContext(ctx, &obj, query, repoID, oid)
 	return obj, db.WrapError(err)
+}
+
+// GetLFSObjectsByOids implements store.LFSStore.
+// It returns the LFS objects for the given OIDs in a single IN query,
+// eliminating the N+1 pattern in the batch download handler.
+func (*lfsStore) GetLFSObjectsByOids(ctx context.Context, tx db.Handler, repoID int64, oids []string) ([]models.LFSObject, error) {
+	if len(oids) == 0 {
+		return nil, nil
+	}
+	query, args2, err := sqlx.In(`SELECT * FROM lfs_objects WHERE repo_id = ? AND oid IN (?);`, repoID, oids)
+	if err != nil {
+		return nil, err
+	}
+	query = tx.Rebind(query)
+	var objs []models.LFSObject
+	err = tx.SelectContext(ctx, &objs, query, args2...)
+	return objs, db.WrapError(err)
 }
 
 // GetLFSObjects implements store.LFSStore.

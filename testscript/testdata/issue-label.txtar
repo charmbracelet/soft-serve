@@ -1,0 +1,138 @@
+# vi: set ft=conf
+
+# End-to-end tests for the label CLI commands.
+# Covers: repo label CRUD, issue label add/remove, issue list --label filter,
+#         issue view shows labels, permission checks, and cascade on label delete.
+#
+# Label IDs are global auto-increment. Expected sequence:
+#   #1 - "bug"         (LABEL CRUD section)
+#   #2 - "enhancement" (LABEL CRUD section)
+
+exec soft serve &
+ensureserverrunning SSH_PORT
+
+soft user create alice -k $USER1_AUTHORIZED_KEY
+
+soft repo create testrepo
+soft repo issue create testrepo -t First-issue
+stdout 'Issue #1 created'
+soft repo issue create testrepo -t Second-issue
+stdout 'Issue #2 created'
+
+# ── LABEL CRUD ────────────────────────────────────────────────────────────────
+
+# Admin creates label #1 with a named color.
+soft repo label create testrepo bug --color red --description Bugs
+stdout 'Label "bug" created'
+
+# Admin creates label #2 with another named color.
+soft repo label create testrepo enhancement --color green
+stdout 'Label "enhancement" created'
+
+# Duplicate name fails.
+! soft repo label create testrepo bug
+stderr 'already exists'
+
+# Alice (read-only) cannot create labels.
+! usoft repo label create testrepo feature
+stderr 'unauthorized'
+
+# List shows both labels alphabetically.
+soft repo label list testrepo
+stdout 'bug'
+stdout 'enhancement'
+
+# List on repo with no labels shows empty message.
+soft repo create emptyrepo
+soft repo label list emptyrepo
+stdout 'No labels found'
+
+# Edit label #1.
+soft repo label edit testrepo 1 --name critical-bug --color magenta
+stdout 'Label 1 updated'
+
+# List shows the resolved hex value, not the name.
+soft repo label list testrepo
+stdout 'critical-bug'
+stdout '#ff00ff'
+! stdout '^bug$'
+
+# Alice cannot edit labels.
+! usoft repo label edit testrepo 2 --name wontfix
+stderr 'unauthorized'
+
+# Delete label #2.
+soft repo label delete testrepo 2
+stdout 'Label 2 deleted'
+
+soft repo label list testrepo
+! stdout 'enhancement'
+stdout 'critical-bug'
+
+# Alice cannot delete labels.
+! usoft repo label delete testrepo 1
+stderr 'unauthorized'
+
+# ── ISSUE LABEL ADD / REMOVE ──────────────────────────────────────────────────
+
+# Admin attaches label to issue #1.
+soft repo issue label add testrepo 1 critical-bug
+stdout 'Label "critical-bug" added to issue #1'
+
+# Adding the same label again is idempotent.
+soft repo issue label add testrepo 1 critical-bug
+stdout 'Label "critical-bug" added to issue #1'
+
+# Non-existent label fails.
+! soft repo issue label add testrepo 1 ghost
+stderr 'not found'
+
+# Alice (read-only) cannot add labels.
+! usoft repo issue label add testrepo 1 critical-bug
+stderr 'unauthorized'
+
+# Issue view shows the label.
+soft repo issue view testrepo 1
+stdout 'Labels: critical-bug'
+
+# Issue #2 has no labels.
+soft repo issue view testrepo 2
+! stdout 'Labels:'
+
+# ── ISSUE LIST --label ────────────────────────────────────────────────────────
+
+# --label returns only labelled issues.
+soft repo issue list testrepo --label critical-bug
+stdout 'First-issue'
+! stdout 'Second-issue'
+
+# --label with no matches returns empty.
+soft repo issue list testrepo --label enhancement
+stdout 'No issues found'
+
+# Without --label all issues appear.
+soft repo issue list testrepo
+stdout 'First-issue'
+stdout 'Second-issue'
+
+# ── REMOVE ────────────────────────────────────────────────────────────────────
+
+soft repo issue label remove testrepo 1 critical-bug
+stdout 'Label "critical-bug" removed from issue #1'
+
+soft repo issue view testrepo 1
+! stdout 'Labels:'
+
+# ── CASCADE ───────────────────────────────────────────────────────────────────
+
+# Re-attach label, then delete the label — issue_labels row must cascade away.
+soft repo issue label add testrepo 1 critical-bug
+stdout 'Label "critical-bug" added to issue #1'
+
+soft repo label delete testrepo 1
+stdout 'Label 1 deleted'
+
+soft repo issue view testrepo 1
+! stdout 'Labels:'
+
+[windows] stopserver

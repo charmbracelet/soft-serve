@@ -1,0 +1,10 @@
+CREATE INDEX IF NOT EXISTS idx_public_keys_user_id ON public_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_repos_user_id ON repos(user_id);
+CREATE INDEX IF NOT EXISTS idx_collabs_repo_id ON collabs(repo_id);
+CREATE INDEX IF NOT EXISTS idx_lfs_objects_repo_id ON lfs_objects(repo_id);
+CREATE INDEX IF NOT EXISTS idx_lfs_locks_repo_id ON lfs_locks(repo_id);
+CREATE INDEX IF NOT EXISTS idx_access_tokens_user_id ON access_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_webhooks_repo_id ON webhooks(repo_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_webhook_id ON webhook_events(webhook_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_webhook_id_created_at ON webhook_deliveries(webhook_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_push_mirrors_repo_id ON push_mirrors(repo_id);

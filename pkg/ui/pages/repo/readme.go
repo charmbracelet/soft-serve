@@ -1,7 +1,7 @@
 package repo
 
 import (
-	"path/filepath"
+	"path"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/spinner"
@@ -106,6 +106,7 @@ func (r *Readme) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		r.SetSize(msg.Width, msg.Height)
 	case EmptyRepoMsg:
+		r.isLoading = false
 		cmds = append(cmds,
 			r.code.SetContent(defaultEmptyRepoMsg(r.common.Config(),
 				r.repo.Name()), ".md"),
@@ -147,7 +148,7 @@ func (r *Readme) SpinnerID() int {
 
 // StatusBarValue implements statusbar.StatusBar.
 func (r *Readme) StatusBarValue() string {
-	dir := filepath.Dir(r.readmePath)
+	dir := path.Dir(r.readmePath)
 	if dir == "." || dir == "" {
 		return " "
 	}
@@ -164,7 +165,10 @@ func (r *Readme) updateReadmeCmd() tea.Msg {
 	if r.repo == nil {
 		return common.ErrorMsg(common.ErrMissingRepo)
 	}
-	rm, rp, _ := backend.Readme(r.repo, r.ref)
+	rm, rp, err := backend.Readme(r.repo, r.ref)
+	if err != nil {
+		return common.ErrorMsg(err)
+	}
 	m.Content = rm
 	m.Path = rp
 	return m

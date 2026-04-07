@@ -1,0 +1,120 @@
+# vi: set ft=conf
+
+# End-to-end tests for issue comment CLI commands.
+# Covers: add, list, edit, delete, permission checks, and cascade on issue delete.
+#
+# Comment IDs are global auto-increment. Expected sequence:
+#   #1 - Admin's "Admin-comment"      (ADD section)
+#   #2 - Alice's "Alice-comment"      (ADD section)
+
+exec soft serve &
+ensureserverrunning SSH_PORT
+
+soft user create alice -k $USER1_AUTHORIZED_KEY
+
+soft repo create testrepo
+soft repo issue create testrepo -t Test-issue
+stdout 'Issue #1 created'
+
+# ── ADD ───────────────────────────────────────────────────────────────────────
+
+# Admin adds comment #1.
+soft repo issue comment add testrepo 1 -b Admin-comment
+stdout 'Comment #1 added to issue #1'
+
+# Alice (read-only) can also comment (#2).
+usoft repo issue comment add testrepo 1 -b Alice-comment
+stdout 'Comment #2 added to issue #1'
+
+# Body flag is required.
+! soft repo issue comment add testrepo 1
+stderr 'required'
+
+# Adding a comment to a nonexistent issue fails.
+! soft repo issue comment add testrepo 9999 -b ghost
+stderr 'not found'
+
+# ── LIST ──────────────────────────────────────────────────────────────────────
+
+soft repo issue comment list testrepo 1
+stdout 'Comment #1'
+stdout 'Admin-comment'
+stdout 'Comment #2'
+stdout 'Alice-comment'
+
+# Listing comments on a nonexistent issue fails.
+! soft repo issue comment list testrepo 9999
+stderr 'not found'
+
+# Issue with no comments shows empty message.
+soft repo issue create testrepo -t Empty-issue
+stdout 'Issue #2 created'
+soft repo issue comment list testrepo 2
+stdout 'No comments found'
+
+# ── EDIT ──────────────────────────────────────────────────────────────────────
+
+# Admin edits their own comment #1.
+soft repo issue comment edit testrepo 1 1 -b Admin-comment-edited
+stdout 'Comment #1 updated'
+
+soft repo issue comment list testrepo 1
+stdout 'Admin-comment-edited'
+! stdout 'Admin-comment$'
+
+# Alice edits her own comment #2.
+usoft repo issue comment edit testrepo 1 2 -b Alice-comment-edited
+stdout 'Comment #2 updated'
+
+# Alice cannot edit admin's comment #1.
+! usoft repo issue comment edit testrepo 1 1 -b Stolen-edit
+stderr 'permission denied'
+
+# Admin can edit any comment.
+soft repo issue comment edit testrepo 1 2 -b Admin-overrides-alice
+stdout 'Comment #2 updated'
+
+# Body flag is required for edit.
+! soft repo issue comment edit testrepo 1 1
+stderr 'required'
+
+# ── DELETE ────────────────────────────────────────────────────────────────────
+
+# Alice deletes her own comment #2.
+usoft repo issue comment delete testrepo 1 2
+stdout 'Comment #2 deleted'
+
+# Comment #2 no longer appears in list.
+soft repo issue comment list testrepo 1
+! stdout 'Admin-overrides-alice'
+stdout 'Admin-comment-edited'
+
+# Alice cannot delete admin's comment #1.
+! usoft repo issue comment delete testrepo 1 1
+stderr 'permission denied'
+
+# Admin can delete any comment.
+soft repo issue comment delete testrepo 1 1
+stdout 'Comment #1 deleted'
+
+soft repo issue comment list testrepo 1
+stdout 'No comments found'
+
+# ── CASCADE ───────────────────────────────────────────────────────────────────
+
+# Deleting the issue must remove all its comments (ON DELETE CASCADE).
+soft repo issue comment add testrepo 1 -b Will-be-deleted
+stdout 'Comment #3 added to issue #1'
+
+soft repo issue delete testrepo 1
+stdout 'Issue #1 deleted'
+
+# The issue is gone.
+! soft repo issue view testrepo 1
+stderr 'not found'
+
+# Trying to add a comment to the deleted issue also fails.
+! soft repo issue comment add testrepo 1 -b orphan
+stderr 'not found'
+
+[windows] stopserver

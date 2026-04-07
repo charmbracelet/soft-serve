@@ -1,0 +1,37 @@
+# vi: set ft=conf
+
+# Test that anon_access and allow_keyless set via environment variables are
+# applied to the database on startup, overriding the migration defaults
+# (read-only-access / true).
+
+env SOFT_SERVE_ANON_ACCESS=no-access
+env SOFT_SERVE_ALLOW_KEYLESS=false
+
+exec soft serve &
+ensureserverrunning SSH_PORT
+
+# Admin can still connect
+soft info
+
+# Settings reflect what was configured, not the migration defaults
+soft settings allow-keyless
+stdout 'false'
+
+soft settings anon-access
+stdout 'no-access'
+
+# Repo created by admin is not accessible to unregistered users under no-access
+soft repo create pub1
+! ugit clone ssh://localhost:$SSH_PORT/pub1 upub1
+stderr 'not authorized|unauthorized'
+
+# Unregistered user cannot create repos either
+! usoft repo create blocked
+stderr 'unauthorized'
+
+# Change anon-access to read-only via admin and verify access is restored
+soft settings anon-access read-only
+ugit clone ssh://localhost:$SSH_PORT/pub1 upub1
+
+# stop the server
+[windows] stopserver

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -16,11 +17,13 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
+	"github.com/charmbracelet/soft-serve/pkg/ratelimit"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/ssh"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gossh "golang.org/x/crypto/ssh"
+	"golang.org/x/time/rate"
 )
 
 var (
@@ -39,13 +42,20 @@ var (
 	}, []string{"allowed"})
 )
 
+// tokenAuthUserIDKey is a package-private context key used to carry the
+// token-authenticated user ID from KeyboardInteractiveHandler to
+// AuthenticationMiddleware. Using a private type (not a string) prevents
+// injection via SSH certificate extensions, which use string-keyed maps.
+type tokenAuthUserIDKey struct{}
+
 // SSHServer is a SSH server that implements the git protocol.
 type SSHServer struct { //nolint: revive
-	srv    *ssh.Server
-	cfg    *config.Config
-	be     *backend.Backend
-	ctx    context.Context
-	logger *log.Logger
+	srv     *ssh.Server
+	cfg     *config.Config
+	be      *backend.Backend
+	ctx     context.Context
+	logger  *log.Logger
+	limiter *ratelimit.IPLimiter
 }
 
 // NewSSHServer returns a new SSHServer.
@@ -63,6 +73,7 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		be:     be,
 		logger: logger,
 	}
+	s.limiter = ratelimit.New(rate.Limit(10), 20, 5*time.Minute)
 
 	mw := []wish.Middleware{
 		rm.MiddlewareWithLogger(
@@ -84,9 +95,22 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		),
 	}
 
+	// Ensure the directory for the host key file exists.
+	if dir := filepath.Dir(cfg.SSH.KeyPath); dir != "." {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return nil, fmt.Errorf("create ssh key dir: %w", err)
+		}
+	}
+
 	opts := []ssh.Option{
 		ssh.PublicKeyAuth(s.PublicKeyHandler),
-		ssh.KeyboardInteractiveAuth(s.KeyboardInteractiveHandler),
+		ssh.KeyboardInteractiveAuth(func(ctx ssh.Context, challenge gossh.KeyboardInteractiveChallenge) bool {
+			if !s.limiter.Allow(ctx.RemoteAddr().String()) {
+				s.logger.Warn("SSH keyboard-interactive rate limited", "remote", ctx.RemoteAddr())
+				return false
+			}
+			return s.KeyboardInteractiveHandler(ctx, challenge)
+		}),
 		wish.WithAddress(cfg.SSH.ListenAddr),
 		wish.WithHostKeyPath(cfg.SSH.KeyPath),
 		wish.WithMiddleware(mw...),
@@ -100,14 +124,23 @@ func NewSSHServer(ctx context.Context) (*SSHServer, error) {
 		return nil, err
 	}
 
-	if config.IsDebug() {
-		s.srv.ServerConfigCallback = func(_ ssh.Context) *gossh.ServerConfig {
-			return &gossh.ServerConfig{
-				AuthLogCallback: func(conn gossh.ConnMetadata, method string, err error) {
-					logger.Debug("authentication", "user", conn.User(), "method", method, "err", err)
-				},
+	s.srv.ServerConfigCallback = func(_ ssh.Context) *gossh.ServerConfig {
+		sc := &gossh.ServerConfig{}
+		if len(cfg.SSH.KeyExchanges) > 0 {
+			sc.KeyExchanges = cfg.SSH.KeyExchanges
+		}
+		if len(cfg.SSH.Ciphers) > 0 {
+			sc.Ciphers = cfg.SSH.Ciphers
+		}
+		if len(cfg.SSH.MACs) > 0 {
+			sc.MACs = cfg.SSH.MACs
+		}
+		if config.IsDebug() {
+			sc.AuthLogCallback = func(conn gossh.ConnMetadata, method string, err error) {
+				logger.Debug("authentication", "user", conn.User(), "method", method, "err", err)
 			}
 		}
+		return sc
 	}
 
 	if cfg.SSH.MaxTimeout > 0 {
@@ -157,6 +190,7 @@ func initializePermissions(ctx ssh.Context) {
 	if perms.Extensions == nil {
 		perms.Extensions = make(map[string]string)
 	}
+	ctx.SetValue(ssh.ContextKeyPermissions, perms)
 }
 
 // PublicKeyHandler handles public key authentication.
@@ -172,28 +206,61 @@ func (s *SSHServer) PublicKeyHandler(ctx ssh.Context, pk ssh.PublicKey) (allowed
 	initializePermissions(ctx)
 	perms := ctx.Permissions()
 
-	// Set the public key fingerprint to be used for authentication.
-	perms.Extensions["pubkey-fp"] = gossh.FingerprintSHA256(pk)
-	ctx.SetValue(ssh.ContextKeyPermissions, perms)
+	// Only record the first offered key — the SSH client will use this
+	// key for the authenticated signature step. Overwriting on each probe
+	// would store the LAST key offered, which may differ from the one the
+	// client ultimately signs with, causing a fingerprint mismatch in
+	// AuthenticationMiddleware.
+	if perms.Extensions["pubkey-fp"] == "" {
+		perms.Extensions["pubkey-fp"] = gossh.FingerprintSHA256(pk)
+		ctx.SetValue(ssh.ContextKeyPermissions, perms)
+	}
 
 	return
 }
 
 // KeyboardInteractiveHandler handles keyboard interactive authentication.
-// This is used after all public key authentication has failed.
-func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, _ gossh.KeyboardInteractiveChallenge) bool {
-	ac := s.be.AllowKeyless(ctx)
-	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
-
-	// If we're allowing keyless access, reset the public key fingerprint
+// It prompts for an access token and validates it. If no valid token is
+// provided, it falls back to AllowKeyless behavior.
+func (s *SSHServer) KeyboardInteractiveHandler(ctx ssh.Context, challenge gossh.KeyboardInteractiveChallenge) bool {
 	initializePermissions(ctx)
 	perms := ctx.Permissions()
 
+	// Prompt the user for an access token.
+	answers, err := challenge("", "", []string{"Access Token: "}, []bool{false})
+	if err != nil {
+		s.logger.Debug("keyboard-interactive challenge failed", "err", err)
+	} else if len(answers) > 0 && answers[0] != "" {
+		token := answers[0]
+		user, tokenErr := s.be.UserByAccessToken(ctx, token)
+		if tokenErr == nil && user != nil {
+			// Valid token: store the user ID via a package-private context key.
+			// We intentionally do NOT use perms.Extensions here — certificate
+			// extensions from gossh are merged into the same map, so a string
+			// key can be injected by a client presenting a crafted certificate.
+			//
+			// Clear pubkey-fp so AuthenticationMiddleware's fingerprint guard
+			// does not reject this keyless token-auth session.
+			perms.Extensions["pubkey-fp"] = ""
+			ctx.SetValue(ssh.ContextKeyPermissions, perms)
+			ctx.SetValue(tokenAuthUserIDKey{}, user.ID())
+			keyboardInteractiveCounter.WithLabelValues("true").Inc()
+			s.logger.Info("keyboard-interactive token auth succeeded", "username", user.Username())
+			return true
+		}
+		if tokenErr != nil {
+			s.logger.Warn("keyboard-interactive token auth failed", "err", tokenErr)
+		} else {
+			s.logger.Warn("keyboard-interactive token auth failed", "err", "user not found")
+		}
+	}
+
+	// No valid token: fall back to AllowKeyless behavior.
+	ac := s.be.AllowKeyless(ctx)
+	keyboardInteractiveCounter.WithLabelValues(strconv.FormatBool(ac)).Inc()
+
 	if ac {
-		// XXX: reset the public-key fingerprint. This is used to validate the
-		// public key being used to authenticate.
 		perms.Extensions["pubkey-fp"] = ""
-		ctx.SetValue(ssh.ContextKeyPermissions, perms)
 	}
 	return ac
 }

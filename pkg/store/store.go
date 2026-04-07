@@ -9,4 +9,10 @@ type Store interface {
 	LFSStore
 	AccessTokenStore
 	WebhookStore
+	PushMirrorStore
+	IssueStore
+	IssueCommentStore
+	LabelStore
+	AssigneeStore
+	MilestoneStore
 }

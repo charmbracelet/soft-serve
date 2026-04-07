@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -25,7 +26,7 @@ func TestValidateWebhookURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateWebhookURL(tt.url)
+			err := ValidateWebhookURL(context.Background(), tt.url)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateWebhookURL(%q) error = %v, wantErr %v", tt.url, err, tt.wantErr)
 				return

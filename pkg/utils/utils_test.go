@@ -54,3 +54,56 @@ func TestSanitizeRepo(t *testing.T) {
 		})
 	}
 }
+
+func TestSanitizeRepoPathTraversal(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		want     string
+	}{
+		{
+			name:  "path traversal with ../",
+			input: "../etc/passwd",
+			want:  "", // Should return empty for path traversal
+		},
+		{
+			name:  "path traversal with ../ in middle",
+			input: "repo/../../etc/passwd",
+			want:  "", // Should return empty for path traversal
+		},
+		{
+			name:  "path traversal with /../",
+			input: "/../etc/passwd",
+			want:  "", // Should return empty for path traversal
+		},
+		{
+			name:  "path traversal with absolute escape",
+			input: "/repo/../../../etc/passwd",
+			want:  "", // Should return empty for path traversal
+		},
+		{
+			name:  "path traversal with ..\\",
+			input: "..\\..\\windows\\path",
+			want:  "", // Should return empty for path traversal
+		},
+		{
+			name:  "multiple ../ sequences",
+			input: "../../etc/passwd",
+			want:  "", // Should return empty for path traversal
+		},
+		{
+			name:  "path traversal after normal chars",
+			input: "valid/../../etc/passwd",
+			want:  "", // Should return empty for path traversal
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SanitizeRepo(tt.input)
+			if got != tt.want {
+				t.Errorf("SanitizeRepo(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}

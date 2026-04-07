@@ -48,6 +48,28 @@ ssh:
   # A value of 0 means no timeout.
   idle_timeout: {{ .SSH.IdleTimeout }}
 
+  # Allow mouse events in the TUI. When true (default), mouse clicks and
+  # scrolling work in the TUI. Set to false to restore terminal text selection.
+  # Can also be controlled with SOFT_SERVE_SSH_ALLOW_MOUSE_EVENTS=false.
+  allow_mouse_events: {{ .SSH.AllowMouseEvents }}
+
+  # Allowed SSH key exchange algorithms.
+  # Leave empty to use the go/crypto defaults.
+  # key_exchanges:
+  #   - curve25519-sha256
+  #   - ecdh-sha2-nistp256
+
+  # Allowed SSH ciphers.
+  # Leave empty to use the go/crypto defaults.
+  # ciphers:
+  #   - aes128-gcm@openssh.com
+  #   - chacha20-poly1305@openssh.com
+
+  # Allowed SSH MAC algorithms.
+  # Leave empty to use the go/crypto defaults.
+  # macs:
+  #   - hmac-sha2-256-etm@openssh.com
+
 # The Git daemon configuration.
 git:
   # Enable the Git daemon.
@@ -88,6 +110,20 @@ http:
   # This is the address that will be used to clone repositories.
   # Make sure to use https:// if you are using TLS.
   public_url: "{{ .HTTP.PublicURL }}"
+
+  # When true, repositories are accessible without the .git suffix in the URL.
+  # Both /<name> and /<name>.git will be accepted.
+  # strip_git_suffix: false
+
+  # When true, the X-Forwarded-For header is trusted for client IP resolution.
+  # Only enable this when the server sits behind a trusted reverse proxy.
+  # trust_proxy_headers: false
+
+  # Maximum HTTP requests per second per IP address. Set to 0 to disable.
+  # rate_limit: 10
+
+  # Maximum burst size for the HTTP rate limiter.
+  # rate_burst: 30
 
   # The cross-origin request security options
   cors:
@@ -142,11 +178,30 @@ lfs:
 
 # Cron job configuration
 jobs:
-  mirror_pull: "{{ .Jobs.MirrorPull }}"
+  mirror_pull:
+    # Enable the periodic mirror pull job.
+    enabled: {{ .Jobs.MirrorPull.Enabled }}
+    # Cron schedule for the mirror pull job.
+    schedule: "{{ .Jobs.MirrorPull.Schedule }}"
 
 # Additional admin keys.
 #initial_admin_keys:
 #  - "ssh-rsa AAAAB3NzaC1yc2..."
+
+# Anonymous access level applied on every startup.
+# Overrides the value stored in the database when set.
+# Valid values: no-access, read-only, read-write, admin-access.
+# Leave commented out to preserve the database value.
+#anon_access: read-only
+
+# Whether keyless (keyboard-interactive) access is allowed.
+# Overrides the value stored in the database when set.
+# Leave commented out to preserve the database value.
+#allow_keyless: true
+
+# When true, serve go-get meta tags for private/hidden repositories.
+# The actual git content remains inaccessible without credentials.
+# allow_public_go_get: false
 `))
 
 func newConfigFile(cfg *Config) string {

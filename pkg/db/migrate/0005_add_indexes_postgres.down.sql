@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS idx_push_mirrors_repo_id;
+DROP INDEX IF EXISTS idx_webhook_deliveries_webhook_id_created_at;
+DROP INDEX IF EXISTS idx_webhook_events_webhook_id;
+DROP INDEX IF EXISTS idx_webhooks_repo_id;
+DROP INDEX IF EXISTS idx_access_tokens_user_id;
+DROP INDEX IF EXISTS idx_lfs_locks_repo_id;
+DROP INDEX IF EXISTS idx_lfs_objects_repo_id;
+DROP INDEX IF EXISTS idx_collabs_repo_id;
+DROP INDEX IF EXISTS idx_repos_user_id;
+DROP INDEX IF EXISTS idx_public_keys_user_id;

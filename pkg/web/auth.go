@@ -2,10 +2,13 @@ package web
 
 import (
 	"context"
+	"crypto"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
@@ -13,6 +16,23 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/golang-jwt/jwt/v5"
 )
+
+// jwtPublicKeyCache caches the parsed Ed25519 public key per SSH key path.
+// Avoids reading and parsing the key file on every JWT Bearer request.
+var jwtPublicKeyCache sync.Map // map[string]crypto.PublicKey
+
+func cachedJWTPublicKey(cfg *config.Config) (crypto.PublicKey, error) {
+	if v, ok := jwtPublicKeyCache.Load(cfg.SSH.KeyPath); ok {
+		return v.(crypto.PublicKey), nil
+	}
+	kp, err := config.KeyPair(cfg)
+	if err != nil {
+		return nil, err
+	}
+	pub := kp.CryptoPublicKey()
+	jwtPublicKeyCache.Store(cfg.SSH.KeyPath, pub)
+	return pub, nil
+}
 
 // authenticate authenticates the user from the request.
 func authenticate(r *http.Request) (proto.User, error) {
@@ -136,7 +156,7 @@ var ErrInvalidToken = errors.New("invalid token")
 func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error) {
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.auth")
-	kp, err := config.KeyPair(cfg)
+	pub, err := cachedJWTPublicKey(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +171,7 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 			return nil, errors.New("invalid signing method")
 		}
 
-		return kp.CryptoPublicKey(), nil
+		return pub, nil
 	},
 		jwt.WithIssuer(cfg.HTTP.PublicURL),
 		jwt.WithIssuedAt(),
@@ -167,5 +187,35 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 		return nil, ErrInvalidToken
 	}
 
+	// Validate JWT claims before accepting.
+	// Prevents not-before, issuer, and audience attacks.
+	if err := validateJWTClaims(ctx, cfg, claims); err != nil {
+		return nil, ErrInvalidToken
+	}
+
 	return claims, nil
+}
+
+// validateJWTClaims validates JWT claims for security.
+// Prevents not-before, issuer, and audience attacks.
+func validateJWTClaims(ctx context.Context, cfg *config.Config, claims *jwt.RegisteredClaims) error {
+	// Validate expiration time if set
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
+		return proto.ErrTokenExpired
+	}
+
+	// Validate not-before time if set
+	if claims.NotBefore != nil && claims.NotBefore.Time.After(time.Now()) {
+		return errors.New("token not yet valid")
+	}
+
+	// Validate issuer
+	if claims.Issuer != cfg.HTTP.PublicURL {
+		return errors.New("invalid token issuer")
+	}
+
+	// Audience is validated by jwt.WithAudience(repo.Name()) in ParseWithClaims.
+	// No additional audience check is needed here.
+
+	return nil
 }

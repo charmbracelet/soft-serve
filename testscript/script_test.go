@@ -95,6 +95,7 @@ func TestScript(t *testing.T) {
 			"soft":                   cmdSoft("admin", admin1.Signer()),
 			"usoft":                  cmdSoft("user1", user1.Signer()),
 			"attacksoft":             cmdSoft("attacker", attackerSigner, attacker.Signer()),
+			"tokensoft":              cmdTokenSoft,
 			"git":                    cmdGit(admin1Key),
 			"ugit":                   cmdGit(user1Key),
 			"agit":                   cmdGit(attackerKey),
@@ -142,6 +143,10 @@ func TestScript(t *testing.T) {
 
 			// This will disable the default lipgloss renderer colors
 			e.Setenv("SOFT_SERVE_NO_COLOR", "1")
+
+			// Disable SSRF protection in tests so that imports/mirrors work
+			// in environments where DNS resolves public hostnames to CGNAT IPs.
+			e.Setenv("SOFT_SERVE_SSRF_ALLOW_PRIVATE_NETS", "true")
 
 			// Soft Serve debug environment variables
 			for _, env := range []string{
@@ -219,6 +224,48 @@ func cmdSoft(user string, keys ...ssh.Signer) func(ts *testscript.TestScript, ne
 
 		check(ts, sess.Run(strings.Join(args, " ")), neg)
 	}
+}
+
+// cmdTokenSoft connects via keyboard-interactive auth using an access token.
+// Usage: tokensoft <token> <command args...>
+func cmdTokenSoft(ts *testscript.TestScript, neg bool, args []string) {
+	if len(args) < 2 {
+		ts.Fatalf("usage: tokensoft <token> <command args...>")
+	}
+	token := args[0]
+	cmdArgs := args[1:]
+
+	cli, err := ssh.Dial(
+		"tcp",
+		net.JoinHostPort("localhost", ts.Getenv("SSH_PORT")),
+		&ssh.ClientConfig{
+			User: "git",
+			Auth: []ssh.AuthMethod{
+				ssh.KeyboardInteractive(func(name, instruction string, questions []string, echos []bool) ([]string, error) {
+					answers := make([]string, len(questions))
+					for i := range questions {
+						answers[i] = token
+					}
+					return answers, nil
+				}),
+			},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		},
+	)
+	if neg && err != nil {
+		return
+	}
+	ts.Check(err)
+	defer cli.Close()
+
+	sess, err := cli.NewSession()
+	ts.Check(err)
+	defer sess.Close()
+
+	sess.Stdout = ts.Stdout()
+	sess.Stderr = ts.Stderr()
+
+	check(ts, sess.Run(strings.Join(cmdArgs, " ")), neg)
 }
 
 func cmdUI(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []string) {

@@ -1,0 +1,42 @@
+# vi: set ft=conf
+
+# Regression test for https://github.com/charmbracelet/soft-serve/issues/750
+# user create -k "ssh-ed25519 AAAA..." should work even though the key
+# contains a space which the SSH layer splits into multiple tokens.
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# TEST 1: user create with -k flag (key has a space — split across SSH args)
+soft user create alice -k "$USER1_AUTHORIZED_KEY"
+soft user info alice
+stdout 'Username: alice'
+stdout 'ssh-ed25519'
+
+# TEST 2: user alice can connect using her key
+usoft info
+stdout 'Username: alice'
+
+# TEST 3: user create with a different key works (no duplicate constraint)
+soft user create bob -k "$ADMIN2_AUTHORIZED_KEY"
+soft user info bob
+stdout 'Username: bob'
+stdout 'ssh-ed25519'
+
+# TEST 4: user create without any key still works
+soft user create charlie
+soft user info charlie
+stdout 'Username: charlie'
+
+# TEST 5: invalid key is rejected
+! soft user create dave -k 'not-a-valid-key'
+stderr 'no key found'
+
+# TEST 6: extra args without -k flag are rejected
+! soft user create eve extraarg
+stderr 'unexpected arguments'
+
+# stop the server
+[windows] stopserver

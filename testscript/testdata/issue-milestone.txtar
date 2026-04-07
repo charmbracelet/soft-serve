@@ -1,0 +1,142 @@
+# vi: set ft=conf
+
+# End-to-end tests for the milestone CLI commands.
+# Covers: milestone CRUD, set/unset on issue, issue list --milestone filter,
+#         issue view shows milestone, close/reopen milestone, delete nullifies issues.
+#
+# Milestone IDs are global auto-increment. Expected sequence:
+#   #1 - "v1.0" (created in MILESTONE CRUD section)
+#   #2 - "v2.0" (created in MILESTONE CRUD section)
+
+exec soft serve &
+ensureserverrunning SSH_PORT
+
+soft user create alice -k $USER1_AUTHORIZED_KEY
+
+soft repo create testrepo
+soft repo issue create testrepo -t First-issue
+stdout 'Issue #1 created'
+soft repo issue create testrepo -t Second-issue
+stdout 'Issue #2 created'
+
+# ── MILESTONE CRUD ───────────────────────────────────────────────────────────
+
+# Admin creates milestone #1.
+soft repo milestone create testrepo v1.0
+stdout 'Milestone #1 created'
+
+# Admin creates milestone #2 with a description.
+soft repo milestone create testrepo v2.0 -d Second-release
+stdout 'Milestone #2 created'
+
+# Alice (read-only) cannot create milestones.
+! usoft repo milestone create testrepo v3.0
+stderr 'unauthorized'
+
+# ── LIST ─────────────────────────────────────────────────────────────────────
+
+# Default shows open milestones.
+soft repo milestone list testrepo
+stdout 'v1.0'
+stdout 'v2.0'
+
+# No closed milestones yet.
+soft repo milestone list testrepo --closed
+stdout 'No milestones found'
+
+# ── VIEW ─────────────────────────────────────────────────────────────────────
+
+soft repo milestone view testrepo 1
+stdout 'Milestone #1: v1.0'
+stdout 'Status: open'
+
+soft repo milestone view testrepo 2
+stdout 'Milestone #2: v2.0'
+stdout 'Description: Second-release'
+
+# Viewing a nonexistent milestone returns an error.
+! soft repo milestone view testrepo 9999
+stderr 'not found'
+
+# ── EDIT ─────────────────────────────────────────────────────────────────────
+
+soft repo milestone edit testrepo 1 -t v1.1 -d Updated-description
+stdout 'Milestone #1 updated'
+
+soft repo milestone view testrepo 1
+stdout 'Milestone #1: v1.1'
+stdout 'Updated-description'
+
+# Alice cannot edit milestones.
+! usoft repo milestone edit testrepo 1 -t v99.0
+stderr 'unauthorized'
+
+# ── CLOSE / REOPEN ───────────────────────────────────────────────────────────
+
+soft repo milestone close testrepo 1
+stdout 'Milestone #1 closed'
+
+soft repo milestone view testrepo 1
+stdout 'Status: closed'
+
+# Closed milestone appears in --closed list.
+soft repo milestone list testrepo --closed
+stdout 'v1.1'
+
+# Open list no longer shows #1.
+soft repo milestone list testrepo
+! stdout 'v1.1'
+stdout 'v2.0'
+
+# Reopen it.
+soft repo milestone reopen testrepo 1
+stdout 'Milestone #1 reopened'
+
+soft repo milestone view testrepo 1
+stdout 'Status: open'
+
+# ── SET / UNSET ISSUE MILESTONE ──────────────────────────────────────────────
+
+# Set milestone #1 on issue #1.
+soft repo issue milestone set testrepo 1 1
+stdout 'Milestone #1 set on issue #1'
+
+# Issue view shows the milestone.
+soft repo issue view testrepo 1
+stdout 'Milestone: #1 v1.1'
+
+# Issue #2 has no milestone.
+soft repo issue view testrepo 2
+! stdout 'Milestone:'
+
+# Filter issues by milestone.
+soft repo issue list testrepo -m 1
+stdout 'First-issue'
+! stdout 'Second-issue'
+
+# Unset milestone from issue #1.
+soft repo issue milestone unset testrepo 1
+stdout 'Milestone unset from issue #1'
+
+soft repo issue view testrepo 1
+! stdout 'Milestone:'
+
+# ── DELETE NULLIFIES ISSUES ──────────────────────────────────────────────────
+
+# Set milestone #2 on issue #2.
+soft repo issue milestone set testrepo 2 2
+stdout 'Milestone #2 set on issue #2'
+
+soft repo issue view testrepo 2
+stdout 'Milestone: #2 v2.0'
+
+# Delete milestone #2; issue #2 should lose its milestone.
+soft repo milestone delete testrepo 2
+stdout 'Milestone #2 deleted'
+
+soft repo issue view testrepo 2
+! stdout 'Milestone:'
+
+# Alice cannot delete milestones.
+! usoft repo milestone delete testrepo 1
+stderr 'unauthorized'

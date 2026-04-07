@@ -1,0 +1,26 @@
+# vi: set ft=conf
+
+# Test for https://github.com/charmbracelet/soft-serve/issues/769
+# The 'c' shortcut to copy the clone command should be available
+# when viewing a repository in the TUI.
+
+# start soft serve
+exec soft serve &
+ensureserverrunning SSH_PORT
+
+# create a repo and push a commit so it's not empty
+soft repo create testrepo
+git clone ssh://localhost:$SSH_PORT/testrepo repo
+mkfile ./repo/README.md '# Test'
+git -C repo add -A
+git -C repo commit -m 'init'
+git -C repo push origin HEAD
+
+# open TUI, navigate into testrepo (enter), expand help (?), wait, quit
+# key sequence: wait, enter to select repo, wait, ? to expand help, wait, quit
+ui '"    \r    ?    q"'
+cp stdout repo-view.txt
+grep 'copy clone cmd' repo-view.txt
+
+# stop the server
+[windows] stopserver

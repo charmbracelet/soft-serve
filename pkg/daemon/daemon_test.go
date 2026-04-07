@@ -102,8 +102,10 @@ func TestInvalidRepo(t *testing.T) {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
 	_, err = readPktline(c)
-	if err != nil && err.Error() != git.ErrInvalidRepo.Error() {
-		t.Errorf("expected %q error, got %q", git.ErrInvalidRepo, err)
+	// Non-existent repos now return ErrNotAuthed (same as access-denied) to
+	// prevent unauthenticated clients from enumerating repository existence.
+	if err != nil && err.Error() != git.ErrNotAuthed.Error() {
+		t.Errorf("expected %q error, got %q", git.ErrNotAuthed, err)
 	}
 }
 

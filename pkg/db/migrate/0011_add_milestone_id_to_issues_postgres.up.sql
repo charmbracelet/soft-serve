@@ -1,0 +1,1 @@
+ALTER TABLE issues ADD COLUMN milestone_id BIGINT REFERENCES milestones(id) ON DELETE SET NULL;

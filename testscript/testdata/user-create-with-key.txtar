@@ -1,0 +1,38 @@
+# vi: set ft=conf
+
+# Regression test for https://github.com/charmbracelet/soft-serve/issues/750
+# SSH exec tokenizes commands on spaces, splitting "ssh-ed25519 AAAA..."
+# into separate args. The -k flag should reconstruct the full key.
+
+# convert crlf to lf on windows
+[windows] dos2unix user_info.txt
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# Create a user passing the public key via -k flag.
+# $USER1_AUTHORIZED_KEY expands to "ssh-ed25519 AAAA..." (two space-separated
+# tokens). When sent over SSH exec and re-split by the server, the key type
+# and key data become separate positional args — this is the bug from #750.
+soft user create testuser -k $USER1_AUTHORIZED_KEY
+
+# Verify the user exists and has the key attached.
+soft user info testuser
+cmpenv stdout user_info.txt
+
+# Reject empty -k flag value.
+# Over SSH exec, empty-string args are stripped, so cobra rejects -k with no argument.
+! soft user create baduser -k ''
+stderr '.'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+-- user_info.txt --
+Username: testuser
+Admin: false
+Public keys:
+  $USER1_AUTHORIZED_KEY

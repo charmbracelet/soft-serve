@@ -7,10 +7,17 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"slices"
 	"strings"
 	"time"
 )
+
+var ssrfDisabled bool
+
+func init() {
+	ssrfDisabled = os.Getenv("SOFT_SERVE_SSRF_ALLOW_PRIVATE_NETS") == "true"
+}
 
 var (
 	// ErrPrivateIP is returned when a connection to a private or internal IP is blocked.
@@ -32,6 +39,11 @@ func NewSecureClient() *http.Client {
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				if ssrfDisabled {
+					d := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+					return d.DialContext(ctx, network, addr)
+				}
+
 				host, port, err := net.SplitHostPort(addr)
 				if err != nil {
 					return nil, err //nolint:wrapcheck
@@ -39,14 +51,28 @@ func NewSecureClient() *http.Client {
 
 				ip := net.ParseIP(host)
 				if ip == nil {
-					ips, err := net.LookupIP(host) //nolint
+					// Use the context-aware resolver so the lookup respects
+					// cancellation and deadlines from the caller.
+					addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
 					if err != nil {
 						return nil, fmt.Errorf("DNS resolution failed for host %s: %v", host, err)
 					}
-					if len(ips) == 0 {
+					if len(addrs) == 0 {
 						return nil, fmt.Errorf("no IP addresses found for host: %s", host)
 					}
-					ip = ips[0] // Use the first resolved IP address
+					// Reject if ANY resolved IP is private/internal.
+					// Select the first public IP for dialing so that DNS
+					// round-robin cannot swap in a private address on retry.
+					var selectedIP net.IP
+					for _, addr := range addrs {
+						if isPrivateOrInternal(addr.IP) {
+							return nil, fmt.Errorf("%w", ErrPrivateIP)
+						}
+						if selectedIP == nil {
+							selectedIP = addr.IP
+						}
+					}
+					ip = selectedIP
 				}
 				if isPrivateOrInternal(ip) {
 					return nil, fmt.Errorf("%w", ErrPrivateIP)
@@ -60,6 +86,11 @@ func NewSecureClient() *http.Client {
 				// Without this, the dialer resolves the hostname again
 				// independently, and the second resolution could return
 				// a different (private) IP.
+				// Note: creating a new dialer per call is wasteful but
+				// ensures each connection has a fresh resolver state
+				// (safe against cache poisoning). For high-throughput
+				// webhook delivery, consider reusing a single dialer outside
+				// this closure if performance becomes a bottleneck.
 				return dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
 			},
 			MaxIdleConns:          100,
@@ -67,6 +98,10 @@ func NewSecureClient() *http.Client {
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
 		},
+		// Refuse all HTTP redirects. For webhooks this prevents SSRF via a
+		// redirect to an internal host. For LFS this is safe because the LFS
+		// batch API returns explicit download/upload href values; the LFS client
+		// calls those URLs directly and does not rely on server-issued redirects.
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
@@ -81,6 +116,8 @@ func isPrivateOrInternal(ip net.IP) bool {
 		ip = ip4
 	}
 
+	// ip.IsPrivate() covers IPv6 ULA (fc00::/7) and IPv4 private ranges;
+	// no separate fc00::/7 check is needed here.
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
 		ip.IsPrivate() || ip.IsUnspecified() || ip.IsMulticast() {
 		return true
@@ -126,8 +163,9 @@ func isPrivateOrInternal(ip net.IP) bool {
 
 // ValidateURL validates that a URL is safe to make requests to.
 // It checks that the scheme is http/https, the hostname is not localhost,
-// and all resolved IPs are public.
-func ValidateURL(rawURL string) error {
+// and all resolved IPs are public. The provided context is used for the DNS
+// lookup; a 5-second sub-deadline is applied if the context has no deadline.
+func ValidateURL(ctx context.Context, rawURL string) error {
 	if rawURL == "" {
 		return ErrInvalidURL
 	}
@@ -139,6 +177,10 @@ func ValidateURL(rawURL string) error {
 
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return ErrInvalidScheme
+	}
+
+	if ssrfDisabled {
+		return nil
 	}
 
 	hostname := u.Hostname()
@@ -157,7 +199,9 @@ func ValidateURL(rawURL string) error {
 		return nil
 	}
 
-	ips, err := net.DefaultResolver.LookupIPAddr(context.Background(), hostname)
+	resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	ips, err := net.DefaultResolver.LookupIPAddr(resolveCtx, hostname)
 	if err != nil {
 		return fmt.Errorf("%w: cannot resolve hostname: %v", ErrInvalidURL, err)
 	}
@@ -177,6 +221,50 @@ func ValidateIPBeforeDial(ip net.IP) error {
 	if isPrivateOrInternal(ip) {
 		return ErrPrivateIP
 	}
+	return nil
+}
+
+// ValidateHost resolves host and checks that none of the resolved IPs are
+// private or internal. Use this for non-HTTP schemes (e.g. ssh://) where
+// ValidateURL cannot be used. The provided context is used for the DNS lookup.
+//
+// A 5-second sub-deadline is applied for the DNS lookup regardless of any
+// deadline already present on ctx. If ctx has a tighter deadline, that takes
+// precedence. If ctx has a longer (or no) deadline, the 5-second guard is the
+// effective timeout for the DNS resolution step.
+func ValidateHost(ctx context.Context, host string) error {
+	if host == "" {
+		return fmt.Errorf("%w: missing hostname", ErrInvalidURL)
+	}
+
+	if ssrfDisabled {
+		return nil
+	}
+
+	if isLocalhost(host) {
+		return ErrPrivateIP
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		if isPrivateOrInternal(ip) {
+			return ErrPrivateIP
+		}
+		return nil
+	}
+
+	resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	ips, err := net.DefaultResolver.LookupIPAddr(resolveCtx, host)
+	if err != nil {
+		return fmt.Errorf("%w: cannot resolve hostname: %v", ErrInvalidURL, err)
+	}
+
+	if slices.ContainsFunc(ips, func(addr net.IPAddr) bool {
+		return isPrivateOrInternal(addr.IP)
+	}) {
+		return ErrPrivateIP
+	}
+
 	return nil
 }
 

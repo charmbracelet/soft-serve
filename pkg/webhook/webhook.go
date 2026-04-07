@@ -11,6 +11,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -22,6 +25,11 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/version"
 	"github.com/google/go-querystring/query"
 	"github.com/google/uuid"
+)
+
+const (
+	maxRetries     = 3
+	retryBaseDelay = time.Second
 )
 
 // Hook is a repository webhook.
@@ -55,6 +63,40 @@ func do(ctx context.Context, url string, method string, headers http.Header, bod
 	}
 
 	return res, nil
+}
+
+func isRetryableStatus(statusCode int) bool {
+	return statusCode == http.StatusTooManyRequests || statusCode >= 500
+}
+
+func doWithRetry(ctx context.Context, url string, method string, headers http.Header, body string) (*http.Response, error) {
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := retryBaseDelay * time.Duration(1<<(attempt-1))
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+
+		res, err := do(ctx, url, method, headers, strings.NewReader(body))
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		if !isRetryableStatus(res.StatusCode) {
+			return res, nil
+		}
+
+		lastErr = fmt.Errorf("server returned %d", res.StatusCode)
+		if res.Body != nil {
+			res.Body.Close() //nolint: errcheck
+		}
+	}
+	return nil, lastErr
 }
 
 // SendWebhook sends a webhook event.
@@ -98,11 +140,17 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 		headers.Add("X-SoftServe-Signature", "sha256="+hex.EncodeToString(sig.Sum(nil)))
 	}
 
-	res, reqErr := do(ctx, w.URL, http.MethodPost, headers, &buf)
-	var reqHeaders string
-	for k, v := range headers {
-		reqHeaders += k + ": " + v[0] + "\n"
+	res, reqErr := doWithRetry(ctx, w.URL, http.MethodPost, headers, reqBody)
+	headerKeys := make([]string, 0, len(headers))
+	for k := range headers {
+		headerKeys = append(headerKeys, k)
 	}
+	sort.Strings(headerKeys)
+	var reqHeadersB strings.Builder
+	for _, k := range headerKeys {
+		reqHeadersB.WriteString(k + ": " + strings.Join(headers[k], ", ") + "\n")
+	}
+	reqHeaders := reqHeadersB.String()
 
 	resStatus := 0
 	resHeaders := ""
@@ -110,13 +158,15 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 
 	if res != nil {
 		resStatus = res.StatusCode
+		var resHeadersB strings.Builder
 		for k, v := range res.Header {
-			resHeaders += k + ": " + v[0] + "\n"
+			resHeadersB.WriteString(k + ": " + strings.Join(v, ", ") + "\n")
 		}
+		resHeaders = resHeadersB.String()
 
 		if res.Body != nil {
-			defer res.Body.Close() //nolint: errcheck
-			b, err := io.ReadAll(res.Body)
+			defer res.Body.Close()                                //nolint: errcheck
+			b, err := io.ReadAll(io.LimitReader(res.Body, 1<<20)) // 1 MiB
 			if err != nil {
 				return err
 			}
@@ -137,12 +187,15 @@ func SendEvent(ctx context.Context, payload EventPayload) error {
 		return db.WrapError(err)
 	}
 
+	var errs []error
 	for _, w := range webhooks {
 		if err := SendWebhook(ctx, w, payload.Event(), payload); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
-
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	return nil
 }
 

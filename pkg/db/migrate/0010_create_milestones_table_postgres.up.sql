@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS milestones (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    repo_id BIGINT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    due_date TIMESTAMP,
+    closed_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (repo_id) REFERENCES repos(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_milestones_repo_id ON milestones(repo_id);

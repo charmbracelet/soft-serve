@@ -26,6 +26,15 @@ const (
 
 	// EventRepositoryVisibilityChange is a repository visibility change event.
 	EventRepositoryVisibilityChange Event = 6
+
+	// EventIssueCreate is an issue create event.
+	EventIssueCreate Event = 7
+
+	// EventIssueClose is an issue close event.
+	EventIssueClose Event = 8
+
+	// EventIssueReopen is an issue reopen event.
+	EventIssueReopen Event = 9
 )
 
 // Events return all events.
@@ -37,6 +46,9 @@ func Events() []Event {
 		EventPush,
 		EventRepository,
 		EventRepositoryVisibilityChange,
+		EventIssueCreate,
+		EventIssueClose,
+		EventIssueReopen,
 	}
 }
 
@@ -47,6 +59,9 @@ var eventStrings = map[Event]string{
 	EventPush:                       "push",
 	EventRepository:                 "repository",
 	EventRepositoryVisibilityChange: "repository_visibility_change",
+	EventIssueCreate:                "issue_create",
+	EventIssueClose:                 "issue_close",
+	EventIssueReopen:                "issue_reopen",
 }
 
 // String returns the string representation of the event.
@@ -61,6 +76,9 @@ var stringEvent = map[string]Event{
 	"push":                         EventPush,
 	"repository":                   EventRepository,
 	"repository_visibility_change": EventRepositoryVisibilityChange,
+	"issue_create":                 EventIssueCreate,
+	"issue_close":                  EventIssueClose,
+	"issue_reopen":                 EventIssueReopen,
 }
 
 // ErrInvalidEvent is returned when the event is invalid.

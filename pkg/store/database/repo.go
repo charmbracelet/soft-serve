@@ -40,11 +40,15 @@ func (*repoStore) DeleteRepoByName(ctx context.Context, tx db.Handler, name stri
 	return db.WrapError(err)
 }
 
+// maxAllRepos caps the number of repos returned by GetAllRepos to prevent
+// unbounded memory use for very large deployments.
+const maxAllRepos = 10000
+
 // GetAllRepos implements store.RepositoryStore.
 func (*repoStore) GetAllRepos(ctx context.Context, tx db.Handler) ([]models.Repo, error) {
 	var repos []models.Repo
-	query := tx.Rebind("SELECT * FROM repos;")
-	err := tx.SelectContext(ctx, &repos, query)
+	query := tx.Rebind("SELECT * FROM repos LIMIT ?;")
+	err := tx.SelectContext(ctx, &repos, query, maxAllRepos)
 	return repos, db.WrapError(err)
 }
 
@@ -149,4 +153,19 @@ func (*repoStore) SetRepoProjectNameByName(ctx context.Context, tx db.Handler, n
 	query := tx.Rebind("UPDATE repos SET project_name = ? WHERE name = ?;")
 	_, err := tx.ExecContext(ctx, query, projectName, name)
 	return db.WrapError(err)
+}
+
+// SetReposUserIDByName implements store.RepositoryStore.
+// Soft-deletes repositories owned by a user by setting user_id to NULL.
+// This is used during user deletion to avoid race conditions where orphaned
+// repos could be accessed before filesystem cleanup completes.
+func (*repoStore) SetReposUserIDByName(ctx context.Context, tx db.Handler, repoNames []string) error {
+	for _, name := range repoNames {
+		name = utils.SanitizeRepo(name)
+		query := tx.Rebind("UPDATE repos SET user_id = NULL WHERE name = ?;")
+		if _, err := tx.ExecContext(ctx, query, name); err != nil {
+			return db.WrapError(err)
+		}
+	}
+	return nil
 }

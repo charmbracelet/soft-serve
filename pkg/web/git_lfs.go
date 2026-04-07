@@ -1,6 +1,8 @@
 package web
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,12 +12,12 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/access"
-	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
@@ -25,6 +27,27 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/gorilla/mux"
 )
+
+// lfsOidPattern matches a valid Git LFS bare object ID (64 lowercase hex chars).
+// lfs.Pointer.Oid stores the bare hex internally — the "sha256:" prefix present
+// in pointer files and batch JSON is stripped on parse. Callers must NOT prepend
+// the prefix before matching; the route-level pattern for download also uses bare
+// hex (`[0-9a-f]{64}`).
+var lfsOidPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+func lfsS3Config(cfg *config.Config) *storage.S3Config {
+	if cfg == nil || !cfg.LFS.S3.Enabled {
+		return nil
+	}
+	return &storage.S3Config{
+		Endpoint:  cfg.LFS.S3.Endpoint,
+		Region:    cfg.LFS.S3.Region,
+		Bucket:    cfg.LFS.S3.Bucket,
+		Prefix:    cfg.LFS.S3.Prefix,
+		AccessKey: cfg.LFS.S3.AccessKey,
+		SecretKey: cfg.LFS.S3.SecretKey,
+	}
+}
 
 // serviceLfsBatch handles a Git LFS batch requests.
 // https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md
@@ -40,13 +63,21 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var batchRequest lfs.BatchRequest
 	defer r.Body.Close() //nolint: errcheck
 	if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
 		logger.Errorf("error decoding json: %s", err)
-		renderJSON(w, http.StatusUnprocessableEntity, lfs.ErrorResponse{
-			Message: "validation error in request: " + err.Error(),
-		})
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			renderJSON(w, r, http.StatusRequestEntityTooLarge, lfs.ErrorResponse{
+				Message: "request body too large",
+			})
+		} else {
+			renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+				Message: "validation error in request: EOF",
+			})
+		}
 		return
 	}
 
@@ -62,7 +93,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !isBasic {
-			renderJSON(w, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+			renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{
 				Message: "unsupported transfer",
 			})
 			return
@@ -70,8 +101,19 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(batchRequest.Objects) == 0 {
-		renderJSON(w, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{
 			Message: "no objects found",
+		})
+		return
+	}
+
+	// Cap the number of objects per batch request to prevent a single
+	// request from triggering thousands of sequential DB + FS round-trips.
+	// 1 000 matches the GitHub LFS limit and is sufficient for real clients.
+	const maxBatchObjects = 1000
+	if len(batchRequest.Objects) > maxBatchObjects {
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+			Message: fmt.Sprintf("batch request exceeds maximum object count of %d", maxBatchObjects),
 		})
 		return
 	}
@@ -79,7 +121,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["repo"]
 	repo := proto.RepositoryFromContext(ctx)
 	if repo == nil {
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "repository not found",
 		})
 		return
@@ -88,10 +130,10 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	cfg := config.FromContext(ctx)
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
-	// TODO: support S3 storage
 	repoID := strconv.FormatInt(repo.ID(), 10)
-	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
+	strg := storage.GetLFSStorage(cfg.DataPath, repoID, lfsS3Config(cfg))
 
+	authHdr := r.Header.Get("Authorization")
 	baseHref := fmt.Sprintf("%s/%s/info/lfs/objects/basic", cfg.HTTP.PublicURL, name+".git")
 
 	var batchResponse lfs.BatchResponse
@@ -103,24 +145,38 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	// S3 using object "expires_at" & "expires_in"
 	switch batchRequest.Operation {
 	case lfs.OperationDownload:
+		// Bulk-fetch all requested OIDs in a single query to avoid N+1 DB
+		// round-trips when a batch contains many objects.
+		oids := make([]string, len(batchRequest.Objects))
+		for i, o := range batchRequest.Objects {
+			oids[i] = o.Oid
+		}
+		dbObjs, err := datastore.GetLFSObjectsByOids(ctx, dbx, repo.ID(), oids)
+		if err != nil {
+			logger.Error("error bulk-fetching LFS objects from database", "repo", name, "err", err)
+			renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
+				Message: "internal server error",
+			})
+			return
+		}
+		dbObjsByOid := make(map[string]models.LFSObject, len(dbObjs))
+		for _, dbObj := range dbObjs {
+			dbObjsByOid[dbObj.Oid] = dbObj
+		}
+
 		for _, o := range batchRequest.Objects {
 			exist, err := strg.Exists(path.Join("objects", o.RelativePath()))
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
 				logger.Error("error getting object stat", "oid", o.Oid, "repo", name, "err", err)
-				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+				renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 					Message: "internal server error",
 				})
 				return
 			}
 
-			obj, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), o.Oid)
-			if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-				logger.Error("error getting object from database", "oid", o.Oid, "repo", name, "err", err)
-				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
-					Message: "internal server error",
-				})
-				return
-			}
+			// Map lookup: objInDB is true when the OID was returned by the bulk
+			// query (i.e. it exists in the database).
+			obj, objInDB := dbObjsByOid[o.Oid]
 
 			if !exist {
 				objects = append(objects, &lfs.ObjectResponse{
@@ -130,7 +186,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 						Message: "object not found",
 					},
 				})
-			} else if obj.Size != o.Size {
+			} else if objInDB && obj.Size != o.Size {
 				objects = append(objects, &lfs.ObjectResponse{
 					Pointer: o,
 					Error: &lfs.ObjectError{
@@ -142,10 +198,8 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 				download := &lfs.Link{
 					Href: fmt.Sprintf("%s/%s", baseHref, o.Oid),
 				}
-				if auth := r.Header.Get("Authorization"); auth != "" {
-					download.Header = map[string]string{
-						"Authorization": auth,
-					}
+				if authHdr != "" {
+					download.Header = map[string]string{"Authorization": authHdr}
 				}
 
 				objects = append(objects, &lfs.ObjectResponse{
@@ -155,11 +209,12 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 					},
 				})
 
-				// If the object doesn't exist in the database, create it
-				if exist && obj.ID == 0 {
+				// If the object exists on disk but not in the database,
+				// re-register it (disk-ahead-of-DB recovery path).
+				if exist && !objInDB {
 					if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), o.Oid, o.Size); err != nil {
 						logger.Error("error creating object in datastore", "oid", o.Oid, "repo", name, "err", err)
-						renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+						renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 							Message: "internal server error",
 						})
 						return
@@ -181,7 +236,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 		accessLevel := access.FromContext(ctx)
 		if accessLevel < access.ReadWriteAccess {
 			askCredentials(w, r)
-			renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+			renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 				Message: "write access required",
 			})
 			return
@@ -198,22 +253,21 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 					},
 				})
 			} else {
+				uploadHeaders := map[string]string{
+					"Content-Type": "application/octet-stream",
+				}
+				if authHdr != "" {
+					uploadHeaders["Authorization"] = authHdr
+				}
 				upload := &lfs.Link{
-					Href: fmt.Sprintf("%s/%s", baseHref, o.Oid),
-					Header: map[string]string{
-						// NOTE: git-lfs v2.5.0 sets the Content-Type based on the uploaded file.
-						// This ensures that the client always uses the designated value for the header.
-						"Content-Type": "application/octet-stream",
-					},
+					Href:   fmt.Sprintf("%s/%s", baseHref, o.Oid),
+					Header: uploadHeaders,
 				}
 				verify := &lfs.Link{
 					Href: fmt.Sprintf("%s/verify", baseHref),
-				}
-				if auth := r.Header.Get("Authorization"); auth != "" {
-					upload.Header["Authorization"] = auth
-					verify.Header = map[string]string{
-						"Authorization": auth,
-					}
+					Header: map[string]string{
+						"Authorization": authHdr,
+					},
 				}
 
 				objects = append(objects, &lfs.ObjectResponse{
@@ -228,14 +282,15 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	default:
-		renderJSON(w, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{
 			Message: "unsupported operation",
 		})
 		return
 	}
 
 	batchResponse.Objects = objects
-	renderJSON(w, http.StatusOK, batchResponse)
+	w.Header().Set("Cache-Control", "no-store, private")
+	renderJSON(w, r, http.StatusOK, batchResponse)
 }
 
 // serviceLfsBasic implements Git LFS basic transfer API
@@ -254,6 +309,10 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	oid := mux.Vars(r)["oid"]
 	repo := proto.RepositoryFromContext(ctx)
+	if repo == nil {
+		renderStatus(http.StatusNotFound)(w, r)
+		return
+	}
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
 	datastore := store.FromContext(ctx)
@@ -264,38 +323,65 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 	obj, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), oid)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		logger.Error("error getting object from database", "oid", oid, "repo", repo.Name(), "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
 	}
 
+	// Validate OID explicitly even though the route regex already constrains it,
+	// to guard against future route-regex relaxation.
+	if !lfsOidPattern.MatchString(oid) {
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{Message: "invalid oid format"})
+		return
+	}
 	pointer := lfs.Pointer{Oid: oid}
 	f, err := strg.Open(path.Join("objects", pointer.RelativePath()))
 	if err != nil {
 		logger.Error("error opening object", "oid", oid, "err", err)
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "object not found",
 		})
 		return
 	}
 
+	var size int64
+	if obj.ID != 0 {
+		size = obj.Size
+	} else {
+		if stat, err := strg.Stat(path.Join("objects", pointer.RelativePath())); err == nil {
+			size = stat.Size()
+			// Object exists on disk but is not in the database; register it now.
+			if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), oid, size); err != nil {
+				logger.Error("error creating lfs object in datastore", "oid", oid, "repo", repo.Name(), "err", err)
+				renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
+					Message: "internal server error",
+				})
+				return
+			}
+		}
+	}
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Length", strconv.FormatInt(obj.Size, 10))
+	if size > 0 {
+		w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	}
 	defer f.Close() //nolint: errcheck
+	// Once io.Copy begins writing the response body, status code and headers
+	// are already flushed. Any error mid-stream cannot be surfaced as a new
+	// HTTP status; the client will receive a truncated response.
 	if _, err := io.Copy(w, f); err != nil {
 		logger.Error("error copying object to response", "oid", oid, "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
-			Message: "internal server error",
-		})
 		return
 	}
 }
 
 // PUT: /<repo>.git/info/lfs/objects/basic/<oid>
 func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
+	const maxLFSObjectSize = 5 << 30 // 5 GiB
+	r.Body = http.MaxBytesReader(w, r.Body, maxLFSObjectSize)
+
 	if !isBinary(r) {
-		renderJSON(w, http.StatusUnsupportedMediaType, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusUnsupportedMediaType, lfs.ErrorResponse{
 			Message: "invalid content type",
 		})
 		return
@@ -303,61 +389,78 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	oid := mux.Vars(r)["oid"]
+
+	// Validate OID explicitly for defence-in-depth (route regex already
+	// constrains it, but this guards against future route-regex relaxation).
+	if !lfsOidPattern.MatchString(oid) {
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{Message: "invalid oid format"})
+		return
+	}
+
 	cfg := config.FromContext(ctx)
-	be := backend.FromContext(ctx)
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
 	repo := proto.RepositoryFromContext(ctx)
-	repoID := strconv.FormatInt(repo.ID(), 10)
-	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
-	name := mux.Vars(r)["repo"]
-
-	defer r.Body.Close() //nolint: errcheck
-	repo, err := be.Repository(ctx, name)
-	if err != nil {
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
+	if repo == nil {
+		renderStatus(http.StatusNotFound)(w, r)
 		return
 	}
+	repoID := strconv.FormatInt(repo.ID(), 10)
+	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
+
+	defer r.Body.Close() //nolint: errcheck
 
 	// NOTE: Git LFS client will retry uploading the same object if there was a
-	// partial error, so we need to skip existing objects.
+	// partial error, so we need to skip existing objects. Do NOT drain the body
+	// here — the client can send up to 5 GiB and discarding it wastes CPU and
+	// bandwidth. Responding 200 immediately is correct; git-lfs treats a closed
+	// connection on a PUT as a successful upload.
 	if _, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), oid); err == nil {
-		// Object exists, skip request
-		io.Copy(io.Discard, r.Body) //nolint: errcheck
-		renderStatus(http.StatusOK)(w, nil)
+		// Object exists, skip request.
+		renderStatus(http.StatusOK)(w, r)
 		return
 	} else if !errors.Is(err, db.ErrRecordNotFound) {
 		logger.Error("error getting object", "oid", oid, "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
 	}
 
 	pointer := lfs.Pointer{Oid: oid}
-	if _, err := strg.Put(path.Join("objects", pointer.RelativePath()), r.Body); err != nil {
+	h := sha256.New()
+	tee := io.TeeReader(r.Body, h)
+	n, err := strg.Put(path.Join("objects", pointer.RelativePath()), tee)
+	if err != nil {
 		logger.Error("error writing object", "oid", oid, "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
 	}
 
-	size, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)
-	if err != nil {
-		logger.Error("error parsing content length", "err", err)
-		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid content length",
+	actualOID := hex.EncodeToString(h.Sum(nil))
+	if actualOID != oid {
+		// Content does not match the declared OID; remove the corrupt file.
+		if delErr := strg.Delete(path.Join("objects", pointer.RelativePath())); delErr != nil {
+			logger.Error("error deleting mismatched object", "oid", oid, "err", delErr)
+		}
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+			Message: "object hash mismatch",
 		})
 		return
 	}
 
-	if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), oid, size); err != nil {
+	if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), oid, n); err != nil {
+		if errors.Is(err, db.ErrDuplicateKey) {
+			// A concurrent upload for the same OID already committed the record;
+			// treat as idempotent success (git-lfs sends parallel PUTs for large pushes).
+			renderStatus(http.StatusOK)(w, nil)
+			return
+		}
 		logger.Error("error creating object", "oid", oid, "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
@@ -373,13 +476,14 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var pointer lfs.Pointer
 	ctx := r.Context()
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
 	repo := proto.RepositoryFromContext(ctx)
 	if repo == nil {
 		logger.Error("error getting repository from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "repository not found",
 		})
 		return
@@ -388,9 +492,14 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close() //nolint: errcheck
 	if err := json.NewDecoder(r.Body).Decode(&pointer); err != nil {
 		logger.Error("error decoding json", "err", err)
-		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request: " + err.Error(),
+		renderJSON(w, r, http.StatusBadRequest, lfs.ErrorResponse{
+			Message: "invalid request body",
 		})
+		return
+	}
+
+	if !lfsOidPattern.MatchString(pointer.Oid) {
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{Message: "invalid oid format"})
 		return
 	}
 
@@ -405,38 +514,41 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			if errors.Is(err, db.ErrRecordNotFound) {
 				logger.Error("object not found", "oid", pointer.Oid)
-				renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+				renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 					Message: "object not found",
 				})
 				return
 			}
 			logger.Error("error getting object", "oid", pointer.Oid, "err", err)
-			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+			renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 				Message: "internal server error",
 			})
 			return
 		}
 
 		if obj.Size != pointer.Size {
-			renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
+			renderJSON(w, r, http.StatusBadRequest, lfs.ErrorResponse{
 				Message: "object size mismatch",
 			})
 			return
 		}
 
 		if pointer.IsValid() && stat.Size() == pointer.Size {
-			renderStatus(http.StatusOK)(w, nil)
+			w.Header().Set("Content-Type", "application/vnd.git-lfs+json")
+			renderJSON(w, r, http.StatusOK, map[string]string{"message": "verified"})
 			return
 		}
+		renderJSON(w, r, http.StatusUnprocessableEntity, lfs.ErrorResponse{Message: "size mismatch"})
+		return
 	} else if errors.Is(err, fs.ErrNotExist) {
 		logger.Error("file not found", "oid", pointer.Oid)
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "object not found",
 		})
 		return
 	} else {
 		logger.Error("error getting object", "oid", pointer.Oid, "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
@@ -461,14 +573,15 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	ctx := r.Context()
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-locks")
 
 	var req lfs.LockCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding json", "err", err)
-		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request: " + err.Error(),
+		renderJSON(w, r, http.StatusBadRequest, lfs.ErrorResponse{
+			Message: "invalid request body",
 		})
 		return
 	}
@@ -476,7 +589,7 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 	repo := proto.RepositoryFromContext(ctx)
 	if repo == nil {
 		logger.Error("error getting repository from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "repository not found",
 		})
 		return
@@ -485,7 +598,7 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 	user := proto.UserFromContext(ctx)
 	if user == nil {
 		logger.Error("error getting user from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "user not found",
 		})
 		return
@@ -515,7 +628,7 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 					owner, err := datastore.GetUserByID(ctx, dbx, lock.UserID)
 					if err != nil {
 						logger.Error("error getting lock owner", "err", err)
-						renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+						renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 							Message: "internal server error",
 						})
 						return
@@ -524,11 +637,11 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 				}
 				errResp.Lock.Owner = lockOwner
 			}
-			renderJSON(w, http.StatusConflict, errResp)
+			renderJSON(w, r, http.StatusConflict, errResp)
 			return
 		}
 		logger.Error("error creating lock", "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
@@ -537,13 +650,13 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 	lock, err := datastore.GetLFSLockForUserPath(ctx, dbx, repo.ID(), user.ID(), req.Path)
 	if err != nil {
 		logger.Error("error getting lock", "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
 	}
 
-	renderJSON(w, http.StatusCreated, lfs.LockResponse{
+	renderJSON(w, r, http.StatusCreated, lfs.LockResponse{
 		Lock: lfs.Lock{
 			ID:       strconv.FormatInt(lock.ID, 10),
 			Path:     lock.Path,
@@ -594,6 +707,10 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 	if cursor <= 0 {
 		cursor = 1
 	}
+	const maxCursorPage = 10000
+	if cursor > maxCursorPage {
+		cursor = maxCursorPage
+	}
 
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-locks")
 	dbx := db.FromContext(ctx)
@@ -601,7 +718,7 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 	repo := proto.RepositoryFromContext(ctx)
 	if repo == nil {
 		logger.Error("error getting repository from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "repository not found",
 		})
 		return
@@ -611,14 +728,22 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 		lock, err := datastore.GetLFSLockByID(ctx, dbx, id)
 		if err != nil {
 			if errors.Is(err, db.ErrRecordNotFound) {
-				renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+				renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 					Message: "lock not found",
 				})
 				return
 			}
 			logger.Error("error getting lock", "err", err)
-			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+			renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 				Message: "internal server error",
+			})
+			return
+		}
+
+		// Scope check: reject locks belonging to other repos.
+		if lock.RepoID != repo.ID() {
+			renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
+				Message: "lock not found",
 			})
 			return
 		}
@@ -626,13 +751,13 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 		owner, err := datastore.GetUserByID(ctx, dbx, lock.UserID)
 		if err != nil {
 			logger.Error("error getting lock owner", "err", err)
-			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+			renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 				Message: "internal server error",
 			})
 			return
 		}
 
-		renderJSON(w, http.StatusOK, lfs.LockListResponse{
+		renderJSON(w, r, http.StatusOK, lfs.LockListResponse{
 			Locks: []lfs.Lock{
 				{
 					ID:       strconv.FormatInt(lock.ID, 10),
@@ -649,13 +774,13 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 		lock, err := datastore.GetLFSLockForPath(ctx, dbx, repo.ID(), path)
 		if err != nil {
 			if errors.Is(err, db.ErrRecordNotFound) {
-				renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+				renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 					Message: "lock not found",
 				})
 				return
 			}
 			logger.Error("error getting lock", "err", err)
-			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+			renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 				Message: "internal server error",
 			})
 			return
@@ -664,13 +789,13 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 		owner, err := datastore.GetUserByID(ctx, dbx, lock.UserID)
 		if err != nil {
 			logger.Error("error getting lock owner", "err", err)
-			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+			renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 				Message: "internal server error",
 			})
 			return
 		}
 
-		renderJSON(w, http.StatusOK, lfs.LockListResponse{
+		renderJSON(w, r, http.StatusOK, lfs.LockListResponse{
 			Locks: []lfs.Lock{
 				{
 					ID:       strconv.FormatInt(lock.ID, 10),
@@ -688,7 +813,7 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 	locks, err := datastore.GetLFSLocks(ctx, dbx, repo.ID(), cursor, limit)
 	if err != nil {
 		logger.Error("error getting locks", "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
@@ -702,7 +827,7 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 			owner, err = datastore.GetUserByID(ctx, dbx, lock.UserID)
 			if err != nil {
 				logger.Error("error getting lock owner", "err", err)
-				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+				renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 					Message: "internal server error",
 				})
 				return
@@ -727,7 +852,7 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 		resp.NextCursor = strconv.Itoa(cursor + 1)
 	}
 
-	renderJSON(w, http.StatusOK, resp)
+	renderJSON(w, r, http.StatusOK, resp)
 }
 
 // POST: /<repo>.git/info/lfs/objects/locks/verify
@@ -742,17 +867,18 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 	repo := proto.RepositoryFromContext(ctx)
 	if repo == nil {
 		logger.Error("error getting repository from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "repository not found",
 		})
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req lfs.LockVerifyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding request", "err", err)
-		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request: " + err.Error(),
+		renderJSON(w, r, http.StatusBadRequest, lfs.ErrorResponse{
+			Message: "invalid request body",
 		})
 		return
 	}
@@ -780,7 +906,7 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 	locks, err := datastore.GetLFSLocks(ctx, dbx, repo.ID(), cursor, limit)
 	if err != nil {
 		logger.Error("error getting locks", "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
@@ -793,7 +919,7 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 			owner, err = datastore.GetUserByID(ctx, dbx, lock.UserID)
 			if err != nil {
 				logger.Error("error getting lock owner", "err", err)
-				renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+				renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 					Message: "internal server error",
 				})
 				return
@@ -824,7 +950,7 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 		resp.NextCursor = strconv.Itoa(cursor + 1)
 	}
 
-	renderJSON(w, http.StatusOK, resp)
+	renderJSON(w, r, http.StatusOK, resp)
 }
 
 // POST: /<repo>.git/info/lfs/objects/locks/:lockID/unlock
@@ -839,7 +965,7 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 	lockIDStr := mux.Vars(r)["lock_id"]
 	if lockIDStr == "" {
 		logger.Error("error getting lock id")
-		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusBadRequest, lfs.ErrorResponse{
 			Message: "invalid request",
 		})
 		return
@@ -848,17 +974,18 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 	lockID, err := strconv.ParseInt(lockIDStr, 10, 64)
 	if err != nil {
 		logger.Error("error parsing lock id", "err", err)
-		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusBadRequest, lfs.ErrorResponse{
 			Message: "invalid request",
 		})
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req lfs.LockDeleteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("error decoding request", "err", err)
-		renderJSON(w, http.StatusBadRequest, lfs.ErrorResponse{
-			Message: "invalid request: " + err.Error(),
+		renderJSON(w, r, http.StatusBadRequest, lfs.ErrorResponse{
+			Message: "invalid request body",
 		})
 		return
 	}
@@ -868,7 +995,7 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 	repo := proto.RepositoryFromContext(ctx)
 	if repo == nil {
 		logger.Error("error getting repository from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "repository not found",
 		})
 		return
@@ -878,7 +1005,14 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 	lock, err := datastore.GetLFSLockByID(ctx, dbx, lockID)
 	if err != nil {
 		logger.Error("error getting lock", "err", err)
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
+			Message: "lock not found",
+		})
+		return
+	}
+
+	if lock.RepoID != repo.ID() {
+		renderJSON(w, r, http.StatusNotFound, lfs.ErrorResponse{
 			Message: "lock not found",
 		})
 		return
@@ -887,7 +1021,7 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 	owner, err := datastore.GetUserByID(ctx, dbx, lock.UserID)
 	if err != nil {
 		logger.Error("error getting lock owner", "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
@@ -906,7 +1040,7 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 	user := proto.UserFromContext(ctx)
 	if user == nil {
 		logger.Error("error getting user from context")
-		renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusUnauthorized, lfs.ErrorResponse{
 			Message: "unauthorized",
 		})
 		return
@@ -916,7 +1050,7 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 	if req.Force {
 		if !user.IsAdmin() {
 			logger.Error("non-admin user attempted force delete", "user", user.Username())
-			renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+			renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 				Message: "admin access required for force delete",
 			})
 			return
@@ -924,20 +1058,20 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 
 		if err := datastore.DeleteLFSLock(ctx, dbx, repo.ID(), lockID); err != nil {
 			logger.Error("error deleting lock", "err", err)
-			renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+			renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 				Message: "internal server error",
 			})
 			return
 		}
 
-		renderJSON(w, http.StatusOK, l)
+		renderJSON(w, r, http.StatusOK, l)
 		return
 	}
 
 	// Delete our own lock - verify ownership
 	if owner.ID != user.ID() {
 		logger.Error("error deleting another user's lock")
-		renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusForbidden, lfs.ErrorResponse{
 			Message: "lock belongs to another user",
 		})
 		return
@@ -945,22 +1079,22 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 
 	if err := datastore.DeleteLFSLock(ctx, dbx, repo.ID(), lockID); err != nil {
 		logger.Error("error deleting lock", "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
+		renderJSON(w, r, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
 		return
 	}
 
-	renderJSON(w, http.StatusOK, lfs.LockResponse{Lock: l})
+	renderJSON(w, r, http.StatusOK, lfs.LockResponse{Lock: l})
 }
 
 // renderJSON renders a JSON response with the given status code and value. It
 // also sets the Content-Type header to the JSON LFS media type (application/vnd.git-lfs+json).
-func renderJSON(w http.ResponseWriter, statusCode int, v interface{}) {
+func renderJSON(w http.ResponseWriter, r *http.Request, statusCode int, v interface{}) {
 	hdrLfs(w)
 	w.WriteHeader(statusCode)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		log.Error("error encoding json", "err", err)
+		log.FromContext(r.Context()).Error("error encoding json", "err", err)
 	}
 }
 

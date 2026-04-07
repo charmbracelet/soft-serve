@@ -12,7 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/cmd"
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -54,7 +56,7 @@ var (
 				// Generate update hook example without executable permissions
 				hookPath := filepath.Join(customHooksPath, "update.sample")
 				//nolint: gosec
-				if err := os.WriteFile(hookPath, []byte(updateHookExample), 0o744); err != nil {
+				if err := os.WriteFile(hookPath, []byte(updateHookExample), 0o644); err != nil {
 					return fmt.Errorf("failed to generate update hook example: %w", err)
 				}
 			}
@@ -68,6 +70,26 @@ var (
 			db := db.FromContext(ctx)
 			if err := migrate.Migrate(ctx, db); err != nil {
 				return fmt.Errorf("migration error: %w", err)
+			}
+
+			// Apply config-driven settings so operators can automate
+			// server setup without a post-start SSH session.
+			{
+				cfgCtx := config.FromContext(ctx)
+				be := backend.FromContext(ctx)
+				logger := log.FromContext(ctx).WithPrefix("server")
+				if cfgCtx.AnonAccess != "" {
+					if err := be.SetAnonAccess(ctx, access.ParseAccessLevel(cfgCtx.AnonAccess)); err != nil {
+						return fmt.Errorf("set anon_access: %w", err)
+					}
+					logger.Debug("applied anon_access from config", "level", cfgCtx.AnonAccess)
+				}
+				if cfgCtx.AllowKeyless != nil {
+					if err := be.SetAllowKeyless(ctx, *cfgCtx.AllowKeyless); err != nil {
+						return fmt.Errorf("set allow_keyless: %w", err)
+					}
+					logger.Debug("applied allow_keyless from config", "value", *cfgCtx.AllowKeyless)
+				}
 			}
 
 			s, err := NewServer(ctx)

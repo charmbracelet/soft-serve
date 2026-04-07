@@ -5,13 +5,30 @@ import (
 	"path"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/x/ansi"
 )
 
 // SanitizeRepo returns a sanitized version of the given repository name.
+// Returns empty string if the repository name contains path traversal sequences.
 func SanitizeRepo(repo string) string {
 	repo = Sanitize(repo)
+
+	// Prevent path traversal - reject ../ and other dangerous sequences
+	// These patterns could allow attackers to escape the repository root
+	if strings.Contains(repo, "../") || strings.Contains(repo, "..\\") {
+		return ""
+	}
+	if strings.HasPrefix(repo, "../") || strings.HasPrefix(repo, "..\\") {
+		return ""
+	}
+
+	// Prevent absolute path escapes
+	if strings.HasPrefix(repo, "/") && strings.Contains(repo[1:], "../") {
+		return ""
+	}
+
 	// We need to use an absolute path for the path to be cleaned correctly.
 	repo = strings.TrimPrefix(repo, "/")
 	repo = "/" + repo
@@ -20,6 +37,13 @@ func SanitizeRepo(repo string) string {
 	// looking at you Windows
 	repo = path.Clean(repo)
 	repo = strings.TrimSuffix(repo, ".git")
+
+	// Final safety check: if path.Clean() resulted in path traversal, reject it
+	cleaned := repo[1:]
+	if strings.Contains(cleaned, "../") || strings.Contains(cleaned, "..\\") {
+		return ""
+	}
+
 	return repo[1:]
 }
 
@@ -34,7 +58,8 @@ func ValidateUsername(username string) error {
 		return fmt.Errorf("username cannot be empty")
 	}
 
-	if !unicode.IsLetter(rune(username[0])) {
+	first, _ := utf8.DecodeRuneInString(username)
+	if !unicode.IsLetter(first) {
 		return fmt.Errorf("username must start with a letter")
 	}
 
