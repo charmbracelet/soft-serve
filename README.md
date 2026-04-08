@@ -798,7 +798,7 @@ You can check with the following:
 $ find ~/.ssh/id_*.pub -exec ssh-keygen -l -f {} \;
 ```
 
-If you’re curious about the inner workings of this problem have a look at:
+If you’re curious about the inner workings of this problem, have a look at:
 
 - https://github.com/golang/go/issues/37278
 - https://go-review.googlesource.com/c/crypto/+/220037
