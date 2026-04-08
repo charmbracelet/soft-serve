@@ -115,8 +115,11 @@ func (r *Repo) commonHelp() []key.Binding {
 	back.SetHelp("esc", "back to menu")
 	tab := r.common.KeyMap.Section
 	tab.SetHelp("tab", "switch tab")
+	copyKey := r.common.KeyMap.Copy
+	copyKey.SetHelp("c", "copy clone cmd")
 	b = append(b, back)
 	b = append(b, tab)
+	b = append(b, copyKey)
 	return b
 }
 
@@ -204,6 +207,15 @@ func (r *Repo) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, r.common.KeyMap.Back):
 				cmds = append(cmds, goBackCmd)
+			case key.Matches(msg, r.common.KeyMap.Copy):
+				// Only handle clone copy on the Readme tab to avoid
+				// conflicting with pane-level copy handlers (Files, Log, Refs, Stash).
+				if r.selectedRepo != nil && r.panes[r.activeTab].TabName() == "Readme" {
+					cmd := r.common.CloneCmd(r.common.Config().SSH.PublicURL, r.selectedRepo.Name())
+					if cmd != "" {
+						cmds = append(cmds, copyCmd(cmd, "Clone command copied to clipboard"))
+					}
+				}
 			}
 		}
 	case CopyMsg:
@@ -222,6 +234,8 @@ func (r *Repo) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 		cmds = append(cmds, r.updateTabComponent(&Refs{refPrefix: msg.prefix}, msg))
 	case StashListMsg, StashPatchMsg:
 		cmds = append(cmds, r.updateTabComponent(&Stash{}, msg))
+	case DiffMsg:
+		cmds = append(cmds, r.updateTabComponent(&Diff{}, msg))
 	// We have two spinners, one is used to when loading the repository and the
 	// other is used when loading the log.
 	// Check if the spinner ID matches the spinner model.

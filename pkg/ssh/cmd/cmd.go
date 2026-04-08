@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -107,6 +108,17 @@ func CommandName(args []string) string {
 		return ""
 	}
 	return args[0]
+}
+
+// currentUser resolves the authenticated user from the session context.
+// It checks the context user first (set by AuthenticationMiddleware for
+// both public key and token auth), avoiding a redundant DB lookup.
+func currentUser(ctx context.Context) (proto.User, error) {
+	user := proto.UserFromContext(ctx)
+	if user != nil {
+		return user, nil
+	}
+	return nil, proto.ErrUserNotFound
 }
 
 func checkIfReadable(cmd *cobra.Command, args []string) error {

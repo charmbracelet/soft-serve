@@ -23,14 +23,20 @@ func TestVerifyPassword(t *testing.T) {
 }
 
 func TestGenerateToken(t *testing.T) {
-	token := GenerateToken()
+	token, err := GenerateToken()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if token == "" {
 		t.Fatal("token is empty")
 	}
 }
 
 func TestHashToken(t *testing.T) {
-	token := GenerateToken()
+	token, err := GenerateToken()
+	if err != nil {
+		t.Fatal(err)
+	}
 	hash := HashToken(token)
 	if hash == "" {
 		t.Fatal("hash is empty")

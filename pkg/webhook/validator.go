@@ -1,6 +1,8 @@
 package webhook
 
 import (
+	"context"
+
 	"github.com/charmbracelet/soft-serve/pkg/ssrf"
 )
 
@@ -12,8 +14,8 @@ var (
 )
 
 // ValidateWebhookURL validates that a webhook URL is safe to use.
-func ValidateWebhookURL(rawURL string) error {
-	return ssrf.ValidateURL(rawURL) //nolint:wrapcheck
+func ValidateWebhookURL(ctx context.Context, rawURL string) error {
+	return ssrf.ValidateURL(ctx, rawURL) //nolint:wrapcheck
 }
 
 // ValidateIPBeforeDial validates an IP address before establishing a connection.

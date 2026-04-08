@@ -54,7 +54,7 @@ func LFSAuthenticate(ctx context.Context, cmd ServiceCommand) error {
 	expiresAt := now.Add(expiresIn)
 	claims := jwt.RegisteredClaims{
 		Subject:   fmt.Sprintf("%s#%d", user.Username(), user.ID()),
-		ExpiresAt: jwt.NewNumericDate(expiresAt), // expire in an hour
+		ExpiresAt: jwt.NewNumericDate(expiresAt),
 		NotBefore: jwt.NewNumericDate(now),
 		IssuedAt:  jwt.NewNumericDate(now),
 		Issuer:    cfg.HTTP.PublicURL,
@@ -72,7 +72,7 @@ func LFSAuthenticate(ctx context.Context, cmd ServiceCommand) error {
 	}
 
 	href := fmt.Sprintf("%s/%s.git/info/lfs", cfg.HTTP.PublicURL, repo.Name())
-	logger.Debug("generated token", "token", j, "href", href, "expires_at", expiresAt)
+	logger.Debug("generated token", "href", href, "expires_at", expiresAt)
 
 	return json.NewEncoder(cmd.Stdout).Encode(lfs.AuthenticateResponse{
 		Header: map[string]string{
@@ -80,6 +80,6 @@ func LFSAuthenticate(ctx context.Context, cmd ServiceCommand) error {
 		},
 		Href:      href,
 		ExpiresAt: expiresAt,
-		ExpiresIn: expiresIn,
+		ExpiresIn: int64(expiresIn / time.Second),
 	})
 }

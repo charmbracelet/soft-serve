@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
+	"strings"
 
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -98,11 +100,17 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 		headers.Add("X-SoftServe-Signature", "sha256="+hex.EncodeToString(sig.Sum(nil)))
 	}
 
-	res, reqErr := do(ctx, w.URL, http.MethodPost, headers, &buf)
-	var reqHeaders string
-	for k, v := range headers {
-		reqHeaders += k + ": " + v[0] + "\n"
+	res, reqErr := do(ctx, w.URL, http.MethodPost, headers, strings.NewReader(reqBody))
+	headerKeys := make([]string, 0, len(headers))
+	for k := range headers {
+		headerKeys = append(headerKeys, k)
 	}
+	sort.Strings(headerKeys)
+	var reqHeadersB strings.Builder
+	for _, k := range headerKeys {
+		reqHeadersB.WriteString(k + ": " + strings.Join(headers[k], ", ") + "\n")
+	}
+	reqHeaders := reqHeadersB.String()
 
 	resStatus := 0
 	resHeaders := ""
@@ -110,13 +118,15 @@ func SendWebhook(ctx context.Context, w models.Webhook, event Event, payload int
 
 	if res != nil {
 		resStatus = res.StatusCode
+		var resHeadersB strings.Builder
 		for k, v := range res.Header {
-			resHeaders += k + ": " + v[0] + "\n"
+			resHeadersB.WriteString(k + ": " + strings.Join(v, ", ") + "\n")
 		}
+		resHeaders = resHeadersB.String()
 
 		if res.Body != nil {
 			defer res.Body.Close() //nolint: errcheck
-			b, err := io.ReadAll(res.Body)
+			b, err := io.ReadAll(io.LimitReader(res.Body, 1<<20)) // 1 MiB
 			if err != nil {
 				return err
 			}
@@ -137,12 +147,15 @@ func SendEvent(ctx context.Context, payload EventPayload) error {
 		return db.WrapError(err)
 	}
 
+	var errs []error
 	for _, w := range webhooks {
 		if err := SendWebhook(ctx, w, payload.Event(), payload); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
-
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	return nil
 }
 

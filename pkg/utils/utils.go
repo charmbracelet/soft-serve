@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/x/ansi"
 )
@@ -34,7 +35,8 @@ func ValidateUsername(username string) error {
 		return fmt.Errorf("username cannot be empty")
 	}
 
-	if !unicode.IsLetter(rune(username[0])) {
+	first, _ := utf8.DecodeRuneInString(username)
+	if !unicode.IsLetter(first) {
 		return fmt.Errorf("username must start with a letter")
 	}
 

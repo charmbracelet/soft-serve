@@ -23,24 +23,6 @@ func (d *Backend) AccessLevel(ctx context.Context, repo string, username string)
 	return d.AccessLevelForUser(ctx, repo, user)
 }
 
-// AccessLevelByPublicKey returns the access level of a user's public key for a repository.
-//
-// It implements backend.Backend.
-func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ssh.PublicKey) access.AccessLevel {
-	for _, k := range d.cfg.AdminKeys() {
-		if sshutils.KeysEqual(pk, k) {
-			return access.AdminAccess
-		}
-	}
-
-	user, _ := d.UserByPublicKey(ctx, pk)
-	if user != nil {
-		return d.AccessLevel(ctx, repo, user.Username())
-	}
-
-	return d.AccessLevel(ctx, repo, "")
-}
-
 // AccessLevelForUser returns the access level of a user for a repository.
 // TODO: user repository ownership
 func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user proto.User) access.AccessLevel {
@@ -226,7 +208,7 @@ func (d *Backend) UserByAccessToken(ctx context.Context, token string) (proto.Us
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, proto.ErrUserNotFound
 		}
-		d.logger.Error("failed to find user by access token", "err", err, "token", token)
+		d.logger.Error("failed to find user by access token", "err", err)
 		return nil, err
 	}
 
@@ -298,18 +280,51 @@ func (d *Backend) CreateUser(ctx context.Context, username string, opts proto.Us
 //
 // It implements backend.Backend.
 func (d *Backend) DeleteUser(ctx context.Context, username string) error {
+	username = utils.Sanitize(username)
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
 		return err
 	}
 
-	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		if err := d.store.DeleteUserByUsername(ctx, tx, username); err != nil {
+	// Collect the user's repo names and delete the user record in one transaction.
+	var repoNames []string
+	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		u, err := d.store.FindUserByUsername(ctx, tx, username)
+		if err != nil {
 			return db.WrapError(err)
 		}
 
-		return d.DeleteUserRepositories(ctx, username)
-	})
+		repos, err := d.store.GetUserRepos(ctx, tx, u.ID)
+		if err != nil {
+			return db.WrapError(err)
+		}
+
+		for _, r := range repos {
+			repoNames = append(repoNames, r.Name)
+		}
+
+		return db.WrapError(d.store.DeleteUserByUsername(ctx, tx, username))
+	}); err != nil {
+		return err
+	}
+
+	// NOTE: There is a window between the user-record deletion and repository
+	// deletions below where orphaned repos have no owner. A future improvement
+	// would be to soft-delete repos atomically inside the user-deletion transaction
+	// so they become invisible immediately before filesystem cleanup.
+	// Repos are deleted outside the transaction to avoid nested-transaction issues.
+	var errs []error
+	for _, name := range repoNames {
+		if err := d.DeleteRepository(ctx, name); err != nil {
+			d.logger.Error("error deleting user repo", "repo", name, "err", err)
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
 }
 
 // RemovePublicKey removes a public key from a user.
@@ -351,6 +366,11 @@ func (d *Backend) SetUsername(ctx context.Context, username string, newUsername 
 		return err
 	}
 
+	newUsername = strings.ToLower(newUsername)
+	if err := utils.ValidateUsername(newUsername); err != nil {
+		return err
+	}
+
 	return db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			return d.store.SetUsernameByUsername(ctx, tx, username, newUsername)
@@ -362,6 +382,7 @@ func (d *Backend) SetUsername(ctx context.Context, username string, newUsername 
 //
 // It implements backend.Backend.
 func (d *Backend) SetAdmin(ctx context.Context, username string, admin bool) error {
+	username = utils.Sanitize(username)
 	username = strings.ToLower(username)
 	if err := utils.ValidateUsername(username); err != nil {
 		return err

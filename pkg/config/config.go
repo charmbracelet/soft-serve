@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/sshutils"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
@@ -38,6 +39,24 @@ type SSHConfig struct {
 
 	// IdleTimeout is the number of seconds a connection can be idle before it is closed.
 	IdleTimeout int `env:"IDLE_TIMEOUT" yaml:"idle_timeout"`
+
+	// AllowMouseEvents controls whether the TUI enables mouse-event capture.
+	// When true (the default), mouse clicks and scrolling work in the TUI but
+	// the terminal's native text-selection is disabled.  Set to false to
+	// restore terminal text selection at the cost of mouse-driven navigation.
+	AllowMouseEvents bool `env:"ALLOW_MOUSE_EVENTS" yaml:"allow_mouse_events"`
+
+	// KeyExchanges is the list of key exchange algorithms to use.
+	// When empty the server uses the go/crypto defaults.
+	KeyExchanges []string `env:"KEY_EXCHANGES" envSeparator:"," yaml:"key_exchanges"`
+
+	// Ciphers is the list of ciphers to use.
+	// When empty the server uses the go/crypto defaults.
+	Ciphers []string `env:"CIPHERS" envSeparator:"," yaml:"ciphers"`
+
+	// MACs is the list of MAC algorithms to use.
+	// When empty the server uses the go/crypto defaults.
+	MACs []string `env:"MACS" envSeparator:"," yaml:"macs"`
 }
 
 // GitConfig is the Git daemon configuration for the server.
@@ -89,6 +108,23 @@ type HTTPConfig struct {
 
 	// CORS is the cross-origin configuration for the HTTP server.
 	CORS CORSConfig `envPrefix:"CORS_" yaml:"cors"`
+
+	// StripGitSuffix allows cloning repos without the .git suffix in the URL.
+	// When true, both /<name> and /<name>.git are accepted.
+	// Default is false for backward compatibility.
+	StripGitSuffix bool `env:"STRIP_GIT_SUFFIX" yaml:"strip_git_suffix"`
+
+	// TrustProxyHeaders controls whether the X-Forwarded-For header is trusted
+	// for client IP resolution. Only enable this when the server sits behind a
+	// trusted reverse proxy. Default is false.
+	TrustProxyHeaders bool `env:"TRUST_PROXY_HEADERS" yaml:"trust_proxy_headers"`
+
+	// RateLimit is the maximum number of HTTP requests per second per IP.
+	// Set to 0 to disable HTTP rate limiting.
+	RateLimit float64 `env:"RATE_LIMIT" yaml:"rate_limit"`
+
+	// RateBurst is the maximum burst size for the HTTP rate limiter.
+	RateBurst int `env:"RATE_BURST" yaml:"rate_burst"`
 }
 
 // StatsConfig is the configuration for the stats server.
@@ -134,9 +170,18 @@ type LFSConfig struct {
 	SSHEnabled bool `env:"SSH_ENABLED" yaml:"ssh_enabled"`
 }
 
+// MirrorPullJobConfig is the configuration for the mirror pull cron job.
+type MirrorPullJobConfig struct {
+	// Enabled toggles the mirror pull job on/off.
+	Enabled bool `env:"ENABLED" yaml:"enabled"`
+
+	// Schedule is the cron schedule for the mirror pull job.
+	Schedule string `env:"SCHEDULE" yaml:"schedule"`
+}
+
 // JobsConfig is the configuration for cron jobs.
 type JobsConfig struct {
-	MirrorPull string `env:"MIRROR_PULL" yaml:"mirror_pull"`
+	MirrorPull MirrorPullJobConfig `envPrefix:"MIRROR_PULL_" yaml:"mirror_pull"`
 }
 
 // Config is the configuration for Soft Serve.
@@ -171,6 +216,20 @@ type Config struct {
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
+	// AnonAccess is the anonymous access level applied on startup.
+	// Valid values: "no-access", "read-only", "read-write", "admin-access".
+	// Leave empty to keep the value stored in the database.
+	AnonAccess string `env:"ANON_ACCESS" yaml:"anon_access"`
+
+	// AllowKeyless controls whether keyless (keyboard-interactive) access is
+	// allowed. When set, this overrides the value stored in the database on
+	// every startup.  Leave unset to keep the database value.
+	AllowKeyless *bool `env:"ALLOW_KEYLESS" yaml:"allow_keyless"`
+
+	// AllowPublicGoGet serves go-get meta tags for private/hidden repos when true.
+	// The actual git content remains inaccessible without authentication.
+	AllowPublicGoGet bool `env:"ALLOW_PUBLIC_GO_GET" yaml:"allow_public_go_get"`
+
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" yaml:"-"`
 }
@@ -190,6 +249,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_DATA_PATH=%s", c.DataPath),
 		fmt.Sprintf("SOFT_SERVE_NAME=%s", c.Name),
 		fmt.Sprintf("SOFT_SERVE_INITIAL_ADMIN_KEYS=%s", strings.Join(c.InitialAdminKeys, "\n")),
+		fmt.Sprintf("SOFT_SERVE_ANON_ACCESS=%s", c.AnonAccess),
 		fmt.Sprintf("SOFT_SERVE_SSH_ENABLED=%t", c.SSH.Enabled),
 		fmt.Sprintf("SOFT_SERVE_SSH_LISTEN_ADDR=%s", c.SSH.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_SSH_PUBLIC_URL=%s", c.SSH.PublicURL),
@@ -197,6 +257,9 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_KEY_PATH=%s", c.SSH.ClientKeyPath),
 		fmt.Sprintf("SOFT_SERVE_SSH_MAX_TIMEOUT=%d", c.SSH.MaxTimeout),
 		fmt.Sprintf("SOFT_SERVE_SSH_IDLE_TIMEOUT=%d", c.SSH.IdleTimeout),
+		fmt.Sprintf("SOFT_SERVE_SSH_KEY_EXCHANGES=%s", strings.Join(c.SSH.KeyExchanges, ",")),
+		fmt.Sprintf("SOFT_SERVE_SSH_CIPHERS=%s", strings.Join(c.SSH.Ciphers, ",")),
+		fmt.Sprintf("SOFT_SERVE_SSH_MACS=%s", strings.Join(c.SSH.MACs, ",")),
 		fmt.Sprintf("SOFT_SERVE_GIT_ENABLED=%t", c.Git.Enabled),
 		fmt.Sprintf("SOFT_SERVE_GIT_LISTEN_ADDR=%s", c.Git.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_GIT_PUBLIC_URL=%s", c.Git.PublicURL),
@@ -208,6 +271,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_KEY_PATH=%s", c.HTTP.TLSKeyPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_TLS_CERT_PATH=%s", c.HTTP.TLSCertPath),
 		fmt.Sprintf("SOFT_SERVE_HTTP_PUBLIC_URL=%s", c.HTTP.PublicURL),
+		fmt.Sprintf("SOFT_SERVE_HTTP_STRIP_GIT_SUFFIX=%t", c.HTTP.StripGitSuffix),
 		fmt.Sprintf("SOFT_SERVE_HTTP_CORS_ALLOWED_HEADERS=%s", strings.Join(c.HTTP.CORS.AllowedHeaders, ",")),
 		fmt.Sprintf("SOFT_SERVE_HTTP_CORS_ALLOWED_ORIGINS=%s", strings.Join(c.HTTP.CORS.AllowedOrigins, ",")),
 		fmt.Sprintf("SOFT_SERVE_HTTP_CORS_ALLOWED_METHODS=%s", strings.Join(c.HTTP.CORS.AllowedMethods, ",")),
@@ -219,7 +283,9 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_DB_DATA_SOURCE=%s", c.DB.DataSource),
 		fmt.Sprintf("SOFT_SERVE_LFS_ENABLED=%t", c.LFS.Enabled),
 		fmt.Sprintf("SOFT_SERVE_LFS_SSH_ENABLED=%t", c.LFS.SSHEnabled),
-		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL=%s", c.Jobs.MirrorPull),
+		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL_ENABLED=%t", c.Jobs.MirrorPull.Enabled),
+		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL_SCHEDULE=%s", c.Jobs.MirrorPull.Schedule),
+		fmt.Sprintf("SOFT_SERVE_ALLOW_PUBLIC_GO_GET=%t", c.AllowPublicGoGet),
 	}...)
 
 	return envs
@@ -350,10 +416,11 @@ func DefaultConfig() *Config {
 		Name:     "Soft Serve",
 		DataPath: DefaultDataPath(),
 		SSH: SSHConfig{
-			Enabled:       true,
-			ListenAddr:    ":23231",
-			PublicURL:     "ssh://localhost:23231",
-			KeyPath:       filepath.Join("ssh", "soft_serve_host_ed25519"),
+			Enabled:          true,
+			ListenAddr:       ":23231",
+			PublicURL:        "ssh://localhost:23231",
+			KeyPath:          filepath.Join("ssh", "soft_serve_host_ed25519"),
+			AllowMouseEvents: true,
 			ClientKeyPath: filepath.Join("ssh", "soft_serve_client_ed25519"),
 			MaxTimeout:    0,
 			IdleTimeout:   10 * 60, // 10 minutes
@@ -370,6 +437,8 @@ func DefaultConfig() *Config {
 			Enabled:    true,
 			ListenAddr: ":23232",
 			PublicURL:  "http://localhost:23232",
+			RateLimit:  10,
+			RateBurst:  30,
 			CORS: CORSConfig{
 				AllowedHeaders: []string{"Accept", "Accept-Language", "Content-Language", "Content-Type", "Origin", "X-Requested-With", "User-Agent", "Authorization", "Access-Control-Request-Method", "Access-Control-Allow-Origin"},
 				AllowedMethods: []string{"GET", "HEAD", "POST", "PUT", "OPTIONS"},
@@ -394,7 +463,10 @@ func DefaultConfig() *Config {
 			SSHEnabled: false,
 		},
 		Jobs: JobsConfig{
-			MirrorPull: "@every 10m",
+			MirrorPull: MirrorPullJobConfig{
+				Enabled:  true,
+				Schedule: "@every 10m",
+			},
 		},
 	}
 }
@@ -443,7 +515,24 @@ func (c *Config) Validate() error {
 
 	c.InitialAdminKeys = pks
 
-	c.HTTP.CORS.AllowedOrigins = append([]string{c.HTTP.PublicURL}, c.HTTP.CORS.AllowedOrigins...)
+	if c.AnonAccess != "" {
+		level := access.ParseAccessLevel(c.AnonAccess)
+		// ParseAccessLevel returns NoAccess for unknown strings, but "no-access"
+		// is also a valid explicit value, so check by re-serialising.
+		if level.String() != c.AnonAccess {
+			return fmt.Errorf("invalid anon_access %q: must be one of %s, %s, %s, %s",
+				c.AnonAccess,
+				access.NoAccess.String(),
+				access.ReadOnlyAccess.String(),
+				access.ReadWriteAccess.String(),
+				access.AdminAccess.String(),
+			)
+		}
+	}
+
+	if len(c.HTTP.CORS.AllowedOrigins) == 0 || c.HTTP.CORS.AllowedOrigins[0] != c.HTTP.PublicURL {
+		c.HTTP.CORS.AllowedOrigins = append([]string{c.HTTP.PublicURL}, c.HTTP.CORS.AllowedOrigins...)
+	}
 
 	return nil
 }
