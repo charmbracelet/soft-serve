@@ -8,18 +8,20 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/soft-serve/pkg/task"
+	"golang.org/x/sync/singleflight"
 )
 
 // Backend is the Soft Serve backend that handles users, repositories, and
 // server settings management and operations.
 type Backend struct {
-	ctx     context.Context
-	cfg     *config.Config
-	db      *db.DB
-	store   store.Store
-	logger  *log.Logger
-	cache   *cache
-	manager *task.Manager
+	ctx      context.Context
+	cfg      *config.Config
+	db       *db.DB
+	store    store.Store
+	logger   *log.Logger
+	cache    *cache
+	manager  *task.Manager
+	reposSFG singleflight.Group // deduplicate concurrent Repositories() calls
 }
 
 // New returns a new Soft Serve backend.

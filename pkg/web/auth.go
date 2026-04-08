@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
@@ -167,5 +168,42 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 		return nil, ErrInvalidToken
 	}
 
+	// Validate JWT claims before accepting.
+	// Prevents not-before, issuer, and audience attacks.
+	if err := validateJWTClaims(ctx, cfg, claims); err != nil {
+		return nil, ErrInvalidToken
+	}
+
 	return claims, nil
+}
+
+// validateJWTClaims validates JWT claims for security.
+// Prevents not-before, issuer, and audience attacks.
+func validateJWTClaims(ctx context.Context, cfg *config.Config, claims *jwt.RegisteredClaims) error {
+	// Validate expiration time if set
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
+		return errors.New("token expired")
+	}
+
+	// Validate not-before time if set
+	if claims.NotBefore != nil && claims.NotBefore.Time.After(time.Now()) {
+		return errors.New("token not yet valid")
+	}
+
+	// Validate issuer
+	if claims.Issuer != cfg.HTTP.PublicURL {
+		return errors.New("invalid token issuer")
+	}
+
+	// Validate audience - audience is optional but if set must match public URL
+	// jwt.ClaimStrings is a slice of strings
+	if len(claims.Audience) > 0 {
+		for _, audience := range claims.Audience {
+			if !strings.HasPrefix(audience, cfg.HTTP.PublicURL) {
+				return errors.New("invalid token audience")
+			}
+		}
+	}
+
+	return nil
 }

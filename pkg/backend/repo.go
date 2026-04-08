@@ -19,16 +19,37 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/hooks"
 	"github.com/charmbracelet/soft-serve/pkg/lfs"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/ssrf"
 	"github.com/charmbracelet/soft-serve/pkg/storage"
 	"github.com/charmbracelet/soft-serve/pkg/task"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 )
 
-func validateImportRemote(remote string) error {
+// shellQuote returns s wrapped in POSIX single-quotes with any embedded
+// single-quote characters properly escaped as '\''. This is safe to embed
+// inside GIT_SSH_COMMAND values that are evaluated by the shell git invokes.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+func validateImportRemote(ctx context.Context, remote string) error {
 	endpoint, err := lfs.NewEndpoint(remote)
 	if err != nil || endpoint.Host == "" {
 		return proto.ErrInvalidRemote
+	}
+
+	if endpoint.Scheme == "http" || endpoint.Scheme == "https" {
+		if err := ssrf.ValidateURL(ctx, remote); err != nil {
+			return err
+		}
+	}
+
+	switch endpoint.Scheme {
+	case "ssh", "git+ssh", "ssh+git":
+		if err := ssrf.ValidateHost(ctx, endpoint.Host); err != nil {
+			return fmt.Errorf("import remote: %w", err)
+		}
 	}
 
 	return nil
@@ -37,13 +58,24 @@ func validateImportRemote(remote string) error {
 // CreateRepository creates a new repository.
 //
 // It implements backend.Backend.
-func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.User, opts proto.RepositoryOptions) (proto.Repository, error) {
+func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.User, opts proto.RepositoryOptions) (_ proto.Repository, err error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
 		return nil, err
 	}
 
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
+
+	// Clean up the repo directory if the transaction fails — git.Init
+	// creates OS files that the DB rollback cannot undo, which would leave
+	// an orphaned directory blocking future create attempts.
+	defer func() {
+		if err != nil {
+			if rmErr := os.RemoveAll(rp); rmErr != nil {
+				d.logger.Error("failed to clean up repo dir after failed create", "path", rp, "err", rmErr)
+			}
+		}
+	}()
 
 	var userID int64
 	if user != nil {
@@ -65,13 +97,34 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 			return err
 		}
 
-		_, err := git.Init(rp, true)
+		// Skip git.Init when the directory is already a valid git repository
+		// (e.g. populated by git.Clone inside ImportRepository). Calling
+		// git.Init on an existing bare clone overwrites the config file,
+		// stripping mirror-specific settings (mirror=true, fetch refspecs).
+		rr, err := git.Open(rp)
 		if err != nil {
-			d.logger.Debug("failed to create repository", "err", err)
-			return err
+			// Directory not yet a git repo — initialize it.
+			rr, err = git.Init(rp, true)
+			if err != nil {
+				d.logger.Debug("failed to create repository", "err", err)
+				return err
+			}
 		}
 
-		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(opts.Description), fs.ModePerm); err != nil {
+		if user != nil && user.Username() != "" {
+			rcfg, err := rr.Config()
+			if err != nil {
+				d.logger.Error("failed to get repository config", "repo", name, "err", err)
+				return err
+			}
+			rcfg.Section("gitweb").SetOption("owner", user.Username())
+			if err := rr.SetConfig(rcfg); err != nil {
+				d.logger.Error("failed to set gitweb.owner", "repo", name, "err", err)
+				return err
+			}
+		}
+
+		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(opts.Description), 0o644); err != nil {
 			d.logger.Error("failed to write description", "repo", name, "err", err)
 			return err
 		}
@@ -88,7 +141,8 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 		d.logger.Debug("failed to create repository in database", "err", err)
 		err = db.WrapError(err)
 		if errors.Is(err, db.ErrDuplicateKey) {
-			return nil, proto.ErrRepoExist
+			err = proto.ErrRepoExist
+			return nil, err
 		}
 
 		return nil, err
@@ -98,34 +152,48 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 }
 
 // ImportRepository imports a repository from remote.
-// XXX: This a expensive operation and should be run in a goroutine.
-func (d *Backend) ImportRepository(_ context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
+// XXX: This is an expensive operation and should be run in a goroutine.
+func (d *Backend) ImportRepository(ctx context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
 		return nil, err
 	}
 
 	remote = utils.Sanitize(remote)
-	if err := validateImportRemote(remote); err != nil {
+	if err := validateImportRemote(ctx, remote); err != nil {
 		return nil, err
 	}
 
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
+
+	if d.manager == nil {
+		return nil, fmt.Errorf("import repository: no manager configured")
+	}
 
 	tid := "import:" + name
 	if d.manager.Exists(tid) {
 		return nil, task.ErrAlreadyStarted
 	}
 
-	if _, err := os.Stat(rp); err == nil || os.IsExist(err) {
+	// Note: there is a TOCTOU between the Exists check, filesystem stat, and
+	// manager.Add. The task manager's LoadOrStore provides atomic dedup for
+	// concurrent callers, so this is safe for correctness; the stat check is
+	// advisory only.
+	// os.Stat returns nil (path exists) or fs.ErrNotExist (absent). It never
+	// returns fs.ErrExist, so the only relevant check is err == nil.
+	if _, err := os.Stat(rp); err == nil {
 		return nil, proto.ErrRepoExist
 	}
 
 	done := make(chan error, 1)
 	repoc := make(chan proto.Repository, 1)
 	d.logger.Info("importing repository", "name", name, "remote", remote, "path", rp)
-	d.manager.Add(tid, func(ctx context.Context) (err error) {
-		ctx = proto.WithUserContext(ctx, user)
+	// Use context.WithoutCancel so the import task outlives the HTTP request
+	// that initiated it, but still inherits values (e.g. logger, config) from
+	// the caller's context.
+	importCtx := context.WithoutCancel(ctx)
+	d.manager.Add(tid, func(_ context.Context) (err error) {
+		ctx := proto.WithUserContext(importCtx, user)
 
 		copts := git.CloneOptions{
 			Bare:   true,
@@ -135,9 +203,12 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 				Timeout: -1,
 				Context: ctx,
 				Envs: []string{
-					fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-						filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
-						d.cfg.SSH.ClientKeyPath,
+					// Use shellQuote (POSIX single-quote wrapping) for both paths
+					// to prevent shell metacharacter expansion. GIT_SSH_COMMAND is
+					// interpreted by the shell that git invokes for the ssh call.
+					fmt.Sprintf("GIT_SSH_COMMAND=ssh -o UserKnownHostsFile=%s -o StrictHostKeyChecking=accept-new -i %s",
+						shellQuote(filepath.Join(d.cfg.DataPath, "ssh", "known_hosts")),
+						shellQuote(d.cfg.SSH.ClientKeyPath),
 					),
 				},
 			},
@@ -150,34 +221,34 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 				err = errors.Join(err, rerr)
 			}
 
+			repoc <- nil
 			return err
 		}
 
 		r, err := d.CreateRepository(ctx, name, user, opts)
 		if err != nil {
 			d.logger.Error("failed to create repository", "err", err, "name", name)
+			repoc <- nil
 			return err
 		}
-
-		defer func() {
-			if err != nil {
-				if rerr := d.DeleteRepository(ctx, name); rerr != nil {
-					d.logger.Error("failed to delete repository", "err", rerr, "name", name)
-				}
-			}
-		}()
 
 		rr, err := r.Open()
 		if err != nil {
 			d.logger.Error("failed to open repository", "err", err, "path", rp)
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
+			repoc <- nil
 			return err
 		}
-
-		repoc <- r
 
 		rcfg, err := rr.Config()
 		if err != nil {
 			d.logger.Error("failed to get repository config", "err", err, "path", rp)
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
+			repoc <- nil
 			return err
 		}
 
@@ -190,26 +261,40 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 
 		if err := rr.SetConfig(rcfg); err != nil {
 			d.logger.Error("failed to set repository config", "err", err, "path", rp)
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
+			repoc <- nil
 			return err
 		}
 
 		ep, err := lfs.NewEndpoint(endpoint)
 		if err != nil {
 			d.logger.Error("failed to create lfs endpoint", "err", err, "path", rp)
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
+			repoc <- nil
 			return err
 		}
 
 		client := lfs.NewClient(ep)
 		if client == nil {
 			d.logger.Warn("failed to create lfs client: unsupported endpoint", "endpoint", endpoint)
+			repoc <- r
 			return nil
 		}
 
 		if err := StoreRepoMissingLFSObjects(ctx, r, d.db, d.store, client); err != nil {
 			d.logger.Error("failed to store missing lfs objects", "err", err, "path", rp)
+			if rerr := d.DeleteRepository(ctx, name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", name)
+			}
+			repoc <- nil
 			return err
 		}
 
+		repoc <- r
 		return nil
 	})
 
@@ -218,7 +303,29 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		d.manager.Run(tid, done)
 	}()
 
-	return <-repoc, <-done
+	// Use select: repoc and done are both buffered (cap 1). Normal path sends
+	// repoc first then done; cancellation path sends done first.
+	select {
+	case r := <-repoc:
+		return r, <-done
+	case err := <-done:
+		if err == nil {
+			// Import may have completed just before the context fired;
+			// return the repository if already produced.
+			select {
+			case r := <-repoc:
+				return r, nil
+			default:
+				// This branch should be unreachable: the import goroutine always
+				// sends to repoc before signalling done with a nil error. If it
+				// is reached, something is very wrong — log loudly so it is not
+				// silently swallowed.
+				d.logger.Error("import: done fired with nil error but repoc was empty — this is a bug")
+				return nil, fmt.Errorf("import: repository unavailable after completion")
+			}
+		}
+		return nil, err
+	}
 }
 
 // DeleteRepository deletes a repository.
@@ -226,7 +333,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 // It implements backend.Backend.
 func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	name = utils.SanitizeRepo(name)
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	user := proto.UserFromContext(ctx)
 	r, err := d.Repository(ctx, name)
@@ -241,21 +348,24 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 		return err
 	}
 
+	// removeDir is set to true inside the transaction only after all DB changes
+	// have succeeded. The actual filesystem removal happens after the transaction
+	// commits so that a DB commit failure cannot leave us with a missing directory
+	// and a stale DB row.
+	var removeDir bool
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		// Delete repo from cache
-		defer d.cache.Delete(name)
-
 		repom, dberr := d.store.GetRepoByName(ctx, tx, name)
 		_, ferr := os.Stat(rp)
 		if dberr != nil && ferr != nil {
 			return proto.ErrRepoNotFound
 		}
 
-		// If the repo is not in the database but the directory exists, remove it
-		if dberr != nil && ferr == nil {
-			return os.RemoveAll(rp)
-		} else if dberr != nil {
-			return db.WrapError(dberr)
+		// If the repo is not in the database but the directory exists, mark it
+		// for removal after the transaction. The previous guard already returned
+		// when both are missing, so here dberr!=nil implies ferr==nil.
+		if dberr != nil {
+			removeDir = true
+			return nil
 		}
 
 		repoID := strconv.FormatInt(repom.ID, 10)
@@ -265,6 +375,7 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 			return db.WrapError(err)
 		}
 
+		var lfsErrs []error
 		for _, obj := range objs {
 			p := lfs.Pointer{
 				Oid:  obj.Oid,
@@ -274,14 +385,22 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 			d.logger.Debug("deleting lfs object", "repo", name, "oid", obj.Oid)
 			if err := strg.Delete(path.Join("objects", p.RelativePath())); err != nil {
 				d.logger.Error("failed to delete lfs object", "repo", name, "err", err, "oid", obj.Oid)
+				lfsErrs = append(lfsErrs, err)
 			}
+		}
+		if len(lfsErrs) > 0 {
+			return errors.Join(lfsErrs...)
 		}
 
 		if err := d.store.DeleteRepoByName(ctx, tx, name); err != nil {
 			return db.WrapError(err)
 		}
 
-		return os.RemoveAll(rp)
+		// Mark for post-commit removal. The directory is only removed after the
+		// transaction commits so that a DB commit failure cannot leave us with
+		// the directory missing but the DB row still present.
+		removeDir = true
+		return nil
 	}); err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return proto.ErrRepoNotFound
@@ -290,11 +409,27 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 		return db.WrapError(err)
 	}
 
+	// The transaction has committed — it is now safe to remove the directory.
+	// os.RemoveAll is idempotent: if the directory is already absent (e.g. from
+	// a prior partial delete), this is a no-op.
+	if removeDir {
+		if err := os.RemoveAll(rp); err != nil {
+			// Non-fatal: DB row is already gone. Log and continue — the orphan
+			// directory will be cleaned up on the next delete attempt.
+			d.logger.Error("failed to remove repository directory after delete", "path", rp, "err", err)
+		}
+	}
+
+	d.cache.Delete(name)
+
 	return webhook.SendEvent(ctx, wh)
 }
 
 // DeleteUserRepositories deletes all user repositories.
 func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) error {
+	// Collect repo names inside a transaction, then delete outside it to avoid
+	// nested-transaction deadlock on SQLite.
+	var names []string
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		user, err := d.store.FindUserByUsername(ctx, tx, username)
 		if err != nil {
@@ -307,14 +442,18 @@ func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) e
 		}
 
 		for _, repo := range repos {
-			if err := d.DeleteRepository(ctx, repo.Name); err != nil {
-				return err
-			}
+			names = append(names, repo.Name)
 		}
 
 		return nil
 	}); err != nil {
 		return db.WrapError(err)
+	}
+
+	for _, name := range names {
+		if err := d.DeleteRepository(ctx, name); err != nil {
+			d.logger.Error("error deleting user repo", "repo", name, "err", err)
+		}
 	}
 
 	return nil
@@ -338,8 +477,8 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 		return nil
 	}
 
-	op := filepath.Join(d.repoPath(oldName))
-	np := filepath.Join(d.repoPath(newName))
+	op := d.repoPath(oldName)
+	np := d.repoPath(newName)
 	if _, err := os.Stat(op); err != nil {
 		return proto.ErrRepoNotFound
 	}
@@ -384,33 +523,41 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 //
 // It implements backend.Backend.
 func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) {
-	repos := make([]proto.Repository, 0)
-
-	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		ms, err := d.store.GetAllRepos(ctx, tx)
-		if err != nil {
-			return err
-		}
-
-		for _, m := range ms {
-			r := &repo{
-				name: m.Name,
-				path: filepath.Join(d.repoPath(m.Name)),
-				repo: m,
+	// Use singleflight to coalesce concurrent calls and prevent cache stampede.
+	// The lambda uses d.ctx (backend root context) rather than the caller's ctx
+	// so that one caller cancelling does not abort the shared in-flight query
+	// for all other waiters.
+	//
+	// Note: the result is a snapshot at query time and is populated into d.cache
+	// (per-repo entries) without an expiry. High-churn environments (frequent
+	// create/delete) should be aware that Repositories() reflects the state at
+	// the time of the most recent coalesced query until the next call.
+	v, err, _ := d.reposSFG.Do("all", func() (interface{}, error) {
+		repos := make([]proto.Repository, 0)
+		if err := d.db.TransactionContext(d.ctx, func(tx *db.Tx) error {
+			ms, err := d.store.GetAllRepos(d.ctx, tx)
+			if err != nil {
+				return err
 			}
-
-			// Cache repositories
-			d.cache.Set(m.Name, r)
-
-			repos = append(repos, r)
+			for _, m := range ms {
+				r := &repo{
+					name: m.Name,
+					path: d.repoPath(m.Name),
+					repo: m,
+				}
+				d.cache.Set(m.Name, r)
+				repos = append(repos, r)
+			}
+			return nil
+		}); err != nil {
+			return nil, db.WrapError(err)
 		}
-
-		return nil
-	}); err != nil {
-		return nil, db.WrapError(err)
+		return repos, nil
+	})
+	if err != nil {
+		return nil, err
 	}
-
-	return repos, nil
+	return v.([]proto.Repository), nil
 }
 
 // Repository returns a repository by name.
@@ -424,7 +571,7 @@ func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository
 		return r, nil
 	}
 
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 	if _, err := os.Stat(rp); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			d.logger.Errorf("failed to stat repository path: %v", err)
@@ -559,13 +706,13 @@ func (d *Backend) SetHidden(ctx context.Context, name string, hidden bool) error
 func (d *Backend) SetDescription(ctx context.Context, name string, desc string) error {
 	name = utils.SanitizeRepo(name)
 	desc = utils.Sanitize(desc)
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	// Delete cache
 	d.cache.Delete(name)
 
 	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(desc), fs.ModePerm); err != nil {
+		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(desc), 0o644); err != nil {
 			d.logger.Error("failed to write description", "repo", name, "err", err)
 			return err
 		}
@@ -579,7 +726,14 @@ func (d *Backend) SetDescription(ctx context.Context, name string, desc string) 
 // It implements backend.Backend.
 func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) error {
 	name = utils.SanitizeRepo(name)
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
+
+	// Capture the old visibility before updating.
+	oldRepo, err := d.Repository(ctx, name)
+	if err != nil {
+		return err
+	}
+	oldPrivate := oldRepo.IsPrivate()
 
 	// Delete cache
 	d.cache.Delete(name)
@@ -613,7 +767,7 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 		return err
 	}
 
-	if repo.IsPrivate() != !private {
+	if oldPrivate != private {
 		wh, err := webhook.NewRepositoryEvent(ctx, user, repo, webhook.RepositoryEventActionVisibilityChange)
 		if err != nil {
 			return err

@@ -12,7 +12,13 @@ import (
 
 // CreateAccessToken creates an access token for user.
 func (b *Backend) CreateAccessToken(ctx context.Context, user proto.User, name string, expiresAt time.Time) (string, error) {
-	token := GenerateToken()
+	token, err := GenerateToken()
+	if err != nil {
+		return "", err
+	}
+	if token == "" {
+		return "", errors.New("generated token is empty")
+	}
 	tokenHash := HashToken(token)
 	name = utils.Sanitize(name)
 
@@ -33,11 +39,6 @@ func (b *Backend) CreateAccessToken(ctx context.Context, user proto.User, name s
 // DeleteAccessToken deletes an access token for a user.
 func (b *Backend) DeleteAccessToken(ctx context.Context, user proto.User, id int64) error {
 	err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		_, err := b.store.GetAccessToken(ctx, tx, id)
-		if err != nil {
-			return db.WrapError(err)
-		}
-
 		if err := b.store.DeleteAccessTokenForUser(ctx, tx, user.ID(), id); err != nil {
 			return db.WrapError(err)
 		}

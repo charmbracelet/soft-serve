@@ -68,7 +68,12 @@ type Link struct {
 	Href      string            `json:"href"`
 	Header    map[string]string `json:"header,omitempty"`
 	ExpiresAt *time.Time        `json:"expires_at,omitempty"`
-	ExpiresIn *time.Duration    `json:"expires_in,omitempty"`
+	// ExpiresIn is the number of seconds (not nanoseconds, not milliseconds)
+	// until the link expires, per the git-lfs batch API spec. Callers MUST
+	// pass whole seconds (e.g. int64(d / time.Second)). Using int64 instead
+	// of time.Duration avoids serialising nanoseconds, which overflows int32
+	// on 32-bit platforms.
+	ExpiresIn *int64 `json:"expires_in,omitempty"`
 }
 
 // ObjectError defines the JSON structure returned to the client in case of an error.
@@ -94,10 +99,14 @@ type Reference struct {
 }
 
 // AuthenticateResponse is the git-lfs-authenticate JSON response object.
+// ExpiresIn is encoded as seconds per the git-lfs SSH authentication spec:
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/server-discovery.md
+// Using int64 (not time.Duration) avoids serialising nanoseconds, which
+// overflows int32 on 32-bit platforms (issue #781).
 type AuthenticateResponse struct {
 	Header    map[string]string `json:"header"`
 	Href      string            `json:"href"`
-	ExpiresIn time.Duration     `json:"expires_in"`
+	ExpiresIn int64             `json:"expires_in"`
 	ExpiresAt time.Time         `json:"expires_at"`
 }
 

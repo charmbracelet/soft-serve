@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -209,7 +210,18 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 	if sess := sshutils.SessionFromContext(ctx); sess != nil {
 		for _, env := range sess.Environ() {
 			if strings.HasPrefix(env, "GIT_PROTOCOL=") {
-				envs = append(envs, env)
+				val := env[len("GIT_PROTOCOL="):]
+				// Sanitize: reject any control characters to prevent env var injection.
+				clean := true
+				for _, c := range val {
+					if c < 0x20 || c == 0x7f {
+						clean = false
+						break
+					}
+				}
+				if clean {
+					envs = append(envs, env)
+				}
 				break
 			}
 		}
@@ -262,8 +274,6 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 			return git.ErrSystemMalfunction
 		}
 
-		receivePackCounter.WithLabelValues(name).Inc()
-
 		return nil
 	case git.UploadPackService, git.UploadArchiveService:
 		if accessLevel < access.ReadOnlyAccess {
@@ -291,7 +301,19 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		if errors.Is(err, git.ErrInvalidRepo) {
 			return git.ErrInvalidRepo
 		} else if err != nil {
-			logger.Error("failed to handle git service", "service", service, "err", err, "repo", name)
+			// When the client disconnects early (e.g. Flux Source controller
+			// closes the connection after receiving ref advertisements), the
+			// SSH session context is cancelled and exec.CommandContext kills
+			// the git subprocess with SIGKILL, producing "signal: killed".
+			// That is normal — log it at debug level, not error.
+			// Use context.Canceled specifically: context.DeadlineExceeded
+			// means a server-side timeout fired, which is still worth an
+			// ERROR so operators can tune their timeout settings.
+			if ctx.Err() == context.Canceled {
+				logger.Debug("git service ended on client disconnect", "service", service, "err", err, "repo", name)
+			} else {
+				logger.Error("failed to handle git service", "service", service, "err", err, "repo", name)
+			}
 			return git.ErrSystemMalfunction
 		}
 

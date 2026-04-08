@@ -2,6 +2,7 @@ package jwk
 
 import (
 	"crypto"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"fmt"
 
@@ -37,8 +38,14 @@ func NewPair(cfg *config.Config) (Pair, error) {
 		return Pair{}, err
 	}
 
-	sum := sha256.Sum256(kp.RawPrivateKey())
-	kid := fmt.Sprintf("%x", sum)
+	// Derive kid from the public key bytes (Ed25519 public key is a []byte).
+	var kidBytes []byte
+	if pub, ok := kp.CryptoPublicKey().(ed25519.PublicKey); ok {
+		kidBytes = pub
+	} else {
+		kidBytes = kp.RawPrivateKey()
+	}
+	kid := fmt.Sprintf("%x", sha256.Sum256(kidBytes))
 	jwk := jose.JSONWebKey{
 		Key:       kp.CryptoPublicKey(),
 		KeyID:     kid,

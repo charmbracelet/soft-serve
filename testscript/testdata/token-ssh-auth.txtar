@@ -1,0 +1,61 @@
+# vi: set ft=conf
+# Test that SSH keyboard-interactive auth validates access tokens
+# and resolves user identity for collaborator-based access control.
+#
+# Regression test for: https://github.com/charmbracelet/soft-serve/issues/800
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create a user with a public key
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# create an access token for user1
+usoft token create 'testtoken'
+stdout 'ss_.*'
+cp stdout token.txt
+envfile TOKEN=token.txt
+
+# TEST 1: Valid token authenticates successfully with AllowKeyless=false
+soft settings allow-keyless false
+tokensoft $TOKEN repo list
+
+# TEST 2: Invalid token is rejected with AllowKeyless=false
+! tokensoft invalid-token-value repo list
+
+# TEST 3: Valid token works with AllowKeyless=true
+soft settings allow-keyless true
+tokensoft $TOKEN repo list
+
+# TEST 4: Token-authenticated session has user identity (collaborator access)
+# Create a private repo only accessible to collaborators
+soft repo create private-repo -p
+soft repo collab add private-repo user1
+
+# Connect with valid token — user1 should see the private repo
+soft settings allow-keyless false
+tokensoft $TOKEN repo list
+stdout 'private-repo'
+
+# TEST 5: Invalid token with AllowKeyless=true gets anonymous access (no private repo)
+soft settings allow-keyless true
+tokensoft invalid-token-value repo list
+! stdout 'private-repo'
+
+# TEST 6: info command works with token auth
+soft settings allow-keyless false
+tokensoft $TOKEN info
+stdout 'Username: user1'
+
+# TEST 7: pubkey list works with token auth
+tokensoft $TOKEN pubkey list
+stdout 'ssh-ed25519 '
+
+# TEST 8: token list works with token auth (uses UserFromContext, already correct)
+tokensoft $TOKEN token list
+stdout 'testtoken'
+
+# stop the server
+[windows] stopserver

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -24,30 +25,42 @@ func NewLocalStorage(root string) *LocalStorage {
 
 // Delete implements Storage.
 func (l *LocalStorage) Delete(name string) error {
-	name = l.fixPath(name)
-	return os.Remove(name)
+	p, err := l.fixPath(name)
+	if err != nil {
+		return err
+	}
+	return os.Remove(p)
 }
 
 // Open implements Storage.
 func (l *LocalStorage) Open(name string) (Object, error) {
-	name = l.fixPath(name)
-	return os.Open(name)
+	p, err := l.fixPath(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(p)
 }
 
 // Stat implements Storage.
 func (l *LocalStorage) Stat(name string) (fs.FileInfo, error) {
-	name = l.fixPath(name)
-	return os.Stat(name)
+	p, err := l.fixPath(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.Stat(p)
 }
 
 // Put implements Storage.
 func (l *LocalStorage) Put(name string, r io.Reader) (int64, error) {
-	name = l.fixPath(name)
-	if err := os.MkdirAll(filepath.Dir(name), os.ModePerm); err != nil {
+	p, err := l.fixPath(name)
+	if err != nil {
+		return 0, err
+	}
+	if err := os.MkdirAll(filepath.Dir(p), os.ModePerm); err != nil {
 		return 0, err
 	}
 
-	f, err := os.Create(name)
+	f, err := os.Create(p)
 	if err != nil {
 		return 0, err
 	}
@@ -57,8 +70,11 @@ func (l *LocalStorage) Put(name string, r io.Reader) (int64, error) {
 
 // Exists implements Storage.
 func (l *LocalStorage) Exists(name string) (bool, error) {
-	name = l.fixPath(name)
-	_, err := os.Stat(name)
+	p, err := l.fixPath(name)
+	if err != nil {
+		return false, err
+	}
+	_, err = os.Stat(p)
 	if err == nil {
 		return true, nil
 	}
@@ -70,21 +86,43 @@ func (l *LocalStorage) Exists(name string) (bool, error) {
 
 // Rename implements Storage.
 func (l *LocalStorage) Rename(oldName, newName string) error {
-	oldName = l.fixPath(oldName)
-	newName = l.fixPath(newName)
-	if err := os.MkdirAll(filepath.Dir(newName), os.ModePerm); err != nil {
+	oldPath, err := l.fixPath(oldName)
+	if err != nil {
+		return err
+	}
+	newPath, err := l.fixPath(newName)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(newPath), os.ModePerm); err != nil {
 		return err
 	}
 
-	return os.Rename(oldName, newName)
-}
-
-// Replace all slashes with the OS-specific separator
-func (l LocalStorage) fixPath(path string) string {
-	path = strings.ReplaceAll(path, "/", string(os.PathSeparator))
-	if !filepath.IsAbs(path) {
-		return filepath.Join(l.root, path)
+	// If destination already exists the object was uploaded concurrently.
+	// Remove the temp file and return success — the stored copy is authoritative.
+	if _, err := os.Stat(newPath); err == nil {
+		_ = os.Remove(oldPath)
+		return nil
 	}
 
-	return path
+	return os.Rename(oldPath, newPath)
+}
+
+// fixPath resolves the storage-relative path and verifies it stays within the root.
+// Replace all slashes with the OS-specific separator.
+func (l LocalStorage) fixPath(path string) (string, error) {
+	if l.root == "" {
+		return "", fmt.Errorf("storage: empty root path")
+	}
+	path = strings.ReplaceAll(path, "/", string(os.PathSeparator))
+	p := filepath.Join(l.root, path)
+	// Ensure the resolved path is within the storage root.
+	// Note: filepath.Join (used to build p) already resolves ".." sequences,
+	// so path traversal via ".." is not possible. The HasPrefix check guards
+	// against any residual escapes.
+	root := l.root + string(filepath.Separator)
+	if !strings.HasPrefix(p, root) && p != l.root {
+		return "", fmt.Errorf("storage: path %q escapes root", path)
+	}
+	return p, nil
 }

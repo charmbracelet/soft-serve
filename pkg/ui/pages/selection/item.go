@@ -18,6 +18,9 @@ import (
 
 var _ sort.Interface = Items{}
 
+// copiedResetMsg is sent after the copy feedback timer expires.
+type copiedResetMsg struct{ gen int }
+
 // Items is a list of Item.
 type Items []Item
 
@@ -98,9 +101,11 @@ func (i Item) Command() string {
 
 // ItemDelegate is the delegate for the item.
 type ItemDelegate struct {
-	common     *common.Common
-	activePane *pane
-	copiedIdx  int
+	common      *common.Common
+	activePane  *pane
+	copiedItem  Item
+	hasCopied   bool
+	copiedGen   int
 }
 
 // NewItemDelegate creates a new ItemDelegate.
@@ -108,7 +113,6 @@ func NewItemDelegate(common *common.Common, activePane *pane) *ItemDelegate {
 	return &ItemDelegate{
 		common:     common,
 		activePane: activePane,
-		copiedIdx:  -1,
 	}
 }
 
@@ -129,7 +133,6 @@ func (d *ItemDelegate) Spacing() int { return 1 }
 
 // Update implements list.ItemDelegate.
 func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
-	idx := m.Index()
 	item, ok := m.SelectedItem().(Item)
 	if !ok {
 		return nil
@@ -138,11 +141,22 @@ func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
-			d.copiedIdx = idx
+			d.copiedItem = item
+			d.hasCopied = true
+			d.copiedGen++
+			gen := d.copiedGen
 			return tea.Batch(
 				tea.SetClipboard(item.Command()),
-				m.SetItem(idx, item),
+				func() tea.Msg {
+					time.Sleep(1500 * time.Millisecond)
+					return copiedResetMsg{gen: gen}
+				},
 			)
+		}
+	case copiedResetMsg:
+		if msg.gen == d.copiedGen {
+			d.hasCopied = false
+			d.copiedItem = Item{}
 		}
 	}
 	return nil
@@ -207,10 +221,9 @@ func (d *ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 
 	cmd := i.Command()
 	cmdStyler := styles.Command.Render
-	if d.copiedIdx == index {
+	if d.hasCopied && d.copiedItem.ID() == i.ID() {
 		cmd = "(copied to clipboard)"
 		cmdStyler = styles.Desc.Render
-		d.copiedIdx = -1
 	}
 	cmd = common.TruncateString(cmd, m.Width()-styles.Base.GetHorizontalFrameSize())
 	s.WriteString(cmdStyler(cmd))
