@@ -45,3 +45,20 @@ func (*settingsStore) SetAnonAccess(ctx context.Context, tx db.Handler, level ac
 	_, err := tx.ExecContext(ctx, query, level.String())
 	return db.WrapError(err)
 }
+
+// GetDefaultRepoVisibility implements store.SettingStore.
+func (*settingsStore) GetDefaultRepoVisibility(ctx context.Context, tx db.Handler) (string, error) {
+	var visibility string
+	query := tx.Rebind(`SELECT value FROM settings WHERE "key" = 'default_repo_visibility'`)
+	if err := tx.GetContext(ctx, &visibility, query); err != nil {
+		return "public", db.WrapError(err)
+	}
+	return visibility, nil
+}
+
+// SetDefaultRepoVisibility implements store.SettingStore.
+func (*settingsStore) SetDefaultRepoVisibility(ctx context.Context, tx db.Handler, visibility string) error {
+	query := tx.Rebind(`UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE "key" = 'default_repo_visibility'`)
+	_, err := tx.ExecContext(ctx, query, visibility)
+	return db.WrapError(err)
+}
