@@ -63,7 +63,7 @@ func (s *DiffSection) diffFor(line *git.DiffLine) string {
 func diffsToString(diffs []diffmatchpatch.Diff, lineType git.DiffLineType) string {
 	buf := bytes.NewBuffer(nil)
 
-	// Reproduce signs which are cutted for inline diff before.
+	// Reproduce signs that were cut off for inline diff before.
 	switch lineType {
 	case git.DiffLineAdd:
 		buf.WriteByte('+')
