@@ -20,6 +20,7 @@ Usage:
   ssh -p $SSH_PORT localhost [command]
 
 Available Commands:
+  cronjob              Run cron job task
   help                 Help about any command
   info                 Show your info
   jwt                  Generate a JSON Web Token

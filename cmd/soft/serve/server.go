@@ -59,7 +59,16 @@ func NewServer(ctx context.Context) (*Server, error) {
 	// Add cron jobs.
 	sched := cron.NewScheduler(ctx)
 	for n, j := range jobs.List() {
-		id, err := sched.AddFunc(j.Runner.Spec(ctx), j.Runner.Func(ctx))
+		jobCfg, err := j.Runner.Config(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("parse cronjob [%s] config: %w", n, err)
+		}
+		spec := jobCfg.Spec()
+		if spec == "" {
+			continue
+		}
+
+		id, err := sched.AddFunc(spec, j.Runner.Func(ctx, jobCfg))
 		if err != nil {
 			logger.Warn("error adding cron job", "job", n, "err", err)
 		}
@@ -183,7 +192,10 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	})
 	errg.Go(func() error {
 		for _, j := range jobs.List() {
-			s.Cron.Remove(j.ID)
+			// jobID from github.com/robfig/cron/v2 starts from 1
+			if j.ID != 0 {
+				s.Cron.Remove(j.ID)
+			}
 		}
 		s.Cron.Stop()
 		return nil
