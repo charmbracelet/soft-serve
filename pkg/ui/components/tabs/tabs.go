@@ -14,10 +14,22 @@ type SelectTabMsg int
 // ActiveTabMsg is a message that contains the index of the current active tab.
 type ActiveTabMsg int
 
+// IdentifiableTab is a struct that encapsulates a tabs shown value with an id.
+type IdentifiableTab struct {
+	ID    string
+	Value string
+}
+
+// SetTabValueMsg is a message that sets a tabs shown value.
+type SetTabValueMsg struct {
+	ID    string
+	Value string
+}
+
 // Tabs is bubbletea component that displays a list of tabs.
 type Tabs struct {
 	common       common.Common
-	tabs         []string
+	tabs         []IdentifiableTab
 	activeTab    int
 	TabSeparator lipgloss.Style
 	TabInactive  lipgloss.Style
@@ -28,9 +40,16 @@ type Tabs struct {
 
 // New creates a new Tabs component.
 func New(c common.Common, tabs []string) *Tabs {
+	ts := make([]IdentifiableTab, 0)
+	for _, t := range tabs {
+		ts = append(ts, IdentifiableTab{
+			ID:    t,
+			Value: t,
+		})
+	}
 	r := &Tabs{
 		common:       c,
-		tabs:         tabs,
+		tabs:         ts,
 		activeTab:    0,
 		TabSeparator: c.Styles.TabSeparator,
 		TabInactive:  c.Styles.TabInactive,
@@ -67,10 +86,17 @@ func (t *Tabs) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 		switch msg.Button {
 		case tea.MouseLeft:
 			for i, tab := range t.tabs {
-				if t.common.Zone.Get(tab).InBounds(msg) {
+				if t.common.Zone.Get(tab.ID).InBounds(msg) {
 					t.activeTab = i
 					cmds = append(cmds, t.activeTabCmd)
 				}
+			}
+		}
+	case SetTabValueMsg:
+		for i, tab := range t.tabs {
+			if tab.ID == msg.ID {
+				t.tabs[i].Value = msg.Value
+				break
 			}
 		}
 	case SelectTabMsg:
@@ -80,6 +106,13 @@ func (t *Tabs) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 		}
 	}
 	return t, tea.Batch(cmds...)
+}
+
+// ResetTabNames resets all tab names to their IDs.
+func (t *Tabs) ResetTabNames() {
+	for i := range t.tabs {
+		t.tabs[i].Value = t.tabs[i].ID
+	}
 }
 
 // View implements tea.Model.
@@ -98,8 +131,8 @@ func (t *Tabs) View() string {
 		}
 		s.WriteString(
 			t.common.Zone.Mark(
-				tab,
-				style.Render(tab),
+				tab.ID,
+				style.Render(tab.Value),
 			),
 		)
 		if i != len(t.tabs)-1 {
