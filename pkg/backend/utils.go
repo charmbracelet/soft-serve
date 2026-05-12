@@ -1,6 +1,8 @@
 package backend
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 )
@@ -18,6 +20,13 @@ func LatestFile(r proto.Repository, ref *git.Reference, pattern string) (string,
 // Readme returns the repository's README.
 func Readme(r proto.Repository, ref *git.Reference) (readme string, path string, err error) {
 	pattern := "[rR][eE][aA][dD][mM][eE]*"
-	readme, path, err = LatestFile(r, ref, pattern)
+	directories := []string{"", "docs", ".github", ".gitlab"}
+	for _, dir := range directories {
+		pattern := fmt.Sprintf("%s/%s", dir, pattern)
+		readme, path, err = LatestFile(r, ref, pattern)
+		if err == nil {
+			break
+		}
+	}
 	return
 }
