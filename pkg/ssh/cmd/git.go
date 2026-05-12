@@ -238,7 +238,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 			return git.ErrNotAuthed
 		}
 		if repo == nil {
-			if _, err := be.CreateRepository(ctx, name, user, proto.RepositoryOptions{Private: false}); err != nil {
+			if _, err := be.CreateRepository(ctx, name, user, proto.RepositoryOptions{Private: be.IsDefaultRepoPrivate(ctx)}); err != nil {
 				log.Errorf("failed to create repo: %s", err)
 				return err
 			}

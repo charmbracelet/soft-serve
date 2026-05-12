@@ -69,5 +69,34 @@ func SettingsCommand() *cobra.Command {
 		},
 	)
 
+	vls := []string{"public", "private"}
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:               "default-repo-visibility [public|private]",
+			Short:             "Set or get the default visibility for new repositories",
+			Args:              cobra.RangeArgs(0, 1),
+			ValidArgs:         vls,
+			PersistentPreRunE: checkIfAdmin,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				ctx := cmd.Context()
+				be := backend.FromContext(ctx)
+				switch len(args) {
+				case 0:
+					cmd.Println(be.DefaultRepoVisibility(ctx))
+				case 1:
+					v := args[0]
+					if v != "public" && v != "private" {
+						return fmt.Errorf("invalid visibility: %s. Please choose one of the following: %s", v, vls)
+					}
+					if err := be.SetDefaultRepoVisibility(ctx, v); err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+		},
+	)
+
 	return cmd
 }

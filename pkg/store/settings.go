@@ -13,4 +13,6 @@ type SettingStore interface {
 	SetAnonAccess(ctx context.Context, h db.Handler, level access.AccessLevel) error
 	GetAllowKeylessAccess(ctx context.Context, h db.Handler) (bool, error)
 	SetAllowKeylessAccess(ctx context.Context, h db.Handler, allow bool) error
+	GetDefaultRepoVisibility(ctx context.Context, h db.Handler) (string, error)
+	SetDefaultRepoVisibility(ctx context.Context, h db.Handler, visibility string) error
 }

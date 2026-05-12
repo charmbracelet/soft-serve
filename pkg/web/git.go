@@ -262,7 +262,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 
 			// Create the repo if it doesn't exist.
 			if repo == nil {
-				repo, err = be.CreateRepository(ctx, repoName, user, proto.RepositoryOptions{})
+				repo, err = be.CreateRepository(ctx, repoName, user, proto.RepositoryOptions{Private: be.IsDefaultRepoPrivate(ctx)})
 				if err != nil {
 					logger.Error("failed to create repository", "repo", repoName, "err", err)
 					renderInternalServerError(w, r)
