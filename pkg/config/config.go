@@ -137,6 +137,7 @@ type LFSConfig struct {
 // JobsConfig is the configuration for cron jobs.
 type JobsConfig struct {
 	MirrorPull string `env:"MIRROR_PULL" yaml:"mirror_pull"`
+	GitGC      string `env:"GIT_GC" yaml:"git_gc"`
 }
 
 // Config is the configuration for Soft Serve.
@@ -220,6 +221,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_LFS_ENABLED=%t", c.LFS.Enabled),
 		fmt.Sprintf("SOFT_SERVE_LFS_SSH_ENABLED=%t", c.LFS.SSHEnabled),
 		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL=%s", c.Jobs.MirrorPull),
+		fmt.Sprintf("SOFT_SERVE_JOBS_GIT_GC=%s", c.Jobs.GitGC),
 	}...)
 
 	return envs

@@ -1,0 +1,56 @@
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix first_commit.txt
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create a repo
+soft repo create repo1
+
+# clone repo
+git clone ssh://localhost:$SSH_PORT/repo1 repo1
+
+# create some files, commits, tags...
+mkfile ./repo1/README.md '# Hello in first commit'
+git -C repo1 add -A
+git -C repo1 commit -m 'first commit'
+git -C repo1 push origin HEAD
+soft repo commit repo1 3565323
+cmp stdout first_commit.txt
+
+# overwrite the first commit
+mkfile ./repo1/README.md '# Hello in second commit'
+git -C repo1 add -A
+git -C repo1 commit --amend -m 'second commit'
+git -C repo1 push --force origin HEAD
+# the first commit still exists
+soft repo commit repo1 3565323
+cmp stdout first_commit.txt
+
+# clean up
+soft cronjob git-gc --config gc.reflogExpire=now --config gc.pruneExpire=now
+! soft repo commit repo1 3565323
+stderr 'Error: revision does not exist'
+
+-- first_commit.txt --
+commit 3565323
+Author: John Doe
+Date:   Sun Mar 29 00:00:00 UTC 2026
+first commit
+
+
+README.md | 1 +
+1 file changed, 1 insertion(+)
+
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..e01a0969efececc7f96e77f41cf754aab78f7669
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1 @@
++# Hello in first commit
+

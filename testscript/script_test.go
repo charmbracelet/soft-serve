@@ -313,6 +313,8 @@ Host *
   ServerAliveInterval 60
 `
 
+const GIT_DATE = "2026-03-29T00:00:00Z"
+
 func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string) {
 	return func(ts *testscript.TestScript, neg bool, args []string) {
 		ts.Check(os.WriteFile(
@@ -330,6 +332,11 @@ func cmdGit(key string) func(ts *testscript.TestScript, neg bool, args []string)
 		)
 		// Disable git prompting for credentials.
 		ts.Setenv("GIT_TERMINAL_PROMPT", "0")
+
+		// Keep the same git commit hash in an empty repository
+		ts.Setenv("GIT_AUTHOR_DATE", GIT_DATE)
+		ts.Setenv("GIT_COMMITTER_DATE", GIT_DATE)
+
 		args = append([]string{
 			"-c", "user.email=john@example.com",
 			"-c", "user.name=John Doe",
