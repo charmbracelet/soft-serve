@@ -121,6 +121,20 @@ var (
 						}
 						continue
 					}
+					// A nil sig means doneOnce() closed `done` because the server
+					// goroutine returned, not because we got a real signal. The
+					// server's error sits in lch and the outer select could have
+					// dropped it (#645). Surface it before shutting down so that
+					// e.g. a permission-denied on :22 doesn't disappear silently.
+					if sig == nil {
+						select {
+						case err := <-lch:
+							if err != nil {
+								return fmt.Errorf("server error: %w", err)
+							}
+						default:
+						}
+					}
 				}
 
 				break
