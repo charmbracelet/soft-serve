@@ -89,6 +89,11 @@ type HTTPConfig struct {
 
 	// CORS is the cross-origin configuration for the HTTP server.
 	CORS CORSConfig `envPrefix:"CORS_" yaml:"cors"`
+
+	// ProxyAuthHeader is the name of an HTTP header set by a trusted reverse
+	// proxy (e.g. X-User) that contains the authenticated username. When set,
+	// the server trusts this header for user identification.
+	ProxyAuthHeader string `env:"PROXY_AUTH_HEADER" yaml:"proxy_auth_header"`
 }
 
 // StatsConfig is the configuration for the stats server.
