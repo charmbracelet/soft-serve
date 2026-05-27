@@ -147,7 +147,7 @@ func gitServiceHandler(ctx context.Context, svc Service, scmd ServiceCommand) er
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, erro := io.Copy(scmd.Stderr, stderr); err != nil {
+			if _, erro := io.Copy(scmd.Stderr, stderr); erro != nil {
 				log.Errorf("gitServiceHandler: failed to copy stderr: %v", erro)
 			}
 		}()
