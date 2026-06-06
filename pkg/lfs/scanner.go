@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"strconv"
@@ -47,6 +48,30 @@ func SearchPointerBlobs(ctx context.Context, repo *git.Repository, pointerChan c
 
 	close(pointerChan)
 	close(errChan)
+}
+
+// CheckPointerExist scans lfs Pointers from pointerChan and outputs through the returned channel whether they exist
+func CheckPointerExist(ctx context.Context, repo *git.Repository, pointerChan <-chan Pointer) (<-chan bool, func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	resultChan := make(chan bool)
+	wg := sync.WaitGroup{}
+	wg.Add(3)
+
+	stop := func() {
+		cancel()
+		wg.Wait()
+	}
+
+	shasToCheckReader, shasToCheckWriter := io.Pipe()
+	catFileCheckReader, catFileCheckWriter := io.Pipe()
+
+	go catFileBatchLineExist(catFileCheckReader, resultChan, &wg)
+
+	go catFileBatchCheck(ctx, shasToCheckReader, catFileCheckWriter, &wg, repo.Path)
+
+	go pointerBlobHash(repo, pointerChan, shasToCheckWriter, &wg)
+
+	return resultChan, stop
 }
 
 func createPointerResultsFromCatFileBatch(ctx context.Context, catFileBatchReader *io.PipeReader, wg *sync.WaitGroup, pointerChan chan<- PointerBlob) {

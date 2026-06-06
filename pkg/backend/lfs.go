@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
+	"github.com/charmbracelet/soft-serve/pkg/db/models"
 	"github.com/charmbracelet/soft-serve/pkg/lfs"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/storage"
@@ -85,4 +86,47 @@ func StoreRepoMissingLFSObjects(ctx context.Context, repo proto.Repository, dbx 
 	}
 
 	return nil
+}
+
+// GetUnreachableLFSObjects get lfs objects in database but not referenced within git repository.
+func (b *Backend) GetUnreachableLFSObjects(ctx context.Context, name string) ([]models.LFSObject, error) {
+	repo, err := b.Repository(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	r, err := repo.Open()
+	if err != nil {
+		return nil, err
+	}
+
+	objs, err := b.store.GetLFSObjects(ctx, b.db, repo.ID())
+	if err != nil {
+		return nil, err
+	}
+	pointerChan := make(chan lfs.Pointer)
+	chkChan, stop := lfs.CheckPointerExist(ctx, r, pointerChan)
+	defer func() {
+		close(pointerChan)
+		stop()
+	}()
+
+	unreachObj := []models.LFSObject{}
+	for _, obj := range objs {
+		select {
+		case pointerChan <- lfs.Pointer{Oid: obj.Oid, Size: obj.Size}:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+
+		select {
+		case exits := <-chkChan:
+			if !exits {
+				unreachObj = append(unreachObj, obj)
+			}
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	return unreachObj, nil
 }

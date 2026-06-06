@@ -2,7 +2,11 @@ package git
 
 import (
 	gopath "path"
+	"crypto/sha1"
+	"crypto/sha256"
+	"hash"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/aymanbagabas/git-module"
@@ -28,8 +32,9 @@ var (
 // Repository is a wrapper around git.Repository with helper methods.
 type Repository struct {
 	*git.Repository
-	Path   string
-	IsBare bool
+	Path        string
+	IsBare      bool
+	ObjctFormat ObjectFormat
 }
 
 // Clone clones a repository.
