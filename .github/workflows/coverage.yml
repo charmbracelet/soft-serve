@@ -25,10 +25,10 @@ jobs:
           --health-retries 5
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: ^1
 
@@ -55,6 +55,6 @@ jobs:
 
           # Convert coverage data to legacy textfmt format to upload
           go tool covdata textfmt -i=coverage/unit,coverage/int,coverage/int2 -o=coverage.txt
-      - uses: codecov/codecov-action@v6
+      - uses: codecov/codecov-action@v7
         with:
           file: ./coverage.txt
