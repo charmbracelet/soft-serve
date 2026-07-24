@@ -27,7 +27,6 @@ func NewRouter(ctx context.Context) http.Handler {
 	// Adds context to the request
 	h := NewLoggingMiddleware(router, logger)
 	h = NewContextHandler(ctx)(h)
-	h = handlers.CompressHandler(h)
 	h = handlers.RecoveryHandler()(h)
 
 	cfg := config.FromContext(ctx)
