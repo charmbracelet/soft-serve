@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
+	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +26,7 @@ func SettingsCommand() *cobra.Command {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
 				be := backend.FromContext(ctx)
+				cfg := config.FromContext(ctx)
 				switch len(args) {
 				case 0:
 					cmd.Println(be.AllowKeyless(ctx))
@@ -33,6 +35,7 @@ func SettingsCommand() *cobra.Command {
 					if err := be.SetAllowKeyless(ctx, v); err != nil {
 						return err
 					}
+					warnIfAllowKeylessOverridden(cmd, cfg)
 				}
 
 				return nil
@@ -51,6 +54,7 @@ func SettingsCommand() *cobra.Command {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
 				be := backend.FromContext(ctx)
+				cfg := config.FromContext(ctx)
 				switch len(args) {
 				case 0:
 					cmd.Println(be.AnonAccess(ctx))
@@ -62,6 +66,7 @@ func SettingsCommand() *cobra.Command {
 					if err := be.SetAnonAccess(ctx, al); err != nil {
 						return err
 					}
+					warnIfAnonAccessOverridden(cmd, cfg)
 				}
 
 				return nil
@@ -70,4 +75,34 @@ func SettingsCommand() *cobra.Command {
 	)
 
 	return cmd
+}
+
+// warnIfAllowKeylessOverridden warns on the command's stderr if a server
+// config override is masking the allow-keyless value that was just written
+// to the database. Without this, an admin changing the setting via this
+// command would have no way to know their change has no effect.
+func warnIfAllowKeylessOverridden(cmd *cobra.Command, cfg *config.Config) {
+	if cfg == nil || cfg.AllowKeyless == nil {
+		return
+	}
+
+	fmt.Fprintf(cmd.ErrOrStderr(),
+		"Warning: allow-keyless is set to %t by server config and takes precedence over this change. "+
+			"The database was updated, but it will have no effect until the config override is removed.\n",
+		*cfg.AllowKeyless)
+}
+
+// warnIfAnonAccessOverridden warns on the command's stderr if a server
+// config override is masking the anon-access value that was just written to
+// the database. Without this, an admin changing the setting via this
+// command would have no way to know their change has no effect.
+func warnIfAnonAccessOverridden(cmd *cobra.Command, cfg *config.Config) {
+	if cfg == nil || cfg.AnonAccess == "" {
+		return
+	}
+
+	fmt.Fprintf(cmd.ErrOrStderr(),
+		"Warning: anon-access is set to %q by server config and takes precedence over this change. "+
+			"The database was updated, but it will have no effect until the config override is removed.\n",
+		cfg.AnonAccess)
 }

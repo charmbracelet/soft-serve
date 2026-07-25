@@ -9,6 +9,7 @@ import (
 
 	"charm.land/log/v2"
 
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/cron"
@@ -100,7 +101,28 @@ func NewServer(ctx context.Context) (*Server, error) {
 		})
 	}
 
+	warnIfAnonAdminAccess(ctx, be, logger)
+
 	return srv, nil
+}
+
+// warnIfAnonAdminAccess logs a loud warning if the server's effective,
+// post-override settings grant unauthenticated (keyless) connections admin
+// access. This checks effective runtime state via the backend, not just the
+// new config-override fields, since the same risk exists whether the
+// dangerous combination came from config or was set via `ssh soft settings`
+// on a previous run.
+func warnIfAnonAdminAccess(ctx context.Context, be *backend.Backend, logger *log.Logger) {
+	if !be.AllowKeyless(ctx) || be.AnonAccess(ctx) < access.AdminAccess {
+		return
+	}
+
+	logger.Warn("################################################################")
+	logger.Warn("# WARNING: anonymous keyless connections have ADMIN access.     #")
+	logger.Warn("# Anyone who can reach this server has full control, no auth.   #")
+	logger.Warn("# This is intended for local/dev use only. Do not expose this   #")
+	logger.Warn("# server to an untrusted network.                               #")
+	logger.Warn("################################################################")
 }
 
 // ReloadCertificates reloads the TLS certificates for the HTTP server.

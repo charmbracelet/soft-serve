@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/matryer/is"
 )
 
@@ -123,4 +124,67 @@ func TestParseMultipleMethods(t *testing.T) {
 		"POST",
 		"PUT",
 	})
+}
+
+func TestAnonAccessEnvUnsetByDefault(t *testing.T) {
+	is := is.New(t)
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	// Empty string is the "no override" sentinel.
+	is.Equal(cfg.AnonAccess, "")
+}
+
+func TestParseAnonAccessEnv(t *testing.T) {
+	is := is.New(t)
+	is.NoErr(os.Setenv("SOFT_SERVE_ANON_ACCESS", access.AdminAccess.String()))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_ANON_ACCESS"))
+	})
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	is.Equal(cfg.AnonAccess, access.AdminAccess.String())
+}
+
+func TestValidateRejectsInvalidAnonAccess(t *testing.T) {
+	is := is.New(t)
+	cfg := &Config{
+		DataPath:   t.TempDir(),
+		AnonAccess: "not-a-real-access-level",
+	}
+	err := cfg.Validate()
+	is.True(err != nil)
+}
+
+func TestAllowKeylessEnvUnsetByDefault(t *testing.T) {
+	is := is.New(t)
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	// nil is the "no override" sentinel — distinct from an explicit false.
+	is.True(cfg.AllowKeyless == nil)
+}
+
+func TestParseAllowKeylessEnvTrue(t *testing.T) {
+	is := is.New(t)
+	is.NoErr(os.Setenv("SOFT_SERVE_ALLOW_KEYLESS", "true"))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_ALLOW_KEYLESS"))
+	})
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	is.True(cfg.AllowKeyless != nil)
+	is.Equal(*cfg.AllowKeyless, true)
+}
+
+func TestParseAllowKeylessEnvFalse(t *testing.T) {
+	is := is.New(t)
+	is.NoErr(os.Setenv("SOFT_SERVE_ALLOW_KEYLESS", "false"))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_ALLOW_KEYLESS"))
+	})
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	// Explicit false must survive as a real override, not collapse back to
+	// "unset" — that's the whole reason this field is a *bool.
+	is.True(cfg.AllowKeyless != nil)
+	is.Equal(*cfg.AllowKeyless, false)
 }

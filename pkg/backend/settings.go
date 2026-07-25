@@ -9,8 +9,18 @@ import (
 
 // AllowKeyless returns whether or not keyless access is allowed.
 //
+// If the server config sets AllowKeyless, that value always takes
+// precedence over the database — it is a live override, not a one-time
+// default, matching how InitialAdminKeys behaves. Do not cache this: a
+// memoized/TTL'd copy would delay an admin's `settings allow-keyless false`
+// from taking effect, which is a fail-open risk on an access-control check.
+//
 // It implements backend.Backend.
 func (b *Backend) AllowKeyless(ctx context.Context) bool {
+	if b.cfg.AllowKeyless != nil {
+		return *b.cfg.AllowKeyless
+	}
+
 	var allow bool
 	if err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
@@ -34,8 +44,18 @@ func (b *Backend) SetAllowKeyless(ctx context.Context, allow bool) error {
 
 // AnonAccess returns the level of anonymous access.
 //
+// If the server config sets AnonAccess, that value always takes precedence
+// over the database — it is a live override, not a one-time default,
+// matching how InitialAdminKeys behaves. Do not cache this: a memoized/TTL'd
+// copy would delay an admin's `settings anon-access` change from taking
+// effect, which is a fail-open risk on an access-control check.
+//
 // It implements backend.Backend.
 func (b *Backend) AnonAccess(ctx context.Context) access.AccessLevel {
+	if b.cfg.AnonAccess != "" {
+		return access.ParseAccessLevel(b.cfg.AnonAccess)
+	}
+
 	var level access.AccessLevel
 	if err := b.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error

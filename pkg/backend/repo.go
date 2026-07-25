@@ -51,6 +51,20 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 	}
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		if userID == 0 {
+			// Anonymous callers (e.g. an anon-access/allow-keyless
+			// override) have no user of their own, but repos.user_id is
+			// NOT NULL. Fall back to the default admin as owner, the same
+			// "ownerless repos belong to the first admin" idiom already
+			// used when migrating repos from the pre-user schema (see
+			// 0001_create_tables.go).
+			adminID, err := d.defaultAdminUserID(ctx, tx)
+			if err != nil {
+				return err
+			}
+			userID = adminID
+		}
+
 		if err := d.store.CreateRepo(
 			ctx,
 			tx,
@@ -95,6 +109,31 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 	}
 
 	return d.Repository(ctx, name)
+}
+
+// defaultAdminUserID returns the ID of the lowest-ID admin user, used to
+// own repositories created by callers with no user of their own (anonymous
+// access via an anon-access/allow-keyless override). The migration that
+// seeds the initial database always creates an admin user, so this should
+// never fail to find one in practice.
+func (d *Backend) defaultAdminUserID(ctx context.Context, tx *db.Tx) (int64, error) {
+	users, err := d.store.GetAllUsers(ctx, tx)
+	if err != nil {
+		return 0, err
+	}
+
+	var adminID int64
+	for _, u := range users {
+		if u.Admin && (adminID == 0 || u.ID < adminID) {
+			adminID = u.ID
+		}
+	}
+
+	if adminID == 0 {
+		return 0, errors.New("no admin user found to own anonymous repository")
+	}
+
+	return adminID, nil
 }
 
 // ImportRepository imports a repository from remote.

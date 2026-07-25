@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/sshutils"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
@@ -171,6 +172,24 @@ type Config struct {
 	// InitialAdminKeys is a list of public keys that will be added to the list of admins.
 	InitialAdminKeys []string `env:"INITIAL_ADMIN_KEYS" envSeparator:"\n" yaml:"initial_admin_keys"`
 
+	// AnonAccess overrides the access level for anonymous users.
+	//
+	// If set, this takes precedence over the "anon-access" value stored in
+	// the database (see the `settings` command) on every read, for as long
+	// as it remains set. It is not a one-time default: it behaves like
+	// InitialAdminKeys, not like a seed value. This is intended for
+	// scripted, non-production bootstrapping only; it is not validated for
+	// safety beyond being a recognized access level.
+	AnonAccess string `env:"ANON_ACCESS" yaml:"anon_access"`
+
+	// AllowKeyless overrides whether keyless (no public key) connections
+	// are allowed.
+	//
+	// If set (non-nil), this takes precedence over the "allow-keyless"
+	// value stored in the database on every read, same as AnonAccess above.
+	// A nil value means "no override": fall back to the database.
+	AllowKeyless *bool `env:"ALLOW_KEYLESS" yaml:"allow_keyless"`
+
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" yaml:"-"`
 }
@@ -190,6 +209,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_DATA_PATH=%s", c.DataPath),
 		fmt.Sprintf("SOFT_SERVE_NAME=%s", c.Name),
 		fmt.Sprintf("SOFT_SERVE_INITIAL_ADMIN_KEYS=%s", strings.Join(c.InitialAdminKeys, "\n")),
+		fmt.Sprintf("SOFT_SERVE_ANON_ACCESS=%s", c.AnonAccess),
 		fmt.Sprintf("SOFT_SERVE_SSH_ENABLED=%t", c.SSH.Enabled),
 		fmt.Sprintf("SOFT_SERVE_SSH_LISTEN_ADDR=%s", c.SSH.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_SSH_PUBLIC_URL=%s", c.SSH.PublicURL),
@@ -221,6 +241,13 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_LFS_SSH_ENABLED=%t", c.LFS.SSHEnabled),
 		fmt.Sprintf("SOFT_SERVE_JOBS_MIRROR_PULL=%s", c.Jobs.MirrorPull),
 	}...)
+
+	// AllowKeyless is a tri-state override: only emit it when explicitly
+	// set, so a subprocess parsing these envs sees the same "unset" state
+	// (rather than an empty string coercing to false).
+	if c.AllowKeyless != nil {
+		envs = append(envs, fmt.Sprintf("SOFT_SERVE_ALLOW_KEYLESS=%t", *c.AllowKeyless))
+	}
 
 	return envs
 }
@@ -444,6 +471,10 @@ func (c *Config) Validate() error {
 	c.InitialAdminKeys = pks
 
 	c.HTTP.CORS.AllowedOrigins = append([]string{c.HTTP.PublicURL}, c.HTTP.CORS.AllowedOrigins...)
+
+	if c.AnonAccess != "" && access.ParseAccessLevel(c.AnonAccess) < 0 {
+		return fmt.Errorf("invalid anon-access level %q", c.AnonAccess)
+	}
 
 	return nil
 }
