@@ -127,6 +127,24 @@ full privileges.
 Using this environment variable, Soft Serve will create a new `admin` user that
 has full privileges. You can rename and change the user settings later.
 
+If you'd like a repository to exist the moment the server finishes booting,
+with no human logging in to run `repo create`, set `SOFT_SERVE_DEFAULT_REPO`
+to a repository name. This is useful for GitOps tools like ArgoCD that need a
+git remote to point at as part of their own bootstrap (e.g. from a Helm chart
+or Terraform apply):
+
+```sh
+SOFT_SERVE_INITIAL_ADMIN_KEYS="$(cat ~/.ssh/id_ed25519.pub)" \
+SOFT_SERVE_DEFAULT_REPO=gitops \
+  soft serve
+```
+
+The repository is created empty and public, exactly as if a human had run
+`repo create gitops` with no flags; only its *existence* is guaranteed on
+boot, not its reachability, which is still governed entirely by the
+`anon-access`/`allow-keyless` settings described below. Booting again against
+the same data directory is a no-op if the repository already exists.
+
 Check out [Systemd][systemd] on how to run Soft Serve as a service using
 Systemd. Soft Serve packages in our Apt/Yum repositories come with Systemd
 service units.
@@ -269,6 +287,10 @@ stats:
 # server for local dev tooling), not for production use.
 #anon_access: "admin-access"
 #allow_keyless: true
+
+# Repository name to create on boot if it does not already exist.
+# Leave empty to disable.
+#default_repo: ""
 ```
 
 You can also use environment variables, to override these settings. All server
@@ -283,6 +305,7 @@ name all in uppercase. Here are some examples:
 - `SOFT_SERVE_GIT_MAX_CONNECTIONS`: The number of simultaneous connections to git daemon
 - `SOFT_SERVE_ANON_ACCESS`: Overrides the `anon-access` setting (see [Authentication](#authentication))
 - `SOFT_SERVE_ALLOW_KEYLESS`: Overrides the `allow-keyless` setting (see [Authentication](#authentication))
+- `SOFT_SERVE_DEFAULT_REPO`: Repository name to create on boot if missing
 
 #### Database Configuration
 

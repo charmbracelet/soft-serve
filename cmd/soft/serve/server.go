@@ -16,8 +16,10 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/daemon"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/jobs"
+	"github.com/charmbracelet/soft-serve/pkg/proto"
 	sshsrv "github.com/charmbracelet/soft-serve/pkg/ssh"
 	"github.com/charmbracelet/soft-serve/pkg/stats"
+	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/soft-serve/pkg/web"
 	"github.com/charmbracelet/ssh"
 	"golang.org/x/sync/errgroup"
@@ -69,6 +71,8 @@ func NewServer(ctx context.Context) (*Server, error) {
 	}
 
 	srv.Cron = sched
+
+	ensureDefaultRepo(ctx, cfg, be, logger)
 
 	srv.SSHServer, err = sshsrv.NewSSHServer(ctx)
 	if err != nil {
@@ -123,6 +127,43 @@ func warnIfAnonAdminAccess(ctx context.Context, be *backend.Backend, logger *log
 	logger.Warn("# This is intended for local/dev use only. Do not expose this  #")
 	logger.Warn("# server to an untrusted network.                              #")
 	logger.Warn("################################################################")
+}
+
+// ensureDefaultRepo creates the repo named by cfg.DefaultRepo if it does not
+// already exist. It never fails startup: it logs invalid names and creation
+// errors, then returns.
+func ensureDefaultRepo(ctx context.Context, cfg *config.Config, be *backend.Backend, logger *log.Logger) {
+	if cfg.DefaultRepo == "" {
+		return
+	}
+
+	name := utils.SanitizeRepo(cfg.DefaultRepo)
+	if err := utils.ValidateRepo(name); err != nil {
+		logger.Warn("invalid default_repo, skipping", "name", cfg.DefaultRepo, "err", err)
+		return
+	}
+
+	if _, err := be.Repository(ctx, name); err == nil {
+		return
+	} else if !errors.Is(err, proto.ErrRepoNotFound) {
+		logger.Warn("failed to look up default repo", "name", name, "err", err)
+		return
+	}
+
+	// The migration always inserts a user at ID 1. The repos table requires
+	// a non-null owner, so we attribute the repo to that account.
+	owner, err := be.UserByID(ctx, 1)
+	if err != nil {
+		logger.Warn("failed to look up default repo owner, skipping", "name", name, "err", err)
+		return
+	}
+
+	if _, err := be.CreateRepository(ctx, name, owner, proto.RepositoryOptions{}); err != nil && !errors.Is(err, proto.ErrRepoExist) {
+		logger.Warn("failed to create default repo", "name", name, "err", err)
+		return
+	}
+
+	logger.Info("created default repo", "name", name)
 }
 
 // ReloadCertificates reloads the TLS certificates for the HTTP server.

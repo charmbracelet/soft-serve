@@ -191,6 +191,10 @@ type Config struct {
 	// A nil value means "no override": fall back to the database.
 	AllowKeyless *bool `env:"ALLOW_KEYLESS" yaml:"allow_keyless"`
 
+	// DefaultRepo is a repository name to create on boot if it does not
+	// already exist. Leave empty to disable.
+	DefaultRepo string `env:"DEFAULT_REPO" yaml:"default_repo"`
+
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" yaml:"-"`
 }
@@ -210,6 +214,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_DATA_PATH=%s", c.DataPath),
 		fmt.Sprintf("SOFT_SERVE_NAME=%s", c.Name),
 		fmt.Sprintf("SOFT_SERVE_INITIAL_ADMIN_KEYS=%s", strings.Join(c.InitialAdminKeys, "\n")),
+		fmt.Sprintf("SOFT_SERVE_DEFAULT_REPO=%s", c.DefaultRepo),
 		fmt.Sprintf("SOFT_SERVE_SSH_ENABLED=%t", c.SSH.Enabled),
 		fmt.Sprintf("SOFT_SERVE_SSH_LISTEN_ADDR=%s", c.SSH.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_SSH_PUBLIC_URL=%s", c.SSH.PublicURL),
@@ -378,7 +383,8 @@ func (c *Config) Exist() bool {
 // Use Validate() to validate the config and ensure absolute paths.
 func DefaultConfig() *Config {
 	return &Config{
-		Name:     "Soft Serve",
+		Name: "Soft Serve",
+		// DefaultRepo: "",
 		DataPath: DefaultDataPath(),
 		SSH: SSHConfig{
 			Enabled:       true,

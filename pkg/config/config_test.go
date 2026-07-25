@@ -81,6 +81,29 @@ func TestCustomConfigLocation(t *testing.T) {
 	is.Equal(cfg.Name, "Soft Serve")
 }
 
+func TestDefaultRepoDisabledByDefault(t *testing.T) {
+	is := is.New(t)
+	is.Equal(DefaultConfig().DefaultRepo, "")
+}
+
+func TestParseDefaultRepo(t *testing.T) {
+	is := is.New(t)
+	is.NoErr(os.Setenv("SOFT_SERVE_DEFAULT_REPO", "gitops"))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_DEFAULT_REPO"))
+	})
+	cfg := DefaultConfig()
+	is.NoErr(cfg.ParseEnv())
+	is.Equal(cfg.DefaultRepo, "gitops")
+}
+
+func TestParseDefaultRepoFromFile(t *testing.T) {
+	is := is.New(t)
+	cfg := &Config{DataPath: t.TempDir()}
+	is.NoErr(parseFile(cfg, "testdata/config_default_repo.yaml"))
+	is.Equal(cfg.DefaultRepo, "gitops")
+}
+
 func TestParseMultipleHeaders(t *testing.T) {
 	is := is.New(t)
 	is.NoErr(os.Setenv("SOFT_SERVE_HTTP_CORS_ALLOWED_HEADERS", "Accept,Accept-Language,User-Agent"))
