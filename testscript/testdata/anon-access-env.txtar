@@ -1,0 +1,48 @@
+# vi: set ft=conf
+
+# Proves the zero-touch dev/local bootstrap: SOFT_SERVE_ANON_ACCESS and
+# SOFT_SERVE_ALLOW_KEYLESS grant a fully anonymous, keyless connection
+# admin-level access from the moment the server starts -- no `settings`
+# command, and no admin SSH key at all. This is the whole point of the
+# feature: standing up a throwaway, fully open server from zero for local
+# dev tooling, scriptably.
+
+# Override away the admin key the test harness normally provisions, and set
+# the two bootstrap overrides under test.
+env SOFT_SERVE_INITIAL_ADMIN_KEYS=
+env SOFT_SERVE_ANON_ACCESS=admin-access
+env SOFT_SERVE_ALLOW_KEYLESS=true
+
+# start soft serve
+exec soft serve &
+ensureserverrunning SSH_PORT
+ensureserverrunning HTTP_PORT
+
+# --- SSH, with zero credentials: no key offered at all ---
+# ksoft authenticates via keyboard-interactive with no public key at all --
+# the exact "no key at all" path that allow-keyless gates. This is distinct
+# from offering an unregistered key, which anon-access alone already
+# governs regardless of allow-keyless -- see anon-access.txtar.
+ksoft repo create keyless-repo
+stderr 'Created repository keyless-repo'
+
+# --- HTTP, with zero credentials: no Authorization header at all ---
+mkdir httprepo
+git -c init.defaultBranch=main -C httprepo init
+mkfile ./httprepo/README.md '# hello'
+git -C httprepo remote add origin http://localhost:$HTTP_PORT/httprepo
+git -C httprepo add -A
+git -C httprepo commit -m 'first'
+git -C httprepo push origin HEAD
+
+git clone http://localhost:$HTTP_PORT/httprepo httprepo_clone
+cmp httprepo_clone/README.md httprepo/README.md
+
+# both repos -- the one created via keyless SSH and the one auto-created by
+# a keyless HTTP push -- are visible with zero credentials.
+ksoft repo list
+stdout 'keyless-repo'
+stdout 'httprepo'
+
+# stop the server
+[windows] stopserver

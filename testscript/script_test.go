@@ -95,6 +95,7 @@ func TestScript(t *testing.T) {
 			"soft":                   cmdSoft("admin", admin1.Signer()),
 			"usoft":                  cmdSoft("user1", user1.Signer()),
 			"attacksoft":             cmdSoft("attacker", attackerSigner, attacker.Signer()),
+			"ksoft":                  cmdKeylessSoft,
 			"git":                    cmdGit(admin1Key),
 			"ugit":                   cmdGit(user1Key),
 			"agit":                   cmdGit(attackerKey),
@@ -219,6 +220,44 @@ func cmdSoft(user string, keys ...ssh.Signer) func(ts *testscript.TestScript, ne
 
 		check(ts, sess.Run(strings.Join(args, " ")), neg)
 	}
+}
+
+// cmdKeylessSoft is like cmdSoft, but authenticates with zero public keys,
+// forcing keyboard-interactive auth -- the actual "no key offered at all"
+// path that allow-keyless gates. This is distinct from cmdSoft/cmdUsoft
+// style helpers, which always offer a real key (registered or not) and so
+// only ever exercise the anon-access path, not allow-keyless.
+//
+// A real ssh(1) binary can't reliably be used for this in a non-interactive
+// test harness: OpenSSH's client refuses to send a keyboard-interactive
+// request at all when stdin isn't a tty ("we did not send a packet, disable
+// method"), regardless of BatchMode. golang.org/x/crypto/ssh has no such
+// restriction, so it's used directly here instead of shelling out.
+func cmdKeylessSoft(ts *testscript.TestScript, neg bool, args []string) {
+	cli, err := ssh.Dial(
+		"tcp",
+		net.JoinHostPort("localhost", ts.Getenv("SSH_PORT")),
+		&ssh.ClientConfig{
+			User: "keyless",
+			Auth: []ssh.AuthMethod{
+				ssh.KeyboardInteractive(func(_, _ string, _ []string, _ []bool) ([]string, error) {
+					return nil, nil
+				}),
+			},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		},
+	)
+	ts.Check(err)
+	defer cli.Close()
+
+	sess, err := cli.NewSession()
+	ts.Check(err)
+	defer sess.Close()
+
+	sess.Stdout = ts.Stdout()
+	sess.Stderr = ts.Stderr()
+
+	check(ts, sess.Run(strings.Join(args, " ")), neg)
 }
 
 func cmdUI(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []string) {

@@ -260,6 +260,15 @@ stats:
 # Additional admin keys.
 #initial_admin_keys:
 #  - "ssh-rsa AAAAB3NzaC1yc2..."
+
+# Override the anon-access and allow-keyless settings below (normally
+# managed at runtime via the `settings` command and stored in the
+# database). If set, these always take precedence over the database, for
+# as long as they remain set -- not just on first run. This is intended for
+# scripted, non-production bootstrapping (e.g. spinning up a throwaway
+# server for local dev tooling), not for production use.
+#anon_access: "admin-access"
+#allow_keyless: true
 ```
 
 You can also use environment variables, to override these settings. All server
@@ -272,6 +281,8 @@ name all in uppercase. Here are some examples:
 - `SOFT_SERVE_HTTP_LISTEN_ADDR`: HTTP listen address
 - `SOFT_SERVE_HTTP_PUBLIC_URL`: HTTP public URL used for cloning
 - `SOFT_SERVE_GIT_MAX_CONNECTIONS`: The number of simultaneous connections to git daemon
+- `SOFT_SERVE_ANON_ACCESS`: Overrides the `anon-access` setting (see [Authentication](#authentication))
+- `SOFT_SERVE_ALLOW_KEYLESS`: Overrides the `allow-keyless` setting (see [Authentication](#authentication))
 
 #### Database Configuration
 
@@ -395,6 +406,37 @@ SSH Public Key authentication `read-only` access to public repos.
 
 `anon-access` is also used in combination with `allow-keyless` to determine the
 access level for HTTP(s) and git:// clone requests.
+
+#### Local/dev bootstrap
+
+`anon-access` and `allow-keyless` are normally admin-only runtime settings,
+which means scripting a fully open server from a cold start would otherwise
+require booting with an admin key, waiting for the server to come up, then
+SSHing in as that admin to run `settings` commands. For local development
+tooling (e.g. standing up a throwaway Git remote for something like Argo CD
+to pull from in a dev environment), you can instead set the `SOFT_SERVE_ANON_ACCESS`
+and `SOFT_SERVE_ALLOW_KEYLESS` environment variables (or the equivalent
+`anon_access`/`allow_keyless` `config.yaml` fields) to grant full,
+unauthenticated access from the moment the server starts, with no admin key
+and no `settings` command required:
+
+```sh
+SOFT_SERVE_ANON_ACCESS=admin-access \
+SOFT_SERVE_ALLOW_KEYLESS=true \
+  soft serve
+```
+
+> **Warning** This grants anyone who can reach the server full admin access
+> with no authentication at all. It is intended strictly for local/dev use on
+> a machine or network you trust — never expose a server configured this way
+> to an untrusted network. The server logs a warning banner on startup
+> whenever this combination is active.
+>
+> Unlike the `settings` command, these overrides always take precedence over
+> the database for as long as they're set — not just on first run. If you
+> also try to tighten access via `ssh soft settings ...` while an override is
+> active, the change is saved but has no effect until the override is
+> removed; the `settings` command will warn you when this happens.
 
 #### SSH
 
