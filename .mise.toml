@@ -1,9 +1,0 @@
-[settings]
-idiomatic_version_file_enable_tools = []
-
-[tools]
-gh = 'latest'
-go = '1.26.5'
-golangci-lint = 'latest'
-nodejs = '22'
-'github:nektos/act' = 'latest'
