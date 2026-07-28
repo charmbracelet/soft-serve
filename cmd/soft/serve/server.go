@@ -118,10 +118,10 @@ func warnIfAnonAdminAccess(ctx context.Context, be *backend.Backend, logger *log
 	}
 
 	logger.Warn("################################################################")
-	logger.Warn("# WARNING: anonymous keyless connections have ADMIN access.     #")
-	logger.Warn("# Anyone who can reach this server has full control, no auth.   #")
-	logger.Warn("# This is intended for local/dev use only. Do not expose this   #")
-	logger.Warn("# server to an untrusted network.                               #")
+	logger.Warn("# WARNING: anonymous keyless connections have ADMIN access.    #")
+	logger.Warn("# Anyone who can reach this server has full control, no auth.  #")
+	logger.Warn("# This is intended for local/dev use only. Do not expose this  #")
+	logger.Warn("# server to an untrusted network.                              #")
 	logger.Warn("################################################################")
 }
 
