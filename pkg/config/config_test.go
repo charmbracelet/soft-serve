@@ -130,8 +130,8 @@ func TestAnonAccessEnvUnsetByDefault(t *testing.T) {
 	is := is.New(t)
 	cfg := DefaultConfig()
 	is.NoErr(cfg.ParseEnv())
-	// Empty string is the "no override" sentinel.
-	is.Equal(cfg.AnonAccess, "")
+	// nil is the "no override" sentinel.
+	is.True(cfg.AnonAccess == nil)
 }
 
 func TestParseAnonAccessEnv(t *testing.T) {
@@ -142,16 +142,20 @@ func TestParseAnonAccessEnv(t *testing.T) {
 	})
 	cfg := DefaultConfig()
 	is.NoErr(cfg.ParseEnv())
-	is.Equal(cfg.AnonAccess, access.AdminAccess.String())
+	is.True(cfg.AnonAccess != nil)
+	is.Equal(*cfg.AnonAccess, access.AdminAccess)
 }
 
-func TestValidateRejectsInvalidAnonAccess(t *testing.T) {
+// An invalid anon-access level is rejected at parse time by AccessLevel's
+// TextUnmarshaler, so it never reaches Validate as a bad value.
+func TestParseRejectsInvalidAnonAccess(t *testing.T) {
 	is := is.New(t)
-	cfg := &Config{
-		DataPath:   t.TempDir(),
-		AnonAccess: "not-a-real-access-level",
-	}
-	err := cfg.Validate()
+	is.NoErr(os.Setenv("SOFT_SERVE_ANON_ACCESS", "not-a-real-access-level"))
+	t.Cleanup(func() {
+		is.NoErr(os.Unsetenv("SOFT_SERVE_ANON_ACCESS"))
+	})
+	cfg := DefaultConfig()
+	err := cfg.ParseEnv()
 	is.True(err != nil)
 }
 

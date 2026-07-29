@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
@@ -75,7 +76,8 @@ func TestSettingsAnonAccessWarnsOnConfigOverride(t *testing.T) {
 	// With a config override active, the write still succeeds (so it takes
 	// effect if the override is later removed), but must warn loudly that
 	// it currently has no effect.
-	cfg.AnonAccess = "admin-access"
+	adminAccess := access.AdminAccess
+	cfg.AnonAccess = &adminAccess
 	_, stderr, err = runSettings(t, ctx, "anon-access", "no-access")
 	is.NoErr(err)
 	if !strings.Contains(stderr, "override") {
