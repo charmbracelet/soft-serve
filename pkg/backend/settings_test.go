@@ -54,12 +54,13 @@ func TestAnonAccessConfigOverride(t *testing.T) {
 	is.Equal(be.AnonAccess(ctx), access.ReadWriteAccess)
 
 	// A config override takes precedence over whatever is in the DB.
-	cfg.AnonAccess = access.AdminAccess.String()
+	admin := access.AdminAccess
+	cfg.AnonAccess = &admin
 	is.Equal(be.AnonAccess(ctx), access.AdminAccess)
 
 	// The DB value is unchanged underneath the override: once the override
 	// is cleared, the last DB write is what's returned again.
-	cfg.AnonAccess = ""
+	cfg.AnonAccess = nil
 	is.Equal(be.AnonAccess(ctx), access.ReadWriteAccess)
 }
 

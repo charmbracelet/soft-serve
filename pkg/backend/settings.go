@@ -52,8 +52,8 @@ func (b *Backend) SetAllowKeyless(ctx context.Context, allow bool) error {
 //
 // It implements backend.Backend.
 func (b *Backend) AnonAccess(ctx context.Context) access.AccessLevel {
-	if b.cfg.AnonAccess != "" {
-		return access.ParseAccessLevel(b.cfg.AnonAccess)
+	if b.cfg.AnonAccess != nil {
+		return *b.cfg.AnonAccess
 	}
 
 	var level access.AccessLevel

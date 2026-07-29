@@ -66,7 +66,7 @@ func TestWarnIfAnonAdminAccess(t *testing.T) {
 
 			allow := c.allowKeyless
 			cfg.AllowKeyless = &allow
-			cfg.AnonAccess = c.anonAccess.String()
+			cfg.AnonAccess = &c.anonAccess
 
 			var buf bytes.Buffer
 			logger := log.New(&buf)

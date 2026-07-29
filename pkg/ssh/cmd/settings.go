@@ -97,12 +97,12 @@ func warnIfAllowKeylessOverridden(cmd *cobra.Command, cfg *config.Config) {
 // the database. Without this, an admin changing the setting via this
 // command would have no way to know their change has no effect.
 func warnIfAnonAccessOverridden(cmd *cobra.Command, cfg *config.Config) {
-	if cfg == nil || cfg.AnonAccess == "" {
+	if cfg == nil || cfg.AnonAccess == nil {
 		return
 	}
 
 	fmt.Fprintf(cmd.ErrOrStderr(),
 		"Warning: anon-access is set to %q by server config and takes precedence over this change. "+
 			"The database was updated, but it will have no effect until the config override is removed.\n",
-		cfg.AnonAccess)
+		cfg.AnonAccess.String())
 }
