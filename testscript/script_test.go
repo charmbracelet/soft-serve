@@ -539,6 +539,7 @@ func cmdEnsureServerRunning(ts *testscript.TestScript, neg bool, args []string) 
 
 	// verify that the server is up
 	addr := net.JoinHostPort("localhost", port)
+	deadline := time.Now().Add(30 * time.Second)
 	for {
 		conn, _ := net.DialTimeout( //nolint:noctx
 			"tcp",
@@ -550,6 +551,10 @@ func cmdEnsureServerRunning(ts *testscript.TestScript, neg bool, args []string) 
 			conn.Close()
 			break
 		}
+		if time.Now().After(deadline) {
+			ts.Fatalf("server on port %s did not start within 30 seconds", port)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
