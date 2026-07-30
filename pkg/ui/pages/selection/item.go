@@ -100,7 +100,7 @@ func (i Item) Command() string {
 type ItemDelegate struct {
 	common     *common.Common
 	activePane *pane
-	copiedIdx  int
+	copiedID   string
 }
 
 // NewItemDelegate creates a new ItemDelegate.
@@ -108,7 +108,6 @@ func NewItemDelegate(common *common.Common, activePane *pane) *ItemDelegate {
 	return &ItemDelegate{
 		common:     common,
 		activePane: activePane,
-		copiedIdx:  -1,
 	}
 }
 
@@ -129,7 +128,6 @@ func (d *ItemDelegate) Spacing() int { return 1 }
 
 // Update implements list.ItemDelegate.
 func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
-	idx := m.Index()
 	item, ok := m.SelectedItem().(Item)
 	if !ok {
 		return nil
@@ -138,10 +136,10 @@ func (d *ItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, d.common.KeyMap.Copy):
-			d.copiedIdx = idx
+			d.copiedID = item.ID()
 			return tea.Batch(
 				tea.SetClipboard(item.Command()),
-				m.SetItem(idx, item),
+				m.SetItem(m.GlobalIndex(), item),
 			)
 		}
 	}
@@ -207,10 +205,10 @@ func (d *ItemDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 
 	cmd := i.Command()
 	cmdStyler := styles.Command.Render
-	if d.copiedIdx == index {
+	if d.copiedID == i.ID() {
 		cmd = "(copied to clipboard)"
 		cmdStyler = styles.Desc.Render
-		d.copiedIdx = -1
+		d.copiedID = ""
 	}
 	cmd = common.TruncateString(cmd, m.Width()-styles.Base.GetHorizontalFrameSize())
 	s.WriteString(cmdStyler(cmd))
