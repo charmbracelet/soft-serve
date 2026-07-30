@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/charmbracelet/ssh"
+	"charm.land/ssh"
 	gossh "golang.org/x/crypto/ssh"
 )
 

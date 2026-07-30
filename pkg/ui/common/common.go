@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/ui/keymap"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
-	"github.com/charmbracelet/ssh"
+	"charm.land/ssh"
 	zone "github.com/lrstanley/bubblezone/v2"
 )
 

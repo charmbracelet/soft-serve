@@ -13,7 +13,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/sshutils"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
-	"github.com/charmbracelet/ssh"
+	"charm.land/ssh"
 	"github.com/spf13/cobra"
 )
 

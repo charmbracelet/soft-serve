@@ -21,7 +21,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/stats"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/soft-serve/pkg/web"
-	"github.com/charmbracelet/ssh"
+	"charm.land/ssh"
 	"golang.org/x/sync/errgroup"
 )
 
