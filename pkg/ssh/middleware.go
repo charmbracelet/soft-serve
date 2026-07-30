@@ -145,6 +145,14 @@ func CommandMiddleware(sh ssh.Handler) ssh.Handler {
 			}
 		}
 
+		jobCmd, err := cmd.CronJobCommand(ctx)
+		if err != nil {
+			fmt.Fprintf(s.Stderr(), "error create cronjob sub command: %v\n", err)
+			s.Exit(1)
+			return
+		}
+		rootCmd.AddCommand(jobCmd)
+
 		rootCmd.SetArgs(args)
 		if len(args) == 0 {
 			// otherwise it'll default to os.Args, which is not what we want.

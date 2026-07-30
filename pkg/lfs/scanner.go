@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"strconv"
@@ -47,6 +48,30 @@ func SearchPointerBlobs(ctx context.Context, repo *git.Repository, pointerChan c
 
 	close(pointerChan)
 	close(errChan)
+}
+
+// CheckPointerExist scans lfs Pointers from pointerChan and outputs through the returned channel whether they exist
+func CheckPointerExist(ctx context.Context, repo *git.Repository, pointerChan <-chan Pointer) (<-chan bool, func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	resultChan := make(chan bool)
+	wg := sync.WaitGroup{}
+	wg.Add(3)
+
+	stop := func() {
+		cancel()
+		wg.Wait()
+	}
+
+	shasToCheckReader, shasToCheckWriter := io.Pipe()
+	catFileCheckReader, catFileCheckWriter := io.Pipe()
+
+	go catFileBatchLineExist(catFileCheckReader, resultChan, &wg)
+
+	go catFileBatchCheck(ctx, shasToCheckReader, catFileCheckWriter, &wg, repo.Path)
+
+	go pointerBlobHash(repo, pointerChan, shasToCheckWriter, &wg)
+
+	return resultChan, stop
 }
 
 func createPointerResultsFromCatFileBatch(ctx context.Context, catFileBatchReader *io.PipeReader, wg *sync.WaitGroup, pointerChan chan<- PointerBlob) {
@@ -212,5 +237,56 @@ func revListAllObjects(ctx context.Context, revListWriter *io.PipeWriter, wg *sy
 			Stderr: stderr,
 		}); err != nil {
 		errChan <- fmt.Errorf("git rev-list [%s]: %w - %s", basePath, err, errbuf.String())
+	}
+}
+
+// pointerBlobHash calculates the hash value of each LFS pointer
+func pointerBlobHash(r *git.Repository, pointerChan <-chan Pointer, shastoCheckWriter *io.PipeWriter, wg *sync.WaitGroup) {
+	defer wg.Done()
+	defer shastoCheckWriter.Close()
+
+	for pointer := range pointerChan {
+		pointerSha := hex.EncodeToString(r.ComputeObjectHash(gitm.ObjectBlob, []byte(pointer.String())))
+		shastoCheckWriter.Write([]byte(pointerSha + "\n"))
+	}
+}
+
+// catFileBatchLineExist reads the git cat-file batch check results line by line from the reader,
+// and outputs the existence status through resultChan.
+func catFileBatchLineExist(catFileCheckReader *io.PipeReader, resultChan chan<- bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+	defer catFileCheckReader.Close()
+	scanner := bufio.NewScanner(catFileCheckReader)
+	defer func() {
+		close(resultChan)
+	}()
+
+	for scanner.Scan() {
+		typ := scanner.Text()
+		if len(typ) == 0 {
+			continue
+		}
+		// typ is:
+		// <sha> SP <type> SP <size> LF
+		// or  <object> SP missing|excluded|ambiguous|submodule LF
+
+		idx := strings.IndexByte(typ, ' ')
+		if idx < 0 {
+			resultChan <- false
+			continue
+		}
+		typ = typ[idx+1:] // remove <sha>
+
+		idx = strings.IndexByte(typ, ' ')
+		if idx < 0 {
+			resultChan <- false
+			continue
+		}
+
+		sizeStr := typ[idx+1 : len(typ)-1] // remove <type>
+		typ = typ[:idx]
+
+		_, err := strconv.ParseInt(sizeStr, 10, 64) // # validate size
+		resultChan <- (err == nil)
 	}
 }

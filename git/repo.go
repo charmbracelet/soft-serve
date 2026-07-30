@@ -2,7 +2,11 @@ package git
 
 import (
 	gopath "path"
+	"crypto/sha1"
+	"crypto/sha256"
+	"hash"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/aymanbagabas/git-module"
@@ -17,11 +21,20 @@ var (
 	DiffMaxLineChars = 1000
 )
 
+// Objbectformat is repository hash format
+type ObjectFormat func() hash.Hash
+
+var (
+	ObjectFormatSha1   ObjectFormat = sha1.New
+	ObjectFormatSha256 ObjectFormat = sha256.New
+)
+
 // Repository is a wrapper around git.Repository with helper methods.
 type Repository struct {
 	*git.Repository
-	Path   string
-	IsBare bool
+	Path        string
+	IsBare      bool
+	ObjctFormat ObjectFormat
 }
 
 // Clone clones a repository.
@@ -189,4 +202,33 @@ func (r *Repository) SymbolicRef(name string, ref string, opts ...git.SymbolicRe
 	opt.Name = name
 	opt.Ref = ref
 	return r.Repository.SymbolicRef(opt)
+}
+
+func (r *Repository) ComputeObjectHash(t git.ObjectType, content []byte) []byte {
+	hasher := r.Hasher()
+	_, _ = hasher.Write([]byte(t))
+	_, _ = hasher.Write([]byte(" "))
+	_, _ = hasher.Write([]byte(strconv.Itoa(len(content))))
+	_, _ = hasher.Write([]byte{0})
+	_, _ = hasher.Write(content)
+	return hasher.Sum(nil)
+}
+
+// Hasher returns the object format algorithem factory of repository
+func (r *Repository) Hasher() hash.Hash {
+	if r.ObjctFormat != nil {
+		return r.ObjctFormat()
+	}
+
+	out, _ := NewCommand("rev-parse", "--show-object-format").RunInDir(r.Path)
+	switch strings.TrimSpace(string(out)) {
+	case "sha1":
+		r.ObjctFormat = ObjectFormatSha1
+	case "sha256":
+		r.ObjctFormat = ObjectFormatSha256
+	default:
+		panic("unknown object format " + string(out))
+	}
+
+	return r.ObjctFormat()
 }
