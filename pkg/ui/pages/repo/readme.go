@@ -1,7 +1,7 @@
 package repo
 
 import (
-	"path/filepath"
+	"path"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/spinner"
@@ -147,7 +147,7 @@ func (r *Readme) SpinnerID() int {
 
 // StatusBarValue implements statusbar.StatusBar.
 func (r *Readme) StatusBarValue() string {
-	dir := filepath.Dir(r.readmePath)
+	dir := path.Dir(r.readmePath)
 	if dir == "." || dir == "" {
 		return " "
 	}

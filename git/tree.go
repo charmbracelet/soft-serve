@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"io"
 	"io/fs"
-	"path/filepath"
+	gopath "path"
 	"sort"
 
 	"github.com/aymanbagabas/git-module"
@@ -103,7 +103,7 @@ func (t *Tree) Entries() (Entries, error) {
 	for i, e := range entries {
 		ret[i] = &TreeEntry{
 			TreeEntry: e,
-			path:      filepath.Join(t.Path, e.Name()),
+			path:      gopath.Join(t.Path, e.Name()),
 		}
 	}
 	return ret, nil
@@ -117,7 +117,7 @@ func (t *Tree) TreeEntry(path string) (*TreeEntry, error) {
 	}
 	return &TreeEntry{
 		TreeEntry: entry,
-		path:      filepath.Join(t.Path, entry.Name()),
+		path:      gopath.Join(t.Path, entry.Name()),
 	}, nil
 }
 
