@@ -15,14 +15,18 @@ func SettingsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "settings",
 		Short: "Manage server settings",
+		// Gate the whole command tree rather than each subcommand. Cobra
+		// runs the nearest persistent pre-run found when walking up from
+		// the invoked command, so subcommands added later are gated by
+		// default instead of silently unprotected.
+		PersistentPreRunE: checkIfServerAdmin,
 	}
 
 	cmd.AddCommand(
 		&cobra.Command{
-			Use:               "allow-keyless [true|false]",
-			Short:             "Set or get allow keyless access to repositories",
-			Args:              cobra.RangeArgs(0, 1),
-			PersistentPreRunE: checkIfAdmin,
+			Use:   "allow-keyless [true|false]",
+			Short: "Set or get allow keyless access to repositories",
+			Args:  cobra.RangeArgs(0, 1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
 				be := backend.FromContext(ctx)
@@ -46,11 +50,10 @@ func SettingsCommand() *cobra.Command {
 	als := []string{access.NoAccess.String(), access.ReadOnlyAccess.String(), access.ReadWriteAccess.String(), access.AdminAccess.String()}
 	cmd.AddCommand(
 		&cobra.Command{
-			Use:               "anon-access [ACCESS_LEVEL]",
-			Short:             "Set or get the default access level for anonymous users",
-			Args:              cobra.RangeArgs(0, 1),
-			ValidArgs:         als,
-			PersistentPreRunE: checkIfAdmin,
+			Use:       "anon-access [ACCESS_LEVEL]",
+			Short:     "Set or get the default access level for anonymous users",
+			Args:      cobra.RangeArgs(0, 1),
+			ValidArgs: als,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := cmd.Context()
 				be := backend.FromContext(ctx)

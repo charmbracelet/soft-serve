@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -110,17 +111,8 @@ func CommandName(args []string) string {
 }
 
 func checkIfReadable(cmd *cobra.Command, args []string) error {
-	var repo string
-	if len(args) > 0 {
-		repo = args[0]
-	}
-
 	ctx := cmd.Context()
-	be := backend.FromContext(ctx)
-	rn := utils.SanitizeRepo(repo)
-	user := proto.UserFromContext(ctx)
-	auth := be.AccessLevelForUser(cmd.Context(), rn, user)
-	if auth < access.ReadOnlyAccess {
+	if repoAccessLevel(ctx, repoArg(args)) < access.ReadOnlyAccess {
 		return proto.ErrRepoNotFound
 	}
 	return nil
@@ -137,50 +129,82 @@ func IsPublicKeyAdmin(cfg *config.Config, pk ssh.PublicKey) bool {
 	return false
 }
 
-func checkIfAdmin(cmd *cobra.Command, args []string) error {
-	var repo string
-	if len(args) > 0 {
-		repo = args[0]
-	}
-
-	ctx := cmd.Context()
+// isServerAdmin reports whether the caller is a server administrator: either
+// their public key is one of the configured admin keys, or their account has
+// the admin flag set.
+//
+// This is the single source of truth for "is this caller a server admin".
+// Every authorization gate defers to it so the definition cannot drift.
+func isServerAdmin(ctx context.Context) bool {
 	cfg := config.FromContext(ctx)
-	be := backend.FromContext(ctx)
-	rn := utils.SanitizeRepo(repo)
 	pk := sshutils.PublicKeyFromContext(ctx)
 	if IsPublicKeyAdmin(cfg, pk) {
-		return nil
+		return true
 	}
 
 	user := proto.UserFromContext(ctx)
-	if user == nil {
+	return user != nil && user.IsAdmin()
+}
+
+// repoArg returns the repository name from a repo-scoped command's arguments.
+// Repo-scoped commands always take the repository as their first argument.
+func repoArg(args []string) string {
+	if len(args) == 0 {
+		return ""
+	}
+	return utils.SanitizeRepo(args[0])
+}
+
+// repoAccessLevel returns the caller's access level for the named repository.
+// The repository name must already be sanitized, e.g. via repoArg.
+func repoAccessLevel(ctx context.Context, repo string) access.AccessLevel {
+	be := backend.FromContext(ctx)
+	return be.AccessLevelForUser(ctx, repo, proto.UserFromContext(ctx))
+}
+
+// checkIfServerAdmin is the authorization gate for global (non-repo-scoped)
+// commands such as `user` and `settings`. It allows server admins only.
+//
+// Unlike checkIfRepoAdmin, it never consults repository access levels, so it
+// cannot be bypassed by creating a repository whose name matches the command
+// argument. Attach it to the parent command so that every subcommand,
+// including ones added later, is gated by default.
+func checkIfServerAdmin(cmd *cobra.Command, _ []string) error {
+	if !isServerAdmin(cmd.Context()) {
+		return proto.ErrUnauthorized
+	}
+	return nil
+}
+
+// checkIfRepoAdmin is the authorization gate for repo-scoped commands that
+// require admin access to the repository named by the first argument.
+//
+// Only use this on commands whose first argument is a repository name. For
+// global commands, use checkIfServerAdmin instead.
+func checkIfRepoAdmin(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+	if isServerAdmin(ctx) {
+		return nil
+	}
+
+	if proto.UserFromContext(ctx) == nil {
 		return proto.ErrUnauthorized
 	}
 
-	if user.IsAdmin() {
-		return nil
+	if repoAccessLevel(ctx, repoArg(args)) < access.AdminAccess {
+		return proto.ErrUnauthorized
 	}
 
-	auth := be.AccessLevelForUser(cmd.Context(), rn, user)
-	if auth >= access.AdminAccess {
-		return nil
-	}
-
-	return proto.ErrUnauthorized
+	return nil
 }
 
-func checkIfCollab(cmd *cobra.Command, args []string) error {
-	var repo string
-	if len(args) > 0 {
-		repo = args[0]
-	}
-
+// checkIfRepoCollab is the authorization gate for repo-scoped commands that
+// require write access to the repository named by the first argument.
+//
+// Only use this on commands whose first argument is a repository name.
+func checkIfRepoCollab(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-	be := backend.FromContext(ctx)
-	rn := utils.SanitizeRepo(repo)
-	user := proto.UserFromContext(ctx)
-	auth := be.AccessLevelForUser(cmd.Context(), rn, user)
-	if auth < access.ReadWriteAccess {
+	if repoAccessLevel(ctx, repoArg(args)) < access.ReadWriteAccess {
 		return proto.ErrUnauthorized
 	}
 	return nil
@@ -190,7 +214,7 @@ func checkIfReadableAndCollab(cmd *cobra.Command, args []string) error {
 	if err := checkIfReadable(cmd, args); err != nil {
 		return err
 	}
-	if err := checkIfCollab(cmd, args); err != nil {
+	if err := checkIfRepoCollab(cmd, args); err != nil {
 		return err
 	}
 	return nil

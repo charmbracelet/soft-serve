@@ -25,7 +25,7 @@ func mirrorCommand() *cobra.Command {
 
 				cmd.Println(isMirror)
 			case 2:
-				if err := checkIfCollab(cmd, args); err != nil {
+				if err := checkIfRepoCollab(cmd, args); err != nil {
 					return err
 				}
 

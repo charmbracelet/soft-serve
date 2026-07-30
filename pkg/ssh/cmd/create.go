@@ -20,7 +20,7 @@ func createCommand() *cobra.Command {
 		Use:               "create REPOSITORY",
 		Short:             "Create a new repository",
 		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfCollab,
+		PersistentPreRunE: checkIfRepoCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			cfg := config.FromContext(ctx)

@@ -27,7 +27,7 @@ func projectName() *cobra.Command {
 
 				cmd.Println(pn)
 			default:
-				if err := checkIfCollab(cmd, args); err != nil {
+				if err := checkIfRepoCollab(cmd, args); err != nil {
 					return err
 				}
 				if err := be.SetProjectName(ctx, rn, strings.Join(args[1:], " ")); err != nil {

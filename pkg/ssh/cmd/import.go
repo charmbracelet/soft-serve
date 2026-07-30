@@ -23,7 +23,7 @@ func importCommand() *cobra.Command {
 		Use:               "import REPOSITORY REMOTE",
 		Short:             "Import a new repository from remote",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfCollab,
+		PersistentPreRunE: checkIfRepoCollab,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)

@@ -25,4 +25,7 @@ var (
 	ErrCollaboratorNotFound = errors.New("collaborator not found")
 	// ErrCollaboratorExist is returned when a collaborator already exists.
 	ErrCollaboratorExist = errors.New("collaborator already exists")
+	// ErrExceedsAccessLevel is returned when an action would grant or revoke
+	// access above the caller's own access level.
+	ErrExceedsAccessLevel = errors.New("cannot change access above your own access level")
 )

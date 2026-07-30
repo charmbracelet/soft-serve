@@ -32,7 +32,7 @@ func privateCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if err := checkIfCollab(cmd, args); err != nil {
+				if err := checkIfRepoCollab(cmd, args); err != nil {
 					return err
 				}
 				if err := be.SetPrivate(ctx, rn, isPrivate); err != nil {

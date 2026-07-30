@@ -88,7 +88,7 @@ func branchDefaultCommand() *cobra.Command {
 
 				cmd.Println(head.Name().Short())
 			case 2:
-				if err := checkIfCollab(cmd, args); err != nil {
+				if err := checkIfRepoCollab(cmd, args); err != nil {
 					return err
 				}
 

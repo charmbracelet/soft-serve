@@ -47,7 +47,7 @@ func webhookListCommand() *cobra.Command {
 		Use:               "list REPOSITORY",
 		Short:             "List repository webhooks",
 		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfRepoAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -94,7 +94,7 @@ func webhookCreateCommand() *cobra.Command {
 		Use:               "create REPOSITORY URL",
 		Short:             "Create a repository webhook",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfRepoAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -141,7 +141,7 @@ func webhookDeleteCommand() *cobra.Command {
 		Use:               "delete REPOSITORY WEBHOOK_ID",
 		Short:             "Delete a repository webhook",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfRepoAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -172,7 +172,7 @@ func webhookUpdateCommand() *cobra.Command {
 		Use:               "update REPOSITORY WEBHOOK_ID",
 		Short:             "Update a repository webhook",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfRepoAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -274,16 +274,21 @@ func webhookDeliveriesListCommand() *cobra.Command {
 		Use:               "list REPOSITORY WEBHOOK_ID",
 		Short:             "List webhook deliveries",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfRepoAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
+			repo, err := be.Repository(ctx, args[0])
+			if err != nil {
+				return err
+			}
+
 			id, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid webhook ID: %w", err)
 			}
 
-			dels, err := be.ListWebhookDeliveries(ctx, id)
+			dels, err := be.ListWebhookDeliveries(ctx, repo, id)
 			if err != nil {
 				return err
 			}
@@ -314,7 +319,7 @@ func webhookDeliveriesRedeliverCommand() *cobra.Command {
 		Use:               "redeliver REPOSITORY WEBHOOK_ID DELIVERY_ID",
 		Short:             "Redeliver a webhook delivery",
 		Args:              cobra.ExactArgs(3),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfRepoAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -345,10 +350,15 @@ func webhookDeliveriesGetCommand() *cobra.Command {
 		Use:               "get REPOSITORY WEBHOOK_ID DELIVERY_ID",
 		Short:             "Get a webhook delivery",
 		Args:              cobra.ExactArgs(3),
-		PersistentPreRunE: checkIfAdmin,
+		PersistentPreRunE: checkIfRepoAdmin,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
+			repo, err := be.Repository(ctx, args[0])
+			if err != nil {
+				return err
+			}
+
 			id, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid webhook ID: %w", err)
@@ -359,7 +369,7 @@ func webhookDeliveriesGetCommand() *cobra.Command {
 				return fmt.Errorf("invalid delivery ID: %w", err)
 			}
 
-			del, err := be.WebhookDelivery(ctx, id, delID)
+			del, err := be.WebhookDelivery(ctx, repo, id, delID)
 			if err != nil {
 				return err
 			}

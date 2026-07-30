@@ -200,13 +200,21 @@ func (b *Backend) DeleteWebhook(ctx context.Context, repo proto.Repository, id i
 	})
 }
 
-// ListWebhookDeliveries lists webhook deliveries for a webhook.
-func (b *Backend) ListWebhookDeliveries(ctx context.Context, id int64) ([]webhook.Delivery, error) {
+// ListWebhookDeliveries lists webhook deliveries for a webhook belonging to
+// the given repository.
+//
+// The webhook is resolved scoped to the repository, so a caller authorized
+// only for repo A cannot read deliveries of a webhook owned by repo B.
+func (b *Backend) ListWebhookDeliveries(ctx context.Context, repo proto.Repository, id int64) ([]webhook.Delivery, error) {
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 
 	var deliveries []models.WebhookDelivery
 	if err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
+		if _, err := datastore.GetWebhookByID(ctx, tx, repo.ID(), id); err != nil {
+			return db.WrapError(err)
+		}
+
 		var err error
 		deliveries, err = datastore.ListWebhookDeliveriesByWebhookID(ctx, tx, id)
 		if err != nil {
@@ -265,13 +273,23 @@ func (b *Backend) RedeliverWebhookDelivery(ctx context.Context, repo proto.Repos
 	return webhook.SendWebhook(ctx, wh, webhook.Event(delivery.Event), payload)
 }
 
-// WebhookDelivery returns a webhook delivery.
-func (b *Backend) WebhookDelivery(ctx context.Context, webhookID int64, id uuid.UUID) (webhook.Delivery, error) {
+// WebhookDelivery returns a webhook delivery for a webhook belonging to the
+// given repository.
+//
+// The webhook is resolved scoped to the repository, so a caller authorized
+// only for repo A cannot read a delivery of a webhook owned by repo B.
+// Deliveries expose the full request URL, headers, and body, so this scoping
+// is what keeps them from leaking across repositories.
+func (b *Backend) WebhookDelivery(ctx context.Context, repo proto.Repository, webhookID int64, id uuid.UUID) (webhook.Delivery, error) {
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 
 	var delivery webhook.Delivery
 	if err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
+		if _, err := datastore.GetWebhookByID(ctx, tx, repo.ID(), webhookID); err != nil {
+			return db.WrapError(err)
+		}
+
 		d, err := datastore.GetWebhookDeliveryByID(ctx, tx, webhookID, id)
 		if err != nil {
 			return db.WrapError(err)

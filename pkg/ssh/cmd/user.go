@@ -17,15 +17,19 @@ func UserCommand() *cobra.Command {
 		Use:     "user",
 		Aliases: []string{"users"},
 		Short:   "Manage users",
+		// Gate the whole command tree rather than each subcommand. Cobra
+		// runs the nearest persistent pre-run found when walking up from
+		// the invoked command, so subcommands added later are gated by
+		// default instead of silently unprotected.
+		PersistentPreRunE: checkIfServerAdmin,
 	}
 
 	var admin bool
 	var key string
 	userCreateCommand := &cobra.Command{
-		Use:               "create USERNAME",
-		Short:             "Create a new user",
-		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfAdmin,
+		Use:   "create USERNAME",
+		Short: "Create a new user",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var pubkeys []ssh.PublicKey
 			ctx := cmd.Context()
@@ -54,10 +58,9 @@ func UserCommand() *cobra.Command {
 	userCreateCommand.Flags().StringVarP(&key, "key", "k", "", "add a public key to the user")
 
 	userDeleteCommand := &cobra.Command{
-		Use:               "delete USERNAME",
-		Short:             "Delete a user",
-		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfAdmin,
+		Use:   "delete USERNAME",
+		Short: "Delete a user",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -68,11 +71,10 @@ func UserCommand() *cobra.Command {
 	}
 
 	userListCommand := &cobra.Command{
-		Use:               "list",
-		Aliases:           []string{"ls"},
-		Short:             "List users",
-		Args:              cobra.NoArgs,
-		PersistentPreRunE: checkIfAdmin,
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List users",
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -91,10 +93,9 @@ func UserCommand() *cobra.Command {
 	}
 
 	userAddPubkeyCommand := &cobra.Command{
-		Use:               "add-pubkey USERNAME AUTHORIZED_KEY",
-		Short:             "Add a public key to a user",
-		Args:              cobra.MinimumNArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		Use:   "add-pubkey USERNAME AUTHORIZED_KEY",
+		Short: "Add a public key to a user",
+		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -110,10 +111,9 @@ func UserCommand() *cobra.Command {
 	}
 
 	userRemovePubkeyCommand := &cobra.Command{
-		Use:               "remove-pubkey USERNAME AUTHORIZED_KEY",
-		Short:             "Remove a public key from a user",
-		Args:              cobra.MinimumNArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		Use:   "remove-pubkey USERNAME AUTHORIZED_KEY",
+		Short: "Remove a public key from a user",
+		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -129,10 +129,9 @@ func UserCommand() *cobra.Command {
 	}
 
 	userSetAdminCommand := &cobra.Command{
-		Use:               "set-admin USERNAME [true|false]",
-		Short:             "Make a user an admin",
-		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		Use:   "set-admin USERNAME [true|false]",
+		Short: "Make a user an admin",
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -143,10 +142,9 @@ func UserCommand() *cobra.Command {
 	}
 
 	userInfoCommand := &cobra.Command{
-		Use:               "info USERNAME",
-		Short:             "Show information about a user",
-		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfAdmin,
+		Use:   "info USERNAME",
+		Short: "Show information about a user",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -171,10 +169,9 @@ func UserCommand() *cobra.Command {
 	}
 
 	userSetUsernameCommand := &cobra.Command{
-		Use:               "set-username USERNAME NEW_USERNAME",
-		Short:             "Change a user's username",
-		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfAdmin,
+		Use:   "set-username USERNAME NEW_USERNAME",
+		Short: "Change a user's username",
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)

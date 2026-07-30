@@ -1,0 +1,115 @@
+# vi: set ft=conf
+# Regression test for privilege escalation via repository-scoped auth checks
+#
+# VULNERABILITY DESCRIPTION:
+# Global admin commands (`user`, `settings`) were gated by a helper written
+# for repository-scoped commands. That helper granted access when the caller
+# had admin access to a repository *named by the command's first argument*.
+# Since any authenticated user can create a repository, and the owner of a
+# repository has admin access to it, a regular user could satisfy the check
+# for a global command simply by creating a repository with the right name.
+#
+# ATTACK SCENARIO:
+# 1. Attacker registers an SSH key (or is given any normal account)
+# 2. Attacker runs `repo create victim`, becoming owner and therefore
+#    repo-admin of "victim"
+# 3. Attacker runs `user set-admin victim true`. The auth check reads the
+#    first argument "victim" as a repository name, sees repo-admin, allows it
+# 4. The account "victim" is now a global server administrator
+#
+# A related issue let a read-write collaborator grant admin-access to any
+# account, and remove collaborators ranked above themselves.
+#
+# THIS TEST VERIFIES:
+# - A non-admin cannot reach `user` or `settings` commands by creating a
+#   repository named after the command argument
+# - A read-write collaborator cannot grant access above their own level
+# - A read-write collaborator cannot remove or demote a higher-ranked
+#   collaborator
+# - Webhook deliveries cannot be read across repositories
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create regular, non-admin users
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+soft user create boss --key "$ATTACKER_AUTHORIZED_KEY"
+soft user info user1
+stdout 'Admin: false'
+
+# The attacker creates repositories named after the arguments they intend to
+# pass to the global commands. They own these, so they are repo-admin of them.
+usoft repo create user1
+usoft repo create victim
+usoft repo create true
+usoft repo create admin-access
+usoft repo create admin
+
+# Repo-admin access must not authorize global user commands.
+! usoft user set-admin user1 true
+! usoft user set-admin victim true
+! usoft user create victim
+! usoft user delete admin
+! usoft user list
+! usoft user info admin
+! usoft user set-username admin victim
+! usoft user add-pubkey admin "$ADMIN2_AUTHORIZED_KEY"
+! usoft user remove-pubkey admin "$ADMIN1_AUTHORIZED_KEY"
+
+# Repo-admin access must not authorize global settings commands.
+! usoft settings anon-access admin-access
+! usoft settings anon-access read-write
+! usoft settings allow-keyless true
+
+# a placeholder to reset stderr
+soft help
+
+# The attacker is still not an admin, and settings are unchanged.
+soft user info user1
+stdout 'Admin: false'
+soft settings anon-access
+stdout 'read-only.*'
+
+# Collaborator grants are bounded by the caller's own access level.
+soft repo create shared
+soft repo collab add shared user1 read-write
+soft repo collab add shared boss admin-access
+
+# user1 is read-write on "shared" and must not be able to grant admin-access.
+! usoft repo collab add shared user1 admin-access
+# ...nor remove a collaborator ranked above them.
+! usoft repo collab remove shared boss
+# ...nor demote one by overwriting the grant.
+! usoft repo collab add shared boss read-only
+
+# a placeholder to reset stderr
+soft help
+
+# boss is still an admin-access collaborator, and user1 did not escalate.
+soft repo collab list shared
+stdout 'boss'
+
+# Granting at or below the caller's own level still works.
+soft user create peer
+usoft repo collab add shared peer read-only
+soft repo collab list shared
+stdout 'peer'
+
+# Webhook deliveries must be scoped to the named repository. The attacker has
+# admin access to their own repo "user1", which must not expose the webhook
+# deliveries of "shared" (these include full request URLs, headers, bodies).
+new-webhook WH_SHARED
+soft repo webhook create shared $WH_SHARED -e push
+soft repo webhook list shared
+stdout '1.*'
+! usoft repo webhook deliveries list user1 1
+! usoft repo webhook deliveries get user1 1 00000000-0000-0000-0000-000000000000
+
+# a placeholder to reset stderr
+soft help
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
