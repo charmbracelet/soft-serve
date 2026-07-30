@@ -147,6 +147,10 @@ jobs:
 # Additional admin keys.
 #initial_admin_keys:
 #  - "ssh-rsa AAAAB3NzaC1yc2..."
+
+# Name of a repository to create automatically on boot if it doesn't already
+# exist. Empty disables this behavior.
+#default_repo: ""
 `))
 
 func newConfigFile(cfg *Config) string {
