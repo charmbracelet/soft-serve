@@ -1,0 +1,53 @@
+# https://taskfile.dev
+
+version: "3"
+
+tasks:
+  fmt:
+    desc: Run gofumpt and goimports
+    cmds:
+      - golangci-lint fmt
+
+  lint:
+    desc: Run base linters
+    cmds:
+      - golangci-lint run
+
+  lint:fix:
+    desc: Run linters and apply automatic fixes
+    cmds:
+      - golangci-lint run --fix
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -race ./... {{.CLI_ARGS}}
+
+  tidy:
+    desc: Run go mod tidy
+    cmds:
+      - go mod tidy
+
+  release:
+    desc: Create and push a new tag following semver
+    vars:
+      NEXT:
+        sh: svu next --always || go run github.com/caarlos0/svu/v3@latest next --always
+    prompt: "This will release {{.NEXT}}. Continue?"
+    preconditions:
+      - sh: '[ $(git symbolic-ref --short HEAD) = "main" ]'
+        msg: Not on main branch
+      - sh: "[ $(git status --porcelain=2 | wc -l) = 0 ]"
+        msg: "Git is dirty"
+      - sh: 'gh run list --workflow build.yml --commit $(git rev-parse HEAD) --status success --json conclusion -q ".[0].conclusion" | grep -q success'
+        msg: "Test build for this commit failed or not present"
+    cmds:
+      - task: fetch-tags
+      - git commit --allow-empty -m "{{.NEXT}}"
+      - git tag --annotate --sign -m "{{.NEXT}}" {{.NEXT}} {{.CLI_ARGS}}
+      - echo "Pushing {{.NEXT}}..."
+      - git push origin main --follow-tags
+
+  fetch-tags:
+    cmds:
+      - git fetch --tags
