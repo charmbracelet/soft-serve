@@ -21,34 +21,48 @@ func UserCommand() *cobra.Command {
 
 	var admin bool
 	var key string
-	userCreateCommand := &cobra.Command{
-		Use:               "create USERNAME",
-		Short:             "Create a new user",
-		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfAdmin,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var pubkeys []ssh.PublicKey
-			ctx := cmd.Context()
-			be := backend.FromContext(ctx)
-			username := args[0]
-			if key != "" {
-				pk, _, err := sshutils.ParseAuthorizedKey(key)
-				if err != nil {
-					return err
-				}
+    userCreateCommand := &cobra.Command{
+        Use:               "create USERNAME",
+        Short:             "Create a new user",
+        Args:              cobra.MinimumNArgs(1),
+        PersistentPreRunE: checkIfAdmin,
+        RunE: func(cmd *cobra.Command, args []string) error {
+            var pubkeys []ssh.PublicKey
+            ctx := cmd.Context()
+            be := backend.FromContext(ctx)
+            username := args[0]
 
-				pubkeys = []ssh.PublicKey{pk}
-			}
+            // Reconstruct authorized key value in cases where the SSH command
+            // splitting drops quoting and splits the key across multiple args.
+            // Prefer the -k/--key flag, but append any trailing args to support
+            // inputs like: user create <user> -k ssh-ed25519 AAAA...
+            pubkeyStr := strings.TrimSpace(key)
+            if len(args) > 1 {
+                tail := strings.Join(args[1:], " ")
+                if pubkeyStr != "" {
+                    pubkeyStr = strings.TrimSpace(pubkeyStr + " " + tail)
+                } else {
+                    pubkeyStr = strings.TrimSpace(tail)
+                }
+            }
 
-			opts := proto.UserOptions{
-				Admin:      admin,
-				PublicKeys: pubkeys,
-			}
+            if pubkeyStr != "" {
+                pk, _, err := sshutils.ParseAuthorizedKey(pubkeyStr)
+                if err != nil {
+                    return err
+                }
+                pubkeys = []ssh.PublicKey{pk}
+            }
 
-			_, err := be.CreateUser(ctx, username, opts)
-			return err
-		},
-	}
+            opts := proto.UserOptions{
+                Admin:      admin,
+                PublicKeys: pubkeys,
+            }
+
+            _, err := be.CreateUser(ctx, username, opts)
+            return err
+        },
+    }
 
 	userCreateCommand.Flags().BoolVarP(&admin, "admin", "a", false, "make the user an admin")
 	userCreateCommand.Flags().StringVarP(&key, "key", "k", "", "add a public key to the user")
