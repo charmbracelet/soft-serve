@@ -117,11 +117,9 @@ var (
 		}
 
 		// Custom hooks
-		if stat, err := os.Stat(customHookPath); err == nil && !stat.IsDir() && stat.Mode()&0o111 != 0 {
-			// If the custom hook is executable, run it
-			if err := runCommand(ctx, &buf, stdout, stderr, customHookPath, args...); err != nil {
-				logger.Error("failed to run custom hook", "err", err)
-			}
+		if err := runCustomHook(ctx, customHookPath, &buf, stdout, stderr, args...); err != nil {
+			logger.Error("failed to run custom hook", "err", err)
+			return err
 		}
 
 		return nil
@@ -169,4 +167,13 @@ func runCommand(ctx context.Context, in io.Reader, out io.Writer, err io.Writer,
 	cmd.Stdout = out
 	cmd.Stderr = err
 	return cmd.Run()
+}
+
+func runCustomHook(ctx context.Context, path string, in io.Reader, out io.Writer, err io.Writer, args ...string) error {
+	stat, statErr := os.Stat(path)
+	if statErr != nil || stat.IsDir() || stat.Mode()&0o111 == 0 {
+		return nil
+	}
+
+	return runCommand(ctx, in, out, err, path, args...)
 }
