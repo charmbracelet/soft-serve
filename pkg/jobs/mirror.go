@@ -71,7 +71,7 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 
 					for _, c := range cmds {
 						args := strings.Split(c, " ")
-						cmd := git.NewCommand(args...).WithContext(ctx)
+						cmd := git.NewCommand(args...).WithContext(ctx).WithTimeout(-1)
 						cmd.AddEnvs(
 							fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
 								filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
