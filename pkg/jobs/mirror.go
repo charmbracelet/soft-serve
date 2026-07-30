@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/lfs"
+	"github.com/charmbracelet/soft-serve/pkg/ssrf"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/soft-serve/pkg/sync"
 )
@@ -22,6 +23,40 @@ func init() {
 }
 
 type mirrorPull struct{}
+
+// validateMirrorRemotes validates every remote configured on a mirror
+// repository and returns the git environment that must be applied to the sync
+// commands.
+//
+// `git remote update` fetches from all remotes, not just origin, so every one
+// of them has to pass. Any failure to read or validate skips the sync: a
+// remote that cannot be checked is not one to fetch from.
+func validateMirrorRemotes(r *git.Repository) ([]string, error) {
+	cfg, err := r.Config()
+	if err != nil {
+		return nil, fmt.Errorf("reading git config: %w", err)
+	}
+
+	var remotes []ssrf.ValidatedGitRemote
+	for _, sub := range cfg.Section("remote").Subsections {
+		url := sub.Option("url")
+		if url == "" {
+			continue
+		}
+
+		v, err := ssrf.ValidateGitRemote(url)
+		if err != nil {
+			return nil, fmt.Errorf("remote %q: %w", sub.Name, err)
+		}
+		remotes = append(remotes, v)
+	}
+
+	if len(remotes) == 0 {
+		return nil, fmt.Errorf("no remote url configured")
+	}
+
+	return ssrf.GitEnv(remotes...), nil
+}
 
 // Spec derives the spec used for pull mirrors and implements Runner.
 func (m mirrorPull) Spec(ctx context.Context) string {
@@ -64,6 +99,25 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 				wq.Add(name, func() {
 					repo := repo
 
+					// Re-validate every configured remote before syncing.
+					// `remote update` touches all of them, and a remote may
+					// predate the import-time guard or have been written out
+					// of band. Validation failure skips the repo entirely.
+					remoteEnv, err := validateMirrorRemotes(r)
+					if err != nil {
+						logger.Warn("skipping mirror sync, remote failed validation", "repo", name, "err", err)
+						return
+					}
+
+					// remoteEnv carries the SSRF guard and must reach every
+					// command below, so build the full set once.
+					syncEnv := append(remoteEnv,
+						fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+							filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
+							cfg.SSH.ClientKeyPath,
+						),
+					)
+
 					cmds := []string{
 						"fetch --prune",         // fetch prune before updating remote
 						"remote update --prune", // update remote and prune remote refs
@@ -72,12 +126,7 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 					for _, c := range cmds {
 						args := strings.Split(c, " ")
 						cmd := git.NewCommand(args...).WithContext(ctx).WithTimeout(-1)
-						cmd.AddEnvs(
-							fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-								filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
-								cfg.SSH.ClientKeyPath,
-							),
-						)
+						cmd.AddEnvs(syncEnv...)
 
 						if _, err := cmd.RunInDir(r.Path); err != nil {
 							logger.Error("error running git remote update", "repo", name, "err", err)
@@ -95,6 +144,13 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 						if lfsEndpoint == "" {
 							// If there is no LFS url defined, means the repo
 							// doesn't use LFS and we can skip it.
+							return
+						}
+
+						// The endpoint is stored in the repo config and may
+						// predate validation, so check it before dialing.
+						if _, err := ssrf.ValidateGitRemote(lfsEndpoint); err != nil {
+							logger.Warn("skipping lfs sync, endpoint failed validation", "repo", name, "err", err)
 							return
 						}
 

@@ -1,0 +1,64 @@
+# vi: set ft=conf
+
+# Test SSRF protection on repository import.
+#
+# Import takes an arbitrary remote URL from any authenticated user and hands it
+# to a git clone subprocess. Without validation this reaches internal services
+# and cloud metadata endpoints.
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# loopback must be rejected
+! soft repo import bad1 http://127.0.0.1:8080/x.git
+stderr 'remote must be a network URL'
+
+# localhost by name must be rejected
+! soft repo import bad2 http://localhost:8080/x.git
+stderr 'remote must be a network URL'
+
+# cloud metadata endpoint must be rejected
+! soft repo import bad3 http://169.254.169.254/latest/meta-data/
+stderr 'remote must be a network URL'
+
+# RFC1918 ranges must be rejected
+! soft repo import bad4 http://10.0.0.1/x.git
+stderr 'remote must be a network URL'
+
+! soft repo import bad5 http://192.168.1.1/x.git
+stderr 'remote must be a network URL'
+
+# git:// is a raw TCP connect and is equally usable for SSRF
+! soft repo import bad6 git://10.0.0.1/x.git
+stderr 'remote must be a network URL'
+
+# non-canonical IPv4 literals resolve differently in Go and libcurl:
+# 0177.0.0.1 is 177.0.0.1 to Go and 127.0.0.1 to libcurl
+! soft repo import bad7 http://0177.0.0.1:8080/x.git
+stderr 'remote must be a network URL'
+
+! soft repo import bad8 http://127.1:8080/x.git
+stderr 'remote must be a network URL'
+
+# non-network schemes are not remotes at all
+! soft repo import bad9 file:///etc/passwd
+stderr 'remote must be a network URL'
+
+# ext:: is arbitrary command execution
+! soft repo import bad10 'ext::whoami'
+stderr 'remote must be a network URL'
+
+# the LFS endpoint is user-supplied too, and is persisted to the repo config
+# where the mirror job later reads it
+! soft repo import bad11 https://1.1.1.1/x.git --lfs-endpoint http://127.0.0.1:9000
+stderr 'remote must be a network URL'
+
+# none of the rejected imports may leave a repository behind
+soft repo list
+! stdout 'bad'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

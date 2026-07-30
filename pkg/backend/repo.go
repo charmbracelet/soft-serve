@@ -19,19 +19,30 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/hooks"
 	"github.com/charmbracelet/soft-serve/pkg/lfs"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/ssrf"
 	"github.com/charmbracelet/soft-serve/pkg/storage"
 	"github.com/charmbracelet/soft-serve/pkg/task"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 )
 
-func validateImportRemote(remote string) error {
+// validateImportRemote validates an import remote against private, internal,
+// and loopback ranges, and returns the git environment that must be applied to
+// the clone subprocess for that validation to hold.
+func validateImportRemote(remote string) ([]string, error) {
 	endpoint, err := lfs.NewEndpoint(remote)
 	if err != nil || endpoint.Host == "" {
-		return proto.ErrInvalidRemote
+		return nil, proto.ErrInvalidRemote
 	}
 
-	return nil
+	// Validate the remote as given rather than the LFS endpoint, which has
+	// already had its scheme rewritten and its path rewritten to /info/lfs.
+	v, err := ssrf.ValidateGitRemote(remote)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", proto.ErrInvalidRemote, err)
+	}
+
+	return ssrf.GitEnv(v), nil
 }
 
 // CreateRepository creates a new repository.
@@ -145,8 +156,18 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 	}
 
 	remote = utils.Sanitize(remote)
-	if err := validateImportRemote(remote); err != nil {
+	remoteEnv, err := validateImportRemote(remote)
+	if err != nil {
 		return nil, err
+	}
+
+	// The LFS endpoint is user-supplied and gets persisted to the repo config,
+	// where the mirror job later reads it. Validate it up front rather than
+	// relying on the LFS client to refuse the dial.
+	if opts.LFSEndpoint != "" {
+		if _, err := ssrf.ValidateGitRemote(opts.LFSEndpoint); err != nil {
+			return nil, fmt.Errorf("%w: %w", proto.ErrInvalidRemote, err)
+		}
 	}
 
 	rp := filepath.Join(d.repoPath(name))
@@ -166,6 +187,16 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 	d.manager.Add(tid, func(ctx context.Context) (err error) {
 		ctx = proto.WithUserContext(ctx, user)
 
+		// remoteEnv carries the SSRF guard: it disables redirect following
+		// and pins the validated address. Without it the clone can reach a
+		// different host than the one validated above.
+		cloneEnv := append(remoteEnv,
+			fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
+				filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
+				d.cfg.SSH.ClientKeyPath,
+			),
+		)
+
 		copts := git.CloneOptions{
 			Bare:   true,
 			Mirror: opts.Mirror,
@@ -173,12 +204,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 			CommandOptions: git.CommandOptions{
 				Timeout: -1,
 				Context: ctx,
-				Envs: []string{
-					fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-						filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
-						d.cfg.SSH.ClientKeyPath,
-					),
-				},
+				Envs:    cloneEnv,
 			},
 		}
 
