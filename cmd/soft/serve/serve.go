@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 
@@ -84,7 +83,7 @@ var (
 
 			lch := make(chan error, 1)
 			done := make(chan os.Signal, 1)
-			doneOnce := sync.OnceFunc(func() { close(done) })
+			testStop := make(chan struct{})
 
 			signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
@@ -95,7 +94,7 @@ var (
 				h := s.HTTPServer.Server.Handler
 				s.HTTPServer.Server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/__stop" && r.Method == http.MethodHead {
-						doneOnce()
+						close(testStop)
 						return
 					}
 					h.ServeHTTP(w, r)
@@ -104,7 +103,6 @@ var (
 
 			go func() {
 				lch <- s.Start()
-				doneOnce()
 			}()
 
 			for {
@@ -113,6 +111,8 @@ var (
 					if err != nil {
 						return fmt.Errorf("server error: %w", err)
 					}
+					// Server exited cleanly; shut down
+					goto shutdown
 				case sig := <-done:
 					if sig == syscall.SIGHUP {
 						s.logger.Info("received SIGHUP signal, reloading TLS certificates if enabled")
@@ -121,25 +121,15 @@ var (
 						}
 						continue
 					}
-					// A nil sig means doneOnce() closed `done` because the server
-					// goroutine returned, not because we got a real signal. The
-					// server's error sits in lch and the outer select could have
-					// dropped it (#645). Surface it before shutting down so that
-					// e.g. a permission-denied on :22 doesn't disappear silently.
-					if sig == nil {
-						select {
-						case err := <-lch:
-							if err != nil {
-								return fmt.Errorf("server error: %w", err)
-							}
-						default:
-						}
-					}
+					// Real signal received; shut down
+					goto shutdown
+				case <-testStop:
+					// Test hook triggered; shut down
+					goto shutdown
 				}
-
-				break
 			}
 
+		shutdown:
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 			if err := s.Shutdown(ctx); err != nil {
