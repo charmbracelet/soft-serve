@@ -390,10 +390,8 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 
 	version := r.Header.Get("Git-Protocol")
 
-	var stdout bytes.Buffer
 	cmd := git.ServiceCommand{
-		Stdout: &stdout,
-		Dir:    dir,
+		Dir: dir,
 	}
 
 	switch service {
@@ -438,7 +436,7 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cmd.Stdin = reader
-	cmd.Stdout = &flushResponseWriter{w}
+	cmd.Stdout = w
 
 	if err := service.Handler(ctx, cmd); err != nil {
 		logger.Errorf("failed to handle service: %v", err)
@@ -450,39 +448,6 @@ func serviceRpc(w http.ResponseWriter, r *http.Request) {
 			logger.Errorf("failed to ensure default branch: %s", err)
 		}
 	}
-}
-
-// Handle buffered output
-// Useful when using proxies
-type flushResponseWriter struct {
-	http.ResponseWriter
-}
-
-func (f *flushResponseWriter) ReadFrom(r io.Reader) (int64, error) {
-	flusher := http.NewResponseController(f.ResponseWriter)
-
-	var n int64
-	p := make([]byte, 1024)
-	for {
-		nRead, err := r.Read(p)
-		if err == io.EOF {
-			break
-		}
-		nWrite, err := f.ResponseWriter.Write(p[:nRead])
-		if err != nil {
-			return n, err
-		}
-		if nRead != nWrite {
-			return n, err
-		}
-		n += int64(nRead)
-		// ResponseWriter must support http.Flusher to handle buffered output.
-		if err := flusher.Flush(); err != nil {
-			return n, fmt.Errorf("%w: error while flush", err)
-		}
-	}
-
-	return n, nil
 }
 
 func getInfoRefs(w http.ResponseWriter, r *http.Request) {
