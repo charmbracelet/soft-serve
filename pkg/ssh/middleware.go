@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	"charm.land/ssh"
 	"charm.land/wish/v2"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -14,7 +15,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/ssh/cmd"
 	"github.com/charmbracelet/soft-serve/pkg/sshutils"
 	"github.com/charmbracelet/soft-serve/pkg/store"
-	"github.com/charmbracelet/ssh"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/cobra"

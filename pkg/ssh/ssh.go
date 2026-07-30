@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"charm.land/log/v2"
+	"charm.land/ssh"
 	"charm.land/wish/v2"
 	bm "charm.land/wish/v2/bubbletea"
 	rm "charm.land/wish/v2/recover"
@@ -17,7 +18,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/store"
-	"github.com/charmbracelet/ssh"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gossh "golang.org/x/crypto/ssh"

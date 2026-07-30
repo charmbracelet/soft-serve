@@ -5,6 +5,7 @@ import (
 	"net"
 	"testing"
 
+	"charm.land/ssh"
 	"github.com/charmbracelet/keygen"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -13,7 +14,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/soft-serve/pkg/store/database"
-	"github.com/charmbracelet/ssh"
 	"github.com/matryer/is"
 	gossh "golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite"

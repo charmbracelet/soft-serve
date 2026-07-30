@@ -8,6 +8,7 @@ require (
 	charm.land/glamour/v2 v2.0.1
 	charm.land/lipgloss/v2 v2.0.5
 	charm.land/log/v2 v2.0.0
+	charm.land/ssh v0.4.1
 	charm.land/wish/v2 v2.0.1
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/aymanbagabas/git-module v1.8.4-0.20250826192401-1f81c5471e53
@@ -16,7 +17,6 @@ require (
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20240708204110-bacbfdb68d92
 	github.com/charmbracelet/keygen v0.5.4
-	github.com/charmbracelet/ssh v0.1.0
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-git/go-git/v5 v5.19.2
@@ -53,6 +53,7 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/charmbracelet/ssh v0.0.0-20250826160808-ebfa259c7309 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260730002925-d9e819d7acab // indirect
 	github.com/charmbracelet/x/conpty v0.2.0 // indirect
 	github.com/charmbracelet/x/exp/slice v0.0.0-20260727090823-41c9e6be3365 // indirect
@@ -79,6 +80,7 @@ require (
 	github.com/muesli/mango-pflag v0.2.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/pires/go-proxyproto v0.15.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect

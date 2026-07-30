@@ -9,6 +9,7 @@ import (
 
 	"charm.land/log/v2"
 
+	"charm.land/ssh"
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -21,7 +22,6 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/stats"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/soft-serve/pkg/web"
-	"github.com/charmbracelet/ssh"
 	"golang.org/x/sync/errgroup"
 )
 
