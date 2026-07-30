@@ -9,7 +9,7 @@ require (
 	charm.land/lipgloss/v2 v2.0.5
 	charm.land/log/v2 v2.0.0
 	charm.land/ssh v0.4.1
-	charm.land/wish/v2 v2.0.1
+	charm.land/wish/v2 v2.0.2
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/aymanbagabas/git-module v1.8.4-0.20250826192401-1f81c5471e53
 	github.com/caarlos0/duration v0.0.0-20241219124531-2bb7dc683aa4
@@ -53,13 +53,13 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/charmbracelet/ssh v0.0.0-20250826160808-ebfa259c7309 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260730002925-d9e819d7acab // indirect
 	github.com/charmbracelet/x/conpty v0.2.0 // indirect
 	github.com/charmbracelet/x/exp/slice v0.0.0-20260727090823-41c9e6be3365 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
+	github.com/charmbracelet/x/xpty v0.1.4 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
