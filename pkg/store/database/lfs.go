@@ -112,14 +112,14 @@ func (*lfsStore) GetLFSLockForUserPath(ctx context.Context, tx db.Handler, repoI
 }
 
 // GetLFSLockByID implements store.LFSStore.
-func (*lfsStore) GetLFSLockByID(ctx context.Context, tx db.Handler, id int64) (models.LFSLock, error) {
+func (*lfsStore) GetLFSLockByID(ctx context.Context, tx db.Handler, repoID int64, id int64) (models.LFSLock, error) {
 	var lock models.LFSLock
 	query := tx.Rebind(`
 		SELECT *
 		FROM lfs_locks
-		WHERE lfs_locks.id = ?;
+		WHERE id = ? AND repo_id = ?;
 	`)
-	err := tx.GetContext(ctx, &lock, query, id)
+	err := tx.GetContext(ctx, &lock, query, id, repoID)
 	return lock, db.WrapError(err)
 }
 

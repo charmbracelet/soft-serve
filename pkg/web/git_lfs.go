@@ -608,7 +608,7 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if id > 0 {
-		lock, err := datastore.GetLFSLockByID(ctx, dbx, id)
+		lock, err := datastore.GetLFSLockByID(ctx, dbx, repo.ID(), id)
 		if err != nil {
 			if errors.Is(err, db.ErrRecordNotFound) {
 				renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
@@ -874,8 +874,9 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The lock being deleted
-	lock, err := datastore.GetLFSLockByID(ctx, dbx, lockID)
+	// The lock being deleted. Looked up scoped to this repository so that a
+	// lock ID belonging to another repository cannot be read through it.
+	lock, err := datastore.GetLFSLockByID(ctx, dbx, repo.ID(), lockID)
 	if err != nil {
 		logger.Error("error getting lock", "err", err)
 		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
