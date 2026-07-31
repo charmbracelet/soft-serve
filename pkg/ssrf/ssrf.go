@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"slices"
 	"strings"
@@ -73,55 +74,71 @@ func NewSecureClient() *http.Client {
 	}
 }
 
-// isPrivateOrInternal checks if an IP address is private, internal, or reserved.
-func isPrivateOrInternal(ip net.IP) bool {
-	// Normalize IPv6-mapped IPv4 (e.g. ::ffff:127.0.0.1) to IPv4 form
-	// so all checks apply consistently.
-	if ip4 := ip.To4(); ip4 != nil {
-		ip = ip4
-	}
+// blockedPrefixes lists every network an outbound request must not reach.
+//
+// Prefixes are used rather than byte comparisons so the ranges stay readable
+// and auditable against the RFCs that define them. This is also how the
+// standard library models the same address space internally.
+//
+// The IPv6 transition ranges need explanation. Each embeds an arbitrary IPv4
+// address inside an IPv6 one, so an address that looks public to the IPv6
+// checks can name a loopback, RFC1918, or cloud metadata host once a relay
+// decodes it. They are blocked in full rather than decoded and re-checked,
+// because nothing here has a legitimate reason to reach a host through one of
+// these encodings. Blocking the range removes the whole class of bypass
+// instead of depending on getting each decoding exactly right.
+var blockedPrefixes = []netip.Prefix{
+	// IPv4.
+	netip.MustParsePrefix("0.0.0.0/8"),       // "this network"
+	netip.MustParsePrefix("10.0.0.0/8"),      // RFC1918 private
+	netip.MustParsePrefix("100.64.0.0/10"),   // RFC6598 shared address space (CGNAT)
+	netip.MustParsePrefix("127.0.0.0/8"),     // loopback
+	netip.MustParsePrefix("169.254.0.0/16"),  // link-local, includes cloud metadata
+	netip.MustParsePrefix("172.16.0.0/12"),   // RFC1918 private
+	netip.MustParsePrefix("192.0.0.0/24"),    // IETF protocol assignments
+	netip.MustParsePrefix("192.0.2.0/24"),    // TEST-NET-1
+	netip.MustParsePrefix("192.88.99.0/24"),  // RFC7526 6to4 relay anycast
+	netip.MustParsePrefix("192.168.0.0/16"),  // RFC1918 private
+	netip.MustParsePrefix("198.18.0.0/15"),   // RFC2544 benchmarking
+	netip.MustParsePrefix("198.51.100.0/24"), // TEST-NET-2
+	netip.MustParsePrefix("203.0.113.0/24"),  // TEST-NET-3
+	netip.MustParsePrefix("224.0.0.0/4"),     // multicast
+	netip.MustParsePrefix("240.0.0.0/4"),     // reserved, includes broadcast
 
-	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
-		ip.IsPrivate() || ip.IsUnspecified() || ip.IsMulticast() {
+	// IPv6.
+	netip.MustParsePrefix("::1/128"),        // loopback
+	netip.MustParsePrefix("64:ff9b::/96"),   // RFC6052 NAT64 well-known prefix
+	netip.MustParsePrefix("64:ff9b:1::/48"), // RFC8215 NAT64 local-use prefix
+	netip.MustParsePrefix("100::/64"),       // RFC6666 discard-only
+	netip.MustParsePrefix("2001::/32"),      // RFC4380 Teredo
+	netip.MustParsePrefix("2001:db8::/32"),  // documentation
+	netip.MustParsePrefix("2002::/16"),      // RFC3056 6to4
+	netip.MustParsePrefix("fc00::/7"),       // unique local
+	netip.MustParsePrefix("fe80::/10"),      // link-local
+	netip.MustParsePrefix("ff00::/8"),       // multicast
+
+	// IPv4-compatible IPv6 (::x.x.x.x), deprecated by RFC4291 but still
+	// parsed. Unmap leaves this form alone, so the IPv4 prefixes above do not
+	// apply to it. Covers the unspecified address too.
+	netip.MustParsePrefix("::/96"),
+}
+
+// isPrivateOrInternal reports whether an IP address is private, internal, or
+// otherwise unsafe to send an outbound request to.
+func isPrivateOrInternal(ip net.IP) bool {
+	addr, ok := netip.AddrFromSlice(ip)
+	if !ok {
+		// Not an address we can reason about, so refuse rather than allow.
 		return true
 	}
 
-	if ip4 := ip.To4(); ip4 != nil {
-		// 0.0.0.0/8
-		if ip4[0] == 0 {
-			return true
-		}
-		// 100.64.0.0/10 (Shared Address Space / CGNAT)
-		if ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127 {
-			return true
-		}
-		// 192.0.0.0/24 (IETF Protocol Assignments)
-		if ip4[0] == 192 && ip4[1] == 0 && ip4[2] == 0 {
-			return true
-		}
-		// 192.0.2.0/24 (TEST-NET-1)
-		if ip4[0] == 192 && ip4[1] == 0 && ip4[2] == 2 {
-			return true
-		}
-		// 198.18.0.0/15 (benchmarking)
-		if ip4[0] == 198 && (ip4[1] == 18 || ip4[1] == 19) {
-			return true
-		}
-		// 198.51.100.0/24 (TEST-NET-2)
-		if ip4[0] == 198 && ip4[1] == 51 && ip4[2] == 100 {
-			return true
-		}
-		// 203.0.113.0/24 (TEST-NET-3)
-		if ip4[0] == 203 && ip4[1] == 0 && ip4[2] == 113 {
-			return true
-		}
-		// 240.0.0.0/4 (Reserved, includes 255.255.255.255 broadcast)
-		if ip4[0] >= 240 {
-			return true
-		}
-	}
+	// Treat an IPv4 address written in IPv6 form (::ffff:127.0.0.1) as the
+	// IPv4 address it names, so the IPv4 prefixes apply to it.
+	addr = addr.Unmap()
 
-	return false
+	return slices.ContainsFunc(blockedPrefixes, func(p netip.Prefix) bool {
+		return p.Contains(addr)
+	})
 }
 
 // ValidateURL validates that a URL is safe to make requests to.

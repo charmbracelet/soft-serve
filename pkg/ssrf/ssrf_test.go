@@ -147,6 +147,28 @@ func TestIsPrivateOrInternal(t *testing.T) {
 		// Reserved
 		{"0.0.0.0", true},
 		{"240.0.0.1", true},
+
+		// IPv6 transition addresses. Each embeds an IPv4 address inside an
+		// IPv6 one, so they look public to the IPv6 checks while naming an
+		// internal host once a relay decodes them. The whole prefix is
+		// blocked, so the embedded address does not matter: encodings of
+		// public addresses are rejected too.
+		{"2002:7f00:0001::", true},                        // 6to4 -> 127.0.0.1
+		{"2002:a9fe:a9fe::", true},                        // 6to4 -> 169.254.169.254
+		{"2002:0a00:0001::", true},                        // 6to4 -> 10.0.0.1
+		{"2002:0808:0808::", true},                        // 6to4 -> 8.8.8.8, still blocked
+		{"64:ff9b::7f00:1", true},                         // NAT64 well-known -> 127.0.0.1
+		{"64:ff9b::a9fe:a9fe", true},                      // NAT64 well-known -> 169.254.169.254
+		{"64:ff9b:1::7f00:1", true},                       // NAT64 local-use -> 127.0.0.1
+		{"2001:0000:4136:e378:8000:63bf:8001:5601", true}, // Teredo
+		{"::7f00:1", true},                                // IPv4-compatible -> 127.0.0.1
+		{"192.88.99.1", true},                             // 6to4 relay anycast
+
+		// Public IPv6 must stay reachable: the transition prefixes are narrow
+		// and must not swallow ordinary global unicast.
+		{"2606:4700:4700::1111", false},
+		{"2a00:1450:4001::1", false},
+		{"2400:cb00::1", false},
 	}
 
 	for _, tt := range tests {
@@ -157,6 +179,31 @@ func TestIsPrivateOrInternal(t *testing.T) {
 			}
 			if got := isPrivateOrInternal(ip); got != tt.want {
 				t.Errorf("isPrivateOrInternal(%s) = %v, want %v", tt.ip, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestStdlibCoverageParity guards the switch from the standard library's
+// Is*() helpers to an explicit prefix table. The helpers covered these ranges
+// implicitly, so the table has to cover them too or the refactor silently
+// narrows the guard.
+func TestStdlibCoverageParity(t *testing.T) {
+	for _, ip := range []string{
+		// Loopback.
+		"127.0.0.1", "127.255.255.254", "::1",
+		// Private.
+		"10.255.255.255", "172.31.255.255", "192.168.255.255", "fd00::1", "fdff::1",
+		// Link-local unicast.
+		"169.254.1.1", "fe80::1", "febf::1",
+		// Multicast, including link-local and interface-local.
+		"224.0.0.1", "239.255.255.255", "ff00::1", "ff01::1", "ff02::1", "ffff::1",
+		// Unspecified.
+		"0.0.0.0", "::",
+	} {
+		t.Run(ip, func(t *testing.T) {
+			if !isPrivateOrInternal(net.ParseIP(ip)) {
+				t.Errorf("isPrivateOrInternal(%s) = false, want true", ip)
 			}
 		})
 	}
