@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
@@ -200,4 +203,195 @@ func TestLFSLocksDeleteDoesNotLeakAcrossRepositories(t *testing.T) {
 	still, err := datastore.GetLFSLockByID(ctx, dbx, victimRepo.ID(), victimLock.ID)
 	is.NoErr(err)
 	is.Equal(still.Path, "secret/plans.bin")
+}
+
+// forgeableServices are the service names that select a non-LFS branch in
+// withAccess. None of them may change how an LFS route is authorized.
+var forgeableServices = []string{"git-upload-pack", "git-receive-pack", "git-upload-archive"}
+
+// lfsTestRouter builds the real git router so requests pass through withParams
+// and withAccess rather than reaching a handler directly. The middleware is
+// where LFS authorization lives, so a test that calls the handler itself cannot
+// see a bypass.
+func lfsTestRouter(ctx context.Context) *mux.Router {
+	router := mux.NewRouter()
+	GitController(ctx, router)
+	return router
+}
+
+// TestLFSUploadRejectsForgedServiceParam covers an authorization bypass in
+// withAccess: the LFS branch was selected by a `service` value that, on an LFS
+// route, always came from a caller-supplied query parameter. Because the
+// git-upload-pack branch sat earlier in the same switch, appending
+// `?service=git-upload-pack` matched that branch instead and skipped every LFS
+// write check. Under the shipped defaults (anon-access read-only, LFS enabled)
+// an unauthenticated caller could write objects into any public repository.
+func TestLFSUploadRejectsForgedServiceParam(t *testing.T) {
+	is := is.New(t)
+	ctx, be, datastore := newLFSTestContext(t)
+	cfg := config.FromContext(ctx)
+	dbx := db.FromContext(ctx)
+
+	owner, err := be.CreateUser(ctx, "owner", proto.UserOptions{})
+	is.NoErr(err)
+	repo, err := be.CreateRepository(ctx, "victim-repo", owner, proto.RepositoryOptions{})
+	is.NoErr(err)
+
+	router := lfsTestRouter(ctx)
+	oid := strings.Repeat("a", 64)
+	path := "/victim-repo.git/info/lfs/objects/basic/" + oid
+
+	upload := func(url string) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(ctx, http.MethodPut, url, strings.NewReader("payload"))
+		req.Header.Set("Content-Type", "application/octet-stream")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+
+	// Baseline: anonymous read-only access cannot upload.
+	is.Equal(upload(path).Code, http.StatusForbidden)
+
+	for _, service := range forgeableServices {
+		w := upload(path + "?service=" + service)
+		if w.Code != http.StatusForbidden {
+			t.Errorf("service=%s: got status %d, want 403: %s", service, w.Code, w.Body.String())
+		}
+	}
+
+	// The object must not exist on disk or in the database. The handler writes
+	// the body before it parses Content-Length, so an error status alone does
+	// not prove nothing was stored.
+	objPath := filepath.Join(cfg.DataPath, "lfs", strconv.FormatInt(repo.ID(), 10),
+		"objects", oid[0:2], oid[2:4], oid)
+	if _, err := os.Stat(objPath); !os.IsNotExist(err) {
+		t.Errorf("object written to disk at %s despite rejection", objPath)
+	}
+	if _, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), oid); err == nil {
+		t.Error("object registered in database despite rejection")
+	}
+}
+
+// TestLFSLockCreateRejectsForgedServiceParam is the lock-create half of the
+// same bypass: a read-only collaborator could take locks on arbitrary paths.
+func TestLFSLockCreateRejectsForgedServiceParam(t *testing.T) {
+	is := is.New(t)
+	ctx, be, datastore := newLFSTestContext(t)
+	dbx := db.FromContext(ctx)
+
+	owner, err := be.CreateUser(ctx, "owner", proto.UserOptions{})
+	is.NoErr(err)
+	repo, err := be.CreateRepository(ctx, "victim-repo", owner, proto.RepositoryOptions{})
+	is.NoErr(err)
+
+	// An authenticated user with no more than read access to the repository.
+	attacker, err := be.CreateUser(ctx, "attacker", proto.UserOptions{})
+	is.NoErr(err)
+	token, err := be.CreateAccessToken(ctx, attacker, "test", time.Time{})
+	is.NoErr(err)
+
+	router := lfsTestRouter(ctx)
+
+	lock := func(url string) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(ctx, http.MethodPost, url,
+			strings.NewReader(`{"path":"src/critical.bin","ref":{"name":"refs/heads/main"}}`))
+		req.Header.Set("Content-Type", lfs.MediaType)
+		req.Header.Set("Accept", lfs.MediaType)
+		req.Header.Set("Authorization", "token "+token)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+
+	is.Equal(lock("/victim-repo.git/info/lfs/locks").Code, http.StatusForbidden)
+
+	for _, service := range forgeableServices {
+		w := lock("/victim-repo.git/info/lfs/locks?service=" + service)
+		if w.Code != http.StatusForbidden {
+			t.Errorf("service=%s: got status %d, want 403: %s", service, w.Code, w.Body.String())
+		}
+	}
+
+	if _, err := datastore.GetLFSLockForPath(ctx, dbx, repo.ID(), "src/critical.bin"); err == nil {
+		t.Error("lock created despite rejection")
+	}
+}
+
+// TestLFSDisabledRejectsForgedServiceParam checks the administrative kill
+// switch. The `lfs.enabled = false` check lived inside the branch the bypass
+// skipped, so a forged service value re-enabled LFS on a server where the
+// administrator had turned it off.
+func TestLFSDisabledRejectsForgedServiceParam(t *testing.T) {
+	is := is.New(t)
+	ctx, be, _ := newLFSTestContext(t)
+
+	cfg := config.FromContext(ctx)
+	cfg.LFS.Enabled = false
+
+	owner, err := be.CreateUser(ctx, "owner", proto.UserOptions{})
+	is.NoErr(err)
+	_, err = be.CreateRepository(ctx, "victim-repo", owner, proto.RepositoryOptions{})
+	is.NoErr(err)
+
+	router := lfsTestRouter(ctx)
+	url := "/victim-repo.git/info/lfs/objects/basic/" + strings.Repeat("a", 64)
+
+	for _, service := range forgeableServices {
+		req := httptest.NewRequestWithContext(ctx, http.MethodPut, url+"?service="+service,
+			strings.NewReader("payload"))
+		req.Header.Set("Content-Type", "application/octet-stream")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Errorf("service=%s: got status %d, want 404 with LFS disabled: %s", service, w.Code, w.Body.String())
+		}
+	}
+}
+
+// TestLFSWriteStillWorksForAuthorizedUser guards against the fix simply
+// breaking LFS: a user with write access must still be able to upload an
+// object and take a lock, with or without a service parameter present.
+func TestLFSWriteStillWorksForAuthorizedUser(t *testing.T) {
+	is := is.New(t)
+	ctx, be, datastore := newLFSTestContext(t)
+	dbx := db.FromContext(ctx)
+
+	owner, err := be.CreateUser(ctx, "owner", proto.UserOptions{})
+	is.NoErr(err)
+	repo, err := be.CreateRepository(ctx, "owner-repo", owner, proto.RepositoryOptions{})
+	is.NoErr(err)
+	token, err := be.CreateAccessToken(ctx, owner, "test", time.Time{})
+	is.NoErr(err)
+
+	router := lfsTestRouter(ctx)
+	oid := strings.Repeat("b", 64)
+	body := "payload"
+
+	req := httptest.NewRequestWithContext(ctx, http.MethodPut,
+		"/owner-repo.git/info/lfs/objects/basic/"+oid, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("Content-Length", strconv.Itoa(len(body)))
+	req.Header.Set("Authorization", "token "+token)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusOK)
+
+	obj, err := datastore.GetLFSObjectByOid(ctx, dbx, repo.ID(), oid)
+	is.NoErr(err)
+	is.Equal(obj.Oid, oid)
+
+	// A service parameter on an LFS route is ignored, not rejected.
+	req = httptest.NewRequestWithContext(ctx, http.MethodPost,
+		"/owner-repo.git/info/lfs/locks?service=git-upload-pack",
+		strings.NewReader(`{"path":"src/file.bin","ref":{"name":"refs/heads/main"}}`))
+	req.Header.Set("Content-Type", lfs.MediaType)
+	req.Header.Set("Accept", lfs.MediaType)
+	req.Header.Set("Authorization", "token "+token)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusCreated)
+
+	got, err := datastore.GetLFSLockForPath(ctx, dbx, repo.ID(), "src/file.bin")
+	is.NoErr(err)
+	is.Equal(got.Path, "src/file.bin")
 }

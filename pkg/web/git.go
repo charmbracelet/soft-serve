@@ -252,43 +252,15 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		// - git-upload-pack
 		// - git-receive-pack
 		// - git-lfs
+		//
+		// The LFS case must stay ahead of the service cases. "file" is derived
+		// from the request path by withParams, but "service" can come from a
+		// query parameter the caller controls, and withParams only fills it in
+		// for paths ending in git-upload-pack or git-receive-pack, so it is
+		// always caller-supplied on an LFS route. Matching the path first means
+		// an LFS request is authorized as LFS no matter what service it claims
+		// to be.
 		switch {
-		case service == git.ReceivePackService:
-			if accessLevel < access.ReadWriteAccess {
-				askCredentials(w, r)
-				renderUnauthorized(w, r)
-				return
-			}
-
-			// Create the repo if it doesn't exist.
-			if repo == nil {
-				repo, err = be.CreateRepository(ctx, repoName, user, proto.RepositoryOptions{})
-				if err != nil {
-					logger.Error("failed to create repository", "repo", repoName, "err", err)
-					renderInternalServerError(w, r)
-					return
-				}
-
-				ctx = proto.WithRepositoryContext(ctx, repo)
-				r = r.WithContext(ctx)
-			}
-
-			fallthrough
-		case service == git.UploadPackService || service == git.UploadArchiveService:
-			if repo == nil {
-				// If the repo doesn't exist, return 404
-				renderNotFound(w, r)
-				return
-			} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
-				// return 403 when bad credentials are provided
-				renderForbidden(w, r)
-				return
-			} else if accessLevel < access.ReadOnlyAccess {
-				askCredentials(w, r)
-				renderUnauthorized(w, r)
-				return
-			}
-
 		case strings.HasPrefix(file, "info/lfs"):
 			if !cfg.LFS.Enabled {
 				logger.Debug("LFS is not enabled, skipping")
@@ -344,6 +316,42 @@ func withAccess(next http.Handler) http.HandlerFunc {
 						Message: "credentials needed",
 					})
 				}
+				return
+			}
+
+		case service == git.ReceivePackService:
+			if accessLevel < access.ReadWriteAccess {
+				askCredentials(w, r)
+				renderUnauthorized(w, r)
+				return
+			}
+
+			// Create the repo if it doesn't exist.
+			if repo == nil {
+				repo, err = be.CreateRepository(ctx, repoName, user, proto.RepositoryOptions{})
+				if err != nil {
+					logger.Error("failed to create repository", "repo", repoName, "err", err)
+					renderInternalServerError(w, r)
+					return
+				}
+
+				ctx = proto.WithRepositoryContext(ctx, repo)
+				r = r.WithContext(ctx)
+			}
+
+			fallthrough
+		case service == git.UploadPackService || service == git.UploadArchiveService:
+			if repo == nil {
+				// If the repo doesn't exist, return 404
+				renderNotFound(w, r)
+				return
+			} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+				// return 403 when bad credentials are provided
+				renderForbidden(w, r)
+				return
+			} else if accessLevel < access.ReadOnlyAccess {
+				askCredentials(w, r)
+				renderUnauthorized(w, r)
 				return
 			}
 		}

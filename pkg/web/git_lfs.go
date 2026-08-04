@@ -302,6 +302,17 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+
+	// Checked in withAccess too. Repeated here so a routing or middleware
+	// mistake cannot turn into an unauthenticated write.
+	if access.FromContext(ctx) < access.ReadWriteAccess {
+		askCredentials(w, r)
+		renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+			Message: "write access required",
+		})
+		return
+	}
+
 	oid := mux.Vars(r)["oid"]
 	cfg := config.FromContext(ctx)
 	be := backend.FromContext(ctx)
@@ -463,6 +474,16 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-locks")
+
+	// Checked in withAccess too. Repeated here so a routing or middleware
+	// mistake cannot turn into an unauthorized lock.
+	if access.FromContext(ctx) < access.ReadWriteAccess {
+		askCredentials(w, r)
+		renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+			Message: "write access required",
+		})
+		return
+	}
 
 	var req lfs.LockCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
