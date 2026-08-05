@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -147,9 +148,15 @@ func (t *lfsTransfer) Upload(oid string, size int64, r io.Reader, _ transfer.Arg
 		return err
 	}
 
-	obj, err := t.storage.Open(tempName)
+	exist, err := t.storage.Exists(tempName)
 	if err != nil {
-		t.logger.Errorf("error opening object: %v", err)
+		t.logger.Errorf("error accessing object: %v", err)
+		return err
+	}
+
+	if !exist {
+		err = fs.ErrNotExist
+		t.logger.Errorf("error accessing object: %v %v", err, tempName)
 		return err
 	}
 
@@ -167,7 +174,7 @@ func (t *lfsTransfer) Upload(oid string, size int64, r io.Reader, _ transfer.Arg
 	}
 
 	expectedPath := path.Join("objects", pointer.RelativePath())
-	if err := t.storage.Rename(obj.Name(), expectedPath); err != nil {
+	if err := t.storage.Rename(tempName, expectedPath); err != nil {
 		t.logger.Errorf("error renaming object: %v", err)
 		_ = t.store.DeleteLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), pointer.Oid)
 		return err
