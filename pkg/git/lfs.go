@@ -35,6 +35,15 @@ type lfsTransfer struct {
 
 var _ transfer.Backend = &lfsTransfer{}
 
+// errInvalidOid is returned when a client sends a malformed object ID. Object
+// IDs are interpolated into storage paths, so anything outside the SHA-256
+// alphabet is a path traversal attempt.
+//
+// It wraps transfer.ErrParseError so the processor answers with a 400 instead
+// of falling through to a generic internal error, and lfs.ErrInvalidOIDFormat
+// so callers can still test for the cause.
+var errInvalidOid = fmt.Errorf("%w: %w", transfer.ErrParseError, lfs.ErrInvalidOIDFormat)
+
 // LFSTransfer is a Git LFS transfer service handler.
 // ctx is expected to have proto.User, *backend.Backend, *log.Logger,
 // *config.Config, *db.DB, and store.Store.
@@ -89,6 +98,13 @@ func LFSTransfer(ctx context.Context, cmd ServiceCommand) error {
 // Batch implements transfer.Backend.
 func (t *lfsTransfer) Batch(_ string, pointers []transfer.BatchItem, _ transfer.Args) ([]transfer.BatchItem, error) {
 	for i := range pointers {
+		p := transfer.Pointer{Oid: pointers[i].Oid, Size: pointers[i].Size}
+		if !p.IsValid() {
+			return pointers, errInvalidOid
+		}
+	}
+
+	for i := range pointers {
 		obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), pointers[i].Oid)
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 			return pointers, db.WrapError(err)
@@ -111,6 +127,11 @@ func (t *lfsTransfer) Batch(_ string, pointers []transfer.BatchItem, _ transfer.
 
 // Download implements transfer.Backend.
 func (t *lfsTransfer) Download(oid string, _ transfer.Args) (io.ReadCloser, int64, error) {
+	p := transfer.Pointer{Oid: oid}
+	if !p.IsValid() {
+		return nil, 0, errInvalidOid
+	}
+
 	cfg := config.FromContext(t.ctx)
 	repoID := strconv.FormatInt(t.repo.ID(), 10)
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
@@ -128,6 +149,11 @@ func (t *lfsTransfer) Download(oid string, _ transfer.Args) (io.ReadCloser, int6
 
 // Upload implements transfer.Backend.
 func (t *lfsTransfer) Upload(oid string, size int64, r io.Reader, _ transfer.Args) error {
+	p := transfer.Pointer{Oid: oid}
+	if !p.IsValid() {
+		return errInvalidOid
+	}
+
 	if r == nil {
 		return fmt.Errorf("no reader: %w", transfer.ErrMissingData)
 	}
@@ -147,12 +173,6 @@ func (t *lfsTransfer) Upload(oid string, size int64, r io.Reader, _ transfer.Arg
 		return err
 	}
 
-	obj, err := t.storage.Open(tempName)
-	if err != nil {
-		t.logger.Errorf("error opening object: %v", err)
-		return err
-	}
-
 	pointer := transfer.Pointer{
 		Oid: oid,
 	}
@@ -166,8 +186,10 @@ func (t *lfsTransfer) Upload(oid string, size int64, r io.Reader, _ transfer.Arg
 		return db.WrapError(err)
 	}
 
+	// Rename takes names relative to the storage root, not the absolute path
+	// the temp file happens to live at.
 	expectedPath := path.Join("objects", pointer.RelativePath())
-	if err := t.storage.Rename(obj.Name(), expectedPath); err != nil {
+	if err := t.storage.Rename(tempName, expectedPath); err != nil {
 		t.logger.Errorf("error renaming object: %v", err)
 		_ = t.store.DeleteLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), pointer.Oid)
 		return err
@@ -178,6 +200,11 @@ func (t *lfsTransfer) Upload(oid string, size int64, r io.Reader, _ transfer.Arg
 
 // Verify implements transfer.Backend.
 func (t *lfsTransfer) Verify(oid string, size int64, _ transfer.Args) (transfer.Status, error) {
+	p := transfer.Pointer{Oid: oid}
+	if !p.IsValid() {
+		return transfer.NewStatus(transfer.StatusConflict, "invalid OID format"), nil
+	}
+
 	obj, err := t.store.GetLFSObjectByOid(t.ctx, t.dbx, t.repo.ID(), oid)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {

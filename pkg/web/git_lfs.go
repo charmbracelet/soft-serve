@@ -104,6 +104,20 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	switch batchRequest.Operation {
 	case lfs.OperationDownload:
 		for _, o := range batchRequest.Objects {
+			// Object IDs become storage paths, so validate before touching the
+			// filesystem.
+			if !o.IsValid() {
+				logger.Error("invalid object", "oid", o.Oid, "repo", name)
+				objects = append(objects, &lfs.ObjectResponse{
+					Pointer: o,
+					Error: &lfs.ObjectError{
+						Code:    http.StatusUnprocessableEntity,
+						Message: "invalid object",
+					},
+				})
+				continue
+			}
+
 			exist, err := strg.Exists(path.Join("objects", o.RelativePath()))
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
 				logger.Error("error getting object stat", "oid", o.Oid, "repo", name, "err", err)
@@ -138,7 +152,7 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 						Message: "size mismatch",
 					},
 				})
-			} else if o.IsValid() {
+			} else {
 				download := &lfs.Link{
 					Href: fmt.Sprintf("%s/%s", baseHref, o.Oid),
 				}
@@ -165,15 +179,6 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 				}
-			} else {
-				logger.Error("invalid object", "oid", o.Oid, "repo", name)
-				objects = append(objects, &lfs.ObjectResponse{
-					Pointer: o,
-					Error: &lfs.ObjectError{
-						Code:    http.StatusUnprocessableEntity,
-						Message: "invalid object",
-					},
-				})
 			}
 		}
 	case lfs.OperationUpload:
@@ -405,6 +410,16 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Object IDs become storage paths, so validate before touching the
+	// filesystem.
+	if !pointer.IsValid() {
+		logger.Error("invalid object", "oid", pointer.Oid)
+		renderJSON(w, http.StatusUnprocessableEntity, lfs.ErrorResponse{
+			Message: "invalid object",
+		})
+		return
+	}
+
 	cfg := config.FromContext(ctx)
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
@@ -435,7 +450,7 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if pointer.IsValid() && stat.Size() == pointer.Size {
+		if stat.Size() == pointer.Size {
 			renderStatus(http.StatusOK)(w, nil)
 			return
 		}

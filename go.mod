@@ -8,7 +8,7 @@ require (
 	charm.land/glamour/v2 v2.0.1
 	charm.land/lipgloss/v2 v2.0.5
 	charm.land/log/v2 v2.0.0
-	charm.land/ssh v0.4.2
+	charm.land/ssh v0.4.3
 	charm.land/wish/v2 v2.0.3
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/aymanbagabas/git-module v1.8.4-0.20250826192401-1f81c5471e53
