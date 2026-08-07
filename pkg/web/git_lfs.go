@@ -354,14 +354,6 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pointer := lfs.Pointer{Oid: oid}
-	if _, err := strg.Put(path.Join("objects", pointer.RelativePath()), r.Body); err != nil {
-		logger.Error("error writing object", "oid", oid, "err", err)
-		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
-			Message: "internal server error",
-		})
-		return
-	}
-
 	size, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)
 	if err != nil {
 		logger.Error("error parsing content length", "err", err)
@@ -371,8 +363,17 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := datastore.CreateLFSObject(ctx, dbx, repo.ID(), oid, size); err != nil {
-		logger.Error("error creating object", "oid", oid, "err", err)
+	if err := dbx.TransactionContext(ctx, func(tx *db.Tx) error {
+		if err := datastore.CreateLFSObject(ctx, tx, repo.ID(), oid, size); err != nil {
+			logger.Error("error creating object", "oid", oid, "err", err)
+			return err
+		}
+		if _, err := strg.Put(path.Join("objects", pointer.RelativePath()), r.Body); err != nil {
+			logger.Error("error writing object", "oid", oid, "err", err)
+			return err
+		}
+		return nil
+	}); err != nil {
 		renderJSON(w, http.StatusInternalServerError, lfs.ErrorResponse{
 			Message: "internal server error",
 		})
