@@ -18,14 +18,22 @@ func TestLocalStorageConfinesToRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	l := NewLocalStorage(root)
-	for _, name := range []string{
+	names := []string{
 		"../secret",
 		"objects/../../secret",
 		"../../../../../../../../etc/passwd",
 		secret,
-		"/etc/passwd",
-	} {
+	}
+
+	// A leading slash only means "absolute" where there is no volume name. On
+	// Windows "/etc/passwd" is a relative path, and Join confines it under the
+	// root rather than escaping, so there is nothing to reject.
+	if filepath.IsAbs("/etc/passwd") {
+		names = append(names, "/etc/passwd")
+	}
+
+	l := NewLocalStorage(root)
+	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
 			if _, err := l.Open(name); !errors.Is(err, ErrPathTraversal) {
 				t.Errorf("Open: got %v, want ErrPathTraversal", err)
@@ -56,6 +64,24 @@ func TestLocalStorageConfinesToRoot(t *testing.T) {
 	}
 	if b, err := os.ReadFile(secret); err != nil || string(b) != "host key" {
 		t.Errorf("secret was clobbered: %q %v", b, err)
+	}
+}
+
+// Where a leading slash carries no volume name, "/etc/passwd" is a relative
+// name rather than an absolute one. It must still land under the root, which is
+// the property that matters on those platforms.
+func TestLocalStorageConfinesRootedRelativeNames(t *testing.T) {
+	if filepath.IsAbs("/etc/passwd") {
+		t.Skip("a leading slash is absolute here, covered by the rejection test")
+	}
+
+	root := t.TempDir()
+	l := NewLocalStorage(root)
+	if _, err := l.Put("/etc/passwd", strings.NewReader("x")); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "etc", "passwd")); err != nil {
+		t.Errorf("write should have been confined under root: %v", err)
 	}
 }
 
