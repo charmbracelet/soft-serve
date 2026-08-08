@@ -89,6 +89,10 @@ You can also download a binary from the [releases][releases] page. Packages are
 available in Alpine, Debian, and RPM formats. Binaries are available for Linux,
 macOS, and Windows.
 
+On Windows, after Winget or extracting a release binary, open a **new** terminal so
+`PATH` includes `soft`. After `go install`, ensure `%USERPROFILE%\go\bin` (or
+`$env:GOBIN`) is on `PATH`.
+
 [releases]: https://github.com/charmbracelet/soft-serve/releases
 
 Or just install it with `go`:
