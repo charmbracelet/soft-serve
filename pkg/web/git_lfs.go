@@ -15,7 +15,6 @@ import (
 
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/pkg/access"
-	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
@@ -77,11 +76,8 @@ func serviceLfsBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name := mux.Vars(r)["repo"]
-	repo := proto.RepositoryFromContext(ctx)
-	if repo == nil {
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
+	repo, ok := lfsRepository(w, r)
+	if !ok {
 		return
 	}
 
@@ -258,11 +254,8 @@ func serviceLfsBasic(w http.ResponseWriter, r *http.Request) {
 func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	oid := mux.Vars(r)["oid"]
-	repo := proto.RepositoryFromContext(ctx)
-	if repo == nil {
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
+	repo, ok := lfsRepository(w, r)
+	if !ok {
 		return
 	}
 
@@ -327,30 +320,18 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 
 	oid := mux.Vars(r)["oid"]
 	cfg := config.FromContext(ctx)
-	be := backend.FromContext(ctx)
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
-	repo := proto.RepositoryFromContext(ctx)
-	if repo == nil {
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
+	repo, ok := lfsRepository(w, r)
+	if !ok {
 		return
 	}
 
 	repoID := strconv.FormatInt(repo.ID(), 10)
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
-	name := mux.Vars(r)["repo"]
 
 	defer r.Body.Close() //nolint: errcheck
-	repo, err := be.Repository(ctx, name)
-	if err != nil {
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
-		return
-	}
 
 	// NOTE: Git LFS client will retry uploading the same object if there was a
 	// partial error, so we need to skip existing objects.
@@ -406,12 +387,8 @@ func serviceLfsBasicVerify(w http.ResponseWriter, r *http.Request) {
 	var pointer lfs.Pointer
 	ctx := r.Context()
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
-	repo := proto.RepositoryFromContext(ctx)
-	if repo == nil {
-		logger.Error("error getting repository from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
+	repo, ok := lfsRepository(w, r)
+	if !ok {
 		return
 	}
 
@@ -523,12 +500,8 @@ func serviceLfsLocksCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo := proto.RepositoryFromContext(ctx)
-	if repo == nil {
-		logger.Error("error getting repository from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
+	repo, ok := lfsRepository(w, r)
+	if !ok {
 		return
 	}
 
@@ -648,12 +621,8 @@ func serviceLfsLocksGet(w http.ResponseWriter, r *http.Request) {
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-locks")
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
-	repo := proto.RepositoryFromContext(ctx)
-	if repo == nil {
-		logger.Error("error getting repository from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
+	repo, ok := lfsRepository(w, r)
+	if !ok {
 		return
 	}
 
@@ -789,12 +758,8 @@ func serviceLfsLocksVerify(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-locks")
-	repo := proto.RepositoryFromContext(ctx)
-	if repo == nil {
-		logger.Error("error getting repository from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
+	repo, ok := lfsRepository(w, r)
+	if !ok {
 		return
 	}
 
@@ -915,12 +880,8 @@ func serviceLfsLocksDelete(w http.ResponseWriter, r *http.Request) {
 
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
-	repo := proto.RepositoryFromContext(ctx)
-	if repo == nil {
-		logger.Error("error getting repository from context")
-		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-			Message: "repository not found",
-		})
+	repo, ok := lfsRepository(w, r)
+	if !ok {
 		return
 	}
 
@@ -1033,4 +994,18 @@ func isBinary(r *http.Request) bool {
 func hdrLfs(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", lfs.MediaType)
 	w.Header().Set("Accept", lfs.MediaType)
+}
+
+// lfsRepository returns the repository that withAccess stored in the request
+// context, answering 404 if there is none.
+func lfsRepository(w http.ResponseWriter, r *http.Request) (proto.Repository, bool) {
+	repo := proto.RepositoryFromContext(r.Context())
+	if repo == nil {
+		log.FromContext(r.Context()).Error("error getting repository from context")
+		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+			Message: "repository not found",
+		})
+		return nil, false
+	}
+	return repo, true
 }
