@@ -259,6 +259,13 @@ func serviceLfsBasicDownload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	oid := mux.Vars(r)["oid"]
 	repo := proto.RepositoryFromContext(ctx)
+	if repo == nil {
+		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+			Message: "repository not found",
+		})
+		return
+	}
+
 	cfg := config.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
 	datastore := store.FromContext(ctx)
@@ -325,6 +332,13 @@ func serviceLfsBasicUpload(w http.ResponseWriter, r *http.Request) {
 	datastore := store.FromContext(ctx)
 	logger := log.FromContext(ctx).WithPrefix("http.lfs-basic")
 	repo := proto.RepositoryFromContext(ctx)
+	if repo == nil {
+		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
+			Message: "repository not found",
+		})
+		return
+	}
+
 	repoID := strconv.FormatInt(repo.ID(), 10)
 	strg := storage.NewLocalStorage(filepath.Join(cfg.DataPath, "lfs", repoID))
 	name := mux.Vars(r)["repo"]

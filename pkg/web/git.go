@@ -113,7 +113,7 @@ func GitController(_ context.Context, r *mux.Router) {
 	}
 
 	// Handle go-get
-	r.Handle(basePrefix, withParams(withAccess(http.HandlerFunc(GoGetHandler)))).Methods(http.MethodGet)
+	r.Handle(basePrefix, withParams(withCaller(http.HandlerFunc(GoGetHandler)))).Methods(http.MethodGet)
 }
 
 var gitRoutes = []GitRoute{
@@ -196,45 +196,84 @@ func askCredentials(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("LFS-Authenticate", `Basic realm="Git LFS" charset="UTF-8", Token, Bearer`)
 }
 
-// withAccess handles auth.
+// identify stores the requested repository and the authenticated caller in
+// the request context, and returns the authentication error, if any.
+func identify(r *http.Request) (*http.Request, proto.Repository, error) {
+	ctx := r.Context()
+	logger := log.FromContext(ctx)
+	be := backend.FromContext(ctx)
+
+	// A missing repository is not an error here; pushes create it.
+	repo, _ := be.Repository(ctx, mux.Vars(r)["repo"])
+	ctx = proto.WithRepositoryContext(ctx, repo)
+	r = r.WithContext(ctx)
+
+	user, err := authenticate(r)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrInvalidToken):
+		case errors.Is(err, proto.ErrUserNotFound):
+		default:
+			logger.Error("failed to authenticate", "err", err)
+		}
+	}
+
+	if user != nil {
+		logger.Debug("authenticated", "username", user.Username())
+	}
+
+	return r.WithContext(proto.WithUserContext(ctx, user)), repo, err
+}
+
+// badCredentials reports whether the caller sent credentials that failed.
+func badCredentials(err error) bool {
+	return errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword)
+}
+
+// requireCaller rejects anonymous requests when keyless access is disabled.
+func requireCaller(w http.ResponseWriter, r *http.Request) bool {
+	ctx := r.Context()
+	if proto.UserFromContext(ctx) == nil && !backend.FromContext(ctx).AllowKeyless(ctx) {
+		askCredentials(w, r)
+		renderUnauthorized(w, r)
+		return false
+	}
+	return true
+}
+
+// withCaller authenticates the caller without authorizing a repository.
+// Handlers behind it must check access to any repository they reveal.
+func withCaller(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r, _, err := identify(r)
+		if !requireCaller(w, r) {
+			return
+		}
+
+		if badCredentials(err) {
+			renderForbidden(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// withAccess authenticates the caller and authorizes them for the requested
+// repository.
 func withAccess(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		r, repo, err := identify(r)
+		if !requireCaller(w, r) {
+			return
+		}
+
 		ctx := r.Context()
 		cfg := config.FromContext(ctx)
 		logger := log.FromContext(ctx)
 		be := backend.FromContext(ctx)
-
-		// Store repository in context
-		// We're not checking for errors here because we want to allow
-		// repo creation on the fly.
 		repoName := mux.Vars(r)["repo"]
-		repo, _ := be.Repository(ctx, repoName)
-		ctx = proto.WithRepositoryContext(ctx, repo)
-		r = r.WithContext(ctx)
-
-		user, err := authenticate(r)
-		if err != nil {
-			switch {
-			case errors.Is(err, ErrInvalidToken):
-			case errors.Is(err, proto.ErrUserNotFound):
-			default:
-				logger.Error("failed to authenticate", "err", err)
-			}
-		}
-
-		if user == nil && !be.AllowKeyless(ctx) {
-			askCredentials(w, r)
-			renderUnauthorized(w, r)
-			return
-		}
-
-		// Store user in context
-		ctx = proto.WithUserContext(ctx, user)
-		r = r.WithContext(ctx)
-
-		if user != nil {
-			logger.Debug("authenticated", "username", user.Username())
-		}
+		user := proto.UserFromContext(ctx)
 
 		service := git.Service(mux.Vars(r)["service"])
 		if service == "" {
@@ -306,7 +345,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 					renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
 						Message: "repository not found",
 					})
-				} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+				} else if badCredentials(err) {
 					renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
 						Message: "bad credentials",
 					})
@@ -345,7 +384,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				// If the repo doesn't exist, return 404
 				renderNotFound(w, r)
 				return
-			} else if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword) {
+			} else if badCredentials(err) {
 				// return 403 when bad credentials are provided
 				renderForbidden(w, r)
 				return
@@ -357,10 +396,7 @@ func withAccess(next http.Handler) http.HandlerFunc {
 		}
 
 		switch {
-		case r.URL.Query().Get("go-get") == "1" && accessLevel >= access.ReadOnlyAccess:
-			// Allow go-get requests to passthrough.
-			break
-		case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrInvalidPassword):
+		case badCredentials(err):
 			// return 403 when bad credentials are provided
 			renderForbidden(w, r)
 			return

@@ -137,6 +137,30 @@ stdout '404.*'
 curl http://$TOKEN@localhost:$HTTP_PORT/repo2.git?go-get=1
 cmpenv stdout goget.txt
 
+# go-get subpackage of a private repo does not reveal it (GHSA-fgxm-5hvv-x4vh)
+curl http://localhost:$HTTP_PORT/repo2/subpackage?go-get=1
+stdout '404.*'
+! stdout 'go-import'
+curl http://$UTOKEN@localhost:$HTTP_PORT/repo2/sub/package?go-get=1
+stdout '404.*'
+! stdout 'go-import'
+curl http://$TOKEN@localhost:$HTTP_PORT/repo2/subpackage?go-get=1
+cmpenv stdout goget.txt
+
+# go-get resolves a readable repo nested under an unreadable one
+soft repo create outer -p
+soft repo create outer/inner
+curl http://localhost:$HTTP_PORT/outer/inner/pkg?go-get=1
+stdout 'go-import.*/outer/inner git'
+curl http://localhost:$HTTP_PORT/outer/pkg?go-get=1
+stdout '404.*'
+
+# go-get does not bypass repository checks on other routes
+curl http://localhost:$HTTP_PORT/nope.git/info/lfs/objects/basic/0000000000000000000000000000000000000000000000000000000000000000?go-get=1
+stdout '404.*'
+curl http://localhost:$HTTP_PORT/nope.git/objects/info/packs?go-get=1
+stdout '404.*'
+
 # stop the server
 [windows] stopserver
 [windows] ! stderr .
