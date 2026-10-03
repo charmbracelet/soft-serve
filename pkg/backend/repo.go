@@ -664,8 +664,15 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 	name = utils.SanitizeRepo(name)
 	rp := filepath.Join(d.repoPath(name))
 
+	var changed bool
 	if err := db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+			m, err := d.store.GetRepoByName(ctx, tx, name)
+			if err != nil {
+				return err
+			}
+			changed = m.Private != private
+
 			fp := filepath.Join(rp, "git-daemon-export-ok")
 			if !private {
 				if err := os.WriteFile(fp, []byte{}, fs.ModePerm); err != nil {
@@ -684,27 +691,27 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 			return d.store.SetRepoIsPrivateByName(ctx, tx, name, private)
 		}),
 	); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return proto.ErrRepoNotFound
+		}
 		return err
 	}
 
-	user := proto.UserFromContext(ctx)
+	if !changed {
+		return nil
+	}
+
 	repo, err := d.Repository(ctx, name)
 	if err != nil {
 		return err
 	}
 
-	if repo.IsPrivate() != !private {
-		wh, err := webhook.NewRepositoryEvent(ctx, user, repo, webhook.RepositoryEventActionVisibilityChange)
-		if err != nil {
-			return err
-		}
-
-		if err := webhook.SendEvent(ctx, wh); err != nil {
-			return err
-		}
+	wh, err := webhook.NewRepositoryEvent(ctx, proto.UserFromContext(ctx), repo, webhook.RepositoryEventActionVisibilityChange)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	return webhook.SendEvent(ctx, wh)
 }
 
 // SetProjectName sets the project name of a repository.
