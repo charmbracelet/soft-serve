@@ -105,13 +105,54 @@ cmp stdout http3.txt
 curl http://localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
 stdout '.*credentials needed.*'
 curl http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
-stdout '.*credentials needed.*'
+stdout '.*repository not found.*'
 curl http://0$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
 cmp stdout http3.txt
 
 # deny dumb http git
 curl -XGET http://localhost:$HTTP_PORT/repo2.git/info/refs
+stdout '401.*'
+curl -XGET http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/refs
 stdout '404.*'
+
+# private and missing repos get the same answer
+curl http://localhost:$HTTP_PORT/repo2.git/info/refs?service=git-upload-pack
+stdout '401.*'
+cp stdout private.txt
+curl http://localhost:$HTTP_PORT/nope.git/info/refs?service=git-upload-pack
+cmp stdout private.txt
+curl http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/refs?service=git-upload-pack
+stdout '404.*'
+cp stdout private.txt
+curl http://$UTOKEN@localhost:$HTTP_PORT/nope.git/info/refs?service=git-upload-pack
+cmp stdout private.txt
+curl http://someuser:somepassword@localhost:$HTTP_PORT/repo2.git/info/refs?service=git-upload-pack
+stdout '403.*'
+cp stdout private.txt
+curl http://someuser:somepassword@localhost:$HTTP_PORT/nope.git/info/refs?service=git-upload-pack
+cmp stdout private.txt
+curl -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' http://localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+cp stdout private.txt
+curl -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: application/vnd.git-lfs+json' http://localhost:$HTTP_PORT/nope.git/info/lfs/objects/batch
+cmp stdout private.txt
+curl -H 'Authorization: Bearer garbage' http://localhost:$HTTP_PORT/repo2.git/info/refs?service=git-upload-pack
+stdout '403.*'
+cp stdout private.txt
+curl -H 'Authorization: Bearer garbage' http://localhost:$HTTP_PORT/nope.git/info/refs?service=git-upload-pack
+cmp stdout private.txt
+curl -H 'Authorization: Bearer garbage' http://localhost:$HTTP_PORT/repo2.git/HEAD
+cp stdout private.txt
+curl -H 'Authorization: Bearer garbage' http://localhost:$HTTP_PORT/nope.git/HEAD
+cmp stdout private.txt
+curl -XPOST -H 'Authorization: Bearer garbage' http://localhost:$HTTP_PORT/repo2.git/info/lfs/locks
+cp stdout private.txt
+curl -XPOST -H 'Authorization: Bearer garbage' http://localhost:$HTTP_PORT/nope.git/info/lfs/locks
+cmp stdout private.txt
+curl -XPOST http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/locks
+stdout '.*repository not found.*'
+cp stdout private.txt
+curl -XPOST http://$UTOKEN@localhost:$HTTP_PORT/nope.git/info/lfs/locks
+cmp stdout private.txt
 
 # deny access ask for credentials
 # this means the server responded with a 401 and prompted for credentials
@@ -157,9 +198,9 @@ stdout '404.*'
 
 # go-get does not bypass repository checks on other routes
 curl http://localhost:$HTTP_PORT/nope.git/info/lfs/objects/basic/0000000000000000000000000000000000000000000000000000000000000000?go-get=1
-stdout '404.*'
+stdout '.*credentials needed.*'
 curl http://localhost:$HTTP_PORT/nope.git/objects/info/packs?go-get=1
-stdout '404.*'
+stdout '401.*'
 
 # stop the server
 [windows] stopserver

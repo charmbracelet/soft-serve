@@ -141,9 +141,11 @@ func parseJWT(ctx context.Context, bearer string) (*jwt.RegisteredClaims, error)
 		return nil, err
 	}
 
+	// No token can be valid for a missing repository. Reject it like any
+	// other bad token so the answer does not reveal whether it exists.
 	repo := proto.RepositoryFromContext(ctx)
 	if repo == nil {
-		return nil, errors.New("missing repository")
+		return nil, ErrInvalidToken
 	}
 
 	token, err := jwt.ParseWithClaims(bearer, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {

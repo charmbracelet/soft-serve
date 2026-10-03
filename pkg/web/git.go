@@ -230,6 +230,41 @@ func badCredentials(err error) bool {
 	return errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrInvalidPassword)
 }
 
+// denyRead answers a caller who may not read the repository. Missing and
+// unreadable repositories get the same answer so neither is revealed.
+func denyRead(w http.ResponseWriter, r *http.Request, err error, lfsJSON bool) {
+	switch {
+	case badCredentials(err) && lfsJSON:
+		renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{Message: "bad credentials"})
+	case badCredentials(err):
+		renderForbidden(w, r)
+	case proto.UserFromContext(r.Context()) == nil && lfsJSON:
+		askCredentials(w, r)
+		renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{Message: "credentials needed"})
+	case proto.UserFromContext(r.Context()) == nil:
+		askCredentials(w, r)
+		renderUnauthorized(w, r)
+	case lfsJSON:
+		renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{Message: "repository not found"})
+	default:
+		renderNotFound(w, r)
+	}
+}
+
+// lfsNeedsWrite reports whether an LFS request needs write access.
+// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md
+func lfsNeedsWrite(file, method string) bool {
+	switch {
+	case strings.HasPrefix(file, "info/lfs/locks"):
+		return strings.HasSuffix(file, "lfs/locks") ||
+			strings.HasSuffix(file, "lfs/locks/verify") ||
+			strings.HasSuffix(file, "/unlock") && method == http.MethodPost
+	case strings.HasPrefix(file, "info/lfs/objects/basic"):
+		return method == http.MethodPut
+	}
+	return false
+}
+
 // requireCaller rejects anonymous requests when keyless access is disabled.
 func requireCaller(w http.ResponseWriter, r *http.Request) bool {
 	ctx := r.Context()
@@ -287,18 +322,10 @@ func withAccess(next http.Handler) http.HandlerFunc {
 
 		file := mux.Vars(r)["file"]
 
-		// We only allow these services to proceed any other services should return 403
-		// - git-upload-pack
-		// - git-receive-pack
-		// - git-lfs
-		//
 		// The LFS case must stay ahead of the service cases. "file" is derived
-		// from the request path by withParams, but "service" can come from a
-		// query parameter the caller controls, and withParams only fills it in
-		// for paths ending in git-upload-pack or git-receive-pack, so it is
-		// always caller-supplied on an LFS route. Matching the path first means
-		// an LFS request is authorized as LFS no matter what service it claims
-		// to be.
+		// from the request path, but "service" can come from a query parameter
+		// the caller controls, so an LFS request is authorized as LFS no
+		// matter what service it claims to be.
 		switch {
 		case strings.HasPrefix(file, "info/lfs"):
 			if !cfg.LFS.Enabled {
@@ -307,54 +334,15 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				return
 			}
 
-			switch {
-			case strings.HasPrefix(file, "info/lfs/locks"):
-				switch {
-				case strings.HasSuffix(file, "lfs/locks"), strings.HasSuffix(file, "/unlock") && r.Method == http.MethodPost:
-					// Create lock, list locks, and delete lock require write access
-					fallthrough
-				case strings.HasSuffix(file, "lfs/locks/verify"):
-					// Locks verify requires write access
-					// https://github.com/git-lfs/git-lfs/blob/main/docs/api/locking.md#unauthorized-response-2
-					if accessLevel < access.ReadWriteAccess {
-						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
-							Message: "write access required",
-						})
-						return
-					}
-				}
-			case strings.HasPrefix(file, "info/lfs/objects/basic"):
-				switch r.Method {
-				case http.MethodPut:
-					// Basic upload
-					if accessLevel < access.ReadWriteAccess {
-						renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
-							Message: "write access required",
-						})
-						return
-					}
-				case http.MethodGet:
-					// Basic download
-				case http.MethodPost:
-					// Basic verify
-				}
+			if repo == nil || accessLevel < access.ReadOnlyAccess {
+				denyRead(w, r, err, true)
+				return
 			}
 
-			if accessLevel < access.ReadOnlyAccess {
-				if repo == nil {
-					renderJSON(w, http.StatusNotFound, lfs.ErrorResponse{
-						Message: "repository not found",
-					})
-				} else if badCredentials(err) {
-					renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
-						Message: "bad credentials",
-					})
-				} else {
-					askCredentials(w, r)
-					renderJSON(w, http.StatusUnauthorized, lfs.ErrorResponse{
-						Message: "credentials needed",
-					})
-				}
+			if lfsNeedsWrite(file, r.Method) && accessLevel < access.ReadWriteAccess {
+				renderJSON(w, http.StatusForbidden, lfs.ErrorResponse{
+					Message: "write access required",
+				})
 				return
 			}
 
@@ -377,32 +365,15 @@ func withAccess(next http.Handler) http.HandlerFunc {
 				ctx = proto.WithRepositoryContext(ctx, repo)
 				r = r.WithContext(ctx)
 			}
-
-			fallthrough
-		case service == git.UploadPackService || service == git.UploadArchiveService:
-			if repo == nil {
-				// If the repo doesn't exist, return 404
-				renderNotFound(w, r)
-				return
-			} else if badCredentials(err) {
-				// return 403 when bad credentials are provided
-				renderForbidden(w, r)
-				return
-			} else if accessLevel < access.ReadOnlyAccess {
-				askCredentials(w, r)
-				renderUnauthorized(w, r)
-				return
-			}
 		}
 
-		switch {
-		case badCredentials(err):
-			// return 403 when bad credentials are provided
+		if badCredentials(err) {
 			renderForbidden(w, r)
 			return
-		case repo == nil, accessLevel < access.ReadOnlyAccess:
-			// Don't hint that the repo exists if the user doesn't have access
-			renderNotFound(w, r)
+		}
+
+		if repo == nil || accessLevel < access.ReadOnlyAccess {
+			denyRead(w, r, err, false)
 			return
 		}
 
