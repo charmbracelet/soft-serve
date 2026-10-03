@@ -70,9 +70,12 @@ func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user prot
 		}
 
 		// If the user is a collaborator, they have return their access level.
+		// On a private repository the collaborator's level is authoritative;
+		// the anonymous floor only applies to public repositories, otherwise
+		// a no-access collaborator would be granted read access.
 		collabAccess, isCollab, _ := d.IsCollaborator(ctx, repo, username)
 		if isCollab {
-			if anon > collabAccess {
+			if !r.IsPrivate() && anon > collabAccess {
 				return anon
 			}
 			return collabAccess

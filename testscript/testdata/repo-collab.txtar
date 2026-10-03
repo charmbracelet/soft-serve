@@ -35,6 +35,17 @@ stderr '.*already exists.*'
 # a placeholder to reset stderr
 soft help
 
+# a no-access collaborator cannot read a private repo (GHSA-pmgj-8mr6-9rff)
+soft repo create secret -p
+! usoft repo description secret
+stderr '.*repository not found.*'
+soft repo collab add secret foo no-access
+! usoft repo description secret
+stderr '.*repository not found.*'
+soft repo collab remove secret foo
+soft repo collab add secret foo read-only
+usoft repo description secret
+
 # stop the server
 [windows] stopserver
 [windows] ! stderr .
