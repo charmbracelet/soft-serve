@@ -307,9 +307,6 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	}
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		// Delete repo from cache
-		defer d.cache.Delete(name)
-
 		repom, dberr := d.store.GetRepoByName(ctx, tx, name)
 		_, ferr := os.Stat(rp)
 		if dberr != nil && ferr != nil {
@@ -414,9 +411,6 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 	}
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		// Delete cache
-		defer d.cache.Delete(oldName)
-
 		if err := d.store.SetRepoNameByName(ctx, tx, oldName, newName); err != nil {
 			return err
 		}
@@ -464,9 +458,6 @@ func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) 
 				repo: m,
 			}
 
-			// Cache repositories
-			d.cache.Set(m.Name, r)
-
 			repos = append(repos, r)
 		}
 
@@ -484,10 +475,6 @@ func (d *Backend) Repositories(ctx context.Context) ([]proto.Repository, error) 
 func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository, error) {
 	var m models.Repo
 	name = utils.SanitizeRepo(name)
-
-	if r, ok := d.cache.Get(name); ok && r != nil {
-		return r, nil
-	}
 
 	rp := filepath.Join(d.repoPath(name))
 	if _, err := os.Stat(rp); err != nil {
@@ -513,9 +500,6 @@ func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository
 		path: rp,
 		repo: m,
 	}
-
-	// Add to cache
-	d.cache.Set(name, r)
 
 	return r, nil
 }
@@ -610,9 +594,6 @@ func (d *Backend) ProjectName(ctx context.Context, name string) (string, error) 
 func (d *Backend) SetHidden(ctx context.Context, name string, hidden bool) error {
 	name = utils.SanitizeRepo(name)
 
-	// Delete cache
-	d.cache.Delete(name)
-
 	return db.WrapError(d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		return d.store.SetRepoIsHiddenByName(ctx, tx, name, hidden)
 	}))
@@ -624,9 +605,6 @@ func (d *Backend) SetHidden(ctx context.Context, name string, hidden bool) error
 func (d *Backend) SetMirror(ctx context.Context, name string, mirror bool) error {
 	name = utils.SanitizeRepo(name)
 	rp := filepath.Join(d.repoPath(name))
-
-	// Delete cache
-	d.cache.Delete(name)
 
 	return db.WrapError(d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		// Update git config
@@ -689,9 +667,6 @@ func (d *Backend) SetDescription(ctx context.Context, name string, desc string) 
 	desc = utils.Sanitize(desc)
 	rp := filepath.Join(d.repoPath(name))
 
-	// Delete cache
-	d.cache.Delete(name)
-
 	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(desc), fs.ModePerm); err != nil {
 			d.logger.Error("failed to write description", "repo", name, "err", err)
@@ -708,9 +683,6 @@ func (d *Backend) SetDescription(ctx context.Context, name string, desc string) 
 func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) error {
 	name = utils.SanitizeRepo(name)
 	rp := filepath.Join(d.repoPath(name))
-
-	// Delete cache
-	d.cache.Delete(name)
 
 	if err := db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
@@ -761,9 +733,6 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 func (d *Backend) SetProjectName(ctx context.Context, repo string, name string) error {
 	repo = utils.SanitizeRepo(repo)
 	name = utils.Sanitize(name)
-
-	// Delete cache
-	d.cache.Delete(repo)
 
 	return db.WrapError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {

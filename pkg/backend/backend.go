@@ -18,7 +18,6 @@ type Backend struct {
 	db      *db.DB
 	store   store.Store
 	logger  *log.Logger
-	cache   *cache
 	manager *task.Manager
 }
 
@@ -33,10 +32,6 @@ func New(ctx context.Context, cfg *config.Config, db *db.DB, st store.Store) *Ba
 		logger:  logger,
 		manager: task.NewManager(ctx),
 	}
-
-	// TODO: implement a proper caching interface
-	cache := newCache(b, 1000)
-	b.cache = cache
 
 	return b
 }
