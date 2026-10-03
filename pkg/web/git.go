@@ -347,17 +347,24 @@ func withAccess(next http.Handler) http.HandlerFunc {
 			}
 
 		case service == git.ReceivePackService:
+			if badCredentials(err) {
+				renderForbidden(w, r)
+				return
+			}
+
 			if accessLevel < access.ReadWriteAccess {
 				askCredentials(w, r)
 				renderUnauthorized(w, r)
 				return
 			}
 
-			// Create the repo if it doesn't exist.
-			if repo == nil {
-				repo, err = be.CreateRepository(ctx, repoName, user, proto.RepositoryOptions{})
-				if err != nil {
-					logger.Error("failed to create repository", "repo", repoName, "err", err)
+			// Create the repo if it doesn't exist, but only from the push
+			// endpoints, not from any route that carries the service param.
+			if repo == nil && (file == "info/refs" || file == git.ReceivePackService.String()) {
+				var cerr error
+				repo, cerr = be.CreateRepository(ctx, repoName, user, proto.RepositoryOptions{})
+				if cerr != nil {
+					logger.Error("failed to create repository", "repo", repoName, "err", cerr)
 					renderInternalServerError(w, r)
 					return
 				}
