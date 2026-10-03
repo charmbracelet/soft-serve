@@ -293,16 +293,19 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	name = utils.SanitizeRepo(name)
 	rp := filepath.Join(d.repoPath(name))
 
-	user := proto.UserFromContext(ctx)
+	// Build the webhook event before deleting so it can be sent after. A
+	// repository whose directory is gone has no event, but its database row
+	// still has to go.
+	var wh *webhook.RepositoryEvent
 	r, err := d.Repository(ctx, name)
-	if err != nil {
-		return err
-	}
-
-	// We create the webhook event before deleting the repository so we can
-	// send the event after deleting the repository.
-	wh, err := webhook.NewRepositoryEvent(ctx, user, r, webhook.RepositoryEventActionDelete)
-	if err != nil {
+	switch {
+	case err == nil:
+		ev, err := webhook.NewRepositoryEvent(ctx, proto.UserFromContext(ctx), r, webhook.RepositoryEventActionDelete)
+		if err != nil {
+			return err
+		}
+		wh = &ev
+	case !errors.Is(err, proto.ErrRepoNotFound):
 		return err
 	}
 
@@ -352,34 +355,11 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 		return db.WrapError(err)
 	}
 
-	return webhook.SendEvent(ctx, wh)
-}
-
-// DeleteUserRepositories deletes all user repositories.
-func (d *Backend) DeleteUserRepositories(ctx context.Context, username string) error {
-	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		user, err := d.store.FindUserByUsername(ctx, tx, username)
-		if err != nil {
-			return err
-		}
-
-		repos, err := d.store.GetUserRepos(ctx, tx, user.ID)
-		if err != nil {
-			return err
-		}
-
-		for _, repo := range repos {
-			if err := d.DeleteRepository(ctx, repo.Name); err != nil {
-				return err
-			}
-		}
-
+	if wh == nil {
 		return nil
-	}); err != nil {
-		return db.WrapError(err)
 	}
 
-	return nil
+	return webhook.SendEvent(ctx, *wh)
 }
 
 // RenameRepository renames a repository.

@@ -17,6 +17,9 @@ var (
 	ErrRepoExist = errors.New("repository already exists")
 	// ErrUserNotFound is returned when a user is not found.
 	ErrUserNotFound = errors.New("user not found")
+	// ErrUserOwnsRepos is returned when deleting a user who still owns
+	// repositories.
+	ErrUserOwnsRepos = errors.New("user still owns repositories; delete them first")
 	// ErrTokenNotFound is returned when a token is not found.
 	ErrTokenNotFound = errors.New("token not found")
 	// ErrTokenExpired is returned when a token is expired.

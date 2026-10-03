@@ -1,0 +1,24 @@
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+soft user create foo --key "$USER1_AUTHORIZED_KEY"
+usoft repo create foo-repo
+
+# a user who owns repositories cannot be removed until they are gone
+! soft user delete foo
+stderr '.*still owns repositories.*foo-repo.*'
+soft repo list
+stdout 'foo-repo'
+
+soft repo delete foo-repo
+soft user delete foo
+! soft user info foo
+stderr '.*not found.*'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

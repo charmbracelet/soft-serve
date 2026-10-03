@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -301,13 +302,33 @@ func (d *Backend) DeleteUser(ctx context.Context, username string) error {
 		return err
 	}
 
-	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		if err := d.store.DeleteUserByUsername(ctx, tx, username); err != nil {
-			return db.WrapError(err)
+	err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		user, err := d.store.FindUserByUsername(ctx, tx, username)
+		if err != nil {
+			return err
 		}
 
-		return d.DeleteUserRepositories(ctx, username)
+		// Deleting the user would cascade to their repositories' rows and
+		// strand the repositories on disk, so their owner must deal with
+		// them first.
+		repos, err := d.store.GetUserRepos(ctx, tx, user.ID)
+		if err != nil {
+			return err
+		}
+		if len(repos) > 0 {
+			names := make([]string, len(repos))
+			for i, r := range repos {
+				names[i] = r.Name
+			}
+			return fmt.Errorf("%w: %s", proto.ErrUserOwnsRepos, strings.Join(names, ", "))
+		}
+
+		return d.store.DeleteUserByUsername(ctx, tx, username)
 	})
+	if errors.Is(err, db.ErrRecordNotFound) {
+		return proto.ErrUserNotFound
+	}
+	return db.WrapError(err)
 }
 
 // RemovePublicKey removes a public key from a user.

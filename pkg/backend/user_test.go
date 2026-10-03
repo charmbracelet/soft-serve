@@ -2,11 +2,15 @@ package backend
 
 import (
 	"context"
+	"errors"
+	"os"
 	"testing"
 
 	"github.com/charmbracelet/soft-serve/pkg/access"
+	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/matryer/is"
 )
 
@@ -66,4 +70,59 @@ func TestAccessLevelPrivateRepoNonCollaborator(t *testing.T) {
 
 	is.Equal(be.AccessLevelForUser(ctx, "repo", user), access.NoAccess)
 	is.Equal(be.AccessLevelForUser(ctx, "repo", nil), access.NoAccess)
+}
+
+// TestDeleteUserWithRepositories verifies that a user who owns
+// repositories is not deleted until those repositories are gone, and that
+// their repositories are left untouched by the refusal.
+func TestDeleteUserWithRepositories(t *testing.T) {
+	is := is.New(t)
+	be, cfg := newTestBackend(t)
+
+	ctx := context.Background()
+	ctx = config.WithContext(ctx, cfg)
+	ctx = db.WithContext(ctx, be.db)
+	ctx = store.WithContext(ctx, be.store)
+	admin, err := be.User(ctx, "admin")
+	is.NoErr(err)
+	ctx = proto.WithUserContext(ctx, admin)
+
+	owner, err := be.CreateUser(ctx, "owner", proto.UserOptions{})
+	is.NoErr(err)
+	_, err = be.CreateRepository(ctx, "owned", owner, proto.RepositoryOptions{})
+	is.NoErr(err)
+
+	err = be.DeleteUser(ctx, "owner")
+	is.True(errors.Is(err, proto.ErrUserOwnsRepos))
+	_, err = be.User(ctx, "owner")
+	is.NoErr(err)
+	_, err = be.Repository(ctx, "owned")
+	is.NoErr(err)
+
+	is.NoErr(be.DeleteRepository(ctx, "owned"))
+	is.NoErr(be.DeleteUser(ctx, "owner"))
+	_, err = be.User(ctx, "owner")
+	is.True(errors.Is(err, proto.ErrUserNotFound))
+
+	is.True(errors.Is(be.DeleteUser(ctx, "owner"), proto.ErrUserNotFound))
+}
+
+// TestDeleteRepositoryWithoutDirectory verifies that a repository whose
+// directory is gone can still be deleted, and that deleting a repository
+// that does not exist at all reports it as not found.
+func TestDeleteRepositoryWithoutDirectory(t *testing.T) {
+	is := is.New(t)
+	be, cfg := newTestBackend(t)
+
+	ctx := context.Background()
+	ctx = config.WithContext(ctx, cfg)
+	ctx = db.WithContext(ctx, be.db)
+	ctx = store.WithContext(ctx, be.store)
+
+	_, err := be.CreateRepository(ctx, "orphan", nil, proto.RepositoryOptions{})
+	is.NoErr(err)
+	is.NoErr(os.RemoveAll(be.repoPath("orphan")))
+
+	is.NoErr(be.DeleteRepository(ctx, "orphan"))
+	is.True(errors.Is(be.DeleteRepository(ctx, "orphan"), proto.ErrRepoNotFound))
 }
