@@ -18,6 +18,8 @@ soft repo delete foo-repo
 soft user delete foo
 ! soft user info foo
 stderr '.*not found.*'
+# a placeholder to reset stderr
+soft help
 
 # stop the server
 [windows] stopserver
