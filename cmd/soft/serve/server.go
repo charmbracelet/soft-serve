@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"charm.land/log/v2"
 
@@ -24,6 +25,10 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/web"
 	"golang.org/x/sync/errgroup"
 )
+
+// shutdownTimeout bounds how long Start waits for the remaining listeners to
+// stop after one of them has failed.
+const shutdownTimeout = 5 * time.Second
 
 // Server is the Soft Serve server.
 type Server struct {
@@ -176,7 +181,11 @@ func (s *Server) ReloadCertificates() error {
 
 // Start starts the SSH server.
 func (s *Server) Start() error {
-	errg, _ := errgroup.WithContext(s.ctx)
+	// ctx is cancelled as soon as any listener returns an error (for example
+	// a failed bind on a privileged or already-used port). Without acting on
+	// it, the remaining listeners would keep the errgroup blocked forever and
+	// the error would never surface.
+	errg, ctx := errgroup.WithContext(s.ctx)
 
 	// optionally start the SSH server
 	if s.Config.SSH.Enabled {
@@ -226,6 +235,24 @@ func (s *Server) Start() error {
 		s.Cron.Start()
 		return nil
 	})
+
+	// Shut everything down as soon as one listener fails, so that errg.Wait
+	// returns that error instead of blocking on the listeners that started
+	// successfully. The group context is also cancelled when Wait returns
+	// normally or when the parent context is cancelled; in both cases the
+	// cause is context.Canceled and there is nothing to do here.
+	go func() {
+		<-ctx.Done()
+		if cause := context.Cause(ctx); cause == nil || errors.Is(cause, context.Canceled) {
+			return
+		}
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := s.Shutdown(shutdownCtx); err != nil {
+			s.logger.Error("failed to shutdown after listener error", "err", err)
+		}
+	}()
+
 	return errg.Wait()
 }
 
