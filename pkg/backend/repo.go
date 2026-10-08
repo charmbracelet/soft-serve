@@ -283,7 +283,15 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		d.manager.Run(tid, done)
 	}()
 
-	return <-repoc, <-done
+	// The task only sends on repoc once the clone and the database record
+	// have succeeded, so wait for it to finish before looking for a repo.
+	err = <-done
+	select {
+	case r := <-repoc:
+		return r, err
+	default:
+		return nil, err
+	}
 }
 
 // DeleteRepository deletes a repository.
