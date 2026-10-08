@@ -1,0 +1,19 @@
+# vi: set ft=conf
+
+# A failed clone must be reported instead of leaving the import hanging.
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# nothing listens on port 1, so the clone fails
+! soft repo import broken ssh://git@127.0.0.1:1/missing.git
+stderr .
+
+# the failed import leaves no repository behind
+! soft repo info broken
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
