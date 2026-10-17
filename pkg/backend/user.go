@@ -56,51 +56,45 @@ func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user prot
 		return access.AdminAccess
 	}
 
-	// If the repository exists, check if the user is a collaborator.
 	r, _ := d.Repository(ctx, repo)
-
-	if r != nil {
-		if user != nil {
-			// If the user is the owner, they have admin access.
-			if r.UserID() == user.ID() {
-				return access.AdminAccess
-			}
-		}
-
-		// If the user is a collaborator, they have return their access level.
-		// The anonymous floor only applies to public repositories.
-		collabAccess, isCollab, _ := d.IsCollaborator(ctx, repo, username)
-		if isCollab {
-			if !r.IsPrivate() && anon > collabAccess {
-				return anon
-			}
-			return collabAccess
-		}
-
-		// If the repository is private, the user has no access.
-		if r.IsPrivate() {
+	if r == nil {
+		// A directory with no row is taken (case variant or orphan), not free.
+		if d.repoPathExists(repo) {
 			return access.NoAccess
 		}
-
-		// Otherwise, the user has read-only access.
 		if user == nil {
 			return anon
 		}
-
-		return access.ReadOnlyAccess
+		// A missing name may be created, so registered users may write to it.
+		return max(anon, access.ReadWriteAccess)
 	}
 
-	if user != nil {
-		// If the repository doesn't exist, the user has read/write access.
-		if anon > access.ReadWriteAccess {
+	// If the user is the owner, they have admin access.
+	if user != nil && r.UserID() == user.ID() {
+		return access.AdminAccess
+	}
+
+	// If the user is a collaborator, they have return their access level.
+	// The anonymous floor only applies to public repositories.
+	collabAccess, isCollab, _ := d.IsCollaborator(ctx, repo, username)
+	if isCollab {
+		if !r.IsPrivate() && anon > collabAccess {
 			return anon
 		}
-
-		return access.ReadWriteAccess
+		return collabAccess
 	}
 
-	// If the user doesn't exist, give them the anonymous access level.
-	return anon
+	// If the repository is private, the user has no access.
+	if r.IsPrivate() {
+		return access.NoAccess
+	}
+
+	// Otherwise, the user has read-only access.
+	if user == nil {
+		return anon
+	}
+
+	return access.ReadOnlyAccess
 }
 
 // User finds a user by username.

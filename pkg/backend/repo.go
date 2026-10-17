@@ -54,7 +54,40 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 		return nil, err
 	}
 
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
+	if err := claimRepoPath(rp); err != nil {
+		return nil, err
+	}
+
+	if _, err := git.Init(rp, true); err != nil {
+		d.logger.Debug("failed to create repository", "err", err)
+		os.RemoveAll(rp) //nolint:errcheck
+		return nil, err
+	}
+
+	return d.registerRepository(ctx, name, user, opts)
+}
+
+// claimRepoPath creates the repository directory, failing if anything already
+// occupies it. The filesystem decides what "already" means, which is what
+// makes this safe on case- and normalization-insensitive volumes.
+func claimRepoPath(rp string) error {
+	if err := os.MkdirAll(filepath.Dir(rp), os.ModePerm); err != nil {
+		return err
+	}
+	if err := os.Mkdir(rp, os.ModePerm); err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			return proto.ErrRepoExist
+		}
+		return err
+	}
+	return nil
+}
+
+// registerRepository records a bare repository that already exists at the
+// name's path and finishes setting it up. The directory is removed on failure.
+func (d *Backend) registerRepository(ctx context.Context, name string, user proto.User, opts proto.RepositoryOptions) (proto.Repository, error) {
+	rp := d.repoPath(name)
 
 	var userID int64
 	if user != nil {
@@ -90,12 +123,6 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 			return err
 		}
 
-		_, err := git.Init(rp, true)
-		if err != nil {
-			d.logger.Debug("failed to create repository", "err", err)
-			return err
-		}
-
 		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(opts.Description), fs.ModePerm); err != nil {
 			d.logger.Error("failed to write description", "repo", name, "err", err)
 			return err
@@ -111,6 +138,7 @@ func (d *Backend) CreateRepository(ctx context.Context, name string, user proto.
 		return hooks.GenerateHooks(ctx, d.cfg, name)
 	}); err != nil {
 		d.logger.Debug("failed to create repository in database", "err", err)
+		os.RemoveAll(rp) //nolint:errcheck
 		err = db.WrapError(err)
 		if errors.Is(err, db.ErrDuplicateKey) {
 			return nil, proto.ErrRepoExist
@@ -170,15 +198,15 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		}
 	}
 
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	tid := "import:" + name
 	if d.manager.Exists(tid) {
 		return nil, task.ErrAlreadyStarted
 	}
 
-	if _, err := os.Stat(rp); err == nil || os.IsExist(err) {
-		return nil, proto.ErrRepoExist
+	if err := claimRepoPath(rp); err != nil {
+		return nil, err
 	}
 
 	done := make(chan error, 1)
@@ -218,7 +246,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 			return err
 		}
 
-		r, err := d.CreateRepository(ctx, name, user, opts)
+		r, err := d.registerRepository(ctx, name, user, opts)
 		if err != nil {
 			d.logger.Error("failed to create repository", "err", err, "name", name)
 			return err
@@ -291,7 +319,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 // It implements backend.Backend.
 func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 	name = utils.SanitizeRepo(name)
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	// Build the webhook event before deleting so it can be sent after. A
 	// repository whose directory is gone has no event, but its database row
@@ -311,15 +339,14 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		repom, dberr := d.store.GetRepoByName(ctx, tx, name)
-		_, ferr := os.Stat(rp)
-		if dberr != nil && ferr != nil {
-			return proto.ErrRepoNotFound
-		}
-
-		// If the repo is not in the database but the directory exists, remove it
-		if dberr != nil && ferr == nil {
-			return os.RemoveAll(rp)
-		} else if dberr != nil {
+		if dberr != nil {
+			// A directory with no row is an orphan; remove it.
+			if d.repoPathExists(name) {
+				return os.RemoveAll(rp)
+			}
+			if errors.Is(db.WrapError(dberr), db.ErrRecordNotFound) {
+				return proto.ErrRepoNotFound
+			}
 			return db.WrapError(dberr)
 		}
 
@@ -380,13 +407,13 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 		return nil
 	}
 
-	op := filepath.Join(d.repoPath(oldName))
-	np := filepath.Join(d.repoPath(newName))
-	if _, err := os.Stat(op); err != nil {
+	op := d.repoPath(oldName)
+	np := d.repoPath(newName)
+	if !d.repoPathExists(oldName) {
 		return proto.ErrRepoNotFound
 	}
 
-	if _, err := os.Stat(np); err == nil {
+	if d.repoPathExists(newName) {
 		return proto.ErrRepoExist
 	}
 
@@ -456,7 +483,7 @@ func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository
 	var m models.Repo
 	name = utils.SanitizeRepo(name)
 
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 	if _, err := os.Stat(rp); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			d.logger.Errorf("failed to stat repository path: %v", err)
@@ -584,7 +611,7 @@ func (d *Backend) SetHidden(ctx context.Context, name string, hidden bool) error
 // with a remote URL. Use ImportRepository to create a new mirror.
 func (d *Backend) SetMirror(ctx context.Context, name string, mirror bool) error {
 	name = utils.SanitizeRepo(name)
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	return db.WrapError(d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		// Update git config
@@ -645,7 +672,7 @@ func (d *Backend) SetMirror(ctx context.Context, name string, mirror bool) error
 func (d *Backend) SetDescription(ctx context.Context, name string, desc string) error {
 	name = utils.SanitizeRepo(name)
 	desc = utils.Sanitize(desc)
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(desc), fs.ModePerm); err != nil {
@@ -662,7 +689,7 @@ func (d *Backend) SetDescription(ctx context.Context, name string, desc string) 
 // It implements backend.Backend.
 func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) error {
 	name = utils.SanitizeRepo(name)
-	rp := filepath.Join(d.repoPath(name))
+	rp := d.repoPath(name)
 
 	var changed bool
 	if err := db.WrapError(
@@ -733,6 +760,13 @@ func (d *Backend) repoPath(name string) string {
 	name = utils.SanitizeRepo(name)
 	rn := strings.ReplaceAll(name, "/", string(os.PathSeparator))
 	return filepath.Join(filepath.Join(d.cfg.DataPath, "repos"), rn+".git")
+}
+
+// repoPathExists reports whether anything occupies the repository's directory,
+// whether or not a database row points at it.
+func (d *Backend) repoPathExists(name string) bool {
+	_, err := os.Lstat(d.repoPath(name))
+	return err == nil
 }
 
 var _ proto.Repository = (*repo)(nil)
