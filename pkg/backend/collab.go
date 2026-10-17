@@ -55,11 +55,17 @@ func (d *Backend) Collaborators(ctx context.Context, repo string) ([]string, err
 	repo = utils.SanitizeRepo(repo)
 	var users []models.User
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		// The join returns an empty list for a missing repository, so
+		// look it up first.
+		if _, err := d.store.GetRepoByName(ctx, tx, repo); err != nil {
+			return err
+		}
+
 		var err error
 		users, err = d.store.ListCollabsByRepoAsUsers(ctx, tx, repo)
 		return err
 	}); err != nil {
-		return nil, db.WrapError(err)
+		return nil, wrapRepoError(err)
 	}
 
 	var usernames []string

@@ -376,11 +376,7 @@ func (d *Backend) DeleteRepository(ctx context.Context, name string) error {
 
 		return os.RemoveAll(rp)
 	}); err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
-			return proto.ErrRepoNotFound
-		}
-
-		return db.WrapError(err)
+		return wrapRepoError(err)
 	}
 
 	if wh == nil {
@@ -425,12 +421,18 @@ func (d *Backend) RenameRepository(ctx context.Context, oldName string, newName 
 
 		// Make sure the new repository parent directory exists.
 		if err := os.MkdirAll(filepath.Dir(np), os.ModePerm); err != nil {
-			return err
+			d.logger.Error("failed to create repository parent directory", "repo", newName, "err", err)
+			return errRepoUpdate
 		}
 
-		return os.Rename(op, np)
+		if err := os.Rename(op, np); err != nil {
+			d.logger.Error("failed to move repository", "repo", oldName, "err", err)
+			return errRepoUpdate
+		}
+
+		return nil
 	}); err != nil {
-		return db.WrapError(err)
+		return wrapRepoError(err)
 	}
 
 	user := proto.UserFromContext(ctx)
@@ -495,12 +497,9 @@ func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository
 	if err := d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 		var err error
 		m, err = d.store.GetRepoByName(ctx, tx, name)
-		return db.WrapError(err)
+		return err
 	}); err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, proto.ErrRepoNotFound
-		}
-		return nil, db.WrapError(err)
+		return nil, wrapRepoError(err)
 	}
 
 	r := &repo{
@@ -510,6 +509,21 @@ func (d *Backend) Repository(ctx context.Context, name string) (proto.Repository
 	}
 
 	return r, nil
+}
+
+// errRepoUpdate replaces filesystem errors, which carry the server data
+// path, when a repository setting cannot be written.
+var errRepoUpdate = errors.New("failed to update repository")
+
+// wrapRepoError maps a missing database row to proto.ErrRepoNotFound so
+// callers never see the raw driver error for a repository that does not
+// exist.
+func wrapRepoError(err error) error {
+	err = db.WrapError(err)
+	if errors.Is(err, db.ErrRecordNotFound) {
+		return proto.ErrRepoNotFound
+	}
+	return err
 }
 
 // Description returns the description of a repository.
@@ -523,7 +537,7 @@ func (d *Backend) Description(ctx context.Context, name string) (string, error) 
 		desc, err = d.store.GetRepoDescriptionByName(ctx, tx, name)
 		return err
 	}); err != nil {
-		return "", db.WrapError(err)
+		return "", wrapRepoError(err)
 	}
 
 	return desc, nil
@@ -540,7 +554,7 @@ func (d *Backend) IsMirror(ctx context.Context, name string) (bool, error) {
 		mirror, err = d.store.GetRepoIsMirrorByName(ctx, tx, name)
 		return err
 	}); err != nil {
-		return false, db.WrapError(err)
+		return false, wrapRepoError(err)
 	}
 	return mirror, nil
 }
@@ -556,7 +570,7 @@ func (d *Backend) IsPrivate(ctx context.Context, name string) (bool, error) {
 		private, err = d.store.GetRepoIsPrivateByName(ctx, tx, name)
 		return err
 	}); err != nil {
-		return false, db.WrapError(err)
+		return false, wrapRepoError(err)
 	}
 
 	return private, nil
@@ -573,7 +587,7 @@ func (d *Backend) IsHidden(ctx context.Context, name string) (bool, error) {
 		hidden, err = d.store.GetRepoIsHiddenByName(ctx, tx, name)
 		return err
 	}); err != nil {
-		return false, db.WrapError(err)
+		return false, wrapRepoError(err)
 	}
 
 	return hidden, nil
@@ -590,7 +604,7 @@ func (d *Backend) ProjectName(ctx context.Context, name string) (string, error) 
 		pname, err = d.store.GetRepoProjectNameByName(ctx, tx, name)
 		return err
 	}); err != nil {
-		return "", db.WrapError(err)
+		return "", wrapRepoError(err)
 	}
 
 	return pname, nil
@@ -602,7 +616,12 @@ func (d *Backend) ProjectName(ctx context.Context, name string) (string, error) 
 func (d *Backend) SetHidden(ctx context.Context, name string, hidden bool) error {
 	name = utils.SanitizeRepo(name)
 
-	return db.WrapError(d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+	// An UPDATE that matches no row succeeds silently, so look the
+	// repository up first.
+	return wrapRepoError(d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		if _, err := d.store.GetRepoByName(ctx, tx, name); err != nil {
+			return err
+		}
 		return d.store.SetRepoIsHiddenByName(ctx, tx, name, hidden)
 	}))
 }
@@ -614,16 +633,22 @@ func (d *Backend) SetMirror(ctx context.Context, name string, mirror bool) error
 	name = utils.SanitizeRepo(name)
 	rp := d.repoPath(name)
 
-	return db.WrapError(d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+	return wrapRepoError(d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		if _, err := d.store.GetRepoByName(ctx, tx, name); err != nil {
+			return err
+		}
+
 		// Update git config
 		r, err := git.Open(rp)
 		if err != nil {
-			return err
+			d.logger.Error("failed to open repository", "err", err, "path", rp)
+			return errRepoUpdate
 		}
 
 		rcfg, err := r.Config()
 		if err != nil {
-			return err
+			d.logger.Error("failed to read repository config", "err", err, "path", rp)
+			return errRepoUpdate
 		}
 
 		// Update mirror option for all remotes
@@ -660,7 +685,7 @@ func (d *Backend) SetMirror(ctx context.Context, name string, mirror bool) error
 
 		if err := r.SetConfig(rcfg); err != nil {
 			d.logger.Error("failed to set repository config", "err", err, "path", rp)
-			return err
+			return errRepoUpdate
 		}
 
 		return d.store.SetRepoIsMirrorByName(ctx, tx, name, mirror)
@@ -675,14 +700,20 @@ func (d *Backend) SetDescription(ctx context.Context, name string, desc string) 
 	desc = utils.Sanitize(desc)
 	rp := d.repoPath(name)
 
-	return d.db.TransactionContext(ctx, func(tx *db.Tx) error {
-		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(desc), fs.ModePerm); err != nil {
-			d.logger.Error("failed to write description", "repo", name, "err", err)
+	return wrapRepoError(d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+		if _, err := d.store.GetRepoByName(ctx, tx, name); err != nil {
 			return err
 		}
 
+		// The raw error carries the server data path, so log it and return
+		// a generic one.
+		if err := os.WriteFile(filepath.Join(rp, "description"), []byte(desc), fs.ModePerm); err != nil {
+			d.logger.Error("failed to write description", "repo", name, "err", err)
+			return errRepoUpdate
+		}
+
 		return d.store.SetRepoDescriptionByName(ctx, tx, name, desc)
-	})
+	}))
 }
 
 // SetPrivate sets the private flag of a repository.
@@ -693,7 +724,7 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 	rp := d.repoPath(name)
 
 	var changed bool
-	if err := db.WrapError(
+	if err := wrapRepoError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
 			m, err := d.store.GetRepoByName(ctx, tx, name)
 			if err != nil {
@@ -705,13 +736,13 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 			if !private {
 				if err := os.WriteFile(fp, []byte{}, fs.ModePerm); err != nil {
 					d.logger.Error("failed to write git-daemon-export-ok", "repo", name, "err", err)
-					return err
+					return errRepoUpdate
 				}
 			} else {
 				if _, err := os.Stat(fp); err == nil {
 					if err := os.Remove(fp); err != nil {
 						d.logger.Error("failed to remove git-daemon-export-ok", "repo", name, "err", err)
-						return err
+						return errRepoUpdate
 					}
 				}
 			}
@@ -719,9 +750,6 @@ func (d *Backend) SetPrivate(ctx context.Context, name string, private bool) err
 			return d.store.SetRepoIsPrivateByName(ctx, tx, name, private)
 		}),
 	); err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
-			return proto.ErrRepoNotFound
-		}
 		return err
 	}
 
@@ -749,8 +777,11 @@ func (d *Backend) SetProjectName(ctx context.Context, repo string, name string) 
 	repo = utils.SanitizeRepo(repo)
 	name = utils.Sanitize(name)
 
-	return db.WrapError(
+	return wrapRepoError(
 		d.db.TransactionContext(ctx, func(tx *db.Tx) error {
+			if _, err := d.store.GetRepoByName(ctx, tx, repo); err != nil {
+				return err
+			}
 			return d.store.SetRepoProjectNameByName(ctx, tx, repo, name)
 		}),
 	)

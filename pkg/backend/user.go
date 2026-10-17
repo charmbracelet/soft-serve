@@ -24,27 +24,96 @@ func (d *Backend) AccessLevel(ctx context.Context, repo string, username string)
 	return d.AccessLevelForUser(ctx, repo, user)
 }
 
+// isAdminKey reports whether pk is one of the configured admin keys.
+func (d *Backend) isAdminKey(pk ssh.PublicKey) bool {
+	for _, k := range d.cfg.AdminKeys() {
+		if sshutils.KeysEqual(pk, k) {
+			return true
+		}
+	}
+	return false
+}
+
 // AccessLevelByPublicKey returns the access level of a user's public key for a repository.
 //
 // It implements backend.Backend.
 func (d *Backend) AccessLevelByPublicKey(ctx context.Context, repo string, pk ssh.PublicKey) access.AccessLevel {
-	for _, k := range d.cfg.AdminKeys() {
-		if sshutils.KeysEqual(pk, k) {
-			return access.AdminAccess
-		}
+	if d.isAdminKey(pk) {
+		return access.AdminAccess
 	}
 
 	user, _ := d.UserByPublicKey(ctx, pk)
-	if user != nil {
-		return d.AccessLevel(ctx, repo, user.Username())
+	return d.AccessLevelForUser(ctx, repo, user)
+}
+
+// BaseAccessLevelByPublicKey returns the access level a key holds before
+// any repository is considered: the level it would get for a repository
+// that does not exist.
+func (d *Backend) BaseAccessLevelByPublicKey(ctx context.Context, pk ssh.PublicKey) access.AccessLevel {
+	if d.isAdminKey(pk) {
+		return access.AdminAccess
 	}
 
-	return d.AccessLevel(ctx, repo, "")
+	user, _ := d.UserByPublicKey(ctx, pk)
+	return d.baseAccessLevel(ctx, user)
 }
 
 // AccessLevelForUser returns the access level of a user for a repository.
-// TODO: user repository ownership
 func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user proto.User) access.AccessLevel {
+	_, level := d.Readable(ctx, repo, user)
+	return level
+}
+
+// Readable looks a repository up once and returns it together with the
+// caller's access level. The repository is nil when it does not exist or
+// when the caller may not read it, so callers cannot tell the two apart.
+// The level is returned either way so a writer can decide whether a
+// missing name may be created.
+func (d *Backend) Readable(ctx context.Context, name string, user proto.User) (proto.Repository, access.AccessLevel) {
+	name = utils.SanitizeRepo(name)
+	r, err := d.Repository(ctx, name)
+	if err != nil && !errors.Is(err, proto.ErrRepoNotFound) {
+		d.logger.Error("failed to look up repository", "repo", name, "err", err)
+	}
+
+	level := d.accessLevel(ctx, r, name, user)
+	if r == nil || level < access.ReadOnlyAccess {
+		return nil, level
+	}
+
+	return r, level
+}
+
+// ReadableByPublicKey is Readable for the holder of a public key.
+func (d *Backend) ReadableByPublicKey(ctx context.Context, name string, pk ssh.PublicKey) (proto.Repository, access.AccessLevel) {
+	if d.isAdminKey(pk) {
+		r, _ := d.Repository(ctx, name)
+		return r, access.AdminAccess
+	}
+
+	user, _ := d.UserByPublicKey(ctx, pk)
+	return d.Readable(ctx, name, user)
+}
+
+// baseAccessLevel is the level user holds for a repository that does not
+// exist: enough to create one when registered, the anonymous level otherwise.
+func (d *Backend) baseAccessLevel(ctx context.Context, user proto.User) access.AccessLevel {
+	anon := d.AnonAccess(ctx)
+	switch {
+	case user != nil && user.IsAdmin():
+		return access.AdminAccess
+	case user != nil && anon > access.ReadWriteAccess:
+		return anon
+	case user != nil:
+		return access.ReadWriteAccess
+	}
+	return anon
+}
+
+// accessLevel computes the access level of user for r, which is the
+// repository named name or nil when it does not exist.
+// TODO: user repository ownership
+func (d *Backend) accessLevel(ctx context.Context, r proto.Repository, name string, user proto.User) access.AccessLevel {
 	var username string
 	anon := d.AnonAccess(ctx)
 	if user != nil {
@@ -56,17 +125,12 @@ func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user prot
 		return access.AdminAccess
 	}
 
-	r, _ := d.Repository(ctx, repo)
 	if r == nil {
 		// A directory with no row is taken (case variant or orphan), not free.
-		if d.repoPathExists(repo) {
+		if d.repoPathExists(name) {
 			return access.NoAccess
 		}
-		if user == nil {
-			return anon
-		}
-		// A missing name may be created, so registered users may write to it.
-		return max(anon, access.ReadWriteAccess)
+		return d.baseAccessLevel(ctx, user)
 	}
 
 	// If the user is the owner, they have admin access.
@@ -76,7 +140,7 @@ func (d *Backend) AccessLevelForUser(ctx context.Context, repo string, user prot
 
 	// If the user is a collaborator, they have return their access level.
 	// The anonymous floor only applies to public repositories.
-	collabAccess, isCollab, _ := d.IsCollaborator(ctx, repo, username)
+	collabAccess, isCollab, _ := d.IsCollaborator(ctx, name, username)
 	if isCollab {
 		if !r.IsPrivate() && anon > collabAccess {
 			return anon
