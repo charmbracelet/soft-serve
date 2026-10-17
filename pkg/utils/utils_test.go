@@ -1,6 +1,9 @@
 package utils
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidateRepo(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
@@ -12,6 +15,9 @@ func TestValidateRepo(t *testing.T) {
 			"withnumb3r5",
 			"with.dot",
 			"with_underline",
+			"a/b/c",
+			"foo.github/bar",
+			"gitfoo/bar.gitx",
 		} {
 			t.Run(repo, func(t *testing.T) {
 				if err := ValidateRepo(repo); err != nil {
@@ -25,6 +31,19 @@ func TestValidateRepo(t *testing.T) {
 			"with$",
 			"with@",
 			"with!",
+			"",
+			".",
+			"..",
+			"nested.git/refs/heads/x",
+			"A.GIT/b",
+			"victim.git/hooks",
+			"foo/.git",
+			"foo/../bar",
+			"foo//bar",
+			"/leading",
+			"trailing/",
+			"suffix.git",
+			"double.git.git",
 		} {
 			t.Run(repo, func(t *testing.T) {
 				if err := ValidateRepo(repo); err == nil {
@@ -45,11 +64,31 @@ func TestSanitizeRepo(t *testing.T) {
 		{"with.dot", "with.dot"},
 		{"/with_forward_slash", "with_forward_slash"},
 		{"withgitsuffix.git", "withgitsuffix"},
+		{"double.git.git", "double"},
+		{"triple.git.git.git", "triple"},
+		{"..git", ""},
+		{".git", ""},
+		{"foo/.git", "foo"},
+		{"foo/../bar", "bar"},
+		{"../../etc", "etc"},
+		{"trailing/", "trailing"},
+		{"nested.git/refs/heads/x", "nested.git/refs/heads/x"},
+		{"a/..git", "a"},
+		{"a/b/...git", "a"},
+		{"a/b/..git", "a/b"},
+		{"foo.git/.git", "foo"},
+		{strings.Repeat(".git", 20000), ""},
+		{strings.Repeat("/.git", 20000), ""},
+		{"x" + strings.Repeat(".git", 20000), "x"},
 	}
 	for _, c := range cases {
 		t.Run(c.in, func(t *testing.T) {
-			if got := SanitizeRepo(c.in); got != c.out {
+			got := SanitizeRepo(c.in)
+			if got != c.out {
 				t.Errorf("expected %q, got %q", c.out, got)
+			}
+			if again := SanitizeRepo(got); again != got {
+				t.Errorf("not a fixed point: %q -> %q", got, again)
 			}
 		})
 	}
