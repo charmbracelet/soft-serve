@@ -62,6 +62,35 @@ func TestValidateGitRemote(t *testing.T) {
 
 		{"empty", "", 0, ErrInvalidURL},
 		{"no host", "https:///x.git", 0, ErrInvalidURL},
+		{"ssh no host", "ssh:///x.git", 0, ErrInvalidURL},
+
+		// URLs that Go refuses to parse but libcurl accepts. These used to
+		// fall through as scp-style SSH remotes and skip validation.
+		// Regression: http://a{b@127.0.0.1:8080/ reached loopback.
+		{"unparseable http userinfo", "http://a{b@127.0.0.1:8080/", 0, ErrInvalidURL},
+		{"unparseable git userinfo", "git://a{b@127.0.0.1:9418/x", 0, ErrInvalidURL},
+		{"unparseable http port", "http://a@127.0.0.1:80x/", 0, ErrInvalidURL},
+		{"unparseable http space", "http://a b@127.0.0.1/", 0, ErrInvalidURL},
+
+		// scp-style remotes that are really SSH.
+		{"bare ssh no user", "github.com:charmbracelet/soft-serve.git", GitTransportSSH, nil},
+		{"bare ssh ipv6", "git@[::1]:x.git", GitTransportSSH, nil},
+		{"bare ssh bracketed host port", "[git@example.com:2222]:x.git", GitTransportSSH, nil},
+		{"bare ssh brace in user", "a{b@127.0.0.1:x", GitTransportSSH, nil},
+		{"bare ssh scheme-looking host", "http:foo", GitTransportSSH, nil},
+
+		// Things that look a bit like scp syntax but are not SSH remotes.
+		{"bare ssh option host", "-oProxyCommand=id:x", 0, ErrInvalidURL},
+		{"bare ssh option user", "-oProxyCommand=id@host:x", 0, ErrInvalidURL},
+		{"bare ssh option host after user", "user@-host:x", 0, ErrInvalidURL},
+		{"ssh url option user", "ssh://-user@example.com/x", 0, ErrInvalidURL},
+		{"bare ssh slash before colon", "dir/host:x", 0, ErrUnsupportedRemoteScheme},
+		{"bare ssh slash inside brackets", "[a/b@c]:x", 0, ErrUnsupportedRemoteScheme},
+		{"bare ssh no colon", "host", 0, ErrUnsupportedRemoteScheme},
+		{"bare ssh user no colon", "user@host", 0, ErrUnsupportedRemoteScheme},
+		{"bare ssh unterminated bracket", "[host:22]path", 0, ErrInvalidURL},
+		{"bare ssh empty host", ":path", 0, ErrInvalidURL},
+		{"remote helper syntax", "host::path", 0, ErrUnsupportedRemoteScheme},
 	}
 
 	for _, tt := range tests {

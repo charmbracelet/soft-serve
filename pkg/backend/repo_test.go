@@ -58,6 +58,8 @@ func TestValidateImportRemote(t *testing.T) {
 		{"public https", "https://1.1.1.1/x.git", false},
 		{"public git", "git://1.1.1.1/x.git", false},
 		{"ssh", "ssh://git@10.0.0.1/x.git", false},
+		{"scp no user", "github.com:charmbracelet/soft-serve.git", false},
+		{"scp ipv6", "git@[::1]:x.git", false},
 
 		{"loopback", "http://127.0.0.1/x.git", true},
 		{"localhost", "http://localhost:8080/x.git", true},
@@ -68,6 +70,9 @@ func TestValidateImportRemote(t *testing.T) {
 		{"local path", "/data/repos/secret.git", true},
 		{"file scheme", "file:///etc/passwd", true},
 		{"empty", "", true},
+		// Regression: a URL Go cannot parse but curl can was classified as
+		// SSH and skipped validation entirely.
+		{"unparseable http to loopback", "http://a{b@127.0.0.1:8080/", true},
 	}
 
 	for _, tt := range tests {

@@ -97,18 +97,25 @@ func ValidateGitRemote(remote string) (ValidatedGitRemote, error) {
 		return ValidatedGitRemote{}, ErrInvalidURL
 	}
 
+	// scp-like syntax is recognized on git's own terms, never as "whatever
+	// url.Parse rejects", since Go and libcurl disagree about what parses.
+	if user, host, ok := parseBareSSHRemote(remote); ok {
+		if err := validateSSHHost(user, host); err != nil {
+			return ValidatedGitRemote{}, err
+		}
+		return ValidatedGitRemote{Transport: GitTransportSSH}, nil
+	}
+
 	u, err := url.Parse(remote)
 	if err != nil {
-		// Bare SSH syntax (git@host:path) is not a parseable URL. Anything
-		// else that fails to parse is rejected rather than passed through.
-		if isBareSSHRemote(remote) {
-			return ValidatedGitRemote{Transport: GitTransportSSH}, nil
-		}
 		return ValidatedGitRemote{}, fmt.Errorf("%w: %v", ErrInvalidURL, err)
 	}
 
 	switch u.Scheme {
 	case "ssh", "git+ssh", "ssh+git":
+		if err := validateSSHHost(u.User.Username(), u.Hostname()); err != nil {
+			return ValidatedGitRemote{}, err
+		}
 		return ValidatedGitRemote{Transport: GitTransportSSH}, nil
 
 	case "git":
@@ -251,12 +258,42 @@ func isIPLiteral(host string) bool {
 	return err == nil
 }
 
-// isBareSSHRemote reports whether a remote uses scp-like syntax
-// (user@host:path), which is an SSH remote rather than a malformed URL.
-func isBareSSHRemote(remote string) bool {
-	at := strings.Index(remote, "@")
-	if at <= 0 {
-		return false
+// parseBareSSHRemote recognizes git's scp-like remote syntax
+// (user@host:path, [user@host:port]:path, user@[v6:addr]:path) and returns
+// the user and host. The rules mirror git's connect.c: "://" is a URL, a
+// slash before the first colon is a local path, "::" selects a remote helper,
+// and brackets count only at the start or right after "user@".
+func parseBareSSHRemote(remote string) (user, host string, ok bool) {
+	colon, slash := strings.IndexByte(remote, ':'), strings.IndexByte(remote, '/')
+	if strings.Contains(remote, "://") || colon < 0 || (slash >= 0 && slash < colon) {
+		return "", "", false
 	}
-	return strings.Contains(remote[at:], ":")
+	userHost, rest := remote[:colon], remote[colon:]
+	if open := strings.IndexByte(remote, '['); open == 0 || (open > 0 && open < colon && remote[open-1] == '@') {
+		end := strings.IndexByte(remote, ']')
+		if end < 0 {
+			return "", "", false
+		}
+		userHost, rest = remote[:open]+remote[open+1:end], remote[end+1:]
+	}
+	if !strings.HasPrefix(rest, ":") || strings.HasPrefix(rest, "::") {
+		return "", "", false
+	}
+	if at := strings.LastIndexByte(userHost, '@'); at >= 0 {
+		return userHost[:at], userHost[at+1:], true
+	}
+	return "", userHost, true
+}
+
+// validateSSHHost rejects SSH remotes with no host, or whose user or host
+// would reach ssh as a command-line option. Reachability is otherwise
+// governed by the operator's client key.
+func validateSSHHost(user, host string) error {
+	if host == "" {
+		return fmt.Errorf("%w: missing hostname", ErrInvalidURL)
+	}
+	if strings.HasPrefix(host, "-") || strings.HasPrefix(user, "-") {
+		return fmt.Errorf("%w: ssh user or host looks like a command-line option", ErrInvalidURL)
+	}
+	return nil
 }

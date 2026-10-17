@@ -30,13 +30,6 @@ import (
 // and loopback ranges, and returns the git environment that must be applied to
 // the clone subprocess for that validation to hold.
 func validateImportRemote(remote string) ([]string, error) {
-	endpoint, err := lfs.NewEndpoint(remote)
-	if err != nil || endpoint.Host == "" {
-		return nil, proto.ErrInvalidRemote
-	}
-
-	// Validate the remote as given rather than the LFS endpoint, which has
-	// already had its scheme rewritten and its path rewritten to /info/lfs.
 	v, err := ssrf.ValidateGitRemote(remote)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", proto.ErrInvalidRemote, err)
@@ -198,6 +191,21 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		}
 	}
 
+	// Resolve the LFS endpoint before anything is created, so a remote that
+	// has no usable one (scp syntax, IPv6 literals) imports without LFS
+	// instead of being cloned and then torn down.
+	lfsEndpoint := remote
+	if opts.LFSEndpoint != "" {
+		lfsEndpoint = opts.LFSEndpoint
+	}
+	ep, err := lfs.NewEndpoint(lfsEndpoint)
+	if err != nil {
+		if opts.LFSEndpoint != "" {
+			return nil, fmt.Errorf("%w: %w", proto.ErrInvalidRemote, err)
+		}
+		lfsEndpoint, ep = "", nil
+	}
+
 	rp := d.repoPath(name)
 
 	tid := "import:" + name
@@ -268,33 +276,26 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 
 		repoc <- r
 
+		if ep == nil {
+			return nil
+		}
+
 		rcfg, err := rr.Config()
 		if err != nil {
 			d.logger.Error("failed to get repository config", "err", err, "path", rp)
 			return err
 		}
 
-		endpoint := remote
-		if opts.LFSEndpoint != "" {
-			endpoint = opts.LFSEndpoint
-		}
-
-		rcfg.Section("lfs").SetOption("url", endpoint)
+		rcfg.Section("lfs").SetOption("url", lfsEndpoint)
 
 		if err := rr.SetConfig(rcfg); err != nil {
 			d.logger.Error("failed to set repository config", "err", err, "path", rp)
 			return err
 		}
 
-		ep, err := lfs.NewEndpoint(endpoint)
-		if err != nil {
-			d.logger.Error("failed to create lfs endpoint", "err", err, "path", rp)
-			return err
-		}
-
 		client := lfs.NewClient(ep)
 		if client == nil {
-			d.logger.Warn("failed to create lfs client: unsupported endpoint", "endpoint", endpoint)
+			d.logger.Warn("failed to create lfs client: unsupported endpoint", "endpoint", lfsEndpoint)
 			return nil
 		}
 
