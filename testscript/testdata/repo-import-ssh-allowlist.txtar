@@ -1,0 +1,46 @@
+# vi: set ft=conf
+
+# Test the ssh host allowlist on repository import.
+#
+# The server presents its own client key to every ssh remote it clones from.
+# ssh.client_allowed_hosts names the hosts the operator trusts that key with;
+# once set, any user may import from those hosts and nobody may import from
+# any other.
+
+env SOFT_SERVE_SSH_CLIENT_ALLOWED_HOSTS=127.0.0.1:1
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# an allowed host passes policy for a non-admin and fails only at the clone,
+# since nothing listens on loopback port 1
+! usoft repo import allowed1 ssh://git@127.0.0.1:1/x.git
+stderr 'import failed'
+! stderr 'unauthorized'
+
+# the same host on a port the entry does not name is refused
+! usoft repo import denied1 ssh://git@127.0.0.1:2/x.git
+stderr 'remote must be a network URL'
+stderr 'remote host is not allowed'
+
+# a host that is not listed is refused for the admin too
+! soft repo import denied2 ssh://git@127.0.0.2:1/x.git
+stderr 'remote host is not allowed'
+
+# scp-style syntax goes through the same policy
+! usoft repo import denied3 git@127.0.0.1:x.git
+stderr 'remote host is not allowed'
+! usoft repo import allowed2 '[git@127.0.0.1:1]:x.git'
+stderr 'import failed'
+
+soft repo list
+! stdout 'allowed'
+! stdout 'denied'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .

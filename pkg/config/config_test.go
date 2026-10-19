@@ -265,3 +265,30 @@ func TestValidateRejectsUnquotableDataPath(t *testing.T) {
 		t.Errorf("Validate() rejected a data path with spaces: %v", err)
 	}
 }
+
+func TestValidateParsesAllowedHosts(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.DataPath = t.TempDir()
+	if len(cfg.SSH.AllowedHosts()) != 0 {
+		t.Fatal("allowlist populated before Validate")
+	}
+
+	cfg.SSH.ClientAllowedHosts = []string{"git.internal.example", "", "10.0.0.0/8:2222", " "}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.SSH.ClientAllowedHosts; len(got) != 2 {
+		t.Errorf("blank entries kept: %q", got)
+	}
+	if got := cfg.SSH.AllowedHosts(); len(got) != 2 {
+		t.Errorf("parsed %d entries, want 2", len(got))
+	}
+	if err := cfg.SSH.AllowedHosts().Match("git.internal.example", ""); err != nil {
+		t.Errorf("parsed allowlist does not match its own entry: %v", err)
+	}
+
+	cfg.SSH.ClientAllowedHosts = []string{"10.0.0.0/99"}
+	if err := cfg.Validate(); err == nil {
+		t.Error("Validate() accepted an invalid network")
+	}
+}

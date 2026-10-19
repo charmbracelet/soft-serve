@@ -55,11 +55,19 @@ stderr 'remote must be a network URL'
 ! soft repo import bad11 https://1.1.1.1/x.git --lfs-endpoint http://127.0.0.1:9000
 stderr 'remote must be a network URL'
 
-# A remote that passes validation but cannot be cloned (nothing listens on
-# loopback port 1) fails promptly, and the clone's own error must not come
-# back to the user.
+# ssh remotes present the server's own client key to the named host. With no
+# ssh.client_allowed_hosts configured, only an admin may choose that host. The
+# admin's attempt passes policy and then fails at the clone (nothing listens
+# on loopback port 1); the clone's own error must not come back to the user.
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+! usoft repo import bad12 ssh://git@127.0.0.1:1/x.git
+stderr 'unauthorized'
+! stderr 'remote must be a network URL'
+! usoft repo import bad13 git@127.0.0.1:x.git
+stderr 'unauthorized'
 ! soft repo import bad14 ssh://git@127.0.0.1:1/x.git
 stderr 'import failed'
+! stderr 'unauthorized'
 ! stderr 'refused'
 
 # none of the rejected imports may leave a repository behind

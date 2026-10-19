@@ -51,42 +51,57 @@ func TestDefaultAdminUserIDNoAdmin(t *testing.T) {
 }
 
 // TestValidateImportRemote verifies that import remotes pointing at private,
-// internal, or non-network destinations are rejected, and that accepted
-// remotes carry the git environment that keeps the validation honest.
+// internal, or non-network destinations are rejected, that the ssh policy
+// maps to the right user-facing error, and that accepted remotes carry the
+// git environment that keeps the validation honest.
 func TestValidateImportRemote(t *testing.T) {
+	allowed, err := ssrf.ParseAllowedHosts([]string{"git.internal.example", "10.0.0.0/8"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nobody := ssrf.GitRemotePolicy{}
+	admin := ssrf.GitRemotePolicy{AllowAnySSHHost: true}
+	listed := ssrf.GitRemotePolicy{AllowedSSHHosts: allowed}
+
 	tests := []struct {
 		name    string
 		remote  string
-		wantErr bool
+		policy  ssrf.GitRemotePolicy
+		wantErr error
 	}{
-		{"public https", "https://1.1.1.1/x.git", false},
-		{"public git", "git://1.1.1.1/x.git", false},
-		{"ssh", "ssh://git@10.0.0.1/x.git", false},
-		{"scp no user", "github.com:charmbracelet/soft-serve.git", false},
-		{"scp ipv6", "git@[::1]:x.git", false},
+		{"public https", "https://1.1.1.1/x.git", nobody, nil},
+		{"public git", "git://1.1.1.1/x.git", nobody, nil},
+		// With no allowlist, ssh is for admins only; the user sees an
+		// authorization error, not a remote one.
+		{"ssh admin", "ssh://git@10.0.0.1/x.git", admin, nil},
+		{"ssh user", "ssh://git@10.0.0.1/x.git", nobody, proto.ErrUnauthorized},
+		{"ssh allowed by name", "ssh://git@git.internal.example/x.git", listed, nil},
+		{"ssh allowed by cidr", "git@10.1.1.1:x.git", listed, nil},
+		{"ssh not on allowlist", "ssh://git@evil.example/x.git", listed, proto.ErrInvalidRemote},
+		{"scp no user", "github.com:charmbracelet/soft-serve.git", admin, nil},
+		{"scp ipv6", "git@[::1]:x.git", admin, nil},
 
-		{"loopback", "http://127.0.0.1/x.git", true},
-		{"localhost", "http://localhost:8080/x.git", true},
-		{"private network", "http://10.0.0.1/x.git", true},
-		{"cloud metadata", "http://169.254.169.254/latest/meta-data/", true},
-		{"git scheme private", "git://10.0.0.1/x.git", true},
-		{"octal loopback", "http://0177.0.0.1/x.git", true},
-		{"local path", "/data/repos/secret.git", true},
-		{"file scheme", "file:///etc/passwd", true},
-		{"empty", "", true},
+		{"loopback", "http://127.0.0.1/x.git", nobody, proto.ErrInvalidRemote},
+		{"localhost", "http://localhost:8080/x.git", nobody, proto.ErrInvalidRemote},
+		{"private network", "http://10.0.0.1/x.git", nobody, proto.ErrInvalidRemote},
+		{"cloud metadata", "http://169.254.169.254/latest/meta-data/", nobody, proto.ErrInvalidRemote},
+		{"git scheme private", "git://10.0.0.1/x.git", nobody, proto.ErrInvalidRemote},
+		{"octal loopback", "http://0177.0.0.1/x.git", nobody, proto.ErrInvalidRemote},
+		{"local path", "/data/repos/secret.git", nobody, proto.ErrInvalidRemote},
+		{"file scheme", "file:///etc/passwd", nobody, proto.ErrInvalidRemote},
+		{"empty", "", nobody, proto.ErrInvalidRemote},
 		// Regression: a URL Go cannot parse but curl can was classified as
 		// SSH and skipped validation entirely.
-		{"unparseable http to loopback", "http://a{b@127.0.0.1:8080/", true},
+		{"unparseable http to loopback", "http://a{b@127.0.0.1:8080/", nobody, proto.ErrInvalidRemote},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			is := is.New(t)
-			v, err := validateImportRemote(tt.remote)
+			v, err := validateImportRemote(tt.remote, tt.policy)
 
-			if tt.wantErr {
-				is.True(err != nil)
-				is.True(errors.Is(err, proto.ErrInvalidRemote))
+			if tt.wantErr != nil {
+				is.True(errors.Is(err, tt.wantErr))
 				return
 			}
 
@@ -158,4 +173,53 @@ func TestRedactRemote(t *testing.T) {
 			t.Errorf("redactRemote(%q) = %q, want %q", in, got, want)
 		}
 	}
+}
+
+// TestImportRepositorySSHRequiresAdmin verifies that with no ssh allowlist
+// configured, only a server admin may import over ssh. The clone would
+// present the server's client key to whatever host the remote names.
+func TestImportRepositorySSHRequiresAdmin(t *testing.T) {
+	is := is.New(t)
+	be, cfg := newTestBackend(t)
+	ctx := context.Background()
+	is.Equal(len(cfg.SSH.AllowedHosts()), 0)
+
+	user, err := be.CreateUser(ctx, "tenant", proto.UserOptions{})
+	is.NoErr(err)
+
+	for _, remote := range []string{
+		"ssh://git@10.0.0.1/x.git",
+		"git+ssh://git@10.0.0.1/x.git",
+		"git@10.0.0.1:x.git",
+		"[git@10.0.0.1:2222]:x.git",
+	} {
+		_, err = be.ImportRepository(ctx, "tenant-ssh", user, remote, proto.RepositoryOptions{})
+		is.True(errors.Is(err, proto.ErrUnauthorized)) // remote
+	}
+
+	_, err = be.ImportRepository(ctx, "tenant-ssh", nil, "ssh://git@10.0.0.1/x.git", proto.RepositoryOptions{})
+	is.True(errors.Is(err, proto.ErrUnauthorized))
+
+	// An ssh LFS endpoint is subject to the same policy as the remote.
+	_, err = be.ImportRepository(ctx, "tenant-ssh", user, "https://1.1.1.1/x.git", proto.RepositoryOptions{LFSEndpoint: "ssh://git@10.0.0.1/x.git"})
+	is.True(errors.Is(err, proto.ErrUnauthorized))
+
+	// An allowlist entry that does not cover the host is refused for
+	// everyone, admin included, with the remote error rather than an
+	// authorization one.
+	admin, err := be.User(ctx, "admin")
+	is.NoErr(err)
+	cfg.SSH.ClientAllowedHosts = []string{"git.internal.example"}
+	is.NoErr(cfg.Validate())
+	_, err = be.ImportRepository(ctx, "admin-ssh", admin, "ssh://git@10.0.0.1/x.git", proto.RepositoryOptions{})
+	is.True(errors.Is(err, proto.ErrInvalidRemote))
+	is.True(errors.Is(err, ssrf.ErrSSHHostNotAllowed))
+	_, err = be.ImportRepository(ctx, "tenant-ssh", user, "ssh://git@10.0.0.1/x.git", proto.RepositoryOptions{})
+	is.True(errors.Is(err, proto.ErrInvalidRemote))
+
+	// Nothing was created along the way.
+	_, err = be.Repository(ctx, "tenant-ssh")
+	is.True(errors.Is(err, proto.ErrRepoNotFound))
+	_, err = be.Repository(ctx, "admin-ssh")
+	is.True(errors.Is(err, proto.ErrRepoNotFound))
 }

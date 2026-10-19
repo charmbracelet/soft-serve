@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/caarlos0/env/v11"
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/sshutils"
+	"github.com/charmbracelet/soft-serve/pkg/ssrf"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )
@@ -48,11 +50,26 @@ type SSHConfig struct {
 	// changed one) and "yes" (only hosts already in known_hosts).
 	ClientStrictHostKeyChecking string `env:"CLIENT_STRICT_HOST_KEY_CHECKING" yaml:"client_strict_host_key_checking"`
 
+	// ClientAllowedHosts lists the ssh hosts users may import from or mirror.
+	// The client key is presented to every one of them. Entries are
+	// hostnames, IP addresses, or CIDR ranges with an optional port. When
+	// empty, only server admins may use ssh remotes.
+	ClientAllowedHosts []string `env:"CLIENT_ALLOWED_HOSTS" yaml:"client_allowed_hosts"`
+
 	// MaxTimeout is the maximum number of seconds a connection can take.
 	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout"`
 
 	// IdleTimeout is the number of seconds a connection can be idle before it is closed.
 	IdleTimeout int `env:"IDLE_TIMEOUT" yaml:"idle_timeout"`
+
+	// allowedHosts is ClientAllowedHosts parsed by Validate.
+	allowedHosts ssrf.AllowedHosts
+}
+
+// AllowedHosts returns the parsed ssh allowlist. It is empty until Validate
+// has run.
+func (c *SSHConfig) AllowedHosts() ssrf.AllowedHosts {
+	return c.allowedHosts
 }
 
 // GitConfig is the Git daemon configuration for the server.
@@ -235,6 +252,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_SSH_KEY_PATH=%s", c.SSH.KeyPath),
 		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_KEY_PATH=%s", c.SSH.ClientKeyPath),
 		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_STRICT_HOST_KEY_CHECKING=%s", c.SSH.ClientStrictHostKeyChecking),
+		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_ALLOWED_HOSTS=%s", strings.Join(c.SSH.ClientAllowedHosts, ",")),
 		fmt.Sprintf("SOFT_SERVE_SSH_MAX_TIMEOUT=%d", c.SSH.MaxTimeout),
 		fmt.Sprintf("SOFT_SERVE_SSH_IDLE_TIMEOUT=%d", c.SSH.IdleTimeout),
 		fmt.Sprintf("SOFT_SERVE_GIT_ENABLED=%t", c.Git.Enabled),
@@ -491,6 +509,18 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("ssh.client_strict_host_key_checking: %q is not one of %q, %q",
 			c.SSH.ClientStrictHostKeyChecking, StrictHostKeyCheckingAcceptNew, StrictHostKeyCheckingYes)
 	}
+
+	// Drop blanks so an unset env var does not read as one empty entry, then
+	// parse once, rejecting anything unreadable now rather than at the first
+	// import.
+	c.SSH.ClientAllowedHosts = slices.DeleteFunc(slices.Clone(c.SSH.ClientAllowedHosts), func(s string) bool {
+		return strings.TrimSpace(s) == ""
+	})
+	allowed, err := ssrf.ParseAllowedHosts(c.SSH.ClientAllowedHosts)
+	if err != nil {
+		return fmt.Errorf("ssh.client_allowed_hosts: %w", err)
+	}
+	c.SSH.allowedHosts = allowed
 
 	if c.HTTP.TLSKeyPath != "" && !filepath.IsAbs(c.HTTP.TLSKeyPath) {
 		c.HTTP.TLSKeyPath = filepath.Join(c.DataPath, c.HTTP.TLSKeyPath)

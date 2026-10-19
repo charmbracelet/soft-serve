@@ -36,18 +36,51 @@ func newRepoWithRemotes(t *testing.T, remotes map[string]string) *git.Repository
 }
 
 func TestValidateMirrorRemotes(t *testing.T) {
+	allowed, err := ssrf.ParseAllowedHosts([]string{"git.internal.example"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	allow := ssrf.GitRemotePolicy{AllowedSSHHosts: allowed}
+	admin := ssrf.GitRemotePolicy{AllowAnySSHHost: true}
+
 	tests := []struct {
 		name    string
 		remotes map[string]string
+		policy  ssrf.GitRemotePolicy
 		wantErr error
 	}{
+		{
+			// With an allowlist, every ssh remote must be on it. A second
+			// remote added out of band is fetched by `remote update` too.
+			name: "ssh remote on allowlist",
+			remotes: map[string]string{
+				"origin": "ssh://git@git.internal.example/x.git",
+			},
+			policy: allow,
+		},
+		{
+			name: "ssh remote off allowlist",
+			remotes: map[string]string{
+				"origin": "ssh://git@git.internal.example/x.git",
+				"backup": "git@10.0.0.1:x.git",
+			},
+			policy:  allow,
+			wantErr: ssrf.ErrSSHHostNotAllowed,
+		},
 		{
 			name:    "public origin",
 			remotes: map[string]string{"origin": "https://1.1.1.1/x.git"},
 		},
 		{
-			name:    "ssh origin",
+			// With no allowlist, an ssh remote syncs only for an admin owner.
+			name:    "ssh origin, admin owner",
 			remotes: map[string]string{"origin": "ssh://git@10.0.0.1/x.git"},
+			policy:  admin,
+		},
+		{
+			name:    "ssh origin, unprivileged owner",
+			remotes: map[string]string{"origin": "ssh://git@10.0.0.1/x.git"},
+			wantErr: ssrf.ErrSSHRequiresAdmin,
 		},
 		{
 			name:    "private origin",
@@ -93,7 +126,7 @@ func TestValidateMirrorRemotes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newRepoWithRemotes(t, tt.remotes)
-			remotes, err := validateMirrorRemotes(r)
+			remotes, err := validateMirrorRemotes(r, tt.policy)
 
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -118,7 +151,7 @@ func TestValidateMirrorRemotes(t *testing.T) {
 // skipped rather than treated as valid.
 func TestValidateMirrorRemotesNoRemote(t *testing.T) {
 	r := newRepoWithRemotes(t, nil)
-	if _, err := validateMirrorRemotes(r); err == nil {
+	if _, err := validateMirrorRemotes(r, ssrf.GitRemotePolicy{}); err == nil {
 		t.Error("validateMirrorRemotes() accepted a repo with no remote")
 	}
 }

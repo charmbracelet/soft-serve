@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/soft-serve/git"
+	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/models"
 	"github.com/charmbracelet/soft-serve/pkg/hooks"
@@ -26,12 +27,26 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 )
 
-// validateImportRemote validates a user-supplied remote and maps a failure to
-// the error the user sees. Render the result with RemoteGitEnv and apply it
-// to the clone subprocess, or the validation does not hold.
-func validateImportRemote(remote string) (ssrf.ValidatedGitRemote, error) {
-	v, err := ssrf.ValidateGitRemote(remote)
-	if err != nil {
+// RemotePolicy returns the policy for git remotes supplied on behalf of user:
+// the operator's ssh allowlist, and, for server admins, leave to pick any ssh
+// host when no allowlist is configured. A nil user gets neither.
+func RemotePolicy(cfg *config.Config, user proto.User) ssrf.GitRemotePolicy {
+	return ssrf.GitRemotePolicy{
+		AllowedSSHHosts: cfg.SSH.AllowedHosts(),
+		AllowAnySSHHost: user != nil && user.IsAdmin(),
+	}
+}
+
+// validateImportRemote validates a user-supplied remote and maps the outcome
+// to the errors the user sees: refused for want of privilege, or not a
+// usable remote. Render the result with RemoteGitEnv and apply it to the
+// clone subprocess, or the validation does not hold.
+func validateImportRemote(remote string, policy ssrf.GitRemotePolicy) (ssrf.ValidatedGitRemote, error) {
+	v, err := ssrf.ValidateGitRemote(remote, policy)
+	switch {
+	case errors.Is(err, ssrf.ErrSSHRequiresAdmin):
+		return ssrf.ValidatedGitRemote{}, proto.ErrUnauthorized
+	case err != nil:
 		return ssrf.ValidatedGitRemote{}, fmt.Errorf("%w: %w", proto.ErrInvalidRemote, err)
 	}
 	return v, nil
@@ -185,7 +200,8 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 	}
 
 	remote = utils.Sanitize(remote)
-	v, err := validateImportRemote(remote)
+	policy := RemotePolicy(d.cfg, user)
+	v, err := validateImportRemote(remote, policy)
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +224,8 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 	case opts.LFSEndpoint != "":
 		// A user-supplied endpoint is persisted to the repo config, where
 		// the mirror job later reads it, so it obeys the same validation
-		// as the remote itself.
-		if _, err := validateImportRemote(opts.LFSEndpoint); err != nil {
+		// and ssh policy as the remote itself.
+		if _, err := validateImportRemote(opts.LFSEndpoint, policy); err != nil {
 			return nil, err
 		}
 		imp.lfs, err = lfs.NewEndpoint(opts.LFSEndpoint)

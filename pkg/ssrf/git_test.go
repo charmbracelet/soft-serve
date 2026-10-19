@@ -10,6 +10,10 @@ import (
 	"testing"
 )
 
+// anySSH is the policy of a server admin with no allowlist configured; it
+// keeps the address-validation table independent of the ssh policy.
+var anySSH = GitRemotePolicy{AllowAnySSHHost: true}
+
 func TestValidateGitRemote(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -24,7 +28,8 @@ func TestValidateGitRemote(t *testing.T) {
 		{"public https with port", "https://1.1.1.1:8443/x.git", GitTransportHTTP, nil},
 		{"public ipv6", "https://[2606:4700::1111]/x.git", GitTransportHTTP, nil},
 
-		// SSH is reachability-governed by the operator's client key.
+		// SSH is reachability-governed by the operator's client key, and
+		// here by a policy that allows any host.
 		{"ssh url", "ssh://git@10.0.0.1/x.git", GitTransportSSH, nil},
 		{"bare ssh", "git@github.com:charmbracelet/soft-serve.git", GitTransportSSH, nil},
 		{"git+ssh", "git+ssh://git@example.com/x.git", GitTransportSSH, nil},
@@ -91,11 +96,15 @@ func TestValidateGitRemote(t *testing.T) {
 		{"bare ssh unterminated bracket", "[host:22]path", 0, ErrInvalidURL},
 		{"bare ssh empty host", ":path", 0, ErrInvalidURL},
 		{"remote helper syntax", "host::path", 0, ErrUnsupportedRemoteScheme},
+		// An ssh host must be a plain DNS name or IP literal, so that the
+		// name the policy matched is the name ssh connects to.
+		{"ssh url non-canonical ip", "ssh://git@0177.0.0.1/x.git", 0, ErrAmbiguousHost},
+		{"ssh url unicode host", "ssh://git@gît.example/x.git", 0, ErrAmbiguousHost},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ValidateGitRemote(tt.remote)
+			got, err := ValidateGitRemote(tt.remote, anySSH)
 
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -121,7 +130,7 @@ func TestValidateGitRemoteResolvesHostnames(t *testing.T) {
 		t.Skip("requires DNS")
 	}
 
-	v, err := ValidateGitRemote("https://github.com/charmbracelet/soft-serve.git")
+	v, err := ValidateGitRemote("https://github.com/charmbracelet/soft-serve.git", anySSH)
 	if err != nil {
 		t.Fatalf("public hostname rejected: %v", err)
 	}
