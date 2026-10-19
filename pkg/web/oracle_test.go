@@ -13,7 +13,9 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
+	"github.com/charmbracelet/soft-serve/pkg/jwk"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/matryer/is"
 )
 
@@ -161,4 +163,74 @@ func TestReceivePackReaderIsForbidden(t *testing.T) {
 	is.True(err != nil)
 	_, err = f.be.Repository(f.ctx, "ghost/objects/info")
 	is.True(err != nil)
+}
+
+// mintJWT signs a token for user the way `soft jwt` does.
+func mintJWT(ctx context.Context, t *testing.T, user proto.User, audience ...string) string {
+	t.Helper()
+	is := is.New(t)
+	cfg := config.FromContext(ctx)
+	kp, err := jwk.NewPair(cfg)
+	is.NoErr(err)
+
+	now := time.Now()
+	claims := jwt.RegisteredClaims{
+		Subject:   fmt.Sprintf("%s#%d", user.Username(), user.ID()),
+		ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
+		NotBefore: jwt.NewNumericDate(now),
+		IssuedAt:  jwt.NewNumericDate(now),
+		Issuer:    cfg.HTTP.PublicURL,
+		Audience:  audience,
+	}
+	token := jwt.NewWithClaims(jwk.SigningMethod, claims)
+	token.Header["kid"] = kp.JWK().KeyID
+	signed, err := token.SignedString(kp.PrivateKey())
+	is.NoErr(err)
+	return signed
+}
+
+// TestBearerTokenDoesNotRevealPrivateRepositories covers JWT auth, which
+// used to reject any token for a missing repository as bad credentials
+// (403) before checking it, while a valid token for a private repository
+// identified the user and answered 404.
+func TestBearerTokenDoesNotRevealPrivateRepositories(t *testing.T) {
+	is := is.New(t)
+	f := newOracleFixture(t)
+	stranger, err := f.be.User(f.ctx, "stranger")
+	is.NoErr(err)
+
+	const path = "/%s.git/info/refs?service=git-upload-pack"
+	mint := func(audience ...string) string {
+		return "Bearer " + mintJWT(f.ctx, t, stranger, audience...)
+	}
+
+	// A token whose audience names the requested repository identifies the
+	// user whether or not the repository exists.
+	for _, name := range []string{"secret", "ghost"} {
+		is.Equal(answerOf(f.do(http.MethodGet, fmt.Sprintf(path, name), mint(name))).code, http.StatusNotFound)
+	}
+	private := answerOf(f.do(http.MethodGet, fmt.Sprintf(path, "secret"), mint("secret")))
+	missing := answerOf(f.do(http.MethodGet, fmt.Sprintf(path, "ghost"), mint("ghost")))
+	is.Equal(missing, private)
+
+	// The same holds when the token names several repositories.
+	private = answerOf(f.do(http.MethodGet, fmt.Sprintf(path, "secret"), mint("a", "secret", "b")))
+	missing = answerOf(f.do(http.MethodGet, fmt.Sprintf(path, "ghost"), mint("a", "ghost", "b")))
+	is.Equal(private.code, http.StatusNotFound)
+	is.Equal(missing, private)
+
+	// A token minted for some other repository, or for none, is bad
+	// credentials either way.
+	for _, audience := range [][]string{{"elsewhere"}, {"a", "b"}, {}} {
+		f.assertSameAnswer(t, http.MethodGet, path, mint(audience...), http.StatusForbidden)
+	}
+
+	// A valid token still grants the user their own access.
+	ownerCtx := proto.WithUserContext(f.ctx, f.owner)
+	is.NoErr(f.be.AddCollaborator(ownerCtx, "secret", "stranger", access.ReadOnlyAccess))
+	is.Equal(f.do(http.MethodGet, fmt.Sprintf(path, "secret"), mint("secret")).Code, http.StatusOK)
+
+	// The audience is matched against the sanitized name, which is what
+	// `soft jwt` mints, so a ".git" suffix in the token does not match.
+	is.Equal(f.do(http.MethodGet, fmt.Sprintf(path, "secret"), mint("secret.git")).Code, http.StatusForbidden)
 }

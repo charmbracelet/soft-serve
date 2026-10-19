@@ -18,6 +18,30 @@ stdout '.*\..*\..*'
 usoft jwt repo
 stdout '.*\..*\..*'
 
+# a token for a private repo the user cannot read and one for a missing
+# repo get the same answer, so the token cannot be used to probe names
+[windows] stopserver
+[windows] skip 'curl makes github actions hang'
+soft repo create secret -p
+usoft jwt secret
+cp stdout secretjwt
+envfile SECRETJWT=secretjwt
+usoft jwt ghost
+cp stdout ghostjwt
+envfile GHOSTJWT=ghostjwt
+curl -H 'Authorization: Bearer '$SECRETJWT http://localhost:$HTTP_PORT/secret.git/info/refs?service=git-upload-pack
+stdout '404.*'
+cp stdout want.txt
+curl -H 'Authorization: Bearer '$GHOSTJWT http://localhost:$HTTP_PORT/ghost.git/info/refs?service=git-upload-pack
+cmp stdout want.txt
+
+# a token minted for another repo is bad credentials either way
+curl -H 'Authorization: Bearer '$GHOSTJWT http://localhost:$HTTP_PORT/secret.git/info/refs?service=git-upload-pack
+stdout '403.*'
+cp stdout want.txt
+curl -H 'Authorization: Bearer '$SECRETJWT http://localhost:$HTTP_PORT/ghost.git/info/refs?service=git-upload-pack
+cmp stdout want.txt
+
 # stop the server
 [windows] stopserver
 [windows] ! stderr .

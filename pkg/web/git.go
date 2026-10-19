@@ -196,19 +196,13 @@ func askCredentials(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("LFS-Authenticate", `Basic realm="Git LFS" charset="UTF-8", Token, Bearer`)
 }
 
-// identify stores the requested repository and the authenticated caller in
-// the request context, and returns the authentication error, if any.
-func identify(r *http.Request) (*http.Request, proto.Repository, error) {
+// identify stores the authenticated caller in the request context and
+// returns the authentication error, if any.
+func identify(r *http.Request) (*http.Request, error) {
 	ctx := r.Context()
 	logger := log.FromContext(ctx)
-	be := backend.FromContext(ctx)
 
-	// A missing repository is not an error here; pushes create it.
-	repo, _ := be.Repository(ctx, mux.Vars(r)["repo"])
-	ctx = proto.WithRepositoryContext(ctx, repo)
-	r = r.WithContext(ctx)
-
-	user, err := authenticate(r)
+	user, err := authenticate(r, mux.Vars(r)["repo"])
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrInvalidToken):
@@ -222,7 +216,7 @@ func identify(r *http.Request) (*http.Request, proto.Repository, error) {
 		logger.Debug("authenticated", "username", user.Username())
 	}
 
-	return r.WithContext(proto.WithUserContext(ctx, user)), repo, err
+	return r.WithContext(proto.WithUserContext(ctx, user)), err
 }
 
 // badCredentials reports whether the caller sent credentials that failed.
@@ -293,16 +287,16 @@ const (
 )
 
 // authorize decides what to do with a request without touching the
-// response, so the decision order can be tested as a table. Readability is
-// decided before existence everywhere: a caller who cannot read gets
-// denyUnreadable whether the repository is private or missing. Bad
-// credentials are rejected before a push can create anything.
-func authorize(service git.Service, file, method string, exists bool, level access.AccessLevel, anonymous, badCreds bool) verdict {
-	canRead := exists && level >= access.ReadOnlyAccess
+// response, so the decision order can be tested as a table. readable is
+// whether the caller may read an existing repository; a private repository
+// the caller cannot read and a missing one both arrive as !readable, so
+// they get the same verdict. Bad credentials are rejected before a push can
+// create anything.
+func authorize(service git.Service, file, method string, readable bool, level access.AccessLevel, anonymous, badCreds bool) verdict {
 	switch {
 	case strings.HasPrefix(file, "info/lfs"):
 		switch {
-		case !canRead:
+		case !readable:
 			return denyUnreadable
 		case badCreds:
 			return forbid
@@ -313,9 +307,9 @@ func authorize(service git.Service, file, method string, exists bool, level acce
 		switch {
 		case badCreds:
 			return forbid
-		case !exists && level >= access.ReadWriteAccess && isPushEndpoint(file):
+		case !readable && level >= access.ReadWriteAccess && isPushEndpoint(file):
 			return createThenServe
-		case !canRead:
+		case !readable:
 			return denyUnreadable
 		case level < access.ReadWriteAccess && anonymous:
 			return unauthorized
@@ -326,7 +320,7 @@ func authorize(service git.Service, file, method string, exists bool, level acce
 		switch {
 		case badCreds:
 			return forbid
-		case !canRead:
+		case !readable:
 			return denyUnreadable
 		}
 	}
@@ -348,7 +342,7 @@ func requireCaller(w http.ResponseWriter, r *http.Request) bool {
 // Handlers behind it must check access to any repository they reveal.
 func withCaller(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r, _, err := identify(r)
+		r, err := identify(r)
 		if !requireCaller(w, r) {
 			return
 		}
@@ -366,7 +360,7 @@ func withCaller(next http.Handler) http.HandlerFunc {
 // repository.
 func withAccess(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r, repo, err := identify(r)
+		r, err := identify(r)
 		if !requireCaller(w, r) {
 			return
 		}
@@ -387,7 +381,10 @@ func withAccess(next http.Handler) http.HandlerFunc {
 			return
 		}
 
-		accessLevel := be.AccessLevelForUser(ctx, repoName, user)
+		// repo is nil unless the caller may read it, so a private and a
+		// missing repository are already indistinguishable here.
+		repo, accessLevel := be.Readable(ctx, repoName, user)
+		ctx = proto.WithRepositoryContext(ctx, repo)
 		ctx = access.WithContext(ctx, accessLevel)
 		r = r.WithContext(ctx)
 

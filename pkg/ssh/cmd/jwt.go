@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/jwk"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +31,12 @@ func JWTCommand() *cobra.Command {
 				return proto.ErrUserNotFound
 			}
 
+			// Mint the spelling the HTTP router checks against.
+			audience := make([]string, len(args))
+			for i, arg := range args {
+				audience[i] = utils.SanitizeRepo(arg)
+			}
+
 			now := time.Now()
 			expiresAt := now.Add(time.Hour)
 			claims := jwt.RegisteredClaims{
@@ -38,7 +45,7 @@ func JWTCommand() *cobra.Command {
 				NotBefore: jwt.NewNumericDate(now),
 				IssuedAt:  jwt.NewNumericDate(now),
 				Issuer:    cfg.HTTP.PublicURL,
-				Audience:  args,
+				Audience:  audience,
 			}
 
 			token := jwt.NewWithClaims(jwk.SigningMethod, claims)
