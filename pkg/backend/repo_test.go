@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ssrf"
@@ -222,4 +223,50 @@ func TestImportRepositorySSHRequiresAdmin(t *testing.T) {
 	is.True(errors.Is(err, proto.ErrRepoNotFound))
 	_, err = be.Repository(ctx, "admin-ssh")
 	is.True(errors.Is(err, proto.ErrRepoNotFound))
+}
+
+// TestImportRepositoryDisabled verifies that when the installed git is too
+// old to honour the remote guards, or its version cannot be read, imports are
+// refused before any remote is touched, and that a new enough git leaves the
+// gate open.
+func TestImportRepositoryDisabled(t *testing.T) {
+	tests := []struct {
+		name     string
+		version  git.Version
+		err      error
+		disabled bool
+	}{
+		{"too old", git.Version{Major: 2, Minor: 30, Patch: 2}, nil, true},
+		{"just below", git.Version{Major: 2, Minor: 32, Patch: 9}, nil, true},
+		{"minimum", git.Version{Major: 2, Minor: 33}, nil, false},
+		{"current", git.Version{Major: 2, Minor: 45}, nil, false},
+		{"unreadable", git.Version{}, errors.New("exec: git: not found"), true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			is := is.New(t)
+			orig := binVersion
+			binVersion = func() (git.Version, error) { return tt.version, tt.err }
+			t.Cleanup(func() { binVersion = orig })
+
+			be, _ := newTestBackend(t)
+			ctx := context.Background()
+			admin, err := be.User(ctx, "admin")
+			is.NoErr(err)
+
+			reason := be.ImportsDisabledReason()
+			is.Equal(reason != "", tt.disabled)
+			if !tt.disabled {
+				return
+			}
+
+			_, err = be.ImportRepository(ctx, "gated", admin, "https://1.1.1.1/x.git", proto.RepositoryOptions{})
+			is.True(errors.Is(err, proto.ErrImportsDisabled))
+			// The reason is for the operator, not the user.
+			is.Equal(err.Error(), proto.ErrImportsDisabled.Error())
+			_, err = be.Repository(ctx, "gated")
+			is.True(errors.Is(err, proto.ErrRepoNotFound))
+		})
+	}
 }

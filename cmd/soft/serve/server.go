@@ -107,6 +107,12 @@ func NewServer(ctx context.Context) (*Server, error) {
 
 	warnIfAnonAdminAccess(ctx, be, logger)
 
+	// The backend decides this on its own; surface it once at startup so the
+	// operator does not learn about it from the first failed import.
+	if reason := be.ImportsDisabledReason(); reason != "" {
+		logger.Error("imports and mirror syncs are disabled", "reason", reason)
+	}
+
 	return srv, nil
 }
 

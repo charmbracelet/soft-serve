@@ -199,6 +199,11 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		return nil, err
 	}
 
+	if reason := d.ImportsDisabledReason(); reason != "" {
+		d.logger.Warn("refusing import", "name", name, "reason", reason)
+		return nil, proto.ErrImportsDisabled
+	}
+
 	remote = utils.Sanitize(remote)
 	policy := RemotePolicy(d.cfg, user)
 	v, err := validateImportRemote(remote, policy)

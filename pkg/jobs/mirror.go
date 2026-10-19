@@ -75,6 +75,13 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 	dbx := db.FromContext(ctx)
 	datastore := store.FromContext(ctx)
 	return func() {
+		// The same guards that protect imports protect syncs, and the same
+		// too-old git ignores them.
+		if reason := b.ImportsDisabledReason(); reason != "" {
+			logger.Warn("skipping mirror sync", "reason", reason)
+			return
+		}
+
 		repos, err := b.Repositories(ctx)
 		if err != nil {
 			logger.Error("error getting repositories", "err", err)
