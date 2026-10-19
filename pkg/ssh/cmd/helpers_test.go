@@ -70,6 +70,8 @@ func runRepo(t *testing.T, ctx context.Context, args ...string) error {
 func runRepoOutput(t *testing.T, ctx context.Context, args ...string) (stdout, stderr string, err error) {
 	t.Helper()
 	c := RepoCommand()
+	// The SSH root command silences usage, so errors are the only output.
+	c.SilenceUsage = true
 	var outBuf, errBuf bytes.Buffer
 	c.SetOut(&outBuf)
 	c.SetErr(&errBuf)

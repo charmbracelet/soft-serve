@@ -3,6 +3,7 @@ package cmd
 import (
 	"strings"
 
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/spf13/cobra"
 )
@@ -13,24 +14,23 @@ func descriptionCommand() *cobra.Command {
 		Aliases:           []string{"desc"},
 		Short:             "Set or get the description for a repository",
 		Args:              cobra.MinimumNArgs(1),
-		PersistentPreRunE: checkIfReadable,
+		PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			rn := strings.TrimSuffix(args[0], ".git")
+			rr, _, err := repoFromContext(ctx)
+			if err != nil {
+				return err
+			}
+
 			switch len(args) {
 			case 1:
-				desc, err := be.Description(ctx, rn)
-				if err != nil {
-					return err
-				}
-
-				cmd.Println(desc)
+				cmd.Println(rr.Description())
 			default:
-				if err := checkIfRepoCollab(cmd, args); err != nil {
+				if err := requireLevel(ctx, access.ReadWriteAccess); err != nil {
 					return err
 				}
-				if err := be.SetDescription(ctx, rn, strings.Join(args[1:], " ")); err != nil {
+				if err := be.SetDescription(ctx, rr.Name(), strings.Join(args[1:], " ")); err != nil {
 					return err
 				}
 			}

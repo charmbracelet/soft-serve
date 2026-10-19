@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2/table"
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
@@ -47,11 +48,11 @@ func webhookListCommand() *cobra.Command {
 		Use:               "list REPOSITORY",
 		Short:             "List repository webhooks",
 		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfRepoAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -94,11 +95,11 @@ func webhookCreateCommand() *cobra.Command {
 		Use:               "create REPOSITORY URL",
 		Short:             "Create a repository webhook",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfRepoAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -141,11 +142,11 @@ func webhookDeleteCommand() *cobra.Command {
 		Use:               "delete REPOSITORY WEBHOOK_ID",
 		Short:             "Delete a repository webhook",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfRepoAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -172,11 +173,11 @@ func webhookUpdateCommand() *cobra.Command {
 		Use:               "update REPOSITORY WEBHOOK_ID",
 		Short:             "Update a repository webhook",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfRepoAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -274,11 +275,11 @@ func webhookDeliveriesListCommand() *cobra.Command {
 		Use:               "list REPOSITORY WEBHOOK_ID",
 		Short:             "List webhook deliveries",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfRepoAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -319,11 +320,11 @@ func webhookDeliveriesRedeliverCommand() *cobra.Command {
 		Use:               "redeliver REPOSITORY WEBHOOK_ID DELIVERY_ID",
 		Short:             "Redeliver a webhook delivery",
 		Args:              cobra.ExactArgs(3),
-		PersistentPreRunE: checkIfRepoAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -350,11 +351,11 @@ func webhookDeliveriesGetCommand() *cobra.Command {
 		Use:               "get REPOSITORY WEBHOOK_ID DELIVERY_ID",
 		Short:             "Get a webhook delivery",
 		Args:              cobra.ExactArgs(3),
-		PersistentPreRunE: checkIfRepoAdmin,
+		PersistentPreRunE: requireRepo(access.AdminAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			repo, err := be.Repository(ctx, args[0])
+			repo, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}

@@ -110,12 +110,81 @@ func CommandName(args []string) string {
 	return args[0]
 }
 
-func checkIfReadable(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
-	if repoAccessLevel(ctx, repoArg(args)) < access.ReadOnlyAccess {
-		return proto.ErrRepoNotFound
+// denyReadAs is the one answer for a caller who may not read a repository,
+// whether it is missing or private: anon for anonymous callers (HTTP 401),
+// registered for everyone else (HTTP 404).
+func denyReadAs(anonymous bool, anon, registered error) error {
+	if anonymous {
+		return anon
+	}
+	return registered
+}
+
+// denyRead is denyReadAs for repo commands. Server admins always get
+// ErrRepoNotFound since nothing is hidden from them.
+func denyRead(ctx context.Context) error {
+	anonymous := proto.UserFromContext(ctx) == nil && !isServerAdmin(ctx)
+	return denyReadAs(anonymous, proto.ErrUnauthorized, proto.ErrRepoNotFound)
+}
+
+// repoContextKey holds the repoStash a gate stored for the command.
+type repoContextKey struct{}
+
+// repoStash is the repository a gate resolved for a command and the
+// caller's access level on it. repo is nil only for server admins acting
+// on a name with no repository behind it.
+type repoStash struct {
+	name  string
+	repo  proto.Repository
+	level access.AccessLevel
+}
+
+// requireRepo gates a repo-scoped command: the caller must be able to read
+// the repository named by the first argument and hold at least need on it.
+// Readability is decided before existence, so a caller who cannot read gets
+// denyRead's answer whether or not the repository exists. Server admins
+// pass with a nil repository so RunE can act on orphaned rows.
+func requireRepo(need access.AccessLevel) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
+		name := repoArg(args)
+		repo, level := readableRepo(ctx, name)
+		if repo == nil && !isServerAdmin(ctx) {
+			return denyRead(ctx)
+		}
+
+		cmd.SetContext(context.WithValue(ctx, repoContextKey{}, repoStash{name: name, repo: repo, level: level}))
+		return requireLevel(cmd.Context(), need)
+	}
+}
+
+// requireLevel checks the stashed access level against need; use it in
+// setter arms of commands gated with requireRepo.
+func requireLevel(ctx context.Context, need access.AccessLevel) error {
+	if _, level, _ := repoFromContext(ctx); level < need {
+		return proto.ErrUnauthorized
 	}
 	return nil
+}
+
+// readableRepo is backend.Readable with the server admin override.
+func readableRepo(ctx context.Context, name string) (proto.Repository, access.AccessLevel) {
+	be := backend.FromContext(ctx)
+	if isServerAdmin(ctx) {
+		repo, _ := be.Repository(ctx, name)
+		return repo, access.AdminAccess
+	}
+	return be.Readable(ctx, name, proto.UserFromContext(ctx))
+}
+
+// repoFromContext returns the repository and access level stored by
+// requireRepo. The error is denyRead's answer when no repository exists.
+func repoFromContext(ctx context.Context) (proto.Repository, access.AccessLevel, error) {
+	stash, _ := ctx.Value(repoContextKey{}).(repoStash)
+	if stash.repo == nil {
+		return nil, stash.level, denyRead(ctx)
+	}
+	return stash.repo, stash.level, nil
 }
 
 // IsPublicKeyAdmin returns true if the given public key is an admin key from
@@ -155,11 +224,10 @@ func repoArg(args []string) string {
 	return utils.SanitizeRepo(args[0])
 }
 
-// repoAccessLevel returns the caller's access level for the named repository.
-// The repository name must already be sanitized, e.g. via repoArg.
+// repoAccessLevel returns the caller's access level for the sanitized name.
 func repoAccessLevel(ctx context.Context, repo string) access.AccessLevel {
-	be := backend.FromContext(ctx)
-	return be.AccessLevelForUser(ctx, repo, proto.UserFromContext(ctx))
+	_, level := readableRepo(ctx, repo)
+	return level
 }
 
 // checkIfServerAdmin is the authorization gate for global (non-repo-scoped)
@@ -176,46 +244,13 @@ func checkIfServerAdmin(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// checkIfRepoAdmin is the authorization gate for repo-scoped commands that
-// require admin access to the repository named by the first argument.
-//
-// Only use this on commands whose first argument is a repository name. For
-// global commands, use checkIfServerAdmin instead.
-func checkIfRepoAdmin(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
-	if isServerAdmin(ctx) {
-		return nil
-	}
-
-	if proto.UserFromContext(ctx) == nil {
-		return proto.ErrUnauthorized
-	}
-
-	if repoAccessLevel(ctx, repoArg(args)) < access.AdminAccess {
-		return proto.ErrUnauthorized
-	}
-
-	return nil
-}
-
-// checkIfRepoCollab is the authorization gate for repo-scoped commands that
-// require write access to the repository named by the first argument.
-//
-// Only use this on commands whose first argument is a repository name.
+// checkIfRepoCollab gates create and import, which name a repository that
+// should not exist yet, on write access to that name. It cannot hide
+// whether the name is taken: with one flat namespace, "already exists" is
+// the answer either way.
 func checkIfRepoCollab(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
-	if repoAccessLevel(ctx, repoArg(args)) < access.ReadWriteAccess {
+	if repoAccessLevel(cmd.Context(), repoArg(args)) < access.ReadWriteAccess {
 		return proto.ErrUnauthorized
-	}
-	return nil
-}
-
-func checkIfReadableAndCollab(cmd *cobra.Command, args []string) error {
-	if err := checkIfReadable(cmd, args); err != nil {
-		return err
-	}
-	if err := checkIfRepoCollab(cmd, args); err != nil {
-		return err
 	}
 	return nil
 }

@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"strings"
-
 	"charm.land/log/v2"
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/pkg/backend"
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 	"github.com/spf13/cobra"
@@ -31,12 +29,10 @@ func tagListCommand() *cobra.Command {
 		Aliases:           []string{"ls"},
 		Short:             "List repository tags",
 		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfReadable,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			be := backend.FromContext(ctx)
-			rn := strings.TrimSuffix(args[0], ".git")
-			rr, err := be.Repository(ctx, rn)
+			rr, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -64,12 +60,10 @@ func tagDeleteCommand() *cobra.Command {
 		Aliases:           []string{"remove", "rm", "del"},
 		Short:             "Delete a tag",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfReadableAndCollab,
+		PersistentPreRunE: requireRepo(access.ReadWriteAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			be := backend.FromContext(ctx)
-			rn := strings.TrimSuffix(args[0], ".git")
-			rr, err := be.Repository(ctx, rn)
+			rr, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/pkg/backend"
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/dustin/go-humanize"
@@ -17,11 +17,9 @@ func treeCommand() *cobra.Command {
 		Use:               "tree REPOSITORY [REFERENCE] [PATH]",
 		Short:             "Print repository tree at path",
 		Args:              cobra.RangeArgs(1, 3),
-		PersistentPreRunE: checkIfReadable,
+		PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			be := backend.FromContext(ctx)
-			rn := args[0]
 			path := ""
 			ref := ""
 			switch len(args) {
@@ -31,7 +29,7 @@ func treeCommand() *cobra.Command {
 				ref = args[1]
 				path = args[2]
 			}
-			rr, err := be.Repository(ctx, rn)
+			rr, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}

@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	gitm "github.com/aymanbagabas/git-module"
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/pkg/backend"
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 	"github.com/spf13/cobra"
@@ -32,12 +31,10 @@ func branchListCommand() *cobra.Command {
 		Use:               "list REPOSITORY",
 		Short:             "List repository branches",
 		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfReadable,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			be := backend.FromContext(ctx)
-			rn := strings.TrimSuffix(args[0], ".git")
-			rr, err := be.Repository(ctx, rn)
+			rr, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}
@@ -64,23 +61,21 @@ func branchDefaultCommand() *cobra.Command {
 		Use:               "default REPOSITORY [BRANCH]",
 		Short:             "Set or get the default branch",
 		Args:              cobra.RangeArgs(1, 2),
-		PersistentPreRunE: checkIfReadable,
+		PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			be := backend.FromContext(ctx)
-			rn := strings.TrimSuffix(args[0], ".git")
+			rr, _, err := repoFromContext(ctx)
+			if err != nil {
+				return err
+			}
+
+			r, err := rr.Open()
+			if err != nil {
+				return err
+			}
+
 			switch len(args) {
 			case 1:
-				rr, err := be.Repository(ctx, rn)
-				if err != nil {
-					return err
-				}
-
-				r, err := rr.Open()
-				if err != nil {
-					return err
-				}
-
 				head, err := r.HEAD()
 				if err != nil {
 					return err
@@ -88,17 +83,7 @@ func branchDefaultCommand() *cobra.Command {
 
 				cmd.Println(head.Name().Short())
 			case 2:
-				if err := checkIfRepoCollab(cmd, args); err != nil {
-					return err
-				}
-
-				rr, err := be.Repository(ctx, rn)
-				if err != nil {
-					return err
-				}
-
-				r, err := rr.Open()
-				if err != nil {
+				if err := requireLevel(ctx, access.ReadWriteAccess); err != nil {
 					return err
 				}
 
@@ -147,12 +132,10 @@ func branchDeleteCommand() *cobra.Command {
 		Aliases:           []string{"remove", "rm", "del"},
 		Short:             "Delete a branch",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfReadableAndCollab,
+		PersistentPreRunE: requireRepo(access.ReadWriteAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			be := backend.FromContext(ctx)
-			rn := strings.TrimSuffix(args[0], ".git")
-			rr, err := be.Repository(ctx, rn)
+			rr, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}

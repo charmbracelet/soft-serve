@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
+	"github.com/charmbracelet/soft-serve/pkg/proto"
+	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -11,12 +14,18 @@ func renameCommand() *cobra.Command {
 		Aliases:           []string{"mv", "move"},
 		Short:             "Rename an existing repository",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfReadableAndCollab,
+		PersistentPreRunE: requireRepo(access.ReadWriteAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			oldName := args[0]
-			newName := args[1]
+			oldName := repoArg(args)
+			newName := utils.SanitizeRepo(args[1])
+
+			// The destination is gated like create: it may already be
+			// somebody else's repository.
+			if repoAccessLevel(ctx, newName) < access.ReadWriteAccess {
+				return proto.ErrUnauthorized
+			}
 
 			return be.RenameRepository(ctx, oldName, newName)
 		},

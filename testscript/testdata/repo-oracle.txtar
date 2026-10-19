@@ -1,0 +1,384 @@
+# vi: set ft=conf
+
+# A caller who cannot read a repository must get the same answer whether the
+# repository is private or does not exist, so names cannot be guessed.
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# a private repo with a branch and a tag
+soft repo create secret -p
+git clone ssh://localhost:$SSH_PORT/secret secret
+mkfile ./secret/README.md '# secret'
+git -C secret add -A
+git -C secret commit -m 'first'
+git -C secret tag v1
+git -C secret push origin HEAD --tags
+
+# anonymous key: user1 is not registered yet, so usoft is anonymous
+! usoft repo info secret
+stderr 'unauthorized'
+! stdout .
+cp stderr want.txt
+! usoft repo info ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo tree secret
+cmp stderr want.txt
+! stdout .
+! usoft repo tree ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo blob secret README.md
+cmp stderr want.txt
+! stdout .
+! usoft repo blob ghost README.md
+cmp stderr want.txt
+! stdout .
+! usoft repo branch list secret
+cmp stderr want.txt
+! stdout .
+! usoft repo branch list ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo branch default secret
+cmp stderr want.txt
+! stdout .
+! usoft repo branch default ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo branch default secret master
+cmp stderr want.txt
+! stdout .
+! usoft repo branch default ghost master
+cmp stderr want.txt
+! stdout .
+! usoft repo branch delete secret master
+cmp stderr want.txt
+! stdout .
+! usoft repo branch delete ghost master
+cmp stderr want.txt
+! stdout .
+! usoft repo tag list secret
+cmp stderr want.txt
+! stdout .
+! usoft repo tag list ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo tag delete secret v1
+cmp stderr want.txt
+! stdout .
+! usoft repo tag delete ghost v1
+cmp stderr want.txt
+! stdout .
+! usoft repo delete secret
+cmp stderr want.txt
+! stdout .
+! usoft repo delete ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo rename secret other
+cmp stderr want.txt
+! stdout .
+! usoft repo rename ghost other
+cmp stderr want.txt
+! stdout .
+! usoft repo collab list secret
+cmp stderr want.txt
+! stdout .
+! usoft repo collab list ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo collab add secret admin
+cmp stderr want.txt
+! stdout .
+! usoft repo collab add ghost admin
+cmp stderr want.txt
+! stdout .
+! usoft repo collab add secret admin admin-access
+cmp stderr want.txt
+! stdout .
+! usoft repo collab add ghost admin admin-access
+cmp stderr want.txt
+! stdout .
+! usoft repo collab remove secret admin
+cmp stderr want.txt
+! stdout .
+! usoft repo collab remove ghost admin
+cmp stderr want.txt
+! stdout .
+! usoft repo description secret
+cmp stderr want.txt
+! stdout .
+! usoft repo description ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo description secret new
+cmp stderr want.txt
+! stdout .
+! usoft repo description ghost new
+cmp stderr want.txt
+! stdout .
+! usoft repo project-name secret
+cmp stderr want.txt
+! stdout .
+! usoft repo project-name ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo project-name secret new
+cmp stderr want.txt
+! stdout .
+! usoft repo project-name ghost new
+cmp stderr want.txt
+! stdout .
+! usoft repo private secret
+cmp stderr want.txt
+! stdout .
+! usoft repo private ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo private secret true
+cmp stderr want.txt
+! stdout .
+! usoft repo private ghost true
+cmp stderr want.txt
+! stdout .
+! usoft repo hidden secret
+cmp stderr want.txt
+! stdout .
+! usoft repo hidden ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo hidden secret true
+cmp stderr want.txt
+! stdout .
+! usoft repo hidden ghost true
+cmp stderr want.txt
+! stdout .
+! usoft repo mirror secret
+cmp stderr want.txt
+! stdout .
+! usoft repo mirror ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo mirror secret true
+cmp stderr want.txt
+! stdout .
+! usoft repo mirror ghost true
+cmp stderr want.txt
+! stdout .
+! usoft repo webhook list secret
+cmp stderr want.txt
+! stdout .
+! usoft repo webhook list ghost
+cmp stderr want.txt
+! stdout .
+
+# registered user without access
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+! usoft repo info secret
+stderr 'repository not found'
+! stdout .
+cp stderr want.txt
+! usoft repo info ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo tree secret
+cmp stderr want.txt
+! stdout .
+! usoft repo tree ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo blob secret README.md
+cmp stderr want.txt
+! stdout .
+! usoft repo blob ghost README.md
+cmp stderr want.txt
+! stdout .
+! usoft repo branch list secret
+cmp stderr want.txt
+! stdout .
+! usoft repo branch list ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo branch default secret
+cmp stderr want.txt
+! stdout .
+! usoft repo branch default ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo branch default secret master
+cmp stderr want.txt
+! stdout .
+! usoft repo branch default ghost master
+cmp stderr want.txt
+! stdout .
+! usoft repo branch delete secret master
+cmp stderr want.txt
+! stdout .
+! usoft repo branch delete ghost master
+cmp stderr want.txt
+! stdout .
+! usoft repo tag list secret
+cmp stderr want.txt
+! stdout .
+! usoft repo tag list ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo tag delete secret v1
+cmp stderr want.txt
+! stdout .
+! usoft repo tag delete ghost v1
+cmp stderr want.txt
+! stdout .
+! usoft repo delete secret
+cmp stderr want.txt
+! stdout .
+! usoft repo delete ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo rename secret other
+cmp stderr want.txt
+! stdout .
+! usoft repo rename ghost other
+cmp stderr want.txt
+! stdout .
+! usoft repo collab list secret
+cmp stderr want.txt
+! stdout .
+! usoft repo collab list ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo collab add secret admin
+cmp stderr want.txt
+! stdout .
+! usoft repo collab add ghost admin
+cmp stderr want.txt
+! stdout .
+! usoft repo collab add secret admin admin-access
+cmp stderr want.txt
+! stdout .
+! usoft repo collab add ghost admin admin-access
+cmp stderr want.txt
+! stdout .
+! usoft repo collab remove secret admin
+cmp stderr want.txt
+! stdout .
+! usoft repo collab remove ghost admin
+cmp stderr want.txt
+! stdout .
+! usoft repo description secret
+cmp stderr want.txt
+! stdout .
+! usoft repo description ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo description secret new
+cmp stderr want.txt
+! stdout .
+! usoft repo description ghost new
+cmp stderr want.txt
+! stdout .
+! usoft repo project-name secret
+cmp stderr want.txt
+! stdout .
+! usoft repo project-name ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo project-name secret new
+cmp stderr want.txt
+! stdout .
+! usoft repo project-name ghost new
+cmp stderr want.txt
+! stdout .
+! usoft repo private secret
+cmp stderr want.txt
+! stdout .
+! usoft repo private ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo private secret true
+cmp stderr want.txt
+! stdout .
+! usoft repo private ghost true
+cmp stderr want.txt
+! stdout .
+! usoft repo hidden secret
+cmp stderr want.txt
+! stdout .
+! usoft repo hidden ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo hidden secret true
+cmp stderr want.txt
+! stdout .
+! usoft repo hidden ghost true
+cmp stderr want.txt
+! stdout .
+! usoft repo mirror secret
+cmp stderr want.txt
+! stdout .
+! usoft repo mirror ghost
+cmp stderr want.txt
+! stdout .
+! usoft repo mirror secret true
+cmp stderr want.txt
+! stdout .
+! usoft repo mirror ghost true
+cmp stderr want.txt
+! stdout .
+! usoft repo webhook list secret
+cmp stderr want.txt
+! stdout .
+! usoft repo webhook list ghost
+cmp stderr want.txt
+! stdout .
+
+# nothing leaked through a write that silently succeeded
+soft repo hidden secret
+stdout 'false'
+soft repo project-name secret
+! stdout 'new'
+soft repo description secret
+! stdout 'new'
+soft repo list
+stdout 'secret'
+! stdout 'other'
+! stdout 'ghost'
+
+# a directory with no database row answers like any unreadable repository
+mkdir $DATA_PATH/repos/orphan.git
+! usoft repo info orphan
+cmp stderr want.txt
+! stdout .
+! usoft repo delete orphan
+cmp stderr want.txt
+! stdout .
+
+# a server admin can still delete a database row whose directory is gone
+soft repo create gone
+rm $DATA_PATH/repos/gone.git
+soft repo list
+stdout 'gone'
+soft repo delete gone
+soft repo list
+! stdout 'gone'
+! soft repo delete gone
+stderr 'repository not found'
+
+# a reader who cannot write is still told so, since existence is no secret
+soft repo collab add secret user1 read-only
+usoft repo description secret
+! usoft repo delete secret
+stderr 'unauthorized'
+! usoft repo description secret new
+stderr 'unauthorized'
+! usoft repo collab list secret
+stderr 'unauthorized'
+
+# stop the server; the last command must succeed so stderr is clean
+soft repo list
+[windows] stopserver
+[windows] ! stderr .

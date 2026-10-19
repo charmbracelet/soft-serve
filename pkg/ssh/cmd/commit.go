@@ -7,7 +7,7 @@ import (
 
 	gansi "charm.land/glamour/v2/ansi"
 	"github.com/charmbracelet/soft-serve/git"
-	"github.com/charmbracelet/soft-serve/pkg/backend"
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/ui/common"
 	"github.com/charmbracelet/soft-serve/pkg/ui/styles"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
@@ -23,14 +23,12 @@ func commitCommand() *cobra.Command {
 		Use:               "commit repo SHA",
 		Short:             "Print out the contents of a diff",
 		Args:              cobra.ExactArgs(2),
-		PersistentPreRunE: checkIfReadable,
+		PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			be := backend.FromContext(ctx)
-			repoName := args[0]
 			commitSHA := args[1]
 
-			rr, err := be.Repository(ctx, repoName)
+			rr, _, err := repoFromContext(ctx)
 			if err != nil {
 				return err
 			}

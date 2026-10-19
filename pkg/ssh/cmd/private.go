@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"strconv"
-	"strings"
 
+	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/spf13/cobra"
 )
@@ -13,29 +13,27 @@ func privateCommand() *cobra.Command {
 		Use:               "private REPOSITORY [true|false]",
 		Short:             "Set or get a repository private property",
 		Args:              cobra.RangeArgs(1, 2),
-		PersistentPreRunE: checkIfReadable,
+		PersistentPreRunE: requireRepo(access.ReadOnlyAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
-			rn := strings.TrimSuffix(args[0], ".git")
+			rr, _, err := repoFromContext(ctx)
+			if err != nil {
+				return err
+			}
 
 			switch len(args) {
 			case 1:
-				isPrivate, err := be.IsPrivate(ctx, rn)
-				if err != nil {
-					return err
-				}
-
-				cmd.Println(isPrivate)
+				cmd.Println(rr.IsPrivate())
 			case 2:
 				isPrivate, err := strconv.ParseBool(args[1])
 				if err != nil {
 					return err
 				}
-				if err := checkIfRepoCollab(cmd, args); err != nil {
+				if err := requireLevel(ctx, access.ReadWriteAccess); err != nil {
 					return err
 				}
-				if err := be.SetPrivate(ctx, rn, isPrivate); err != nil {
+				if err := be.SetPrivate(ctx, rr.Name(), isPrivate); err != nil {
 					return err
 				}
 			}

@@ -28,12 +28,12 @@ func collabCommand() *cobra.Command {
 }
 
 // checkCollabGrant reports whether the caller may set a collaborator's access
-// level on a repository to level.
+// level on the gated repository to level.
 //
 // Server admins may grant anything. Everyone else is bounded by their own
 // access level on the repository, so a read-write collaborator cannot mint an
 // admin-access collaborator and escalate beyond their own permissions.
-func checkCollabGrant(ctx context.Context, repo string, level access.AccessLevel) error {
+func checkCollabGrant(ctx context.Context, level access.AccessLevel) error {
 	if isServerAdmin(ctx) {
 		return nil
 	}
@@ -42,8 +42,7 @@ func checkCollabGrant(ctx context.Context, repo string, level access.AccessLevel
 		return proto.ErrUnauthorized
 	}
 
-	caller := repoAccessLevel(ctx, repo)
-	if level > caller {
+	if _, caller, _ := repoFromContext(ctx); level > caller {
 		return proto.ErrExceedsAccessLevel
 	}
 
@@ -81,7 +80,7 @@ func checkCollabDemote(ctx context.Context, repo string, username string) error 
 		return nil
 	}
 
-	if current > repoAccessLevel(ctx, repo) {
+	if _, caller, _ := repoFromContext(ctx); current > caller {
 		return proto.ErrExceedsAccessLevel
 	}
 
@@ -94,7 +93,7 @@ func collabAddCommand() *cobra.Command {
 		Short:             "Add a collaborator to a repo",
 		Long:              "Add a collaborator to a repo. LEVEL can be one of: no-access, read-only, read-write, or admin-access. Defaults to read-write.",
 		Args:              cobra.RangeArgs(2, 3),
-		PersistentPreRunE: checkIfReadableAndCollab,
+		PersistentPreRunE: requireRepo(access.ReadWriteAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -108,7 +107,7 @@ func collabAddCommand() *cobra.Command {
 				}
 			}
 
-			if err := checkCollabGrant(ctx, repo, level); err != nil {
+			if err := checkCollabGrant(ctx, level); err != nil {
 				return err
 			}
 
@@ -128,7 +127,7 @@ func collabRemoveCommand() *cobra.Command {
 		Use:               "remove REPOSITORY USERNAME",
 		Args:              cobra.ExactArgs(2),
 		Short:             "Remove a collaborator from a repo",
-		PersistentPreRunE: checkIfReadableAndCollab,
+		PersistentPreRunE: requireRepo(access.ReadWriteAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
@@ -151,7 +150,7 @@ func collabListCommand() *cobra.Command {
 		Use:               "list REPOSITORY",
 		Short:             "List collaborators for a repo",
 		Args:              cobra.ExactArgs(1),
-		PersistentPreRunE: checkIfReadableAndCollab,
+		PersistentPreRunE: requireRepo(access.ReadWriteAccess),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			be := backend.FromContext(ctx)
