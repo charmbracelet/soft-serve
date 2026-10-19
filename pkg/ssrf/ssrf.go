@@ -42,7 +42,10 @@ func NewSecureClient() *http.Client {
 				if ip == nil {
 					ips, err := net.LookupIP(host) //nolint
 					if err != nil {
-						return nil, fmt.Errorf("DNS resolution failed for host %s: %v", host, err)
+						// Not wrapped: the resolver error names the server's
+						// DNS resolver, and this message is stored with the
+						// webhook delivery where the repo admin reads it.
+						return nil, fmt.Errorf("DNS resolution failed for host %s", host)
 					}
 					if len(ips) == 0 {
 						return nil, fmt.Errorf("no IP addresses found for host: %s", host)
@@ -151,7 +154,7 @@ func ValidateURL(rawURL string) error {
 
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidURL, err)
+		return fmt.Errorf("%w: cannot parse URL", ErrInvalidURL)
 	}
 
 	if u.Scheme != "http" && u.Scheme != "https" {
@@ -176,7 +179,8 @@ func ValidateURL(rawURL string) error {
 
 	ips, err := net.DefaultResolver.LookupIPAddr(context.Background(), hostname)
 	if err != nil {
-		return fmt.Errorf("%w: cannot resolve hostname: %v", ErrInvalidURL, err)
+		// See validateRemoteHost: the resolver error names the resolver.
+		return fmt.Errorf("%w: cannot resolve hostname", ErrInvalidURL)
 	}
 
 	if slices.ContainsFunc(ips, func(addr net.IPAddr) bool {

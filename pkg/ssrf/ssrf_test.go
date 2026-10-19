@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -270,5 +271,23 @@ func TestIsLocalhost(t *testing.T) {
 				t.Errorf("isLocalhost(%s) = %v, want %v", tt.hostname, got, tt.want)
 			}
 		})
+	}
+}
+
+// TestValidateURLErrorsHideResolver mirrors the import check for webhook
+// URLs, whose validation error is shown to the repository admin.
+func TestValidateURLErrorsHideResolver(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires DNS")
+	}
+
+	err := ValidateURL("https://does-not-exist.invalid/hook")
+	if !errors.Is(err, ErrInvalidURL) {
+		t.Fatalf("ValidateURL() error = %v, want ErrInvalidURL", err)
+	}
+	for _, leak := range []string{"lookup", " on ", ":53", "no such host"} {
+		if strings.Contains(err.Error(), leak) {
+			t.Errorf("ValidateURL() error %q leaks resolver detail %q", err, leak)
+		}
 	}
 }

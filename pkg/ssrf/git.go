@@ -117,9 +117,11 @@ func ValidateGitRemote(remote string, policy GitRemotePolicy) (ValidatedGitRemot
 		return ValidatedGitRemote{Transport: GitTransportSSH}, nil
 	}
 
+	// The parse error is dropped on purpose: these messages go back to the
+	// user, and only the typed error is needed to act on them.
 	u, err := url.Parse(remote)
 	if err != nil {
-		return ValidatedGitRemote{}, fmt.Errorf("%w: %v", ErrInvalidURL, err)
+		return ValidatedGitRemote{}, fmt.Errorf("%w: cannot parse remote", ErrInvalidURL)
 	}
 
 	switch u.Scheme {
@@ -185,9 +187,14 @@ func validateRemoteHost(host string) (netip.Addr, error) {
 		return netip.Addr{}, fmt.Errorf("%w: %q", ErrAmbiguousHost, host)
 	}
 
+	// The resolver error names the server's DNS resolver ("lookup x on
+	// 10.0.0.53:53"), which the importing user has no business learning.
+	// Telling "cannot resolve" apart from "private address" is kept on
+	// purpose: it is one bit of recon over an authenticated session, and it
+	// is what lets a user notice a typo in the hostname.
 	ips, err := net.DefaultResolver.LookupIPAddr(context.Background(), host)
 	if err != nil {
-		return netip.Addr{}, fmt.Errorf("%w: cannot resolve hostname: %v", ErrInvalidURL, err)
+		return netip.Addr{}, fmt.Errorf("%w: cannot resolve hostname", ErrInvalidURL)
 	}
 	if len(ips) == 0 {
 		return netip.Addr{}, fmt.Errorf("%w: no addresses for hostname", ErrInvalidURL)

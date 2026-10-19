@@ -305,3 +305,37 @@ func hasGitConfig(env []string, key, value string) bool {
 	}
 	return false
 }
+
+// TestValidateGitRemoteErrorsHideResolver verifies that the messages handed
+// back to an importing user do not include the resolver's own error, which
+// names the server's DNS server ("lookup x on 10.0.0.53:53: no such host").
+func TestValidateGitRemoteErrorsHideResolver(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires DNS")
+	}
+
+	for _, remote := range []string{
+		"https://does-not-exist.invalid/x.git",
+		"git://does-not-exist.invalid/x.git",
+	} {
+		_, err := ValidateGitRemote(remote, anySSH)
+		if !errors.Is(err, ErrInvalidURL) {
+			t.Fatalf("ValidateGitRemote(%q) error = %v, want ErrInvalidURL", remote, err)
+		}
+		for _, leak := range []string{"lookup", " on ", ":53", "no such host", "server misbehaving"} {
+			if strings.Contains(err.Error(), leak) {
+				t.Errorf("ValidateGitRemote(%q) error %q leaks resolver detail %q", remote, err, leak)
+			}
+		}
+	}
+
+	// A URL Go cannot parse must produce exactly the typed error and its
+	// fixed reason, never the parser's own message.
+	_, err := ValidateGitRemote("http://a{b@127.0.0.1:8080/", anySSH)
+	if !errors.Is(err, ErrInvalidURL) {
+		t.Fatalf("unparseable remote error = %v, want ErrInvalidURL", err)
+	}
+	if got, want := err.Error(), "invalid URL: cannot parse remote"; got != want {
+		t.Errorf("unparseable remote error = %q, want %q", got, want)
+	}
+}
