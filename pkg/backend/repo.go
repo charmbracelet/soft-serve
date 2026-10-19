@@ -27,8 +27,8 @@ import (
 )
 
 // validateImportRemote validates a user-supplied remote and maps a failure to
-// the error the user sees. Render the result with ssrf.GitEnv and apply it to
-// the clone subprocess, or the validation does not hold.
+// the error the user sees. Render the result with RemoteGitEnv and apply it
+// to the clone subprocess, or the validation does not hold.
 func validateImportRemote(remote string) (ssrf.ValidatedGitRemote, error) {
 	v, err := ssrf.ValidateGitRemote(remote)
 	if err != nil {
@@ -195,13 +195,8 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 		path:      d.repoPath(name),
 		remote:    remote,
 		logRemote: redactRemote(remote),
-		env: append(ssrf.GitEnv(v),
-			fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-				filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
-				d.cfg.SSH.ClientKeyPath,
-			),
-		),
-		opts: opts,
+		env:       RemoteGitEnv(d.cfg, v),
+		opts:      opts,
 	}
 
 	// LFS objects are fetched only when asked for (--lfs or --lfs-endpoint);
@@ -254,7 +249,7 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 type importSpec struct {
 	name, path        string
 	remote, logRemote string
-	// env is the git environment the clone must run with; see ssrf.GitEnv.
+	// env is the git environment the clone must run with; see RemoteGitEnv.
 	env []string
 	// lfsEndpoint and lfs are set only when LFS objects are to be fetched.
 	lfsEndpoint string

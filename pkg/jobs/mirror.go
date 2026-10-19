@@ -3,7 +3,6 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -110,14 +109,7 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 						return
 					}
 
-					// The validated env carries the SSRF guard and must reach
-					// every command below, so build the full set once.
-					syncEnv := append(ssrf.GitEnv(remotes...),
-						fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
-							filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
-							cfg.SSH.ClientKeyPath,
-						),
-					)
+					syncEnv := backend.RemoteGitEnv(cfg, remotes...)
 
 					cmds := []string{
 						"fetch --prune",         // fetch prune before updating remote

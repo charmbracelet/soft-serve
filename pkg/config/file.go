@@ -40,6 +40,14 @@ ssh:
   # authenticate the server to make git requests to ssh remotes.
   client_key_path: {{ .SSH.ClientKeyPath }}
 
+  # How the server's ssh client verifies host keys of ssh remotes it imports
+  # or mirrors from, checked against <data_path>/ssh/known_hosts.
+  # "accept-new" records a host key on first contact and refuses a changed
+  # one. "yes" refuses any host that is not already in known_hosts; use it
+  # with a pre-seeded known_hosts file. The client always runs with
+  # BatchMode=yes, so it fails fast instead of prompting for a passphrase.
+  client_strict_host_key_checking: "{{ .SSH.ClientStrictHostKeyChecking }}"
+
   # The maximum number of seconds a connection can take.
   # A value of 0 means no timeout.
   max_timeout: {{ .SSH.MaxTimeout }}

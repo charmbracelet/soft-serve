@@ -17,6 +17,14 @@ import (
 
 var binPath = "soft"
 
+const (
+	// StrictHostKeyCheckingAcceptNew records an unknown host key on first
+	// contact and refuses a changed one afterwards.
+	StrictHostKeyCheckingAcceptNew = "accept-new"
+	// StrictHostKeyCheckingYes refuses any host not already in known_hosts.
+	StrictHostKeyCheckingYes = "yes"
+)
+
 // SSHConfig is the configuration for the SSH server.
 type SSHConfig struct {
 	// Enabled toggles the SSH server on/off
@@ -33,6 +41,12 @@ type SSHConfig struct {
 
 	// ClientKeyPath is the path to the server's client private key.
 	ClientKeyPath string `env:"CLIENT_KEY_PATH" yaml:"client_key_path"`
+
+	// ClientStrictHostKeyChecking is the StrictHostKeyChecking value the
+	// server passes to ssh when cloning or syncing from ssh remotes. Valid
+	// values are "accept-new" (record a host key on first contact, refuse a
+	// changed one) and "yes" (only hosts already in known_hosts).
+	ClientStrictHostKeyChecking string `env:"CLIENT_STRICT_HOST_KEY_CHECKING" yaml:"client_strict_host_key_checking"`
 
 	// MaxTimeout is the maximum number of seconds a connection can take.
 	MaxTimeout int `env:"MAX_TIMEOUT" yaml:"max_timeout"`
@@ -220,6 +234,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_SSH_PUBLIC_URL=%s", c.SSH.PublicURL),
 		fmt.Sprintf("SOFT_SERVE_SSH_KEY_PATH=%s", c.SSH.KeyPath),
 		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_KEY_PATH=%s", c.SSH.ClientKeyPath),
+		fmt.Sprintf("SOFT_SERVE_SSH_CLIENT_STRICT_HOST_KEY_CHECKING=%s", c.SSH.ClientStrictHostKeyChecking),
 		fmt.Sprintf("SOFT_SERVE_SSH_MAX_TIMEOUT=%d", c.SSH.MaxTimeout),
 		fmt.Sprintf("SOFT_SERVE_SSH_IDLE_TIMEOUT=%d", c.SSH.IdleTimeout),
 		fmt.Sprintf("SOFT_SERVE_GIT_ENABLED=%t", c.Git.Enabled),
@@ -387,13 +402,14 @@ func DefaultConfig() *Config {
 		// DefaultRepo: "",
 		DataPath: DefaultDataPath(),
 		SSH: SSHConfig{
-			Enabled:       true,
-			ListenAddr:    ":23231",
-			PublicURL:     "ssh://localhost:23231",
-			KeyPath:       filepath.Join("ssh", "soft_serve_host_ed25519"),
-			ClientKeyPath: filepath.Join("ssh", "soft_serve_client_ed25519"),
-			MaxTimeout:    0,
-			IdleTimeout:   10 * 60, // 10 minutes
+			Enabled:                     true,
+			ListenAddr:                  ":23231",
+			PublicURL:                   "ssh://localhost:23231",
+			KeyPath:                     filepath.Join("ssh", "soft_serve_host_ed25519"),
+			ClientKeyPath:               filepath.Join("ssh", "soft_serve_client_ed25519"),
+			ClientStrictHostKeyChecking: StrictHostKeyCheckingAcceptNew,
+			MaxTimeout:                  0,
+			IdleTimeout:                 10 * 60, // 10 minutes
 		},
 		Git: GitConfig{
 			Enabled:        true,
@@ -439,6 +455,12 @@ func DefaultConfig() *Config {
 // Validate validates the configuration.
 // It updates the configuration with absolute paths.
 func (c *Config) Validate() error {
+	// The data path is handed to ssh inside a double-quoted option value,
+	// where nothing escapes a quote or a newline.
+	if strings.ContainsAny(c.DataPath, "\"\n\r") {
+		return fmt.Errorf("data path must not contain quotes or newlines: %q", c.DataPath)
+	}
+
 	// Use absolute paths
 	if !filepath.IsAbs(c.DataPath) {
 		dp, err := filepath.Abs(c.DataPath)
@@ -457,6 +479,17 @@ func (c *Config) Validate() error {
 
 	if c.SSH.ClientKeyPath != "" && !filepath.IsAbs(c.SSH.ClientKeyPath) {
 		c.SSH.ClientKeyPath = filepath.Join(c.DataPath, c.SSH.ClientKeyPath)
+	}
+
+	switch c.SSH.ClientStrictHostKeyChecking {
+	case "":
+		c.SSH.ClientStrictHostKeyChecking = StrictHostKeyCheckingAcceptNew
+	case StrictHostKeyCheckingAcceptNew, StrictHostKeyCheckingYes:
+	default:
+		// "no" and "off" are not offered: they accept any host key, which
+		// hands the client key's authentication to whoever answers.
+		return fmt.Errorf("ssh.client_strict_host_key_checking: %q is not one of %q, %q",
+			c.SSH.ClientStrictHostKeyChecking, StrictHostKeyCheckingAcceptNew, StrictHostKeyCheckingYes)
 	}
 
 	if c.HTTP.TLSKeyPath != "" && !filepath.IsAbs(c.HTTP.TLSKeyPath) {

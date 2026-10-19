@@ -215,3 +215,53 @@ func TestParseAllowKeylessEnvFalse(t *testing.T) {
 	is.True(cfg.AllowKeyless != nil)
 	is.Equal(*cfg.AllowKeyless, false)
 }
+
+func TestValidateClientStrictHostKeyChecking(t *testing.T) {
+	for _, tt := range []struct {
+		in      string
+		want    string
+		wantErr bool
+	}{
+		{"", StrictHostKeyCheckingAcceptNew, false},
+		{"accept-new", StrictHostKeyCheckingAcceptNew, false},
+		{"yes", StrictHostKeyCheckingYes, false},
+		// "no" is exactly the setting being removed; "ask" cannot work
+		// without a terminal.
+		{"no", "", true},
+		{"ask", "", true},
+		{"off", "", true},
+	} {
+		cfg := DefaultConfig()
+		cfg.DataPath = t.TempDir()
+		cfg.SSH.ClientStrictHostKeyChecking = tt.in
+		err := cfg.Validate()
+		if tt.wantErr {
+			if err == nil {
+				t.Errorf("Validate() with %q: expected error", tt.in)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("Validate() with %q: %v", tt.in, err)
+		}
+		if cfg.SSH.ClientStrictHostKeyChecking != tt.want {
+			t.Errorf("Validate() with %q = %q, want %q", tt.in, cfg.SSH.ClientStrictHostKeyChecking, tt.want)
+		}
+	}
+}
+
+func TestValidateRejectsUnquotableDataPath(t *testing.T) {
+	for _, dp := range []string{`/data/"quoted"`, "/data/line\nbreak", "/data/cr\r"} {
+		cfg := DefaultConfig()
+		cfg.DataPath = dp
+		if err := cfg.Validate(); err == nil {
+			t.Errorf("Validate() accepted data path %q", dp)
+		}
+	}
+
+	cfg := DefaultConfig()
+	cfg.DataPath = t.TempDir() + "/Application Support/soft serve"
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("Validate() rejected a data path with spaces: %v", err)
+	}
+}

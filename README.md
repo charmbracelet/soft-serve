@@ -184,6 +184,13 @@ ssh:
   # ssh remotes.
   client_key_path: "ssh/soft_serve_client"
 
+  # How the server's ssh client verifies host keys of ssh remotes it imports
+  # or mirrors from, checked against <data_path>/ssh/known_hosts.
+  # "accept-new" records a host key on first contact and refuses a changed
+  # one (needs OpenSSH 7.6 or newer). "yes" refuses any host that is not
+  # already in known_hosts; use it with a pre-seeded known_hosts file.
+  client_strict_host_key_checking: "accept-new"
+
   # The maximum number of seconds a connection can take.
   # A value of 0 means no timeout.
   max_timeout: 0
