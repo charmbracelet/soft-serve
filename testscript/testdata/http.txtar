@@ -102,12 +102,19 @@ curl -XPOST -H 'Accept: application/vnd.git-lfs+json' -H 'Content-Type: applicat
 cmp stdout http3.txt
 
 # deny access private
-curl http://localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+curl -XPOST http://localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
 stdout '.*credentials needed.*'
-curl http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+curl -XPOST http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
 stdout '.*repository not found.*'
-curl http://0$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+curl -XPOST http://0$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
 cmp stdout http3.txt
+
+# a wrong method is refused before authorization, for any repo
+curl http://localhost:$HTTP_PORT/repo2.git/info/lfs/objects/batch
+stdout '.*Method Not Allowed.*'
+cp stdout private.txt
+curl http://localhost:$HTTP_PORT/nope.git/info/lfs/objects/batch
+cmp stdout private.txt
 
 # deny dumb http git
 curl -XGET http://localhost:$HTTP_PORT/repo2.git/info/refs
@@ -152,6 +159,25 @@ curl -XPOST http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/lfs/locks
 stdout '.*repository not found.*'
 cp stdout private.txt
 curl -XPOST http://$UTOKEN@localhost:$HTTP_PORT/nope.git/info/lfs/locks
+cmp stdout private.txt
+
+# a push by a signed-in user without access answers like a missing repo,
+# and ?service=git-receive-pack on other routes changes nothing
+curl http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/info/refs?service=git-receive-pack
+stdout '404.*'
+curl http://$UTOKEN@localhost:$HTTP_PORT/repo2.git/HEAD?service=git-receive-pack
+stdout '404.*'
+cp stdout private.txt
+curl http://$UTOKEN@localhost:$HTTP_PORT/nope.git/HEAD?service=git-receive-pack
+cmp stdout private.txt
+curl http://localhost:$HTTP_PORT/repo2.git/HEAD?service=git-receive-pack
+stdout '401.*'
+cp stdout private.txt
+curl http://localhost:$HTTP_PORT/nope.git/HEAD?service=git-receive-pack
+cmp stdout private.txt
+curl http://localhost:$HTTP_PORT/repo2.git/info/refs?service=git-receive-pack
+cp stdout private.txt
+curl http://localhost:$HTTP_PORT/nope.git/info/refs?service=git-receive-pack
 cmp stdout private.txt
 
 # deny access ask for credentials
