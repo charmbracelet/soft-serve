@@ -55,6 +55,13 @@ stderr 'remote must be a network URL'
 ! soft repo import bad11 https://1.1.1.1/x.git --lfs-endpoint http://127.0.0.1:9000
 stderr 'remote must be a network URL'
 
+# A remote that passes validation but cannot be cloned (nothing listens on
+# loopback port 1) fails promptly, and the clone's own error must not come
+# back to the user.
+! soft repo import bad14 ssh://git@127.0.0.1:1/x.git
+stderr 'import failed'
+! stderr 'refused'
+
 # none of the rejected imports may leave a repository behind
 soft repo list
 ! stdout 'bad'

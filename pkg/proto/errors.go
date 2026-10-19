@@ -9,6 +9,10 @@ var (
 	ErrUnauthorized = errors.New("unauthorized")
 	// ErrInvalidRemote is returned when a repository import remote is invalid.
 	ErrInvalidRemote = errors.New("remote must be a network URL")
+	// ErrImportFailed is returned when cloning an import remote fails. It
+	// carries no detail on purpose: the git error would tell the importing
+	// user whether a host is up, which port answered, and what it said.
+	ErrImportFailed = errors.New("import failed")
 	// ErrFileNotFound is returned when the file is not found.
 	ErrFileNotFound = errors.New("file not found")
 	// ErrRepoNotFound is returned when a repository is not found.

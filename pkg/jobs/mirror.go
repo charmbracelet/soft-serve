@@ -25,13 +25,14 @@ func init() {
 type mirrorPull struct{}
 
 // validateMirrorRemotes validates every remote configured on a mirror
-// repository and returns the git environment that must be applied to the sync
-// commands.
+// repository against address ranges, and
+// returns them so the caller can render the git environment that must be
+// applied to the sync commands.
 //
 // `git remote update` fetches from all remotes, not just origin, so every one
 // of them has to pass. Any failure to read or validate skips the sync: a
 // remote that cannot be checked is not one to fetch from.
-func validateMirrorRemotes(r *git.Repository) ([]string, error) {
+func validateMirrorRemotes(r *git.Repository) ([]ssrf.ValidatedGitRemote, error) {
 	cfg, err := r.Config()
 	if err != nil {
 		return nil, fmt.Errorf("reading git config: %w", err)
@@ -55,7 +56,7 @@ func validateMirrorRemotes(r *git.Repository) ([]string, error) {
 		return nil, fmt.Errorf("no remote url configured")
 	}
 
-	return ssrf.GitEnv(remotes...), nil
+	return remotes, nil
 }
 
 // Spec derives the spec used for pull mirrors and implements Runner.
@@ -103,15 +104,15 @@ func (m mirrorPull) Func(ctx context.Context) func() {
 					// `remote update` touches all of them, and a remote may
 					// predate the import-time guard or have been written out
 					// of band. Validation failure skips the repo entirely.
-					remoteEnv, err := validateMirrorRemotes(r)
+					remotes, err := validateMirrorRemotes(r)
 					if err != nil {
 						logger.Warn("skipping mirror sync, remote failed validation", "repo", name, "err", err)
 						return
 					}
 
-					// remoteEnv carries the SSRF guard and must reach every
-					// command below, so build the full set once.
-					syncEnv := append(remoteEnv,
+					// The validated env carries the SSRF guard and must reach
+					// every command below, so build the full set once.
+					syncEnv := append(ssrf.GitEnv(remotes...),
 						fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
 							filepath.Join(cfg.DataPath, "ssh", "known_hosts"),
 							cfg.SSH.ClientKeyPath,

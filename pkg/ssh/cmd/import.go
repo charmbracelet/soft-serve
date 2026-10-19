@@ -1,11 +1,8 @@
 package cmd
 
 import (
-	"errors"
-
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/proto"
-	"github.com/charmbracelet/soft-serve/pkg/task"
 	"github.com/spf13/cobra"
 )
 
@@ -39,10 +36,6 @@ func importCommand() *cobra.Command {
 				LFS:         lfs,
 				LFSEndpoint: lfsEndpoint,
 			}); err != nil {
-				if errors.Is(err, task.ErrAlreadyStarted) {
-					return errors.New("import already in progress")
-				}
-
 				return err
 			}
 

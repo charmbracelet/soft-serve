@@ -93,7 +93,7 @@ func TestValidateMirrorRemotes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newRepoWithRemotes(t, tt.remotes)
-			env, err := validateMirrorRemotes(r)
+			remotes, err := validateMirrorRemotes(r)
 
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -105,6 +105,7 @@ func TestValidateMirrorRemotes(t *testing.T) {
 			if err != nil {
 				t.Fatalf("validateMirrorRemotes() unexpected error: %v", err)
 			}
+			env := ssrf.GitEnv(remotes...)
 			if !slices.Contains(env, "GIT_CONFIG_KEY_0=http.followRedirects") ||
 				!slices.Contains(env, "GIT_CONFIG_VALUE_0=false") {
 				t.Errorf("sync env did not disable redirects: %v", env)

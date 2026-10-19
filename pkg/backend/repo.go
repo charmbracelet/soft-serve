@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -21,21 +22,29 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/ssrf"
 	"github.com/charmbracelet/soft-serve/pkg/storage"
-	"github.com/charmbracelet/soft-serve/pkg/task"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/soft-serve/pkg/webhook"
 )
 
-// validateImportRemote validates an import remote against private, internal,
-// and loopback ranges, and returns the git environment that must be applied to
-// the clone subprocess for that validation to hold.
-func validateImportRemote(remote string) ([]string, error) {
+// validateImportRemote validates a user-supplied remote and maps a failure to
+// the error the user sees. Render the result with ssrf.GitEnv and apply it to
+// the clone subprocess, or the validation does not hold.
+func validateImportRemote(remote string) (ssrf.ValidatedGitRemote, error) {
 	v, err := ssrf.ValidateGitRemote(remote)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", proto.ErrInvalidRemote, err)
+		return ssrf.ValidatedGitRemote{}, fmt.Errorf("%w: %w", proto.ErrInvalidRemote, err)
 	}
+	return v, nil
+}
 
-	return ssrf.GitEnv(v), nil
+// redactRemote strips any password from a remote URL so it can be logged.
+// scp-style remotes have no userinfo to leak and pass through unchanged.
+func redactRemote(remote string) string {
+	u, err := url.Parse(remote)
+	if err != nil || u.User == nil {
+		return remote
+	}
+	return u.Redacted()
 }
 
 // CreateRepository creates a new repository.
@@ -169,7 +178,6 @@ func (d *Backend) defaultAdminUserID(ctx context.Context, tx *db.Tx) (int64, err
 }
 
 // ImportRepository imports a repository from remote.
-// XXX: This a expensive operation and should be run in a goroutine.
 func (d *Backend) ImportRepository(_ context.Context, name string, user proto.User, remote string, opts proto.RepositoryOptions) (proto.Repository, error) {
 	name = utils.SanitizeRepo(name)
 	if err := utils.ValidateRepo(name); err != nil {
@@ -177,142 +185,155 @@ func (d *Backend) ImportRepository(_ context.Context, name string, user proto.Us
 	}
 
 	remote = utils.Sanitize(remote)
-	remoteEnv, err := validateImportRemote(remote)
+	v, err := validateImportRemote(remote)
 	if err != nil {
 		return nil, err
 	}
 
-	// The LFS endpoint is user-supplied and gets persisted to the repo config,
-	// where the mirror job later reads it. Validate it up front rather than
-	// relying on the LFS client to refuse the dial.
-	if opts.LFSEndpoint != "" {
-		if _, err := ssrf.ValidateGitRemote(opts.LFSEndpoint); err != nil {
-			return nil, fmt.Errorf("%w: %w", proto.ErrInvalidRemote, err)
-		}
-	}
-
-	// Resolve the LFS endpoint before anything is created, so a remote that
-	// has no usable one (scp syntax, IPv6 literals) imports without LFS
-	// instead of being cloned and then torn down.
-	lfsEndpoint := remote
-	if opts.LFSEndpoint != "" {
-		lfsEndpoint = opts.LFSEndpoint
-	}
-	ep, err := lfs.NewEndpoint(lfsEndpoint)
-	if err != nil {
-		if opts.LFSEndpoint != "" {
-			return nil, fmt.Errorf("%w: %w", proto.ErrInvalidRemote, err)
-		}
-		lfsEndpoint, ep = "", nil
-	}
-
-	rp := d.repoPath(name)
-
-	tid := "import:" + name
-	if d.manager.Exists(tid) {
-		return nil, task.ErrAlreadyStarted
-	}
-
-	if err := claimRepoPath(rp); err != nil {
-		return nil, err
-	}
-
-	done := make(chan error, 1)
-	repoc := make(chan proto.Repository, 1)
-	d.logger.Info("importing repository", "name", name, "remote", remote, "path", rp)
-	d.manager.Add(tid, func(ctx context.Context) (err error) {
-		ctx = proto.WithUserContext(ctx, user)
-
-		// remoteEnv carries the SSRF guard: it disables redirect following
-		// and pins the validated address. Without it the clone can reach a
-		// different host than the one validated above.
-		cloneEnv := append(remoteEnv,
+	imp := importSpec{
+		name:      name,
+		path:      d.repoPath(name),
+		remote:    remote,
+		logRemote: redactRemote(remote),
+		env: append(ssrf.GitEnv(v),
 			fmt.Sprintf(`GIT_SSH_COMMAND=ssh -o UserKnownHostsFile="%s" -o StrictHostKeyChecking=no -i "%s"`,
 				filepath.Join(d.cfg.DataPath, "ssh", "known_hosts"),
 				d.cfg.SSH.ClientKeyPath,
 			),
-		)
+		),
+		opts: opts,
+	}
 
-		copts := git.CloneOptions{
-			Bare:   true,
-			Mirror: opts.Mirror,
-			Quiet:  true,
-			CommandOptions: git.CommandOptions{
-				Timeout: -1,
-				Context: ctx,
-				Envs:    cloneEnv,
-			},
+	// LFS objects are fetched only when asked for (--lfs or --lfs-endpoint);
+	// a failure there then fails the import, since the user asked for it.
+	// The endpoint is resolved before anything is created, so a remote that
+	// has no usable one (scp syntax, IPv6 literals) imports without LFS
+	// instead of being cloned and then torn down.
+	switch {
+	case opts.LFSEndpoint != "":
+		// A user-supplied endpoint is persisted to the repo config, where
+		// the mirror job later reads it, so it obeys the same validation
+		// as the remote itself.
+		if _, err := validateImportRemote(opts.LFSEndpoint); err != nil {
+			return nil, err
 		}
+		imp.lfs, err = lfs.NewEndpoint(opts.LFSEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", proto.ErrInvalidRemote, err)
+		}
+		imp.lfsEndpoint = opts.LFSEndpoint
+	case opts.LFS:
+		if ep, err := lfs.NewEndpoint(remote); err == nil {
+			imp.lfsEndpoint, imp.lfs = remote, ep
+		}
+	}
 
-		if err := git.Clone(remote, rp, copts); err != nil {
-			d.logger.Error("failed to clone repository", "err", err, "mirror", opts.Mirror, "remote", remote, "path", rp)
-			// Cleanup the mess!
-			if rerr := os.RemoveAll(rp); rerr != nil {
-				err = errors.Join(err, rerr)
+	// Claiming the directory is what serializes concurrent imports of one
+	// name: the second one fails here with ErrRepoExist.
+	if err := claimRepoPath(imp.path); err != nil {
+		return nil, err
+	}
+
+	d.logger.Info("importing repository", "name", name, "remote", imp.logRemote, "path", imp.path)
+
+	// The import runs on the backend's context rather than the caller's so a
+	// dropped session does not leave a half-cloned repository behind.
+	ctx := proto.WithUserContext(d.ctx, user)
+	r, err := d.importRepository(ctx, user, imp)
+	if err != nil {
+		// The real error is logged where it happened. The caller gets a
+		// fixed message so a failed import cannot be used to probe hosts
+		// and ports.
+		return nil, proto.ErrImportFailed
+	}
+
+	return r, nil
+}
+
+// importSpec is a validated import, ready to run.
+type importSpec struct {
+	name, path        string
+	remote, logRemote string
+	// env is the git environment the clone must run with; see ssrf.GitEnv.
+	env []string
+	// lfsEndpoint and lfs are set only when LFS objects are to be fetched.
+	lfsEndpoint string
+	lfs         lfs.Endpoint
+	opts        proto.RepositoryOptions
+}
+
+// importRepository clones the remote into the claimed directory, registers
+// the repository, and fetches LFS objects if asked. On failure nothing is
+// left behind.
+func (d *Backend) importRepository(ctx context.Context, user proto.User, imp importSpec) (_ proto.Repository, err error) {
+	copts := git.CloneOptions{
+		Bare:   true,
+		Mirror: imp.opts.Mirror,
+		Quiet:  true,
+		CommandOptions: git.CommandOptions{
+			Timeout: -1,
+			Context: ctx,
+			Envs:    imp.env,
+		},
+	}
+
+	if err := git.Clone(imp.remote, imp.path, copts); err != nil {
+		d.logger.Error("failed to clone repository", "err", err, "mirror", imp.opts.Mirror, "remote", imp.logRemote, "path", imp.path)
+		if rerr := os.RemoveAll(imp.path); rerr != nil {
+			err = errors.Join(err, rerr)
+		}
+		return nil, err
+	}
+
+	r, err := d.registerRepository(ctx, imp.name, user, imp.opts)
+	if err != nil {
+		d.logger.Error("failed to create repository", "err", err, "name", imp.name)
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			if rerr := d.DeleteRepository(ctx, imp.name); rerr != nil {
+				d.logger.Error("failed to delete repository", "err", rerr, "name", imp.name)
 			}
-
-			return err
 		}
-
-		r, err := d.registerRepository(ctx, name, user, opts)
-		if err != nil {
-			d.logger.Error("failed to create repository", "err", err, "name", name)
-			return err
-		}
-
-		defer func() {
-			if err != nil {
-				if rerr := d.DeleteRepository(ctx, name); rerr != nil {
-					d.logger.Error("failed to delete repository", "err", rerr, "name", name)
-				}
-			}
-		}()
-
-		rr, err := r.Open()
-		if err != nil {
-			d.logger.Error("failed to open repository", "err", err, "path", rp)
-			return err
-		}
-
-		repoc <- r
-
-		if ep == nil {
-			return nil
-		}
-
-		rcfg, err := rr.Config()
-		if err != nil {
-			d.logger.Error("failed to get repository config", "err", err, "path", rp)
-			return err
-		}
-
-		rcfg.Section("lfs").SetOption("url", lfsEndpoint)
-
-		if err := rr.SetConfig(rcfg); err != nil {
-			d.logger.Error("failed to set repository config", "err", err, "path", rp)
-			return err
-		}
-
-		client := lfs.NewClient(ep)
-		if client == nil {
-			d.logger.Warn("failed to create lfs client: unsupported endpoint", "endpoint", lfsEndpoint)
-			return nil
-		}
-
-		if err := StoreRepoMissingLFSObjects(ctx, r, d.db, d.store, client); err != nil {
-			d.logger.Error("failed to store missing lfs objects", "err", err, "path", rp)
-			return err
-		}
-
-		return nil
-	})
-
-	go func() {
-		d.logger.Info("running import", "name", name)
-		d.manager.Run(tid, done)
 	}()
 
-	return <-repoc, <-done
+	if imp.lfs == nil {
+		return r, nil
+	}
+
+	rr, err := r.Open()
+	if err != nil {
+		d.logger.Error("failed to open repository", "err", err, "path", imp.path)
+		return nil, err
+	}
+
+	rcfg, err := rr.Config()
+	if err != nil {
+		d.logger.Error("failed to get repository config", "err", err, "path", imp.path)
+		return nil, err
+	}
+
+	rcfg.Section("lfs").SetOption("url", imp.lfsEndpoint)
+
+	if err := rr.SetConfig(rcfg); err != nil {
+		d.logger.Error("failed to set repository config", "err", err, "path", imp.path)
+		return nil, err
+	}
+
+	client := lfs.NewClient(imp.lfs)
+	if client == nil {
+		d.logger.Warn("failed to create lfs client: unsupported endpoint", "endpoint", imp.lfsEndpoint)
+		return r, nil
+	}
+
+	if err := StoreRepoMissingLFSObjects(ctx, r, d.db, d.store, client); err != nil {
+		d.logger.Error("failed to store missing lfs objects", "err", err, "path", imp.path)
+		return nil, err
+	}
+
+	return r, nil
 }
 
 // DeleteRepository deletes a repository.
