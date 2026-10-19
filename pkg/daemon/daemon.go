@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"charm.land/log/v2"
-	"github.com/charmbracelet/soft-serve/pkg/access"
 	"github.com/charmbracelet/soft-serve/pkg/backend"
 	"github.com/charmbracelet/soft-serve/pkg/config"
 	"github.com/charmbracelet/soft-serve/pkg/git"
@@ -260,17 +259,13 @@ func (d *GitDaemon) handleClient(conn net.Conn) {
 		reposDir := filepath.Join(d.cfg.DataPath, "repos")
 		if err := git.EnsureWithin(reposDir, repo); err != nil {
 			d.logger.Debugf("git: error ensuring repo path: %v", err)
-			d.fatal(c, git.ErrInvalidRepo)
+			d.fatal(c, git.ErrNotAuthed)
 			return
 		}
 
-		if _, err := d.be.Repository(ctx, repo); err != nil {
-			d.fatal(c, git.ErrInvalidRepo)
-			return
-		}
-
-		auth := be.AccessLevel(ctx, name, "")
-		if auth < access.ReadOnlyAccess {
+		// The daemon is always anonymous, so a repository it cannot read
+		// gets the anonymous answer whether it is private or missing.
+		if r, _ := be.Readable(ctx, name, nil); r == nil {
 			d.fatal(c, git.ErrNotAuthed)
 			return
 		}

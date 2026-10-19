@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/soft-serve/pkg/db"
 	"github.com/charmbracelet/soft-serve/pkg/db/migrate"
 	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/proto"
 	"github.com/charmbracelet/soft-serve/pkg/store"
 	"github.com/charmbracelet/soft-serve/pkg/store/database"
 	"github.com/charmbracelet/soft-serve/pkg/test"
@@ -22,7 +23,10 @@ import (
 	_ "modernc.org/sqlite" // sqlite driver
 )
 
-var testDaemon *GitDaemon
+var (
+	testDaemon  *GitDaemon
+	testBackend *backend.Backend
+)
 
 func TestMain(m *testing.M) {
 	tmp, err := os.MkdirTemp("", "soft-serve-test")
@@ -52,6 +56,7 @@ func TestMain(m *testing.M) {
 	datastore := database.New(ctx, dbx)
 	ctx = store.WithContext(ctx, datastore)
 	be := backend.New(ctx, cfg, dbx, datastore)
+	testBackend = be
 	ctx = backend.WithContext(ctx, be)
 	d, err := NewGitDaemon(ctx)
 	if err != nil {
@@ -93,17 +98,57 @@ func TestIdleTimeout(t *testing.T) {
 	}
 }
 
-func TestInvalidRepo(t *testing.T) {
+// requestUploadPack asks the daemon for a repository and returns the first
+// line it answers with.
+func requestUploadPack(t *testing.T, repo string) string {
+	t.Helper()
 	c, err := net.Dial("tcp", testDaemon.addr) //nolint:noctx
 	if err != nil {
 		t.Fatalf("failed to connect to daemon: %v", err)
 	}
-	if err := pktline.NewEncoder(c).EncodeString("git-upload-pack /test.git\x00"); err != nil {
+	defer c.Close() //nolint:errcheck
+	if err := pktline.NewEncoder(c).EncodeString("git-upload-pack /" + repo + ".git\x00"); err != nil {
 		t.Fatalf("expected nil, got error: %v", err)
 	}
-	_, err = readPktline(c)
-	if err != nil && err.Error() != git.ErrInvalidRepo.Error() {
-		t.Errorf("expected %q error, got %q", git.ErrInvalidRepo, err)
+	// The scanner reports an ERR packet as an error carrying its message.
+	line, err := readPktline(c)
+	if err != nil {
+		return err.Error()
+	}
+	return line
+}
+
+// TestInvalidRepo verifies the daemon, which is always anonymous, answers a
+// missing repository and a private one identically so neither is revealed.
+func TestInvalidRepo(t *testing.T) {
+	ctx := context.Background()
+	if _, err := testBackend.CreateRepository(ctx, "private", nil, proto.RepositoryOptions{Private: true}); err != nil {
+		t.Fatalf("failed to create private repo: %v", err)
+	}
+
+	if _, err := testBackend.CreateRepository(ctx, "public", nil, proto.RepositoryOptions{}); err != nil {
+		t.Fatalf("failed to create public repo: %v", err)
+	}
+
+	want := git.ErrNotAuthed.Error()
+	missing := requestUploadPack(t, "test")
+	private := requestUploadPack(t, "private")
+	if missing != want {
+		t.Errorf("missing repo: expected %q, got %q", want, missing)
+	}
+	if private != want {
+		t.Errorf("private repo: expected %q, got %q", want, private)
+	}
+
+	// A path that escapes the repositories directory gets the same answer.
+	if got := requestUploadPack(t, "../escape"); got != want {
+		t.Errorf("escaping path: expected %q, got %q", want, got)
+	}
+
+	// A public repository is served: the first line is not a refusal.
+	public := requestUploadPack(t, "public")
+	if public == want || public == git.ErrInvalidRepo.Error() {
+		t.Errorf("public repo was refused: %q", public)
 	}
 }
 
