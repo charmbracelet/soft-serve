@@ -164,6 +164,24 @@ func GitLFSTransfer() *cobra.Command {
 	return cmd
 }
 
+// gitDenyRead is denyReadAs for git services: ErrNotAuthed when anonymous,
+// ErrInvalidRepo when registered.
+func gitDenyRead(user proto.User) error {
+	return denyReadAs(user == nil, git.ErrNotAuthed, git.ErrInvalidRepo)
+}
+
+// gitAccess authorizes a git service that needs level need on repo, which
+// is nil when the caller may not read it (see backend.Readable).
+func gitAccess(user proto.User, repo proto.Repository, have, need access.AccessLevel) error {
+	if repo == nil || have < access.ReadOnlyAccess {
+		return gitDenyRead(user)
+	}
+	if have < need {
+		return git.ErrNotAuthed
+	}
+	return nil
+}
+
 func gitRunE(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	cfg := config.FromContext(ctx)
@@ -176,7 +194,6 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 	pk := sshutils.PublicKeyFromContext(ctx)
 	ak := sshutils.MarshalAuthorizedKey(pk)
 	user := proto.UserFromContext(ctx)
-	accessLevel := be.AccessLevelForUser(ctx, name, user)
 	// git bare repositories should end in ".git"
 	// https://git-scm.com/docs/gitrepository-layout
 	repoDir := name + ".git"
@@ -186,7 +203,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	// Set repo in context
-	repo, _ := be.Repository(ctx, name)
+	repo, accessLevel := be.Readable(ctx, name, user)
 	ctx = proto.WithRepositoryContext(ctx, repo)
 
 	// Environment variables to pass down to git hooks.
@@ -234,25 +251,25 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		defer func() {
 			receivePackSeconds.WithLabelValues(name).Add(time.Since(start).Seconds())
 		}()
-		if accessLevel < access.ReadWriteAccess {
-			return git.ErrNotAuthed
-		}
-		if repo == nil {
+		// A missing name is created for a caller who may write; anything
+		// else goes through the same check as every other service.
+		created := repo == nil && accessLevel >= access.ReadWriteAccess
+		if created {
 			if _, err := be.CreateRepository(ctx, name, user, proto.RepositoryOptions{Private: false}); err != nil {
 				log.Errorf("failed to create repo: %s", err)
 				return err
 			}
 			createRepoCounter.WithLabelValues(name).Inc()
+		} else if err := gitAccess(user, repo, accessLevel, access.ReadWriteAccess); err != nil {
+			return err
 		}
 
 		if err := service.Handler(ctx, scmd); err != nil {
 			logger.Error("failed to handle git service", "service", service, "err", err, "repo", name)
-			defer func() {
-				if repo == nil {
-					// If the repo was created, but the request failed, delete it.
-					be.DeleteRepository(ctx, name) //nolint: errcheck
-				}
-			}()
+			if created {
+				// If the repo was created, but the request failed, delete it.
+				be.DeleteRepository(ctx, name) //nolint: errcheck
+			}
 
 			return git.ErrSystemMalfunction
 		}
@@ -266,12 +283,8 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 
 		return nil
 	case git.UploadPackService, git.UploadArchiveService:
-		if accessLevel < access.ReadOnlyAccess {
-			return git.ErrNotAuthed
-		}
-
-		if repo == nil {
-			return git.ErrInvalidRepo
+		if err := gitAccess(user, repo, accessLevel, access.ReadOnlyAccess); err != nil {
+			return err
 		}
 
 		switch service {
@@ -287,10 +300,7 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 			}()
 		}
 
-		err := service.Handler(ctx, scmd)
-		if errors.Is(err, git.ErrInvalidRepo) {
-			return git.ErrInvalidRepo
-		} else if err != nil {
+		if err := service.Handler(ctx, scmd); err != nil {
 			logger.Error("failed to handle git service", "service", service, "err", err, "repo", name)
 			return git.ErrSystemMalfunction
 		}
@@ -298,21 +308,18 @@ func gitRunE(cmd *cobra.Command, args []string) error {
 		return nil
 	case git.LFSTransferService, git.LFSAuthenticateService:
 		operation := args[1]
+		var need access.AccessLevel
 		switch operation {
 		case lfs.OperationDownload:
-			if accessLevel < access.ReadOnlyAccess {
-				return git.ErrNotAuthed
-			}
+			need = access.ReadOnlyAccess
 		case lfs.OperationUpload:
-			if accessLevel < access.ReadWriteAccess {
-				return git.ErrNotAuthed
-			}
+			need = access.ReadWriteAccess
 		default:
 			return git.ErrInvalidRequest
 		}
 
-		if repo == nil {
-			return git.ErrInvalidRepo
+		if err := gitAccess(user, repo, accessLevel, need); err != nil {
+			return err
 		}
 
 		scmd.Args = []string{

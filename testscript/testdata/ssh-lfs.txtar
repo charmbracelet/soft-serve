@@ -1,6 +1,6 @@
 # vi: set ft=conf
 
-[windows] dos2unix err1.txt err2.txt err3.txt errauth.txt
+[windows] dos2unix err1.txt err2.txt err3.txt errauth.txt errrepo.txt
 
 # enable ssh lfs transfer
 env SOFT_SERVE_LFS_SSH_ENABLED=true
@@ -37,10 +37,15 @@ cmp stderr errauth.txt
 cmp stderr err1.txt
 ! usoft git-lfs-transfer repo1p
 cmp stderr err2.txt
+# a private repo the user cannot read answers like a missing one
 ! usoft git-lfs-transfer repo1p download
-cmp stderr errauth.txt
+cmp stderr errrepo.txt
 ! usoft git-lfs-transfer repo1p upload
-cmp stderr errauth.txt
+cmp stderr errrepo.txt
+! usoft git-lfs-transfer foobar download
+cmp stderr errrepo.txt
+! usoft git-lfs-transfer foobar upload
+cmp stderr errrepo.txt
 
 # push & create repo with some files, commits, tags...
 mkdir ./repo1
@@ -74,3 +79,5 @@ Error: accepts 2 arg(s), received 1
 Error: invalid request
 -- errauth.txt --
 Error: you are not authorized to do this
+-- errrepo.txt --
+Error: invalid repo

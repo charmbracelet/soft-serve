@@ -79,10 +79,17 @@ usoft git-lfs-authenticate repo1 download
 stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
 ! usoft git-lfs-authenticate repo1 upload
 cmp stderr notauthorizederr.txt
+# a private repo the user cannot read answers like a missing one
 ! usoft git-lfs-authenticate repo1p download
-cmp stderr notauthorizederr.txt
+cmp stderr invalidrepoerr.txt
 ! usoft git-lfs-authenticate repo1p upload
-cmp stderr notauthorizederr.txt
+cmp stderr invalidrepoerr.txt
+! usoft git-upload-pack repo1p
+cmp stderr invalidrepoerr.txt
+! usoft git-upload-archive repo1p
+cmp stderr invalidrepoerr.txt
+! usoft git-receive-pack repo1p
+cmp stderr invalidrepoerr.txt
 usoft git-lfs-authenticate repo2 download
 stdout '.*header.*Bearer.*href.*expires_in.*expires_at.*'
 usoft git-lfs-authenticate repo2 upload

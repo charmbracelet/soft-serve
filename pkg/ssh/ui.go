@@ -302,17 +302,14 @@ func (ui *UI) openRepo(rn string) (proto.Repository, error) {
 
 	ctx := ui.common.Context()
 	be := ui.common.Backend()
-	repos, err := be.Repositories(ctx)
-	if err != nil {
-		ui.common.Logger.Debugf("ui: failed to list repos: %v", err)
-		return nil, err
+
+	// A repository the caller cannot read is reported as missing, so a
+	// private repository and a missing one behave the same.
+	r, _ := be.ReadableByPublicKey(ctx, rn, ui.common.PublicKey())
+	if r == nil {
+		return nil, common.ErrMissingRepo
 	}
-	for _, r := range repos {
-		if r.Name() == rn {
-			return r, nil
-		}
-	}
-	return nil, common.ErrMissingRepo
+	return r, nil
 }
 
 func (ui *UI) setRepoCmd(rn string) tea.Cmd {

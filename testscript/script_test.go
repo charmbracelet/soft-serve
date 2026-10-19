@@ -263,7 +263,7 @@ func cmdKeylessSoft(ts *testscript.TestScript, neg bool, args []string) {
 func cmdUI(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []string) {
 	return func(ts *testscript.TestScript, neg bool, args []string) {
 		if len(args) < 1 {
-			ts.Fatalf("usage: ui <quoted string input>")
+			ts.Fatalf("usage: ui <quoted string input> [repository]")
 			return
 		}
 
@@ -296,7 +296,12 @@ func cmdUI(key ssh.Signer) func(ts *testscript.TestScript, neg bool, args []stri
 
 		err = sess.RequestPty("dumb", 40, 80, ssh.TerminalModes{})
 		check(ts, err, neg)
-		check(ts, sess.Start(""), neg)
+		// An optional repository name opens the TUI on that repository.
+		initialRepo := ""
+		if len(args) > 1 {
+			initialRepo = args[1]
+		}
+		check(ts, sess.Start(initialRepo), neg)
 
 		in, err := strconv.Unquote(args[0])
 		check(ts, err, neg)

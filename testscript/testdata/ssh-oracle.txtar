@@ -1,0 +1,139 @@
+# vi: set ft=conf
+
+# Over SSH, a caller who cannot read a repository must get the same answer
+# for a private repository and for one that does not exist.
+
+[windows] dos2unix notauthorizederr.txt invalidrepoerr.txt
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# a private repo with content
+soft repo create secret -p
+git clone ssh://localhost:$SSH_PORT/secret secret
+mkfile ./secret/README.md '# secret'
+git -C secret add -A
+git -C secret commit -m 'first'
+git -C secret push origin HEAD
+
+# anonymous key: user1 is not registered yet, so usoft/ugit are anonymous
+! usoft git-upload-pack secret
+cmp stderr notauthorizederr.txt
+! usoft git-upload-pack ghost
+cmp stderr notauthorizederr.txt
+! usoft git-upload-archive secret
+cmp stderr notauthorizederr.txt
+! usoft git-upload-archive ghost
+cmp stderr notauthorizederr.txt
+! usoft git-receive-pack secret
+cmp stderr notauthorizederr.txt
+! usoft git-receive-pack ghost
+cmp stderr notauthorizederr.txt
+! usoft git-lfs-authenticate secret download
+cmp stderr notauthorizederr.txt
+! usoft git-lfs-authenticate ghost download
+cmp stderr notauthorizederr.txt
+! usoft git-lfs-authenticate secret upload
+cmp stderr notauthorizederr.txt
+! usoft git-lfs-authenticate ghost upload
+cmp stderr notauthorizederr.txt
+! ugit clone ssh://localhost:$SSH_PORT/secret secret_anon
+stderr 'you are not authorized to do this'
+! ugit clone ssh://localhost:$SSH_PORT/ghost ghost_anon
+stderr 'you are not authorized to do this'
+
+# the TUI opens the selector for both instead of refusing one of them
+uui '"    q"' secret
+cp stdout tui-secret.txt
+grep 'Repositories' tui-secret.txt
+! grep 'unauthorized' tui-secret.txt
+! stderr 'unauthorized'
+uui '"    q"' ghost
+cp stdout tui-ghost.txt
+grep 'Repositories' tui-ghost.txt
+! grep 'unauthorized' tui-ghost.txt
+! stderr 'unauthorized'
+
+# registered user without access
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+! usoft git-upload-pack secret
+cmp stderr invalidrepoerr.txt
+! usoft git-upload-pack ghost
+cmp stderr invalidrepoerr.txt
+! usoft git-upload-archive secret
+cmp stderr invalidrepoerr.txt
+! usoft git-upload-archive ghost
+cmp stderr invalidrepoerr.txt
+! usoft git-lfs-authenticate secret download
+cmp stderr invalidrepoerr.txt
+! usoft git-lfs-authenticate ghost download
+cmp stderr invalidrepoerr.txt
+! usoft git-lfs-authenticate secret upload
+cmp stderr invalidrepoerr.txt
+! usoft git-lfs-authenticate ghost upload
+cmp stderr invalidrepoerr.txt
+! ugit clone ssh://localhost:$SSH_PORT/secret secret_user
+stderr 'invalid repo'
+
+# a push to a private repo the user cannot read is refused the same way,
+# while a push to a new name still creates it
+! usoft git-receive-pack secret
+cmp stderr invalidrepoerr.txt
+ugit -C secret push ssh://localhost:$SSH_PORT/newname HEAD
+usoft repo list
+stdout 'newname'
+! stdout 'ghost'
+
+# a collaborator explicitly granted no access is treated like a stranger
+soft repo collab add secret user1 no-access
+! usoft git-upload-pack secret
+cmp stderr invalidrepoerr.txt
+! usoft git-upload-pack ghost
+cmp stderr invalidrepoerr.txt
+! usoft git-lfs-authenticate secret download
+cmp stderr invalidrepoerr.txt
+! usoft git-receive-pack secret
+cmp stderr invalidrepoerr.txt
+soft repo collab remove secret user1
+
+# a directory with no database row answers like any unreadable repository
+mkdir $DATA_PATH/repos/orphan.git
+! usoft git-upload-pack orphan
+cmp stderr invalidrepoerr.txt
+! usoft git-receive-pack orphan
+cmp stderr invalidrepoerr.txt
+! usoft git-lfs-authenticate orphan download
+cmp stderr invalidrepoerr.txt
+soft repo list
+! stdout 'orphan'
+
+# the TUI still opens the selector for the registered user
+uui '"    q"' secret
+cp stdout tui-secret2.txt
+grep 'Repositories' tui-secret2.txt
+! grep 'unauthorized' tui-secret2.txt
+uui '"    q"' ghost
+cp stdout tui-ghost2.txt
+grep 'Repositories' tui-ghost2.txt
+! grep 'unauthorized' tui-ghost2.txt
+
+# a reader is still told when they cannot write
+soft repo collab add secret user1 read-only
+usoft git-lfs-authenticate secret download
+stdout '.*Bearer.*'
+! usoft git-lfs-authenticate secret upload
+cmp stderr notauthorizederr.txt
+! usoft git-receive-pack secret
+cmp stderr notauthorizederr.txt
+
+# stop the server; the last command must succeed so stderr is clean
+soft repo list
+[windows] stopserver
+[windows] ! stderr .
+
+-- notauthorizederr.txt --
+Error: you are not authorized to do this
+-- invalidrepoerr.txt --
+Error: invalid repo
