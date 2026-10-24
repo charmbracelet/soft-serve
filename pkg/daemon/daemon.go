@@ -322,6 +322,13 @@ func (d *GitDaemon) closeListener() error {
 	if d.done.Load() {
 		return ErrServerClosed
 	}
+	// Mark the daemon as finished before closing the listeners so that Serve
+	// observes the finished channel when Accept fails and returns
+	// ErrServerClosed rather than the raw accept error.
+	d.once.Do(func() {
+		d.done.Store(true)
+		close(d.finished)
+	})
 	var err error
 	d.liMu.Lock()
 	for _, l := range d.listeners {
@@ -331,10 +338,6 @@ func (d *GitDaemon) closeListener() error {
 	}
 	d.listeners = d.listeners[:0]
 	d.liMu.Unlock()
-	d.once.Do(func() {
-		d.done.Store(true)
-		close(d.finished)
-	})
 	return err
 }
 
