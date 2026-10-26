@@ -170,6 +170,16 @@ lfs:
 jobs:
   mirror_pull: "{{ .Jobs.MirrorPull }}"
 
+# Hostnames exempt from SSRF protection for webhook delivery. Requests to
+# these hosts are allowed even when they resolve to private or internal
+# IP addresses. Use with caution.
+insecure_internal_servers:
+{{- range .InsecureInternalServers }}
+  - "{{ . }}"
+{{- else }} []
+  # - "jenkins.mydomain.lan"
+{{- end }}
+
 # Additional admin keys.
 #initial_admin_keys:
 #  - "ssh-rsa AAAAB3NzaC1yc2..."
