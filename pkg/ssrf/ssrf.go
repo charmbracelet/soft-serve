@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,13 +24,110 @@ var (
 	ErrInvalidURL = errors.New("invalid URL")
 )
 
+// InsecureInternalServers lists hostnames that are exempt from SSRF
+// protection. Requests to these hosts are allowed to reach private or
+// internal IP addresses. It may be set directly or via SetInsecureInternalServers.
+var InsecureInternalServers []string
+
+var insecureInternalServersMu sync.RWMutex
+
+// SetInsecureInternalServers replaces the list of hostnames exempt from SSRF
+// protection.
+func SetInsecureInternalServers(servers []string) {
+	insecureInternalServersMu.Lock()
+	defer insecureInternalServersMu.Unlock()
+	InsecureInternalServers = append([]string(nil), servers...)
+}
+
+// GetInsecureInternalServers returns a copy of the exempt hostname list.
+func GetInsecureInternalServers() []string {
+	insecureInternalServersMu.RLock()
+	defer insecureInternalServersMu.RUnlock()
+	return append([]string(nil), InsecureInternalServers...)
+}
+
+// ConfigFromContext may be set by the config package to extract insecure
+// internal server lists from a context without importing it here.
+var ConfigFromContext func(context.Context) []string
+
+// collectInsecureServers gathers exempt hostnames from the given values. It
+// accepts strings, []string, structs exposing an InsecureInternalServers
+// field (such as *config.Config), and contexts carrying a config.
+func collectInsecureServers(values []interface{}) []string {
+	var out []string
+	insecureInternalServersMu.RLock()
+	out = append(out, InsecureInternalServers...)
+	insecureInternalServersMu.RUnlock()
+
+	for _, v := range values {
+		switch val := v.(type) {
+		case nil:
+			continue
+		case string:
+			out = append(out, val)
+		case []string:
+			out = append(out, val...)
+		case context.Context:
+			if ConfigFromContext != nil {
+				out = append(out, ConfigFromContext(val)...)
+			}
+			continue
+		default:
+			rv := reflect.ValueOf(val)
+			if rv.IsValid() {
+				if rv.Kind() == reflect.Ptr {
+					rv = rv.Elem()
+				}
+				if rv.Kind() == reflect.Struct {
+					f := rv.FieldByName("InsecureInternalServers")
+					if f.IsValid() && f.Kind() == reflect.Slice {
+						for i := 0; i < f.Len(); i++ {
+							if s, ok := f.Index(i).Interface().(string); ok {
+								out = append(out, s)
+							}
+						}
+					}
+				}
+				if rv.Kind() == reflect.Slice {
+					for i := 0; i < rv.Len(); i++ {
+						if s, ok := rv.Index(i).Interface().(string); ok {
+							out = append(out, s)
+						}
+					}
+				}
+			}
+		}
+	}
+	return out
+}
+
+// IsInsecureInternalServer reports whether host is in the exempt list.
+func IsInsecureInternalServer(host string, values ...interface{}) bool {
+	return isInsecureInternalServer(host, values...)
+}
+
+// isInsecureInternalServer reports whether host is in the exempt list.
+func isInsecureInternalServer(host string, values ...interface{}) bool {
+	host = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(host), "."))
+	if host == "" {
+		return false
+	}
+	for _, s := range collectInsecureServers(values) {
+		if strings.ToLower(strings.TrimSuffix(strings.TrimSpace(s), ".")) == host {
+			return true
+		}
+	}
+	return false
+}
+
 // NewSecureClient returns an HTTP client with SSRF protection.
 // It validates resolved IPs at dial time to block connections to private
 // and internal networks. Hostnames are resolved and the validated IP is
 // used directly in the dial call to prevent DNS rebinding (TOCTOU between
 // validation and connection). Redirects are disabled to match the webhook
 // client convention and prevent redirect-based SSRF.
-func NewSecureClient() *http.Client {
+func NewSecureClient(opts ...interface{}) *http.Client {
+	extra := collectInsecureServers(opts)
 	return &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
@@ -36,6 +135,15 @@ func NewSecureClient() *http.Client {
 				host, port, err := net.SplitHostPort(addr)
 				if err != nil {
 					return nil, err //nolint:wrapcheck
+				}
+
+				if isInsecureInternalServer(host, extra) {
+					// Trusted internal host: bypass SSRF checks entirely.
+					dialer := &net.Dialer{
+						Timeout:   10 * time.Second,
+						KeepAlive: 30 * time.Second,
+					}
+					return dialer.DialContext(ctx, network, addr)
 				}
 
 				ip := net.ParseIP(host)
@@ -147,7 +255,7 @@ func isPrivateOrInternal(ip net.IP) bool {
 // ValidateURL validates that a URL is safe to make requests to.
 // It checks that the scheme is http/https, the hostname is not localhost,
 // and all resolved IPs are public.
-func ValidateURL(rawURL string) error {
+func ValidateURL(rawURL string, opts ...interface{}) error {
 	if rawURL == "" {
 		return ErrInvalidURL
 	}
@@ -164,6 +272,10 @@ func ValidateURL(rawURL string) error {
 	hostname := u.Hostname()
 	if hostname == "" {
 		return fmt.Errorf("%w: missing hostname", ErrInvalidURL)
+	}
+
+	if isInsecureInternalServer(hostname, opts...) {
+		return nil
 	}
 
 	if isLocalhost(hostname) {

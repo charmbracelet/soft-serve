@@ -21,7 +21,7 @@ func (b *Backend) CreateWebhook(ctx context.Context, repo proto.Repository, url 
 	url = utils.Sanitize(url)
 
 	// Validate webhook URL to prevent SSRF attacks
-	if err := webhook.ValidateWebhookURL(url); err != nil {
+	if err := webhook.ValidateWebhookURL(url, b.cfg); err != nil {
 		return err //nolint:wrapcheck
 	}
 
@@ -126,7 +126,7 @@ func (b *Backend) UpdateWebhook(ctx context.Context, repo proto.Repository, id i
 	datastore := store.FromContext(ctx)
 
 	// Validate webhook URL to prevent SSRF attacks
-	if err := webhook.ValidateWebhookURL(url); err != nil {
+	if err := webhook.ValidateWebhookURL(url, b.cfg); err != nil {
 		return err
 	}
 

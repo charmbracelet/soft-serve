@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -226,6 +227,12 @@ type Config struct {
 	// already exist. Leave empty to disable.
 	DefaultRepo string `env:"DEFAULT_REPO" yaml:"default_repo"`
 
+	// InsecureInternalServers lists hostnames (e.g. "jenkins.mydomain.lan")
+	// that are exempt from the SSRF protection applied to webhook delivery
+	// URLs. Requests to these hosts are allowed even when they resolve to
+	// private or internal IP addresses. Use with caution.
+	InsecureInternalServers []string `env:"INSECURE_INTERNAL_SERVERS" yaml:"insecure_internal_servers"`
+
 	// DataPath is the path to the directory where Soft Serve will store its data.
 	DataPath string `env:"DATA_PATH" yaml:"-"`
 }
@@ -246,6 +253,7 @@ func (c *Config) Environ() []string {
 		fmt.Sprintf("SOFT_SERVE_NAME=%s", c.Name),
 		fmt.Sprintf("SOFT_SERVE_INITIAL_ADMIN_KEYS=%s", strings.Join(c.InitialAdminKeys, "\n")),
 		fmt.Sprintf("SOFT_SERVE_DEFAULT_REPO=%s", c.DefaultRepo),
+		fmt.Sprintf("SOFT_SERVE_INSECURE_INTERNAL_SERVERS=%s", strings.Join(c.InsecureInternalServers, ",")),
 		fmt.Sprintf("SOFT_SERVE_SSH_ENABLED=%t", c.SSH.Enabled),
 		fmt.Sprintf("SOFT_SERVE_SSH_LISTEN_ADDR=%s", c.SSH.ListenAddr),
 		fmt.Sprintf("SOFT_SERVE_SSH_PUBLIC_URL=%s", c.SSH.PublicURL),
@@ -522,6 +530,13 @@ func (c *Config) Validate() error {
 	}
 	c.SSH.allowedHosts = allowed
 
+	// Drop blanks from the insecure internal server list and publish it to
+	// the ssrf package so webhook delivery honors it.
+	c.InsecureInternalServers = slices.DeleteFunc(slices.Clone(c.InsecureInternalServers), func(s string) bool {
+		return strings.TrimSpace(s) == ""
+	})
+	ssrf.SetInsecureInternalServers(c.InsecureInternalServers)
+
 	if c.HTTP.TLSKeyPath != "" && !filepath.IsAbs(c.HTTP.TLSKeyPath) {
 		c.HTTP.TLSKeyPath = filepath.Join(c.DataPath, c.HTTP.TLSKeyPath)
 	}
@@ -576,5 +591,12 @@ func (c *Config) AdminKeys() []ssh.PublicKey {
 func init() {
 	if ex, err := os.Executable(); err == nil {
 		binPath = filepath.ToSlash(ex)
+	}
+
+	ssrf.ConfigFromContext = func(ctx context.Context) []string {
+		if c := FromContext(ctx); c != nil {
+			return c.InsecureInternalServers
+		}
+		return nil
 	}
 }
