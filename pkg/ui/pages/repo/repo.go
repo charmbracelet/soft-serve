@@ -139,6 +139,9 @@ func (r *Repo) FullHelp() [][]key.Binding {
 func (r *Repo) Init() tea.Cmd {
 	r.state = loadingState
 	r.activeTab = 0
+	// Reset the tab names on every init so that we do not
+	// briefly show incorrect counts when navigating between repos
+	r.tabs.ResetTabNames()
 	return tea.Batch(
 		r.tabs.Init(),
 		r.statusbar.Init(),
@@ -217,9 +220,25 @@ func (r *Repo) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	case FileItemsMsg, FileContentMsg:
 		cmds = append(cmds, r.updateTabComponent(&Files{}, msg))
 	case LogItemsMsg, LogDiffMsg, LogCountMsg:
-		cmds = append(cmds, r.updateTabComponent(&Log{}, msg))
+		log := &Log{}
+		if lim, ok := msg.(LogItemsMsg); ok {
+			msg := tabs.SetTabValueMsg{ID: log.TabName(), Value: fmt.Sprintf("Commits (%d)", len(lim))}
+			t, cmd := r.tabs.Update(msg)
+			r.tabs = t.(*tabs.Tabs)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+		cmds = append(cmds, r.updateTabComponent(log, msg))
 	case RefItemsMsg:
-		cmds = append(cmds, r.updateTabComponent(&Refs{refPrefix: msg.prefix}, msg))
+		refs := &Refs{refPrefix: msg.prefix}
+		tabMsg := tabs.SetTabValueMsg{ID: refs.TabName(), Value: fmt.Sprintf("%s (%d)", refs.TabName(), len(msg.items))}
+		t, cmd := r.tabs.Update(tabMsg)
+		r.tabs = t.(*tabs.Tabs)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		cmds = append(cmds, r.updateTabComponent(refs, msg))
 	case StashListMsg, StashPatchMsg:
 		cmds = append(cmds, r.updateTabComponent(&Stash{}, msg))
 	// We have two spinners, one is used to when loading the repository and the
