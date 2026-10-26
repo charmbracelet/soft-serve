@@ -1,3 +1,11 @@
+# Sunsetting Soft Serve
+
+To continue innovating in this space and supporting our most important work, we’ve sunset Soft Serve. The code will continue to be open source and publicly available. No further security updates will be applied. If you love this project and would like to maintain a fork, please do.
+
+Thank you to everyone who has supported and contributed to Soft Serve over the years. We appreciate you.
+
+***
+
 # Soft Serve
 
 <p>
