@@ -22,8 +22,9 @@ EXPOSE 23233/tcp
 EXPOSE 9418/tcp
 
 # Set the default command
-ENTRYPOINT [ "/usr/local/bin/soft", "serve" ]
+ENTRYPOINT [ "/entrypoint.sh", "/usr/local/bin/soft", "serve" ]
 
-RUN apk update && apk add --update git bash openssh && rm -rf /var/cache/apk/*
+RUN apk update && apk add --update git bash openssh su-exec && rm -rf /var/cache/apk/*
 
+COPY entrypoint.sh /entrypoint.sh
 COPY soft /usr/local/bin/soft
