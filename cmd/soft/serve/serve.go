@@ -74,6 +74,11 @@ var (
 				return fmt.Errorf("start server: %w", err)
 			}
 
+			// Start zombie child reaper for container environments where
+			// soft-serve may run as PID 1 without an init supervisor.
+			// See https://github.com/charmbracelet/soft-serve/issues/891
+			reapZombies(ctx, s.logger)
+
 			if syncHooks {
 				be := backend.FromContext(ctx)
 				if err := cmd.InitializeHooks(ctx, cfg, be); err != nil {
